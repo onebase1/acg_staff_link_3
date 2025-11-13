@@ -1,0 +1,494 @@
+================================================================================
+EXPECTED DATABASE SCHEMA (from Complete Database Schema Reference.txt)
+================================================================================
+
+
+TABLE: admin_workflows (AdminWorkflow)
+Total Columns: 18
+--------------------------------------------------------------------------------
+  id                                       TEXT            -- Auto-generated
+  created_date                             TIMESTAMPTZ     -- Auto-generated
+  updated_date                             TIMESTAMPTZ     -- Auto-generated
+  created_by                               TEXT            -- User email
+  agency_id                                TEXT            -- Multi-tenant reference
+  type                                     TEXT            -- unfilled_urgent_shift/expired_compliance_document/
+  priority                                 TEXT            -- low/medium/high/critical
+  status                                   TEXT            -- pending/in_progress/resolved/dismissed
+  title                                    TEXT            -- Workflow title
+  description                              TEXT            -- Detailed description
+  related_entity                           JSONB           -- {entity_type, entity_id}
+  assigned_to                              TEXT            -- User ID
+  deadline                                 TIMESTAMPTZ     -- Resolution deadline
+  resolution_notes                         TEXT            -- Resolution notes
+  resolved_at                              TIMESTAMPTZ     -- Resolution time
+  resolved_by                              TEXT            -- Resolver user ID
+  auto_created                             BOOLEAN         -- Auto-created flag
+  escalation_count                         NUMERIC         -- Escalation count
+
+
+TABLE: agencies (Agency)
+Total Columns: 27
+--------------------------------------------------------------------------------
+  id                                       TEXT            -- Auto-generated
+  created_date                             TIMESTAMPTZ     -- Auto-generated
+  updated_date                             TIMESTAMPTZ     -- Auto-generated
+  created_by                               TEXT            -- User email
+  name                                     TEXT            -- Agency trading name
+  registration_number                      TEXT            -- Companies House number
+  address                                  JSONB           -- {line1, line2, city, postcode, country}
+  contact_email                            TEXT            -- Contact email
+  contact_phone                            TEXT            -- Phone number
+  logo_url                                 TEXT            -- Logo URL
+  bank_details                             JSONB           -- {account_name, account_number, sort_code, bank_nam
+  status                                   TEXT            -- active/suspended/trial
+  subscription_tier                        TEXT            -- starter/professional/enterprise
+  dbs_check_expiry_alerts                  BOOLEAN         -- Notification setting
+  mandatory_training_reminders             BOOLEAN         -- Notification setting
+  document_expiry_warnings                 BOOLEAN         -- Notification setting
+  auto_approve_timesheets                  BOOLEAN         -- Automation setting
+  sms_shift_confirmations                  BOOLEAN         -- Communication setting
+  whatsapp_notifications                   BOOLEAN         -- Communication setting
+  auto_generate_invoices                   BOOLEAN         -- Automation setting
+  send_payment_reminders                   BOOLEAN         -- Automation setting
+  email_notifications                      BOOLEAN         -- Notification setting
+  sms_notifications                        BOOLEAN         -- Notification setting
+  whatsapp_global_notifications            BOOLEAN         -- Notification setting
+  invoice_frequency                        TEXT            -- Weekly/Bi-Weekly/Monthly
+  payment_terms_days                       NUMERIC         -- Default 30
+  settings                                 JSONB           -- Complex configuration object
+
+
+TABLE: bookings (Booking)
+Total Columns: 25
+--------------------------------------------------------------------------------
+  id                                       TEXT            -- Auto-generated
+  created_date                             TIMESTAMPTZ     -- Auto-generated
+  updated_date                             TIMESTAMPTZ     -- Auto-generated
+  created_by                               TEXT            -- User email
+  agency_id                                TEXT            -- Multi-tenant reference
+  shift_id                                 TEXT            -- Shift reference
+  staff_id                                 TEXT            -- Staff reference
+  client_id                                TEXT            -- Client reference
+  status                                   TEXT            -- pending/confirmed/staff_confirmed/client_confirmed
+  booking_date                             TIMESTAMPTZ     -- Booking timestamp
+  shift_date                               DATE            -- Shift date
+  start_time                               TEXT            -- Start time
+  end_time                                 TEXT            -- End time
+  confirmation_method                      TEXT            -- phone/email/app/whatsapp
+  confirmed_by_staff_at                    TIMESTAMPTZ     -- Staff confirmation time
+  confirmed_by_client_at                   TIMESTAMPTZ     -- Client confirmation time
+  cancellation_reason                      TEXT            -- Cancellation reason
+  cancelled_by                             TEXT            -- staff/client/agency
+  cancelled_at                             TIMESTAMPTZ     -- When cancelled
+  notes                                    TEXT            -- Booking notes
+  timesheet_id                             TEXT            -- Timesheet reference
+  rating_by_client                         NUMERIC         -- 1-5 rating
+  rating_by_staff                          NUMERIC         -- 1-5 rating
+  feedback_from_client                     TEXT            -- Client feedback
+  feedback_from_staff                      TEXT            -- Staff feedback
+
+
+TABLE: change_logs (ChangeLog)
+Total Columns: 21
+--------------------------------------------------------------------------------
+  id                                       TEXT            -- Auto-generated
+  created_date                             TIMESTAMPTZ     -- Auto-generated
+  updated_date                             TIMESTAMPTZ     -- Auto-generated
+  created_by                               TEXT            -- User email
+  agency_id                                TEXT            -- Multi-tenant reference
+  change_type                              TEXT            -- shift_cancelled/shift_reassigned/shift_modified/ba
+  affected_entity_type                     TEXT            -- shift/staff/client/timesheet/booking/invoice/paysl
+  affected_entity_id                       TEXT            -- Entity ID
+  old_value                                TEXT            -- Previous value
+  new_value                                TEXT            -- New value
+  reason                                   TEXT            -- Change reason
+  changed_by                               TEXT            -- User ID
+  changed_by_email                         TEXT            -- User email
+  changed_at                               TIMESTAMPTZ     -- Change timestamp
+  notifications_sent                       NUMERIC         -- Notification count
+  ip_address                               TEXT            -- User IP
+  risk_level                               TEXT            -- low/medium/high/critical
+  reviewed                                 BOOLEAN         -- Review flag
+  reviewed_by                              TEXT            -- Reviewer user ID
+  reviewed_at                              TIMESTAMPTZ     -- Review time
+  flagged_for_review                       BOOLEAN         -- Flag for review
+
+
+TABLE: clients (Client)
+Total Columns: 23
+--------------------------------------------------------------------------------
+  id                                       TEXT            -- Auto-generated
+  created_date                             TIMESTAMPTZ     -- Auto-generated
+  updated_date                             TIMESTAMPTZ     -- Auto-generated
+  created_by                               TEXT            -- User email
+  agency_id                                TEXT            -- Multi-tenant reference
+  name                                     TEXT            -- Care home name
+  type                                     TEXT            -- care_home/hospital/nursing_home/residential_care/s
+  address                                  JSONB           -- {line1, line2, city, postcode}
+  location_coordinates                     JSONB           -- {latitude, longitude}
+  geofence_radius_meters                   NUMERIC         -- Default 100
+  geofence_enabled                         BOOLEAN         -- Default true
+  internal_locations                       JSONB           -- Pre-approved room numbers
+  contact_person                           JSONB           -- {name, role, email, phone}
+  billing_email                            TEXT            -- Billing email
+  payment_terms                            TEXT            -- net_7/net_14/net_30/net_60
+  contract_terms                           JSONB           -- Complex contract configuration
+  status                                   TEXT            -- active/inactive/pending_approval
+  cqc_rating                               TEXT            -- outstanding/good/requires_improvement/inadequate/n
+  bed_capacity                             NUMERIC         -- Number of beds
+  preferred_staff                          JSONB           -- Preferred staff IDs
+  notes                                    TEXT            -- Internal notes
+  total_bookings                           NUMERIC         -- Booking count
+  rating                                   NUMERIC         -- 0-5 rating
+
+
+TABLE: compliance (Compliance)
+Total Columns: 21
+--------------------------------------------------------------------------------
+  id                                       TEXT            -- Auto-generated
+  created_date                             TIMESTAMPTZ     -- Auto-generated
+  updated_date                             TIMESTAMPTZ     -- Auto-generated
+  created_by                               TEXT            -- User email
+  agency_id                                TEXT            -- Multi-tenant reference
+  staff_id                                 TEXT            -- Staff reference
+  document_type                            TEXT            -- dbs_check/right_to_work/professional_registration/
+  document_name                            TEXT            -- Document name
+  document_url                             TEXT            -- Uploaded file URL
+  issue_date                               DATE            -- Issue date
+  expiry_date                              DATE            -- Expiry date
+  status                                   TEXT            -- pending/verified/expired/rejected
+  verified_by                              TEXT            -- Verifier user ID
+  verified_at                              TIMESTAMPTZ     -- Verification time
+  notes                                    TEXT            -- Document notes
+  reminder_sent                            BOOLEAN         -- Reminder flag
+  issuing_authority                        TEXT            -- Issuing authority
+  reference_number                         TEXT            -- Reference number
+  reminder_30d_sent                        BOOLEAN         -- 30-day reminder
+  reminder_14d_sent                        BOOLEAN         -- 14-day reminder
+  reminder_7d_sent                         BOOLEAN         -- 7-day reminder
+
+
+TABLE: invoice_amendments (InvoiceAmendment)
+Total Columns: 31
+--------------------------------------------------------------------------------
+  id                                       TEXT            -- Auto-generated
+  created_date                             TIMESTAMPTZ     -- Auto-generated
+  updated_date                             TIMESTAMPTZ     -- Auto-generated
+  created_by                               TEXT            -- User email
+  agency_id                                TEXT            -- Multi-tenant reference
+  original_invoice_id                      TEXT            -- Original invoice reference
+  amended_invoice_id                       TEXT            -- New invoice reference
+  amendment_version                        NUMERIC         -- Version number
+  amendment_type                           TEXT            -- rate_change/hours_adjustment/location_correction/s
+  amendment_reason                         TEXT            -- Amendment reason
+  changes_made                             JSONB           -- Detailed change list
+  original_total                           NUMERIC         -- Original amount
+  amended_total                            NUMERIC         -- New amount
+  total_difference                         NUMERIC         -- Difference
+  status                                   TEXT            -- draft/pending_approval/approved/sent/disputed/canc
+  requires_client_approval                 BOOLEAN         -- Approval flag
+  client_notified_at                       TIMESTAMPTZ     -- Notification time
+  client_approved_at                       TIMESTAMPTZ     -- Approval time
+  client_dispute_reason                    TEXT            -- Dispute reason
+  amended_by                               TEXT            -- User ID
+  approved_by                              TEXT            -- Approver user ID
+  approved_at                              TIMESTAMPTZ     -- Approval time
+  amendment_date                           TIMESTAMPTZ     -- Amendment timestamp
+  sent_at                                  TIMESTAMPTZ     -- Send time
+  pdf_url                                  TEXT            -- Amended invoice PDF
+  email_trail                              JSONB           -- Email audit trail
+  audit_trail                              JSONB           -- Complete audit trail
+  risk_level                               TEXT            -- low/medium/high/critical
+  payment_already_received                 BOOLEAN         -- Payment received flag
+  credit_note_required                     BOOLEAN         -- Credit note flag
+  credit_note_id                           TEXT            -- Credit note reference
+
+
+TABLE: invoices (Invoice)
+Total Columns: 34
+--------------------------------------------------------------------------------
+  id                                       TEXT            -- Auto-generated
+  created_date                             TIMESTAMPTZ     -- Auto-generated
+  updated_date                             TIMESTAMPTZ     -- Auto-generated
+  created_by                               TEXT            -- User email
+  agency_id                                TEXT            -- Multi-tenant reference
+  invoice_number                           TEXT            -- Unique reference
+  client_id                                TEXT            -- Client reference
+  invoice_date                             DATE            -- Invoice date
+  due_date                                 DATE            -- Payment due date
+  period_start                             DATE            -- Period start
+  period_end                               DATE            -- Period end
+  status                                   TEXT            -- draft/sent/viewed/partially_paid/paid/overdue/canc
+  line_items                               JSONB           -- Invoice line items
+  subtotal                                 NUMERIC         -- Subtotal amount
+  vat_rate                                 NUMERIC         -- VAT percentage
+  vat_amount                               NUMERIC         -- VAT amount
+  total                                    NUMERIC         -- Total amount
+  amount_paid                              NUMERIC         -- Amount paid
+  balance_due                              NUMERIC         -- Balance due
+  payment_method                           TEXT            -- bank_transfer/bacs/cheque/card/other
+  paid_date                                DATE            -- Payment date
+  notes                                    TEXT            -- Invoice notes
+  pdf_url                                  TEXT            -- Generated PDF URL
+  sent_at                                  TIMESTAMPTZ     -- When sent
+  reminder_sent_count                      NUMERIC         -- Reminder count
+  last_reminder_sent                       TIMESTAMPTZ     -- Last reminder time
+  is_amendment                             BOOLEAN         -- Amendment flag
+  amendment_version                        NUMERIC         -- Version number
+  original_invoice_id                      TEXT            -- Original reference
+  superseded_by_invoice_id                 TEXT            -- Newer version reference
+  amendment_reason                         TEXT            -- Amendment reason
+  amended_at                               TIMESTAMPTZ     -- When amended
+  amended_by                               TEXT            -- User ID
+  immutable_sent_snapshot                  JSONB           -- Immutable sent data
+
+
+TABLE: notification_queue (NotificationQueue)
+Total Columns: 17
+--------------------------------------------------------------------------------
+  id                                       TEXT            -- Auto-generated
+  created_date                             TIMESTAMPTZ     -- Auto-generated
+  updated_date                             TIMESTAMPTZ     -- Auto-generated
+  created_by                               TEXT            -- User email
+  agency_id                                TEXT            -- Multi-tenant reference
+  recipient_email                          TEXT            -- Recipient email
+  recipient_type                           TEXT            -- staff/client/admin
+  recipient_first_name                     TEXT            -- First name
+  notification_type                        TEXT            -- shift_assignment/shift_confirmation/compliance_exp
+  pending_items                            JSONB           -- Queued notification items
+  created_at                               TIMESTAMPTZ     -- Queue creation time
+  scheduled_send_at                        TIMESTAMPTZ     -- Scheduled send time
+  status                                   TEXT            -- pending/sent/cancelled/failed
+  sent_at                                  TIMESTAMPTZ     -- Actual send time
+  email_message_id                         TEXT            -- Resend message ID
+  error_message                            TEXT            -- Error details
+  item_count                               NUMERIC         -- Number of items
+
+
+TABLE: operational_costs (OperationalCost)
+Total Columns: 19
+--------------------------------------------------------------------------------
+  id                                       TEXT            -- Auto-generated
+  created_date                             TIMESTAMPTZ     -- Auto-generated
+  updated_date                             TIMESTAMPTZ     -- Auto-generated
+  created_by                               TEXT            -- User email
+  agency_id                                TEXT            -- Multi-tenant reference
+  service_name                             TEXT            -- Service name
+  service_category                         TEXT            -- communication/ai_automation/platform_hosting/payme
+  cost_type                                TEXT            -- monthly_subscription/per_use/per_user/tiered_usage
+  billing_period                           DATE            -- Billing period start
+  amount                                   NUMERIC         -- Cost in GBP
+  currency                                 TEXT            -- GBP/USD/EUR
+  usage_metrics                            JSONB           -- {sms_sent, whatsapp_messages, emails_sent, ai_toke
+  invoice_url                              TEXT            -- Invoice/receipt URL
+  paid_date                                DATE            -- Payment date
+  status                                   TEXT            -- pending/paid/overdue/cancelled
+  notes                                    TEXT            -- Cost notes
+  projected_cost                           NUMERIC         -- Estimated next period
+  cost_per_shift                           NUMERIC         -- Calculated per-shift cost
+  roi_impact                               TEXT            -- critical/high/medium/low
+
+
+TABLE: payslips (Payslip)
+Total Columns: 21
+--------------------------------------------------------------------------------
+  id                                       TEXT            -- Auto-generated
+  created_date                             TIMESTAMPTZ     -- Auto-generated
+  updated_date                             TIMESTAMPTZ     -- Auto-generated
+  created_by                               TEXT            -- User email
+  agency_id                                TEXT            -- Multi-tenant reference
+  payslip_number                           TEXT            -- Unique reference
+  staff_id                                 TEXT            -- Staff reference
+  period_start                             DATE            -- Period start
+  period_end                               DATE            -- Period end
+  payment_date                             DATE            -- Payment date
+  status                                   TEXT            -- draft/approved/paid/cancelled
+  timesheets                               JSONB           -- Timesheet references
+  gross_pay                                NUMERIC         -- Gross pay
+  deductions                               JSONB           -- {tax, national_insurance, pension, other}
+  total_deductions                         NUMERIC         -- Total deductions
+  net_pay                                  NUMERIC         -- Net pay
+  payment_method                           TEXT            -- bank_transfer/bacs/cash/cheque
+  bank_details                             JSONB           -- {account_name, sort_code, account_number}
+  pdf_url                                  TEXT            -- Generated PDF URL
+  notes                                    TEXT            -- Payslip notes
+  paid_at                                  TIMESTAMPTZ     -- Payment timestamp
+
+
+TABLE: shifts (Shift)
+Total Columns: 65
+--------------------------------------------------------------------------------
+  id                                       TEXT            -- Auto-generated
+  created_date                             TIMESTAMPTZ     -- Auto-generated
+  updated_date                             TIMESTAMPTZ     -- Auto-generated
+  created_by                               TEXT            -- User email
+  agency_id                                TEXT            -- Multi-tenant reference
+  client_id                                TEXT            -- Client reference
+  role_required                            TEXT            -- nurse/healthcare_assistant/senior_care_worker/spec
+  date                                     DATE            -- Shift date
+  start_time                               TEXT            -- HH:MM format
+  end_time                                 TEXT            -- HH:MM format
+  duration_hours                           NUMERIC         -- Calculated hours
+  work_location_within_site                TEXT            -- Room/unit/area
+  status                                   TEXT            -- open/assigned/confirmed/in_progress/awaiting_staff
+  assigned_staff_id                        TEXT            -- Staff reference
+  booking_id                               TEXT            -- Booking reference
+  timesheet_id                             TEXT            -- Timesheet reference
+  timesheet_received                       BOOLEAN         -- Timesheet received flag
+  timesheet_received_at                    TIMESTAMPTZ     -- When received
+  timesheet_reminder_sent                  BOOLEAN         -- Reminder sent flag
+  timesheet_reminder_sent_at               TIMESTAMPTZ     -- When sent
+  pay_rate                                 NUMERIC         -- Staff pay rate
+  charge_rate                              NUMERIC         -- Client charge rate
+  pay_rate_override                        JSONB           -- Override details
+  marketplace_visible                      BOOLEAN         -- Marketplace flag
+  marketplace_added_at                     TIMESTAMPTZ     -- When added
+  requirements                             JSONB           -- Shift requirements
+  break_duration_minutes                   NUMERIC         -- Break duration
+  notes                                    TEXT            -- Shift notes
+  urgency                                  TEXT            -- normal/urgent/critical
+  recurring                                BOOLEAN         -- Recurring flag
+  recurrence_pattern                       TEXT            -- daily/weekly/biweekly/monthly
+  broadcast_sent_at                        TIMESTAMPTZ     -- Broadcast timestamp
+  escalation_deadline                      TIMESTAMPTZ     -- Escalation time
+  on_duty_contact                          JSONB           -- {name, phone}
+  shift_started_at                         TIMESTAMPTZ     -- Actual start
+  shift_ended_at                           TIMESTAMPTZ     -- Actual end
+  verification_workflow_id                 TEXT            -- AdminWorkflow reference
+  actual_staff_id                          TEXT            -- Actual staff worked
+  reassignment_history                     JSONB           -- Reassignment records
+  cancellation_reason                      TEXT            -- Cancellation reason
+  cancelled_by                             TEXT            -- staff/client/agency
+  cancelled_at                             TIMESTAMPTZ     -- When cancelled
+  reminder_24h_sent                        BOOLEAN         -- 24h reminder flag
+  reminder_24h_sent_at                     TIMESTAMPTZ     -- When sent
+  reminder_2h_sent                         BOOLEAN         -- 2h reminder flag
+  reminder_2h_sent_at                      TIMESTAMPTZ     -- When sent
+  approaching_staff_location               JSONB           -- GPS data
+  shift_journey_log                        JSONB           -- Complete audit trail
+  admin_closure_required                   BOOLEAN         -- Admin closure flag
+  admin_closure_outcome                    TEXT            -- completed_as_planned/cancelled/no_show/disputed/st
+  admin_closed_at                          TIMESTAMPTZ     -- When closed
+  admin_closed_by                          TEXT            -- User ID
+  staff_confirmed_completion               BOOLEAN         -- Staff confirmation flag
+  staff_confirmation_requested_at          TIMESTAMPTZ     -- When requested
+  staff_confirmed_at                       TIMESTAMPTZ     -- When confirmed
+  staff_confirmation_method                TEXT            -- sms_reply/auto_high_confidence/manual_admin
+  staff_confirmation_confidence_score      NUMERIC         -- 0-100
+  replaced_shift_id                        TEXT            -- Replacement reference
+  is_replacement                           BOOLEAN         -- Replacement flag
+  archived                                 BOOLEAN         -- Archive flag
+  archived_at                              TIMESTAMPTZ     -- When archived
+  financial_locked                         BOOLEAN         -- Financial lock flag
+  financial_locked_at                      TIMESTAMPTZ     -- When locked
+  financial_locked_by                      TEXT            -- User ID
+  financial_snapshot                       JSONB           -- Immutable financial data
+
+
+TABLE: staff (Staff)
+Total Columns: 46
+--------------------------------------------------------------------------------
+  id                                       TEXT            -- Auto-generated
+  created_date                             TIMESTAMPTZ     -- Auto-generated
+  updated_date                             TIMESTAMPTZ     -- Auto-generated
+  created_by                               TEXT            -- User email
+  agency_id                                TEXT            -- Multi-tenant reference
+  user_id                                  TEXT            -- Link to User entity
+  first_name                               TEXT            -- First name
+  last_name                                TEXT            -- Last name
+  email                                    TEXT            -- Email address
+  phone                                    TEXT            -- Phone number
+  whatsapp_pin                             TEXT            -- 4-digit PIN for WhatsApp auth
+  whatsapp_number_verified                 TEXT            -- Verified WhatsApp number (E.164)
+  whatsapp_linked_at                       TIMESTAMPTZ     -- When WhatsApp was linked
+  date_of_birth                            DATE            -- Date of birth
+  profile_photo_url                        TEXT            -- Professional headshot URL
+  profile_photo_uploaded_date              DATE            -- Photo upload date
+  role                                     TEXT            -- nurse/healthcare_assistant/senior_care_worker/supp
+  nmc_pin                                  TEXT            -- NMC registration (nurses)
+  nmc_register_part                        TEXT            -- NMC register part
+  medication_trained                       BOOLEAN         -- Medication training status
+  medication_training_expiry               DATE            -- Training expiry
+  can_work_as_senior                       BOOLEAN         -- Calculated field
+  role_hierarchy                           JSONB           -- {can_work_as: []}
+  driving_license_number                   TEXT            -- License number
+  driving_license_expiry                   DATE            -- License expiry
+  employment_type                          TEXT            -- temporary/contract/permanent
+  status                                   TEXT            -- active/inactive/suspended/onboarding
+  suspension_reason                        TEXT            -- Reason if suspended
+  hourly_rate                              NUMERIC         -- Pay rate per hour
+  address                                  JSONB           -- {line1, line2, city, postcode}
+  emergency_contact                        JSONB           -- {name, relationship, phone}
+  employment_history                       JSONB           -- Array of employment records
+  references                               JSONB           -- Array of reference records
+  occupational_health                      JSONB           -- Health assessment data
+  mandatory_training                       JSONB           -- Training certificates data
+  availability                             JSONB           -- Weekly availability
+  skills                                   JSONB           -- Special skills/certifications
+  groups                                   JSONB           -- Group references
+  rating                                   NUMERIC         -- 0-5 rating
+  total_shifts_completed                   NUMERIC         -- Count
+  date_joined                              DATE            -- Join date
+  proposed_first_shift_date                DATE            -- For new staff
+  months_of_experience                     NUMERIC         -- Total experience
+  gps_consent                              BOOLEAN         -- GPS tracking consent
+  gps_consent_date                         TIMESTAMPTZ     -- When consent given
+  last_known_location                      JSONB           -- {latitude, longitude, timestamp}
+
+
+TABLE: timesheets (Timesheet)
+Total Columns: 40
+--------------------------------------------------------------------------------
+  id                                       TEXT            -- Auto-generated
+  created_date                             TIMESTAMPTZ     -- Auto-generated
+  updated_date                             TIMESTAMPTZ     -- Auto-generated
+  created_by                               TEXT            -- User email
+  agency_id                                TEXT            -- Multi-tenant reference
+  booking_id                               TEXT            -- Booking reference
+  staff_id                                 TEXT            -- Staff reference
+  client_id                                TEXT            -- Client reference
+  shift_date                               DATE            -- Shift date
+  work_location_within_site                TEXT            -- Room/unit worked
+  clock_in_time                            TIMESTAMPTZ     -- GPS clock-in
+  clock_out_time                           TIMESTAMPTZ     -- GPS clock-out
+  actual_start_time                        TEXT            -- Actual start (HH:MM)
+  actual_end_time                          TEXT            -- Actual end (HH:MM)
+  clock_in_location                        JSONB           -- {latitude, longitude, accuracy, timestamp}
+  clock_out_location                       JSONB           -- {latitude, longitude, accuracy, timestamp}
+  geofence_validated                       BOOLEAN         -- Geofence validation
+  geofence_distance_meters                 NUMERIC         -- Distance from site
+  geofence_violation_reason                TEXT            -- Violation reason
+  break_duration_minutes                   NUMERIC         -- Break duration
+  total_hours                              NUMERIC         -- Calculated hours
+  status                                   TEXT            -- draft/submitted/approved_by_staff/approved_by_clie
+  staff_signature                          TEXT            -- Digital signature
+  client_signature                         TEXT            -- Digital signature
+  staff_approved_at                        TIMESTAMPTZ     -- Staff approval time
+  client_approved_at                       TIMESTAMPTZ     -- Client approval time
+  pay_rate                                 NUMERIC         -- Staff pay rate
+  charge_rate                              NUMERIC         -- Client charge rate
+  staff_pay_amount                         NUMERIC         -- Calculated pay
+  client_charge_amount                     NUMERIC         -- Calculated charge
+  notes                                    TEXT            -- Timesheet notes
+  rejection_reason                         TEXT            -- Rejection reason
+  invoice_id                               TEXT            -- Invoice reference
+  payslip_id                               TEXT            -- Payslip reference
+  location_verified                        BOOLEAN         -- GPS verified
+  uploaded_documents                       JSONB           -- Uploaded documents
+  financial_locked                         BOOLEAN         -- Financial lock flag
+  financial_locked_at                      TIMESTAMPTZ     -- When locked
+  financial_locked_by                      TEXT            -- User ID
+  financial_snapshot                       JSONB           -- Immutable financial data
+
+
+TABLE: user (built-in) (User (Built-in))
+Total Columns: 8
+--------------------------------------------------------------------------------
+  id                                       TEXT            -- Auto-generated
+  created_date                             TIMESTAMPTZ     -- Auto-generated
+  full_name                                TEXT            -- User full name
+  email                                    TEXT            -- User email
+  role                                     TEXT            -- admin/user
+  agency_id                                TEXT            -- Agency reference (custom)
+  user_type                                TEXT            -- agency_admin/manager/staff_member/client_user (cus
+  profile_photo_url                        TEXT            -- Profile photo (custom)

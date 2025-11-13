@@ -1,0 +1,1669 @@
+{
+  "comparison_results": {
+    "admin_workflows": {
+      "status": "needs_migration",
+      "matched": 7,
+      "missing": 11,
+      "extra": 3,
+      "type_mismatches": 3
+    },
+    "agencies": {
+      "status": "needs_migration",
+      "matched": 11,
+      "missing": 16,
+      "extra": 5,
+      "type_mismatches": 2
+    },
+    "bookings": {
+      "status": "needs_migration",
+      "matched": 12,
+      "missing": 13,
+      "extra": 0,
+      "type_mismatches": 6
+    },
+    "change_logs": {
+      "status": "needs_migration",
+      "matched": 9,
+      "missing": 12,
+      "extra": 3,
+      "type_mismatches": 4
+    },
+    "clients": {
+      "status": "needs_migration",
+      "matched": 15,
+      "missing": 8,
+      "extra": 5,
+      "type_mismatches": 3
+    },
+    "compliance": {
+      "status": "needs_migration",
+      "matched": 11,
+      "missing": 10,
+      "extra": 1,
+      "type_mismatches": 3
+    },
+    "invoice_amendments": {
+      "status": "needs_migration",
+      "matched": 9,
+      "missing": 22,
+      "extra": 5,
+      "type_mismatches": 4
+    },
+    "invoices": {
+      "status": "needs_migration",
+      "matched": 19,
+      "missing": 15,
+      "extra": 5,
+      "type_mismatches": 3
+    },
+    "notification_queue": {
+      "status": "needs_migration",
+      "matched": 11,
+      "missing": 6,
+      "extra": 13,
+      "type_mismatches": 2
+    },
+    "operational_costs": {
+      "status": "needs_migration",
+      "matched": 6,
+      "missing": 13,
+      "extra": 7,
+      "type_mismatches": 2
+    },
+    "payslips": {
+      "status": "needs_migration",
+      "matched": 17,
+      "missing": 4,
+      "extra": 4,
+      "type_mismatches": 4
+    },
+    "shifts": {
+      "status": "needs_migration",
+      "matched": 26,
+      "missing": 39,
+      "extra": 2,
+      "type_mismatches": 8
+    },
+    "staff": {
+      "status": "needs_migration",
+      "matched": 19,
+      "missing": 27,
+      "extra": 2,
+      "type_mismatches": 4
+    },
+    "timesheets": {
+      "status": "needs_migration",
+      "matched": 24,
+      "missing": 16,
+      "extra": 21,
+      "type_mismatches": 5
+    },
+    "profiles": {
+      "status": "needs_migration",
+      "matched": 6,
+      "missing": 2,
+      "extra": 5,
+      "type_mismatches": 2
+    }
+  },
+  "missing_columns_by_table": {
+    "admin_workflows": [
+      {
+        "name": "created_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User email"
+      },
+      {
+        "name": "type",
+        "type": "enum",
+        "pg_type": "TEXT",
+        "description": "unfilled_urgent_shift/expired_compliance_document/expiring_compliance_document/timesheet_discrepancy/missing_staff_information/payment_issue/client_complaint/staff_no_show/shift_cancellation/other"
+      },
+      {
+        "name": "priority",
+        "type": "enum",
+        "pg_type": "TEXT",
+        "description": "low/medium/high/critical"
+      },
+      {
+        "name": "title",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Workflow title"
+      },
+      {
+        "name": "related_entity",
+        "type": "object",
+        "pg_type": "JSONB",
+        "description": "{entity_type, entity_id}"
+      },
+      {
+        "name": "deadline",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "Resolution deadline"
+      },
+      {
+        "name": "resolution_notes",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Resolution notes"
+      },
+      {
+        "name": "resolved_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "Resolution time"
+      },
+      {
+        "name": "resolved_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Resolver user ID"
+      },
+      {
+        "name": "auto_created",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Auto-created flag"
+      },
+      {
+        "name": "escalation_count",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "Escalation count"
+      }
+    ],
+    "agencies": [
+      {
+        "name": "created_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User email"
+      },
+      {
+        "name": "registration_number",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Companies House number"
+      },
+      {
+        "name": "contact_email",
+        "type": "email",
+        "pg_type": "TEXT",
+        "description": "Contact email"
+      },
+      {
+        "name": "contact_phone",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Phone number"
+      },
+      {
+        "name": "subscription_tier",
+        "type": "enum",
+        "pg_type": "TEXT",
+        "description": "starter/professional/enterprise"
+      },
+      {
+        "name": "dbs_check_expiry_alerts",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Notification setting"
+      },
+      {
+        "name": "mandatory_training_reminders",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Notification setting"
+      },
+      {
+        "name": "document_expiry_warnings",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Notification setting"
+      },
+      {
+        "name": "auto_approve_timesheets",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Automation setting"
+      },
+      {
+        "name": "sms_shift_confirmations",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Communication setting"
+      },
+      {
+        "name": "whatsapp_notifications",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Communication setting"
+      },
+      {
+        "name": "auto_generate_invoices",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Automation setting"
+      },
+      {
+        "name": "send_payment_reminders",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Automation setting"
+      },
+      {
+        "name": "email_notifications",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Notification setting"
+      },
+      {
+        "name": "sms_notifications",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Notification setting"
+      },
+      {
+        "name": "whatsapp_global_notifications",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Notification setting"
+      }
+    ],
+    "bookings": [
+      {
+        "name": "created_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User email"
+      },
+      {
+        "name": "client_id",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Client reference"
+      },
+      {
+        "name": "confirmed_by_staff_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "Staff confirmation time"
+      },
+      {
+        "name": "confirmed_by_client_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "Client confirmation time"
+      },
+      {
+        "name": "cancellation_reason",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Cancellation reason"
+      },
+      {
+        "name": "cancelled_by",
+        "type": "enum",
+        "pg_type": "TEXT",
+        "description": "staff/client/agency"
+      },
+      {
+        "name": "cancelled_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "When cancelled"
+      },
+      {
+        "name": "notes",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Booking notes"
+      },
+      {
+        "name": "timesheet_id",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Timesheet reference"
+      },
+      {
+        "name": "rating_by_client",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "1-5 rating"
+      },
+      {
+        "name": "rating_by_staff",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "1-5 rating"
+      },
+      {
+        "name": "feedback_from_client",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Client feedback"
+      },
+      {
+        "name": "feedback_from_staff",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Staff feedback"
+      }
+    ],
+    "change_logs": [
+      {
+        "name": "created_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User email"
+      },
+      {
+        "name": "old_value",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Previous value"
+      },
+      {
+        "name": "new_value",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "New value"
+      },
+      {
+        "name": "reason",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Change reason"
+      },
+      {
+        "name": "changed_by_email",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User email"
+      },
+      {
+        "name": "notifications_sent",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "Notification count"
+      },
+      {
+        "name": "ip_address",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User IP"
+      },
+      {
+        "name": "risk_level",
+        "type": "enum",
+        "pg_type": "TEXT",
+        "description": "low/medium/high/critical"
+      },
+      {
+        "name": "reviewed",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Review flag"
+      },
+      {
+        "name": "reviewed_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Reviewer user ID"
+      },
+      {
+        "name": "reviewed_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "Review time"
+      },
+      {
+        "name": "flagged_for_review",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Flag for review"
+      }
+    ],
+    "clients": [
+      {
+        "name": "created_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User email"
+      },
+      {
+        "name": "location_coordinates",
+        "type": "object",
+        "pg_type": "JSONB",
+        "description": "{latitude, longitude}"
+      },
+      {
+        "name": "geofence_enabled",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Default true"
+      },
+      {
+        "name": "cqc_rating",
+        "type": "enum",
+        "pg_type": "TEXT",
+        "description": "outstanding/good/requires_improvement/inadequate/not_rated"
+      },
+      {
+        "name": "bed_capacity",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "Number of beds"
+      },
+      {
+        "name": "preferred_staff",
+        "type": "array",
+        "pg_type": "JSONB",
+        "description": "Preferred staff IDs"
+      },
+      {
+        "name": "notes",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Internal notes"
+      },
+      {
+        "name": "total_bookings",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "Booking count"
+      }
+    ],
+    "compliance": [
+      {
+        "name": "created_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User email"
+      },
+      {
+        "name": "agency_id",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Multi-tenant reference"
+      },
+      {
+        "name": "document_url",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Uploaded file URL"
+      },
+      {
+        "name": "notes",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Document notes"
+      },
+      {
+        "name": "reminder_sent",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Reminder flag"
+      },
+      {
+        "name": "issuing_authority",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Issuing authority"
+      },
+      {
+        "name": "reference_number",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Reference number"
+      },
+      {
+        "name": "reminder_30d_sent",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "30-day reminder"
+      },
+      {
+        "name": "reminder_14d_sent",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "14-day reminder"
+      },
+      {
+        "name": "reminder_7d_sent",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "7-day reminder"
+      }
+    ],
+    "invoice_amendments": [
+      {
+        "name": "created_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User email"
+      },
+      {
+        "name": "original_invoice_id",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Original invoice reference"
+      },
+      {
+        "name": "amended_invoice_id",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "New invoice reference"
+      },
+      {
+        "name": "amendment_version",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "Version number"
+      },
+      {
+        "name": "amendment_reason",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Amendment reason"
+      },
+      {
+        "name": "changes_made",
+        "type": "array",
+        "pg_type": "JSONB",
+        "description": "Detailed change list"
+      },
+      {
+        "name": "original_total",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "Original amount"
+      },
+      {
+        "name": "amended_total",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "New amount"
+      },
+      {
+        "name": "total_difference",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "Difference"
+      },
+      {
+        "name": "requires_client_approval",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Approval flag"
+      },
+      {
+        "name": "client_notified_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "Notification time"
+      },
+      {
+        "name": "client_approved_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "Approval time"
+      },
+      {
+        "name": "client_dispute_reason",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Dispute reason"
+      },
+      {
+        "name": "amended_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User ID"
+      },
+      {
+        "name": "sent_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "Send time"
+      },
+      {
+        "name": "pdf_url",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Amended invoice PDF"
+      },
+      {
+        "name": "email_trail",
+        "type": "array",
+        "pg_type": "JSONB",
+        "description": "Email audit trail"
+      },
+      {
+        "name": "audit_trail",
+        "type": "array",
+        "pg_type": "JSONB",
+        "description": "Complete audit trail"
+      },
+      {
+        "name": "risk_level",
+        "type": "enum",
+        "pg_type": "TEXT",
+        "description": "low/medium/high/critical"
+      },
+      {
+        "name": "payment_already_received",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Payment received flag"
+      },
+      {
+        "name": "credit_note_required",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Credit note flag"
+      },
+      {
+        "name": "credit_note_id",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Credit note reference"
+      }
+    ],
+    "invoices": [
+      {
+        "name": "created_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User email"
+      },
+      {
+        "name": "payment_method",
+        "type": "enum",
+        "pg_type": "TEXT",
+        "description": "bank_transfer/bacs/cheque/card/other"
+      },
+      {
+        "name": "paid_date",
+        "type": "date",
+        "pg_type": "DATE",
+        "description": "Payment date"
+      },
+      {
+        "name": "notes",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Invoice notes"
+      },
+      {
+        "name": "pdf_url",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Generated PDF URL"
+      },
+      {
+        "name": "reminder_sent_count",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "Reminder count"
+      },
+      {
+        "name": "last_reminder_sent",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "Last reminder time"
+      },
+      {
+        "name": "is_amendment",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Amendment flag"
+      },
+      {
+        "name": "amendment_version",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "Version number"
+      },
+      {
+        "name": "original_invoice_id",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Original reference"
+      },
+      {
+        "name": "superseded_by_invoice_id",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Newer version reference"
+      },
+      {
+        "name": "amendment_reason",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Amendment reason"
+      },
+      {
+        "name": "amended_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "When amended"
+      },
+      {
+        "name": "amended_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User ID"
+      },
+      {
+        "name": "immutable_sent_snapshot",
+        "type": "object",
+        "pg_type": "JSONB",
+        "description": "Immutable sent data"
+      }
+    ],
+    "notification_queue": [
+      {
+        "name": "created_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User email"
+      },
+      {
+        "name": "recipient_first_name",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "First name"
+      },
+      {
+        "name": "pending_items",
+        "type": "array",
+        "pg_type": "JSONB",
+        "description": "Queued notification items"
+      },
+      {
+        "name": "scheduled_send_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "Scheduled send time"
+      },
+      {
+        "name": "email_message_id",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Resend message ID"
+      },
+      {
+        "name": "item_count",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "Number of items"
+      }
+    ],
+    "operational_costs": [
+      {
+        "name": "created_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User email"
+      },
+      {
+        "name": "service_name",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Service name"
+      },
+      {
+        "name": "service_category",
+        "type": "enum",
+        "pg_type": "TEXT",
+        "description": "communication/ai_automation/platform_hosting/payment_processing/compliance_verification/storage/other"
+      },
+      {
+        "name": "billing_period",
+        "type": "date",
+        "pg_type": "DATE",
+        "description": "Billing period start"
+      },
+      {
+        "name": "currency",
+        "type": "enum",
+        "pg_type": "TEXT",
+        "description": "GBP/USD/EUR"
+      },
+      {
+        "name": "usage_metrics",
+        "type": "object",
+        "pg_type": "JSONB",
+        "description": "{sms_sent, whatsapp_messages, emails_sent, ai_tokens_used, storage_gb, active_users}"
+      },
+      {
+        "name": "invoice_url",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Invoice/receipt URL"
+      },
+      {
+        "name": "paid_date",
+        "type": "date",
+        "pg_type": "DATE",
+        "description": "Payment date"
+      },
+      {
+        "name": "status",
+        "type": "enum",
+        "pg_type": "TEXT",
+        "description": "pending/paid/overdue/cancelled"
+      },
+      {
+        "name": "notes",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Cost notes"
+      },
+      {
+        "name": "projected_cost",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "Estimated next period"
+      },
+      {
+        "name": "cost_per_shift",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "Calculated per-shift cost"
+      },
+      {
+        "name": "roi_impact",
+        "type": "enum",
+        "pg_type": "TEXT",
+        "description": "critical/high/medium/low"
+      }
+    ],
+    "payslips": [
+      {
+        "name": "created_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User email"
+      },
+      {
+        "name": "bank_details",
+        "type": "object",
+        "pg_type": "JSONB",
+        "description": "{account_name, sort_code, account_number}"
+      },
+      {
+        "name": "pdf_url",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Generated PDF URL"
+      },
+      {
+        "name": "paid_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "Payment timestamp"
+      }
+    ],
+    "shifts": [
+      {
+        "name": "created_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User email"
+      },
+      {
+        "name": "booking_id",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Booking reference"
+      },
+      {
+        "name": "timesheet_id",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Timesheet reference"
+      },
+      {
+        "name": "timesheet_received",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Timesheet received flag"
+      },
+      {
+        "name": "timesheet_received_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "When received"
+      },
+      {
+        "name": "timesheet_reminder_sent",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Reminder sent flag"
+      },
+      {
+        "name": "timesheet_reminder_sent_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "When sent"
+      },
+      {
+        "name": "pay_rate_override",
+        "type": "object",
+        "pg_type": "JSONB",
+        "description": "Override details"
+      },
+      {
+        "name": "marketplace_visible",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Marketplace flag"
+      },
+      {
+        "name": "marketplace_added_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "When added"
+      },
+      {
+        "name": "requirements",
+        "type": "object",
+        "pg_type": "JSONB",
+        "description": "Shift requirements"
+      },
+      {
+        "name": "recurring",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Recurring flag"
+      },
+      {
+        "name": "recurrence_pattern",
+        "type": "enum",
+        "pg_type": "TEXT",
+        "description": "daily/weekly/biweekly/monthly"
+      },
+      {
+        "name": "shift_started_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "Actual start"
+      },
+      {
+        "name": "shift_ended_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "Actual end"
+      },
+      {
+        "name": "verification_workflow_id",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "AdminWorkflow reference"
+      },
+      {
+        "name": "actual_staff_id",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Actual staff worked"
+      },
+      {
+        "name": "reassignment_history",
+        "type": "array",
+        "pg_type": "JSONB",
+        "description": "Reassignment records"
+      },
+      {
+        "name": "cancellation_reason",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Cancellation reason"
+      },
+      {
+        "name": "cancelled_by",
+        "type": "enum",
+        "pg_type": "TEXT",
+        "description": "staff/client/agency"
+      },
+      {
+        "name": "cancelled_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "When cancelled"
+      },
+      {
+        "name": "reminder_24h_sent",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "24h reminder flag"
+      },
+      {
+        "name": "reminder_24h_sent_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "When sent"
+      },
+      {
+        "name": "reminder_2h_sent",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "2h reminder flag"
+      },
+      {
+        "name": "reminder_2h_sent_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "When sent"
+      },
+      {
+        "name": "approaching_staff_location",
+        "type": "object",
+        "pg_type": "JSONB",
+        "description": "GPS data"
+      },
+      {
+        "name": "admin_closure_required",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Admin closure flag"
+      },
+      {
+        "name": "staff_confirmed_completion",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Staff confirmation flag"
+      },
+      {
+        "name": "staff_confirmation_requested_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "When requested"
+      },
+      {
+        "name": "staff_confirmed_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "When confirmed"
+      },
+      {
+        "name": "staff_confirmation_method",
+        "type": "enum",
+        "pg_type": "TEXT",
+        "description": "sms_reply/auto_high_confidence/manual_admin"
+      },
+      {
+        "name": "staff_confirmation_confidence_score",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "0-100"
+      },
+      {
+        "name": "replaced_shift_id",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Replacement reference"
+      },
+      {
+        "name": "is_replacement",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Replacement flag"
+      },
+      {
+        "name": "archived",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Archive flag"
+      },
+      {
+        "name": "archived_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "When archived"
+      },
+      {
+        "name": "financial_locked_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "When locked"
+      },
+      {
+        "name": "financial_locked_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User ID"
+      },
+      {
+        "name": "financial_snapshot",
+        "type": "object",
+        "pg_type": "JSONB",
+        "description": "Immutable financial data"
+      }
+    ],
+    "staff": [
+      {
+        "name": "created_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User email"
+      },
+      {
+        "name": "whatsapp_pin",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "4-digit PIN for WhatsApp auth"
+      },
+      {
+        "name": "whatsapp_number_verified",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Verified WhatsApp number (E.164)"
+      },
+      {
+        "name": "whatsapp_linked_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "When WhatsApp was linked"
+      },
+      {
+        "name": "date_of_birth",
+        "type": "date",
+        "pg_type": "DATE",
+        "description": "Date of birth"
+      },
+      {
+        "name": "profile_photo_url",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Professional headshot URL"
+      },
+      {
+        "name": "profile_photo_uploaded_date",
+        "type": "date",
+        "pg_type": "DATE",
+        "description": "Photo upload date"
+      },
+      {
+        "name": "nmc_pin",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "NMC registration (nurses)"
+      },
+      {
+        "name": "nmc_register_part",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "NMC register part"
+      },
+      {
+        "name": "medication_trained",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Medication training status"
+      },
+      {
+        "name": "medication_training_expiry",
+        "type": "date",
+        "pg_type": "DATE",
+        "description": "Training expiry"
+      },
+      {
+        "name": "can_work_as_senior",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "Calculated field"
+      },
+      {
+        "name": "role_hierarchy",
+        "type": "object",
+        "pg_type": "JSONB",
+        "description": "{can_work_as: []}"
+      },
+      {
+        "name": "driving_license_number",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "License number"
+      },
+      {
+        "name": "driving_license_expiry",
+        "type": "date",
+        "pg_type": "DATE",
+        "description": "License expiry"
+      },
+      {
+        "name": "suspension_reason",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Reason if suspended"
+      },
+      {
+        "name": "employment_history",
+        "type": "array",
+        "pg_type": "JSONB",
+        "description": "Array of employment records"
+      },
+      {
+        "name": "references",
+        "type": "array",
+        "pg_type": "JSONB",
+        "description": "Array of reference records"
+      },
+      {
+        "name": "occupational_health",
+        "type": "object",
+        "pg_type": "JSONB",
+        "description": "Health assessment data"
+      },
+      {
+        "name": "mandatory_training",
+        "type": "object",
+        "pg_type": "JSONB",
+        "description": "Training certificates data"
+      },
+      {
+        "name": "skills",
+        "type": "array",
+        "pg_type": "JSONB",
+        "description": "Special skills/certifications"
+      },
+      {
+        "name": "groups",
+        "type": "array",
+        "pg_type": "JSONB",
+        "description": "Group references"
+      },
+      {
+        "name": "date_joined",
+        "type": "date",
+        "pg_type": "DATE",
+        "description": "Join date"
+      },
+      {
+        "name": "proposed_first_shift_date",
+        "type": "date",
+        "pg_type": "DATE",
+        "description": "For new staff"
+      },
+      {
+        "name": "months_of_experience",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "Total experience"
+      },
+      {
+        "name": "gps_consent",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "GPS tracking consent"
+      },
+      {
+        "name": "last_known_location",
+        "type": "object",
+        "pg_type": "JSONB",
+        "description": "{latitude, longitude, timestamp}"
+      }
+    ],
+    "timesheets": [
+      {
+        "name": "created_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User email"
+      },
+      {
+        "name": "actual_start_time",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Actual start (HH:MM)"
+      },
+      {
+        "name": "actual_end_time",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Actual end (HH:MM)"
+      },
+      {
+        "name": "clock_in_location",
+        "type": "object",
+        "pg_type": "JSONB",
+        "description": "{latitude, longitude, accuracy, timestamp}"
+      },
+      {
+        "name": "clock_out_location",
+        "type": "object",
+        "pg_type": "JSONB",
+        "description": "{latitude, longitude, accuracy, timestamp}"
+      },
+      {
+        "name": "geofence_distance_meters",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "Distance from site"
+      },
+      {
+        "name": "geofence_violation_reason",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Violation reason"
+      },
+      {
+        "name": "break_duration_minutes",
+        "type": "number",
+        "pg_type": "NUMERIC",
+        "description": "Break duration"
+      },
+      {
+        "name": "client_signature",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Digital signature"
+      },
+      {
+        "name": "staff_approved_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "Staff approval time"
+      },
+      {
+        "name": "invoice_id",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "Invoice reference"
+      },
+      {
+        "name": "location_verified",
+        "type": "boolean",
+        "pg_type": "BOOLEAN",
+        "description": "GPS verified"
+      },
+      {
+        "name": "uploaded_documents",
+        "type": "array",
+        "pg_type": "JSONB",
+        "description": "Uploaded documents"
+      },
+      {
+        "name": "financial_locked_at",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "When locked"
+      },
+      {
+        "name": "financial_locked_by",
+        "type": "string",
+        "pg_type": "TEXT",
+        "description": "User ID"
+      },
+      {
+        "name": "financial_snapshot",
+        "type": "object",
+        "pg_type": "JSONB",
+        "description": "Immutable financial data"
+      }
+    ],
+    "profiles": [
+      {
+        "name": "created_date",
+        "type": "datetime",
+        "pg_type": "TIMESTAMPTZ",
+        "description": "Auto-generated"
+      },
+      {
+        "name": "role",
+        "type": "enum",
+        "pg_type": "TEXT",
+        "description": "admin/user"
+      }
+    ]
+  },
+  "matched_columns_by_table": {
+    "admin_workflows": [
+      "id",
+      "created_date",
+      "updated_date",
+      "agency_id",
+      "status",
+      "description",
+      "assigned_to"
+    ],
+    "agencies": [
+      "id",
+      "created_date",
+      "updated_date",
+      "name",
+      "address",
+      "logo_url",
+      "bank_details",
+      "status",
+      "invoice_frequency",
+      "payment_terms_days",
+      "settings"
+    ],
+    "bookings": [
+      "id",
+      "created_date",
+      "updated_date",
+      "agency_id",
+      "shift_id",
+      "staff_id",
+      "status",
+      "booking_date",
+      "shift_date",
+      "start_time",
+      "end_time",
+      "confirmation_method"
+    ],
+    "change_logs": [
+      "id",
+      "created_date",
+      "updated_date",
+      "agency_id",
+      "change_type",
+      "affected_entity_type",
+      "affected_entity_id",
+      "changed_by",
+      "changed_at"
+    ],
+    "clients": [
+      "id",
+      "created_date",
+      "updated_date",
+      "agency_id",
+      "name",
+      "type",
+      "address",
+      "geofence_radius_meters",
+      "internal_locations",
+      "contact_person",
+      "billing_email",
+      "payment_terms",
+      "contract_terms",
+      "status",
+      "rating"
+    ],
+    "compliance": [
+      "id",
+      "created_date",
+      "updated_date",
+      "staff_id",
+      "document_type",
+      "document_name",
+      "issue_date",
+      "expiry_date",
+      "status",
+      "verified_by",
+      "verified_at"
+    ],
+    "invoice_amendments": [
+      "id",
+      "created_date",
+      "updated_date",
+      "agency_id",
+      "amendment_type",
+      "status",
+      "approved_by",
+      "approved_at",
+      "amendment_date"
+    ],
+    "invoices": [
+      "id",
+      "created_date",
+      "updated_date",
+      "agency_id",
+      "invoice_number",
+      "client_id",
+      "invoice_date",
+      "due_date",
+      "period_start",
+      "period_end",
+      "status",
+      "line_items",
+      "subtotal",
+      "vat_rate",
+      "vat_amount",
+      "total",
+      "amount_paid",
+      "balance_due",
+      "sent_at"
+    ],
+    "notification_queue": [
+      "id",
+      "created_date",
+      "updated_date",
+      "agency_id",
+      "recipient_email",
+      "recipient_type",
+      "notification_type",
+      "created_at",
+      "status",
+      "sent_at",
+      "error_message"
+    ],
+    "operational_costs": [
+      "id",
+      "created_date",
+      "updated_date",
+      "agency_id",
+      "cost_type",
+      "amount"
+    ],
+    "payslips": [
+      "id",
+      "created_date",
+      "updated_date",
+      "agency_id",
+      "payslip_number",
+      "staff_id",
+      "period_start",
+      "period_end",
+      "payment_date",
+      "status",
+      "timesheets",
+      "gross_pay",
+      "deductions",
+      "total_deductions",
+      "net_pay",
+      "payment_method",
+      "notes"
+    ],
+    "shifts": [
+      "id",
+      "created_date",
+      "updated_date",
+      "agency_id",
+      "client_id",
+      "role_required",
+      "date",
+      "start_time",
+      "end_time",
+      "duration_hours",
+      "work_location_within_site",
+      "status",
+      "assigned_staff_id",
+      "pay_rate",
+      "charge_rate",
+      "break_duration_minutes",
+      "notes",
+      "urgency",
+      "broadcast_sent_at",
+      "escalation_deadline",
+      "on_duty_contact",
+      "shift_journey_log",
+      "admin_closure_outcome",
+      "admin_closed_at",
+      "admin_closed_by",
+      "financial_locked"
+    ],
+    "staff": [
+      "id",
+      "created_date",
+      "updated_date",
+      "agency_id",
+      "user_id",
+      "first_name",
+      "last_name",
+      "email",
+      "phone",
+      "role",
+      "employment_type",
+      "status",
+      "hourly_rate",
+      "address",
+      "emergency_contact",
+      "availability",
+      "rating",
+      "total_shifts_completed",
+      "gps_consent_date"
+    ],
+    "timesheets": [
+      "id",
+      "created_date",
+      "updated_date",
+      "agency_id",
+      "booking_id",
+      "staff_id",
+      "client_id",
+      "shift_date",
+      "work_location_within_site",
+      "clock_in_time",
+      "clock_out_time",
+      "geofence_validated",
+      "total_hours",
+      "status",
+      "staff_signature",
+      "client_approved_at",
+      "pay_rate",
+      "charge_rate",
+      "staff_pay_amount",
+      "client_charge_amount",
+      "notes",
+      "rejection_reason",
+      "payslip_id",
+      "financial_locked"
+    ],
+    "profiles": [
+      "id",
+      "full_name",
+      "email",
+      "agency_id",
+      "user_type",
+      "profile_photo_url"
+    ]
+  },
+  "extra_tables": [
+    "agency_admin_invitations",
+    "blog_comments",
+    "admin_workflow",
+    "groups",
+    "marketplace_shifts",
+    "disputes",
+    "blog_users",
+    "blog_posts"
+  ]
+}

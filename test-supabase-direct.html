@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Direct Supabase Access</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Direct Supabase Data Test</h1>
+    <button onclick="testData()">Test Data Access</button>
+    <pre id="output"></pre>
+
+    <script>
+        // Your Supabase credentials
+        const SUPABASE_URL = 'https://rzzxxkppkiasuouuglaf.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1OTYwNDgsImV4cCI6MjA3NzE3MjA0OH0.eYyjJTxHeYSGJEmDhOEq-b1v473kg-OqHhAtC4BBHrY';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function testData() {
+            const output = document.getElementById('output');
+            output.textContent = 'Testing...\n\n';
+
+            try {
+                // Step 1: Sign in
+                output.textContent += '1. Signing in...\n';
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                    email: 'info@guest-glow.com',
+                    password: 'Dominion#2025'
+                });
+
+                if (authError) {
+                    output.textContent += `❌ Auth Error: ${authError.message}\n`;
+                    return;
+                }
+
+                output.textContent += `✅ Signed in as: ${authData.user.email}\n`;
+                output.textContent += `   User ID: ${authData.user.id}\n\n`;
+
+                // Step 2: Get user profile
+                output.textContent += '2. Getting profile...\n';
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', authData.user.id)
+                    .single();
+
+                if (profileError) {
+                    output.textContent += `❌ Profile Error: ${profileError.message}\n`;
+                    return;
+                }
+
+                output.textContent += `✅ Profile: ${profile.full_name}\n`;
+                output.textContent += `   Agency ID: ${profile.agency_id}\n`;
+                output.textContent += `   User Type: ${profile.user_type}\n\n`;
+
+                // Step 3: Get staff
+                output.textContent += '3. Getting staff...\n';
+                const { data: staff, error: staffError } = await supabase
+                    .from('staff')
+                    .select('*');
+
+                if (staffError) {
+                    output.textContent += `❌ Staff Error: ${staffError.message}\n`;
+                } else {
+                    output.textContent += `✅ Staff Count: ${staff.length}\n`;
+                    staff.forEach(s => {
+                        output.textContent += `   - ${s.first_name} ${s.last_name} (${s.email})\n`;
+                    });
+                }
+                output.textContent += '\n';
+
+                // Step 4: Get clients
+                output.textContent += '4. Getting clients...\n';
+                const { data: clients, error: clientsError } = await supabase
+                    .from('clients')
+                    .select('*');
+
+                if (clientsError) {
+                    output.textContent += `❌ Clients Error: ${clientsError.message}\n`;
+                } else {
+                    output.textContent += `✅ Clients Count: ${clients.length}\n`;
+                    clients.forEach(c => {
+                        output.textContent += `   - ${c.name}\n`;
+                    });
+                }
+                output.textContent += '\n';
+
+                // Step 5: Get shifts
+                output.textContent += '5. Getting shifts...\n';
+                const { data: shifts, error: shiftsError } = await supabase
+                    .from('shifts')
+                    .select('*')
+                    .limit(10);
+
+                if (shiftsError) {
+                    output.textContent += `❌ Shifts Error: ${shiftsError.message}\n`;
+                } else {
+                    output.textContent += `✅ Shifts Count: ${shifts.length}\n`;
+                }
+
+            } catch (error) {
+                output.textContent += `❌ Unexpected Error: ${error.message}\n`;
+            }
+        }
+    </script>
+</body>
+</html>
+

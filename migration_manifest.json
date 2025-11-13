@@ -1,0 +1,39 @@
+{
+  "generated_at": "2025-11-11T00:33:41.086171",
+  "total_files": 15,
+  "total_columns": 214,
+  "files": [
+    "20251111003341_admin_workflows_add_missing_columns.sql",
+    "20251111003341_agencies_add_missing_columns.sql",
+    "20251111003341_bookings_add_missing_columns.sql",
+    "20251111003341_change_logs_add_missing_columns.sql",
+    "20251111003341_clients_add_missing_columns.sql",
+    "20251111003341_compliance_add_missing_columns.sql",
+    "20251111003341_invoice_amendments_add_missing_columns.sql",
+    "20251111003341_invoices_add_missing_columns.sql",
+    "20251111003341_notification_queue_add_missing_columns.sql",
+    "20251111003341_operational_costs_add_missing_columns.sql",
+    "20251111003341_payslips_add_missing_columns.sql",
+    "20251111003341_profiles_add_missing_columns.sql",
+    "20251111003341_shifts_add_missing_columns.sql",
+    "20251111003341_staff_add_missing_columns.sql",
+    "20251111003341_timesheets_add_missing_columns.sql"
+  ],
+  "tables": {
+    "admin_workflows": 11,
+    "agencies": 16,
+    "bookings": 13,
+    "change_logs": 12,
+    "clients": 8,
+    "compliance": 10,
+    "invoice_amendments": 22,
+    "invoices": 15,
+    "notification_queue": 6,
+    "operational_costs": 13,
+    "payslips": 4,
+    "shifts": 39,
+    "staff": 27,
+    "timesheets": 16,
+    "profiles": 2
+  }
+}

@@ -1,0 +1,541 @@
+{
+  "timestamp": "2025-11-11T11:28:13.477Z",
+  "duration": 11.564,
+  "status": "FAILED",
+  "pipelines": [
+    {
+      "pipeline": "Shift Journey Pipeline",
+      "status": "FAILED",
+      "passed": 4,
+      "total": 16,
+      "duration": 3.804,
+      "failedAt": "sj-001",
+      "results": [
+        {
+          "testId": "sj-001",
+          "action": "Receive care home email",
+          "passed": null,
+          "duration": 0.446,
+          "details": {
+            "functionExists": false,
+            "workflowCreated": null
+          },
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:02.953Z"
+        },
+        {
+          "testId": "sj-002",
+          "action": "AI parses email",
+          "passed": false,
+          "duration": 0.049,
+          "details": {
+            "extracted": {}
+          },
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:03.004Z"
+        },
+        {
+          "testId": "sj-003",
+          "action": "Create shift record",
+          "passed": true,
+          "duration": 0.413,
+          "details": {
+            "shiftId": "1519d77b-5c90-442f-ae97-e9a178ce48e2",
+            "status": "open"
+          },
+          "timestamp": "2025-11-11T11:28:03.417Z"
+        },
+        {
+          "testId": "sj-004",
+          "action": "Assign staff to shift",
+          "passed": false,
+          "duration": 0.443,
+          "details": {
+            "staffAssigned": false
+          },
+          "timestamp": "2025-11-11T11:28:03.861Z"
+        },
+        {
+          "testId": "sj-005",
+          "action": "Send shift assignment notification",
+          "passed": false,
+          "duration": 1.362,
+          "details": {
+            "emailSent": false,
+            "smsSent": false
+          },
+          "error": "No notifications sent",
+          "timestamp": "2025-11-11T11:28:05.223Z"
+        },
+        {
+          "testId": "sj-006",
+          "action": "Create draft timesheet",
+          "passed": false,
+          "duration": 0.23,
+          "details": {},
+          "error": "null value in column \"staff_id\" of relation \"timesheets\" violates not-null constraint",
+          "timestamp": "2025-11-11T11:28:05.453Z"
+        },
+        {
+          "testId": "sj-007",
+          "action": "Send 24h reminder",
+          "passed": true,
+          "duration": 0.075,
+          "details": {
+            "has24hReminderFlag": true
+          },
+          "timestamp": "2025-11-11T11:28:05.529Z"
+        },
+        {
+          "testId": "sj-008",
+          "action": "Send 2h reminder",
+          "passed": true,
+          "duration": 0.087,
+          "details": {
+            "has2hReminderFlag": true
+          },
+          "timestamp": "2025-11-11T11:28:05.616Z"
+        },
+        {
+          "testId": "sj-009",
+          "action": "GPS clock-in",
+          "passed": false,
+          "duration": 0.001,
+          "error": "No timesheet ID available in context",
+          "timestamp": "2025-11-11T11:28:05.617Z"
+        },
+        {
+          "testId": "sj-010",
+          "action": "Upload timesheet document",
+          "passed": false,
+          "duration": 0,
+          "error": "No timesheet ID available in context",
+          "timestamp": "2025-11-11T11:28:05.617Z"
+        },
+        {
+          "testId": "sj-011",
+          "action": "AI OCR extraction",
+          "passed": false,
+          "duration": 0.067,
+          "details": null,
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:05.684Z"
+        },
+        {
+          "testId": "sj-012",
+          "action": "Auto-approve timesheet",
+          "passed": false,
+          "duration": 0,
+          "error": "No timesheet ID available in context",
+          "timestamp": "2025-11-11T11:28:05.685Z"
+        },
+        {
+          "testId": "sj-013",
+          "action": "Mark shift completed",
+          "passed": true,
+          "duration": 0.473,
+          "details": {
+            "status": "completed",
+            "financialLocked": true
+          },
+          "timestamp": "2025-11-11T11:28:06.158Z"
+        },
+        {
+          "testId": "sj-014",
+          "action": "Generate invoice",
+          "passed": false,
+          "duration": 0.151,
+          "details": {},
+          "error": "Could not find the 'amount' column of 'invoices' in the schema cache",
+          "timestamp": "2025-11-11T11:28:06.309Z"
+        },
+        {
+          "testId": "sj-015",
+          "action": "Send invoice to client",
+          "passed": false,
+          "duration": 0,
+          "error": "No invoice ID available in context",
+          "timestamp": "2025-11-11T11:28:06.310Z"
+        },
+        {
+          "testId": "sj-016",
+          "action": "Payment reminder",
+          "passed": false,
+          "duration": 0,
+          "error": "No invoice ID available in context",
+          "timestamp": "2025-11-11T11:28:06.310Z"
+        }
+      ]
+    },
+    {
+      "pipeline": "Automation Pipeline",
+      "status": "FAILED",
+      "passed": 0,
+      "total": 6,
+      "duration": 0.895,
+      "failedAt": "auto-001",
+      "results": [
+        {
+          "testId": "auto-001",
+          "action": "Daily shift closure engine",
+          "passed": null,
+          "duration": 0.253,
+          "details": {
+            "functionInvoked": false,
+            "workflowCreated": null
+          },
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:06.564Z"
+        },
+        {
+          "testId": "auto-002",
+          "action": "No-show detection",
+          "passed": null,
+          "duration": 0.4,
+          "details": {
+            "functionInvoked": false,
+            "workflowCreated": null
+          },
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:06.965Z"
+        },
+        {
+          "testId": "auto-003",
+          "action": "Compliance expiry reminders",
+          "passed": false,
+          "duration": 0.052,
+          "details": null,
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:07.017Z"
+        },
+        {
+          "testId": "auto-004",
+          "action": "Notification batching",
+          "passed": false,
+          "duration": 0.061,
+          "details": null,
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:07.079Z"
+        },
+        {
+          "testId": "auto-005",
+          "action": "Timesheet batch processor",
+          "passed": false,
+          "duration": 0.07,
+          "details": null,
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:07.149Z"
+        },
+        {
+          "testId": "auto-006",
+          "action": "Staff daily digest",
+          "passed": false,
+          "duration": 0.056,
+          "details": null,
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:07.205Z"
+        }
+      ]
+    },
+    {
+      "pipeline": "Financial Integrity Pipeline",
+      "status": "FAILED",
+      "passed": 1,
+      "total": 6,
+      "duration": 1.045,
+      "failedAt": "fin-002",
+      "results": [
+        {
+          "testId": "fin-001",
+          "action": "Financial lock enforcement",
+          "passed": true,
+          "duration": 0.051,
+          "details": {
+            "financialLocked": true
+          },
+          "timestamp": "2025-11-11T11:28:07.257Z"
+        },
+        {
+          "testId": "fin-002",
+          "action": "Immutable invoice snapshot",
+          "passed": false,
+          "duration": 0.108,
+          "details": {
+            "hasSnapshot": false
+          },
+          "timestamp": "2025-11-11T11:28:07.366Z"
+        },
+        {
+          "testId": "fin-003",
+          "action": "Change log creation",
+          "passed": null,
+          "duration": 0.725,
+          "details": {
+            "changeLogCount": 0
+          },
+          "timestamp": "2025-11-11T11:28:08.091Z"
+        },
+        {
+          "testId": "fin-004",
+          "action": "Invoice amendment workflow",
+          "passed": false,
+          "duration": 0.059,
+          "details": null,
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:08.150Z"
+        },
+        {
+          "testId": "fin-005",
+          "action": "Rate card validation",
+          "passed": null,
+          "duration": 0.053,
+          "details": {
+            "rateCardCount": 0
+          },
+          "timestamp": "2025-11-11T11:28:08.203Z"
+        },
+        {
+          "testId": "fin-006",
+          "action": "Work location validation",
+          "passed": null,
+          "duration": 0.047,
+          "details": {
+            "locationCount": 0
+          },
+          "timestamp": "2025-11-11T11:28:08.250Z"
+        }
+      ]
+    },
+    {
+      "pipeline": "Communication Pipeline",
+      "status": "FAILED",
+      "passed": 0,
+      "total": 6,
+      "duration": 4.137,
+      "failedAt": "comm-001",
+      "results": [
+        {
+          "testId": "comm-001",
+          "action": "Send email (Resend)",
+          "passed": false,
+          "duration": 1.281,
+          "details": {
+            "success": false,
+            "data": null,
+            "error": "Edge Function returned a non-2xx status code (status: unknown)"
+          },
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:09.532Z"
+        },
+        {
+          "testId": "comm-002",
+          "action": "Send SMS (Twilio)",
+          "passed": false,
+          "duration": 1.276,
+          "details": {
+            "success": false,
+            "data": null,
+            "error": "Edge Function returned a non-2xx status code (status: unknown)"
+          },
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:10.808Z"
+        },
+        {
+          "testId": "comm-003",
+          "action": "Send WhatsApp (Twilio)",
+          "passed": false,
+          "duration": 1.397,
+          "details": {
+            "success": false,
+            "data": null,
+            "error": "Edge Function returned a non-2xx status code (status: unknown)"
+          },
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:12.206Z"
+        },
+        {
+          "testId": "comm-004",
+          "action": "WhatsApp bot response",
+          "passed": false,
+          "duration": 0.055,
+          "details": null,
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:12.261Z"
+        },
+        {
+          "testId": "comm-005",
+          "action": "Email batching",
+          "passed": false,
+          "duration": 0.064,
+          "details": null,
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:12.326Z"
+        },
+        {
+          "testId": "comm-006",
+          "action": "Multi-channel fallback",
+          "passed": false,
+          "duration": 0.061,
+          "details": null,
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:12.387Z"
+        }
+      ]
+    },
+    {
+      "pipeline": "Data & Analytics Pipeline",
+      "status": "FAILED",
+      "passed": 3,
+      "total": 5,
+      "duration": 0.437,
+      "failedAt": "data-003",
+      "results": [
+        {
+          "testId": "data-001",
+          "action": "Shift journey log",
+          "passed": true,
+          "duration": 0.061,
+          "details": {
+            "states": [
+              "created",
+              "assigned",
+              "confirmed",
+              "in_progress",
+              "completed"
+            ],
+            "logEntries": 5
+          },
+          "timestamp": "2025-11-11T11:28:12.449Z"
+        },
+        {
+          "testId": "data-002",
+          "action": "Performance metrics",
+          "passed": true,
+          "duration": 0.132,
+          "details": {
+            "total_shifts": 79,
+            "open_shifts": 12,
+            "assigned_shifts": 9,
+            "confirmed_shifts": 7,
+            "in_progress_shifts": 0,
+            "completed_shifts": 26,
+            "cancelled_shifts": 13,
+            "total_bookings": 14,
+            "total_timesheets": 0,
+            "total_invoices": 0,
+            "revenue": 0
+          },
+          "timestamp": "2025-11-11T11:28:12.581Z"
+        },
+        {
+          "testId": "data-003",
+          "action": "Timesheet analytics",
+          "passed": false,
+          "duration": 0.054,
+          "details": {
+            "timesheetCount": 0
+          },
+          "timestamp": "2025-11-11T11:28:12.635Z"
+        },
+        {
+          "testId": "data-004",
+          "action": "CSV export",
+          "passed": false,
+          "duration": 0.046,
+          "details": null,
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:12.682Z"
+        },
+        {
+          "testId": "data-005",
+          "action": "CFO dashboard",
+          "passed": true,
+          "duration": 0.142,
+          "details": {
+            "total_shifts": 79,
+            "open_shifts": 12,
+            "assigned_shifts": 9,
+            "confirmed_shifts": 7,
+            "in_progress_shifts": 0,
+            "completed_shifts": 26,
+            "cancelled_shifts": 13,
+            "total_bookings": 14,
+            "total_timesheets": 0,
+            "total_invoices": 0,
+            "revenue": 0
+          },
+          "timestamp": "2025-11-11T11:28:12.824Z"
+        }
+      ]
+    },
+    {
+      "pipeline": "External Integrations",
+      "status": "FAILED",
+      "passed": 0,
+      "total": 5,
+      "duration": 0.653,
+      "failedAt": "int-001",
+      "results": [
+        {
+          "testId": "int-001",
+          "action": "OpenAI API (InvokeLLM)",
+          "passed": false,
+          "duration": 0.064,
+          "details": null,
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:12.888Z"
+        },
+        {
+          "testId": "int-002",
+          "action": "Resend API health",
+          "passed": false,
+          "duration": 0.239,
+          "details": {
+            "success": false,
+            "data": null,
+            "error": "Edge Function returned a non-2xx status code (status: unknown)"
+          },
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:13.128Z"
+        },
+        {
+          "testId": "int-003",
+          "action": "Twilio API health",
+          "passed": false,
+          "duration": 0.232,
+          "details": {
+            "success": false,
+            "data": null,
+            "error": "Edge Function returned a non-2xx status code (status: unknown)"
+          },
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:13.361Z"
+        },
+        {
+          "testId": "int-004",
+          "action": "Base44 file storage",
+          "passed": false,
+          "duration": 0.059,
+          "details": null,
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:13.421Z"
+        },
+        {
+          "testId": "int-005",
+          "action": "Resend webhook config",
+          "passed": false,
+          "duration": 0.056,
+          "details": null,
+          "error": "Edge Function returned a non-2xx status code (status: unknown)",
+          "timestamp": "2025-11-11T11:28:13.477Z"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "totalTests": 44,
+    "passed": 8,
+    "failed": 36,
+    "skipped": 0
+  }
+}

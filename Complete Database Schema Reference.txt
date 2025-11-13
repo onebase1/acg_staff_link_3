@@ -1,0 +1,448 @@
+Complete Database Schema Reference
+1. Agency
+Column	Type	Description
+id	string	Auto-generated
+created_date	datetime	Auto-generated
+updated_date	datetime	Auto-generated
+created_by	string	User email
+name	string	Agency trading name
+registration_number	string	Companies House number
+address	object	{line1, line2, city, postcode, country}
+contact_email	email	Contact email
+contact_phone	string	Phone number
+logo_url	string	Logo URL
+bank_details	object	{account_name, account_number, sort_code, bank_name, iban, swift_bic}
+status	enum	active/suspended/trial
+subscription_tier	enum	starter/professional/enterprise
+dbs_check_expiry_alerts	boolean	Notification setting
+mandatory_training_reminders	boolean	Notification setting
+document_expiry_warnings	boolean	Notification setting
+auto_approve_timesheets	boolean	Automation setting
+sms_shift_confirmations	boolean	Communication setting
+whatsapp_notifications	boolean	Communication setting
+auto_generate_invoices	boolean	Automation setting
+send_payment_reminders	boolean	Automation setting
+email_notifications	boolean	Notification setting
+sms_notifications	boolean	Notification setting
+whatsapp_global_notifications	boolean	Notification setting
+invoice_frequency	enum	Weekly/Bi-Weekly/Monthly
+payment_terms_days	number	Default 30
+settings	object	Complex configuration object
+2. Staff
+Column	Type	Description
+id	string	Auto-generated
+created_date	datetime	Auto-generated
+updated_date	datetime	Auto-generated
+created_by	string	User email
+agency_id	string	Multi-tenant reference
+user_id	string	Link to User entity
+first_name	string	First name
+last_name	string	Last name
+email	email	Email address
+phone	string	Phone number
+whatsapp_pin	string	4-digit PIN for WhatsApp auth
+whatsapp_number_verified	string	Verified WhatsApp number (E.164)
+whatsapp_linked_at	datetime	When WhatsApp was linked
+date_of_birth	date	Date of birth
+profile_photo_url	string	Professional headshot URL
+profile_photo_uploaded_date	date	Photo upload date
+role	enum	nurse/healthcare_assistant/senior_care_worker/support_worker/specialist_nurse
+nmc_pin	string	NMC registration (nurses)
+nmc_register_part	string	NMC register part
+medication_trained	boolean	Medication training status
+medication_training_expiry	date	Training expiry
+can_work_as_senior	boolean	Calculated field
+role_hierarchy	object	{can_work_as: []}
+driving_license_number	string	License number
+driving_license_expiry	date	License expiry
+employment_type	enum	temporary/contract/permanent
+status	enum	active/inactive/suspended/onboarding
+suspension_reason	string	Reason if suspended
+hourly_rate	number	Pay rate per hour
+address	object	{line1, line2, city, postcode}
+emergency_contact	object	{name, relationship, phone}
+employment_history	array	Array of employment records
+references	array	Array of reference records
+occupational_health	object	Health assessment data
+mandatory_training	object	Training certificates data
+availability	object	Weekly availability
+skills	array	Special skills/certifications
+groups	array	Group references
+rating	number	0-5 rating
+total_shifts_completed	number	Count
+date_joined	date	Join date
+proposed_first_shift_date	date	For new staff
+months_of_experience	number	Total experience
+gps_consent	boolean	GPS tracking consent
+gps_consent_date	datetime	When consent given
+last_known_location	object	{latitude, longitude, timestamp}
+3. Client
+Column	Type	Description
+id	string	Auto-generated
+created_date	datetime	Auto-generated
+updated_date	datetime	Auto-generated
+created_by	string	User email
+agency_id	string	Multi-tenant reference
+name	string	Care home name
+type	enum	care_home/hospital/nursing_home/residential_care/supported_living/home_care
+address	object	{line1, line2, city, postcode}
+location_coordinates	object	{latitude, longitude}
+geofence_radius_meters	number	Default 100
+geofence_enabled	boolean	Default true
+internal_locations	array	Pre-approved room numbers
+contact_person	object	{name, role, email, phone}
+billing_email	email	Billing email
+payment_terms	enum	net_7/net_14/net_30/net_60
+contract_terms	object	Complex contract configuration
+status	enum	active/inactive/pending_approval
+cqc_rating	enum	outstanding/good/requires_improvement/inadequate/not_rated
+bed_capacity	number	Number of beds
+preferred_staff	array	Preferred staff IDs
+notes	string	Internal notes
+total_bookings	number	Booking count
+rating	number	0-5 rating
+4. Shift
+Column	Type	Description
+id	string	Auto-generated
+created_date	datetime	Auto-generated
+updated_date	datetime	Auto-generated
+created_by	string	User email
+agency_id	string	Multi-tenant reference
+client_id	string	Client reference
+role_required	enum	nurse/healthcare_assistant/senior_care_worker/specialist_nurse/support_worker
+date	date	Shift date
+start_time	string	HH:MM format
+end_time	string	HH:MM format
+duration_hours	number	Calculated hours
+work_location_within_site	string	Room/unit/area
+status	enum	open/assigned/confirmed/in_progress/awaiting_staff_confirmation/awaiting_admin_closure/completed/cancelled/no_show/disputed/unfilled_escalated/archived
+assigned_staff_id	string	Staff reference
+booking_id	string	Booking reference
+timesheet_id	string	Timesheet reference
+timesheet_received	boolean	Timesheet received flag
+timesheet_received_at	datetime	When received
+timesheet_reminder_sent	boolean	Reminder sent flag
+timesheet_reminder_sent_at	datetime	When sent
+pay_rate	number	Staff pay rate
+charge_rate	number	Client charge rate
+pay_rate_override	object	Override details
+marketplace_visible	boolean	Marketplace flag
+marketplace_added_at	datetime	When added
+requirements	object	Shift requirements
+break_duration_minutes	number	Break duration
+notes	string	Shift notes
+urgency	enum	normal/urgent/critical
+recurring	boolean	Recurring flag
+recurrence_pattern	enum	daily/weekly/biweekly/monthly
+broadcast_sent_at	datetime	Broadcast timestamp
+escalation_deadline	datetime	Escalation time
+on_duty_contact	object	{name, phone}
+shift_started_at	datetime	Actual start
+shift_ended_at	datetime	Actual end
+verification_workflow_id	string	AdminWorkflow reference
+actual_staff_id	string	Actual staff worked
+reassignment_history	array	Reassignment records
+cancellation_reason	string	Cancellation reason
+cancelled_by	enum	staff/client/agency
+cancelled_at	datetime	When cancelled
+reminder_24h_sent	boolean	24h reminder flag
+reminder_24h_sent_at	datetime	When sent
+reminder_2h_sent	boolean	2h reminder flag
+reminder_2h_sent_at	datetime	When sent
+approaching_staff_location	object	GPS data
+shift_journey_log	array	Complete audit trail
+admin_closure_required	boolean	Admin closure flag
+admin_closure_outcome	enum	completed_as_planned/cancelled/no_show/disputed/staff_changed/pending
+admin_closed_at	datetime	When closed
+admin_closed_by	string	User ID
+staff_confirmed_completion	boolean	Staff confirmation flag
+staff_confirmation_requested_at	datetime	When requested
+staff_confirmed_at	datetime	When confirmed
+staff_confirmation_method	enum	sms_reply/auto_high_confidence/manual_admin
+staff_confirmation_confidence_score	number	0-100
+replaced_shift_id	string	Replacement reference
+is_replacement	boolean	Replacement flag
+archived	boolean	Archive flag
+archived_at	datetime	When archived
+financial_locked	boolean	Financial lock flag
+financial_locked_at	datetime	When locked
+financial_locked_by	string	User ID
+financial_snapshot	object	Immutable financial data
+5. Booking
+Column	Type	Description
+id	string	Auto-generated
+created_date	datetime	Auto-generated
+updated_date	datetime	Auto-generated
+created_by	string	User email
+agency_id	string	Multi-tenant reference
+shift_id	string	Shift reference
+staff_id	string	Staff reference
+client_id	string	Client reference
+status	enum	pending/confirmed/staff_confirmed/client_confirmed/in_progress/completed/cancelled/no_show
+booking_date	datetime	Booking timestamp
+shift_date	date	Shift date
+start_time	string	Start time
+end_time	string	End time
+confirmation_method	enum	phone/email/app/whatsapp
+confirmed_by_staff_at	datetime	Staff confirmation time
+confirmed_by_client_at	datetime	Client confirmation time
+cancellation_reason	string	Cancellation reason
+cancelled_by	enum	staff/client/agency
+cancelled_at	datetime	When cancelled
+notes	string	Booking notes
+timesheet_id	string	Timesheet reference
+rating_by_client	number	1-5 rating
+rating_by_staff	number	1-5 rating
+feedback_from_client	string	Client feedback
+feedback_from_staff	string	Staff feedback
+6. Timesheet
+Column	Type	Description
+id	string	Auto-generated
+created_date	datetime	Auto-generated
+updated_date	datetime	Auto-generated
+created_by	string	User email
+agency_id	string	Multi-tenant reference
+booking_id	string	Booking reference
+staff_id	string	Staff reference
+client_id	string	Client reference
+shift_date	date	Shift date
+work_location_within_site	string	Room/unit worked
+clock_in_time	datetime	GPS clock-in
+clock_out_time	datetime	GPS clock-out
+actual_start_time	string	Actual start (HH:MM)
+actual_end_time	string	Actual end (HH:MM)
+clock_in_location	object	{latitude, longitude, accuracy, timestamp}
+clock_out_location	object	{latitude, longitude, accuracy, timestamp}
+geofence_validated	boolean	Geofence validation
+geofence_distance_meters	number	Distance from site
+geofence_violation_reason	string	Violation reason
+break_duration_minutes	number	Break duration
+total_hours	number	Calculated hours
+status	enum	draft/submitted/approved_by_staff/approved_by_client/approved/rejected/invoiced/paid
+staff_signature	string	Digital signature
+client_signature	string	Digital signature
+staff_approved_at	datetime	Staff approval time
+client_approved_at	datetime	Client approval time
+pay_rate	number	Staff pay rate
+charge_rate	number	Client charge rate
+staff_pay_amount	number	Calculated pay
+client_charge_amount	number	Calculated charge
+notes	string	Timesheet notes
+rejection_reason	string	Rejection reason
+invoice_id	string	Invoice reference
+payslip_id	string	Payslip reference
+location_verified	boolean	GPS verified
+uploaded_documents	array	Uploaded documents
+financial_locked	boolean	Financial lock flag
+financial_locked_at	datetime	When locked
+financial_locked_by	string	User ID
+financial_snapshot	object	Immutable financial data
+7. Invoice
+Column	Type	Description
+id	string	Auto-generated
+created_date	datetime	Auto-generated
+updated_date	datetime	Auto-generated
+created_by	string	User email
+agency_id	string	Multi-tenant reference
+invoice_number	string	Unique reference
+client_id	string	Client reference
+invoice_date	date	Invoice date
+due_date	date	Payment due date
+period_start	date	Period start
+period_end	date	Period end
+status	enum	draft/sent/viewed/partially_paid/paid/overdue/cancelled/amended
+line_items	array	Invoice line items
+subtotal	number	Subtotal amount
+vat_rate	number	VAT percentage
+vat_amount	number	VAT amount
+total	number	Total amount
+amount_paid	number	Amount paid
+balance_due	number	Balance due
+payment_method	enum	bank_transfer/bacs/cheque/card/other
+paid_date	date	Payment date
+notes	string	Invoice notes
+pdf_url	string	Generated PDF URL
+sent_at	datetime	When sent
+reminder_sent_count	number	Reminder count
+last_reminder_sent	datetime	Last reminder time
+is_amendment	boolean	Amendment flag
+amendment_version	number	Version number
+original_invoice_id	string	Original reference
+superseded_by_invoice_id	string	Newer version reference
+amendment_reason	string	Amendment reason
+amended_at	datetime	When amended
+amended_by	string	User ID
+immutable_sent_snapshot	object	Immutable sent data
+8. Payslip
+Column	Type	Description
+id	string	Auto-generated
+created_date	datetime	Auto-generated
+updated_date	datetime	Auto-generated
+created_by	string	User email
+agency_id	string	Multi-tenant reference
+payslip_number	string	Unique reference
+staff_id	string	Staff reference
+period_start	date	Period start
+period_end	date	Period end
+payment_date	date	Payment date
+status	enum	draft/approved/paid/cancelled
+timesheets	array	Timesheet references
+gross_pay	number	Gross pay
+deductions	object	{tax, national_insurance, pension, other}
+total_deductions	number	Total deductions
+net_pay	number	Net pay
+payment_method	enum	bank_transfer/bacs/cash/cheque
+bank_details	object	{account_name, sort_code, account_number}
+pdf_url	string	Generated PDF URL
+notes	string	Payslip notes
+paid_at	datetime	Payment timestamp
+9. Compliance
+Column	Type	Description
+id	string	Auto-generated
+created_date	datetime	Auto-generated
+updated_date	datetime	Auto-generated
+created_by	string	User email
+agency_id	string	Multi-tenant reference
+staff_id	string	Staff reference
+document_type	enum	dbs_check/right_to_work/professional_registration/training_certificate/vaccination_record/reference/id_verification/insurance/other
+document_name	string	Document name
+document_url	string	Uploaded file URL
+issue_date	date	Issue date
+expiry_date	date	Expiry date
+status	enum	pending/verified/expired/rejected
+verified_by	string	Verifier user ID
+verified_at	datetime	Verification time
+notes	string	Document notes
+reminder_sent	boolean	Reminder flag
+issuing_authority	string	Issuing authority
+reference_number	string	Reference number
+reminder_30d_sent	boolean	30-day reminder
+reminder_14d_sent	boolean	14-day reminder
+reminder_7d_sent	boolean	7-day reminder
+10. AdminWorkflow
+Column	Type	Description
+id	string	Auto-generated
+created_date	datetime	Auto-generated
+updated_date	datetime	Auto-generated
+created_by	string	User email
+agency_id	string	Multi-tenant reference
+type	enum	unfilled_urgent_shift/expired_compliance_document/expiring_compliance_document/timesheet_discrepancy/missing_staff_information/payment_issue/client_complaint/staff_no_show/shift_cancellation/other
+priority	enum	low/medium/high/critical
+status	enum	pending/in_progress/resolved/dismissed
+title	string	Workflow title
+description	string	Detailed description
+related_entity	object	{entity_type, entity_id}
+assigned_to	string	User ID
+deadline	datetime	Resolution deadline
+resolution_notes	string	Resolution notes
+resolved_at	datetime	Resolution time
+resolved_by	string	Resolver user ID
+auto_created	boolean	Auto-created flag
+escalation_count	number	Escalation count
+11. ChangeLog
+Column	Type	Description
+id	string	Auto-generated
+created_date	datetime	Auto-generated
+updated_date	datetime	Auto-generated
+created_by	string	User email
+agency_id	string	Multi-tenant reference
+change_type	enum	shift_cancelled/shift_reassigned/shift_modified/bank_details_changed/pay_rate_override/compliance_override/timesheet_override/staff_suspended/client_rate_changed/other
+affected_entity_type	enum	shift/staff/client/timesheet/booking/invoice/payslip
+affected_entity_id	string	Entity ID
+old_value	string	Previous value
+new_value	string	New value
+reason	string	Change reason
+changed_by	string	User ID
+changed_by_email	string	User email
+changed_at	datetime	Change timestamp
+notifications_sent	number	Notification count
+ip_address	string	User IP
+risk_level	enum	low/medium/high/critical
+reviewed	boolean	Review flag
+reviewed_by	string	Reviewer user ID
+reviewed_at	datetime	Review time
+flagged_for_review	boolean	Flag for review
+12. OperationalCost
+Column	Type	Description
+id	string	Auto-generated
+created_date	datetime	Auto-generated
+updated_date	datetime	Auto-generated
+created_by	string	User email
+agency_id	string	Multi-tenant reference
+service_name	string	Service name
+service_category	enum	communication/ai_automation/platform_hosting/payment_processing/compliance_verification/storage/other
+cost_type	enum	monthly_subscription/per_use/per_user/tiered_usage/one_time
+billing_period	date	Billing period start
+amount	number	Cost in GBP
+currency	enum	GBP/USD/EUR
+usage_metrics	object	{sms_sent, whatsapp_messages, emails_sent, ai_tokens_used, storage_gb, active_users}
+invoice_url	string	Invoice/receipt URL
+paid_date	date	Payment date
+status	enum	pending/paid/overdue/cancelled
+notes	string	Cost notes
+projected_cost	number	Estimated next period
+cost_per_shift	number	Calculated per-shift cost
+roi_impact	enum	critical/high/medium/low
+13. InvoiceAmendment
+Column	Type	Description
+id	string	Auto-generated
+created_date	datetime	Auto-generated
+updated_date	datetime	Auto-generated
+created_by	string	User email
+agency_id	string	Multi-tenant reference
+original_invoice_id	string	Original invoice reference
+amended_invoice_id	string	New invoice reference
+amendment_version	number	Version number
+amendment_type	enum	rate_change/hours_adjustment/location_correction/shift_added/shift_removed/client_request/data_correction/other
+amendment_reason	string	Amendment reason
+changes_made	array	Detailed change list
+original_total	number	Original amount
+amended_total	number	New amount
+total_difference	number	Difference
+status	enum	draft/pending_approval/approved/sent/disputed/cancelled
+requires_client_approval	boolean	Approval flag
+client_notified_at	datetime	Notification time
+client_approved_at	datetime	Approval time
+client_dispute_reason	string	Dispute reason
+amended_by	string	User ID
+approved_by	string	Approver user ID
+approved_at	datetime	Approval time
+amendment_date	datetime	Amendment timestamp
+sent_at	datetime	Send time
+pdf_url	string	Amended invoice PDF
+email_trail	array	Email audit trail
+audit_trail	array	Complete audit trail
+risk_level	enum	low/medium/high/critical
+payment_already_received	boolean	Payment received flag
+credit_note_required	boolean	Credit note flag
+credit_note_id	string	Credit note reference
+14. NotificationQueue
+Column	Type	Description
+id	string	Auto-generated
+created_date	datetime	Auto-generated
+updated_date	datetime	Auto-generated
+created_by	string	User email
+agency_id	string	Multi-tenant reference
+recipient_email	email	Recipient email
+recipient_type	enum	staff/client/admin
+recipient_first_name	string	First name
+notification_type	enum	shift_assignment/shift_confirmation/compliance_expiry/shift_reminder/urgent_shift
+pending_items	array	Queued notification items
+created_at	datetime	Queue creation time
+scheduled_send_at	datetime	Scheduled send time
+status	enum	pending/sent/cancelled/failed
+sent_at	datetime	Actual send time
+email_message_id	string	Resend message ID
+error_message	string	Error details
+item_count	number	Number of items
+15. User (Built-in)
+Column	Type	Description
+id	string	Auto-generated
+created_date	datetime	Auto-generated
+full_name	string	User full name
+email	email	User email
+role	enum	admin/user
+agency_id	string	Agency reference (custom)
+user_type	enum	agency_admin/manager/staff_member/client_user (custom)
+profile_photo_url	string	Profile photo (custom)
+📥 Export Options:
