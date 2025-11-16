@@ -375,25 +375,25 @@ export default function ComplianceTracker() {
   };
 
   const getExpiryBadge = (expiryDate) => {
-    if (!expiryDate) return <Badge variant="secondary" className="text-xs">No Expiry</Badge>;
+    if (!expiryDate) return <Badge variant="secondary" className="text-xs whitespace-nowrap">No Expiry</Badge>;
 
     const days = getDaysUntilExpiry(expiryDate);
-    if (days < 0) return <Badge className="bg-red-600 text-white text-xs"><XCircle className="w-3 h-3 mr-1" /> Expired</Badge>;
-    if (days <= 7) return <Badge className="bg-red-500 text-white text-xs"><AlertTriangle className="w-3 h-3 mr-1" /> {days}d</Badge>;
-    if (days <= 30) return <Badge className="bg-orange-500 text-white text-xs"><Calendar className="w-3 h-3 mr-1" /> {days}d</Badge>;
-    return <Badge className="bg-green-600 text-white text-xs"><CheckCircle className="w-3 h-3 mr-1" /> {days}d</Badge>;
+    if (days < 0) return <Badge className="bg-red-600 text-white text-xs whitespace-nowrap flex items-center"><XCircle className="w-3 h-3 mr-1 flex-shrink-0" /> Expired</Badge>;
+    if (days <= 7) return <Badge className="bg-red-500 text-white text-xs whitespace-nowrap flex items-center"><AlertTriangle className="w-3 h-3 mr-1 flex-shrink-0" /> {days}d</Badge>;
+    if (days <= 30) return <Badge className="bg-orange-500 text-white text-xs whitespace-nowrap flex items-center"><Calendar className="w-3 h-3 mr-1 flex-shrink-0" /> {days}d</Badge>;
+    return <Badge className="bg-green-600 text-white text-xs whitespace-nowrap flex items-center"><CheckCircle className="w-3 h-3 mr-1 flex-shrink-0" /> {days}d</Badge>;
   };
 
   const getStatusBadge = (status) => {
     const variants = {
-      pending: { className: 'bg-yellow-100 text-yellow-800 text-xs', icon: AlertTriangle, text: 'Pending' },
-      verified: { className: 'bg-green-100 text-green-800 text-xs', icon: CheckCircle, text: 'Verified' },
-      expired: { className: 'bg-red-100 text-red-800 text-xs', icon: XCircle, text: 'Expired' },
-      rejected: { className: 'bg-gray-100 text-gray-800 text-xs', icon: XCircle, text: 'Rejected' }
+      pending: { className: 'bg-yellow-100 text-yellow-800 text-xs whitespace-nowrap', icon: AlertTriangle, text: 'Pending' },
+      verified: { className: 'bg-green-100 text-green-800 text-xs whitespace-nowrap', icon: CheckCircle, text: 'Verified' },
+      expired: { className: 'bg-red-100 text-red-800 text-xs whitespace-nowrap', icon: XCircle, text: 'Expired' },
+      rejected: { className: 'bg-gray-100 text-gray-800 text-xs whitespace-nowrap', icon: XCircle, text: 'Rejected' }
     };
     const info = variants[status] || variants.pending;
     const Icon = info.icon;
-    return <Badge className={info.className}><Icon className="w-3 h-3 mr-1" /> {info.text}</Badge>;
+    return <Badge className={info.className}><Icon className="w-3 h-3 mr-1 flex-shrink-0" /> {info.text}</Badge>;
   };
 
   const getComplianceStoragePath = (documentUrl) => {
@@ -408,22 +408,39 @@ export default function ComplianceTracker() {
   };
 
   const handleViewDocument = async (documentUrl, description = "document") => {
+    console.log("📄 View Document clicked:", { documentUrl, description });
+
     const path = getComplianceStoragePath(documentUrl);
+    console.log("📂 Extracted path:", path);
+
     if (!path) {
+      console.error("❌ Document path is missing");
       toast.error("Document path is missing");
       return;
     }
 
     try {
+      console.log("🔐 Creating signed URL for:", { bucket: BUCKETS.COMPLIANCE_DOCS, path });
       const signedUrl = await createSignedUrl({
         bucket: BUCKETS.COMPLIANCE_DOCS,
         path,
         expiresIn: 60 * 60, // 1 hour
       });
-      window.open(signedUrl, "_blank", "noopener,noreferrer");
+      console.log("✅ Signed URL created:", signedUrl);
+
+      // Open in new tab
+      const newWindow = window.open(signedUrl, "_blank", "noopener,noreferrer");
+
+      if (!newWindow) {
+        console.error("❌ Popup blocked");
+        toast.error("Please allow popups to view documents");
+      } else {
+        console.log("✅ Document opened in new tab");
+        toast.success("Opening document...");
+      }
     } catch (error) {
       console.error("❌ Error generating secure link:", error);
-      toast.error(`Unable to open ${description}. Please try again.`);
+      toast.error(`Unable to open ${description}. Error: ${error.message}`);
     }
   };
 
@@ -591,9 +608,9 @@ export default function ComplianceTracker() {
               <Card key={doc.id} className="border-2 hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   {/* Header */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className="text-3xl">{typeInfo.icon}</div>
+                  <div className="flex items-start justify-between mb-3 gap-2">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="text-3xl flex-shrink-0">{typeInfo.icon}</div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-gray-900 truncate">{doc.document_name}</h3>
                         <p className="text-xs text-gray-500">{typeInfo.label}</p>
@@ -605,7 +622,7 @@ export default function ComplianceTracker() {
                         )}
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       {getExpiryBadge(doc.expiry_date)}
                       {getStatusBadge(doc.status)}
                     </div>
