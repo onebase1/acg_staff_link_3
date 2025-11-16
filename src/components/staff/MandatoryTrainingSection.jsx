@@ -48,18 +48,92 @@ function MandatoryTrainingSection({
 
   return (
     <Card>
-      <CardHeader className="bg-gray-50 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="text-lg">Mandatory Training (CQC Core)</CardTitle>
+      <CardHeader className="bg-gray-50 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between p-3 sm:p-6">
+        <CardTitle className="text-base sm:text-lg">Mandatory Training (CQC Core)</CardTitle>
         <Badge className={validCount >= 8 ? "bg-green-600" : "bg-yellow-600"}>
           {validCount}/10 valid
         </Badge>
       </CardHeader>
-      <CardContent className="p-4 space-y-3">
+      <CardContent className="p-3 sm:p-4 space-y-3">
         <p className="text-xs text-gray-700">
           These entries feed directly into the Staff Profile Simulation PDF that care homes see.
           Keep them in sync with your uploaded certificates.
         </p>
-        <div className="overflow-x-auto">
+
+        {/* ✅ MOBILE: Card-based layout */}
+        <div className="block md:hidden space-y-3">
+          {TRAINING_FIELDS.map(({ key, label }) => {
+            const value = training?.[key] || {};
+            const hasDetails = !!(
+              value.completed_date ||
+              value.expiry_date ||
+              value.certificate_ref
+            );
+            const hasCertificate =
+              Array.isArray(value.certificate_ids) &&
+              value.certificate_ids.length > 0;
+
+            return (
+              <div key={key} className="border rounded-lg p-3 bg-white">
+                <div className="font-medium text-sm mb-3 text-gray-900">{label}</div>
+
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-1">Completed</label>
+                    <Input
+                      type="date"
+                      value={value.completed_date || ""}
+                      onChange={(e) => handleFieldChange(key, "completed_date", e.target.value)}
+                      className="h-11 text-sm w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-1">Expiry</label>
+                    <Input
+                      type="date"
+                      value={value.expiry_date || ""}
+                      onChange={(e) => handleFieldChange(key, "expiry_date", e.target.value)}
+                      className="h-11 text-sm w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-1">Certificate Ref</label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. REF-123456"
+                      value={value.certificate_ref || ""}
+                      onChange={(e) => handleFieldChange(key, "certificate_ref", e.target.value)}
+                      className="h-11 text-sm w-full"
+                    />
+                  </div>
+
+                  {onOpenTrainingModal && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="w-full min-h-[44px] text-sm mt-2"
+                      onClick={() =>
+                        onOpenTrainingModal({ mode: "core", key, label })
+                      }
+                    >
+                      {hasCertificate
+                        ? "View / Edit Certificate"
+                        : hasDetails
+                        ? "Edit / Attach Certificate"
+                        : "Add / Attach Certificate"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ✅ DESKTOP: Table layout */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-xs border">
             <thead>
               <tr className="bg-gray-100">
@@ -143,7 +217,7 @@ function MandatoryTrainingSection({
           <div className="mt-4 space-y-2">
             {Array.isArray(additionalTraining) && additionalTraining.length > 0 && (
               <div className="border rounded-md p-3 bg-gray-50">
-                <Label className="text-xs font-semibold">
+                <Label className="text-xs sm:text-sm font-semibold">
                   Other training &amp; qualifications
                 </Label>
                 <ul className="mt-2 space-y-1 text-xs text-gray-700">
@@ -151,7 +225,7 @@ function MandatoryTrainingSection({
                     <li key={item.id || `${item.name}-${index}`}>
                       <span className="font-medium">{item.name}</span>
                       {item.completed_date && (
-                        <span className="ml-1">
+                        <span className="ml-1 text-[11px] sm:text-xs">
                           ({item.completed_date}
                           {item.expiry_date ? ` exp: ${item.expiry_date}` : ""})
                         </span>
@@ -171,7 +245,7 @@ function MandatoryTrainingSection({
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 text-xs"
+              className="h-11 sm:h-8 text-sm sm:text-xs w-full sm:w-auto"
               onClick={() => onOpenTrainingModal({ mode: "additional" })}
             >
               <Plus className="w-3 h-3 mr-1" />
