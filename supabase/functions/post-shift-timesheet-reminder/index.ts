@@ -193,50 +193,119 @@ async function sendTimesheetReminder(supabase, shift) {
     // Portal link to Staff Portal (they can navigate to timesheets from there)
     const portalLink = 'https://your-app-url.com/StaffPortal'; // Replace with actual URL
 
-    // Messages
-    const whatsappMessage = `📋 TIMESHEET REMINDER [${agencyName}]: Your shift at ${client?.name} (${shift.date}) has ended. Please upload your signed timesheet via the Staff Portal: ${portalLink}`;
+    // 🎯 GPS-OPTIMIZED MESSAGING: Different messages for GPS vs non-GPS staff
+    const hasGPSConsent = staffMember.gps_consent === true;
+    const hasGPSData = timesheet?.clock_in_time && timesheet?.clock_out_time;
+    const isGPSTimesheet = hasGPSConsent && hasGPSData;
 
-    const emailSubject = `⏱️ Timesheet Due - ${client?.name} (${shift.date})`;
-    const emailBody = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #0284c7;">📋 Timesheet Submission Reminder</h2>
+    let whatsappMessage, emailSubject, emailBody;
 
-            <p>Hi ${staffMember.first_name},</p>
+    if (isGPSTimesheet) {
+        // ✅ GPS STAFF - Confirmation message (no action needed, but optional upload mentioned)
+        whatsappMessage = `✅ SHIFT COMPLETE [${agencyName}]: Your shift at ${client?.name} (${shift.date}) has ended. GPS timesheet auto-created from clock-in/out. Status: Submitted for approval. Optional: If you have a paper timesheet, you can upload it as backup via ${portalLink}`;
 
-            <p>Your shift at <strong>${client?.name}</strong> has ended. Please upload your signed timesheet as soon as possible.</p>
+        emailSubject = `✅ Shift Complete - GPS Timesheet Auto-Created`;
+        emailBody = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #10b981;">✅ Shift Complete - GPS Verified</h2>
 
-            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="margin-top: 0;">Shift Details</h3>
-                <p><strong>Client:</strong> ${client?.name}</p>
-                <p><strong>Date:</strong> ${shift.date}</p>
-                <p><strong>Time:</strong> ${shift.start_time} - ${shift.end_time}</p>
-                ${shift.work_location_within_site ? `<p><strong>Location:</strong> ${shift.work_location_within_site}</p>` : ''}
+                <p>Hi ${staffMember.first_name},</p>
+
+                <p>Your shift at <strong>${client?.name}</strong> has ended. Your timesheet was automatically created from your GPS clock-in/out data.</p>
+
+                <div style="background: #d1fae5; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+                    <h3 style="color: #065f46; margin-top: 0;">🎯 GPS STAFF - NO ACTION NEEDED!</h3>
+                    <p style="margin: 10px 0;">Your timesheet has been automatically:</p>
+                    <ul style="margin: 10px 0;">
+                        <li>✅ Created from GPS clock-in/out</li>
+                        <li>✅ Submitted for approval</li>
+                        <li>✅ Sent to client for verification</li>
+                    </ul>
+                    <p style="margin: 10px 0;"><strong>Status:</strong> Awaiting approval</p>
+                </div>
+
+                <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="margin-top: 0;">Shift Details</h3>
+                    <p><strong>Client:</strong> ${client?.name}</p>
+                    <p><strong>Date:</strong> ${shift.date}</p>
+                    <p><strong>Time:</strong> ${shift.start_time} - ${shift.end_time}</p>
+                    ${shift.work_location_within_site ? `<p><strong>Location:</strong> ${shift.work_location_within_site}</p>` : ''}
+                    ${timesheet?.actual_start_time ? `<p><strong>Actual Start:</strong> ${timesheet.actual_start_time}</p>` : ''}
+                    ${timesheet?.actual_end_time ? `<p><strong>Actual End:</strong> ${timesheet.actual_end_time}</p>` : ''}
+                    ${timesheet?.total_hours ? `<p><strong>Total Hours:</strong> ${timesheet.total_hours}</p>` : ''}
+                </div>
+
+                <div style="background: #eff6ff; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+                    <h3 style="color: #1e40af; margin-top: 0;">📋 Optional: Paper Timesheet</h3>
+                    <p style="margin: 10px 0; color: #1e3a8a;">
+                        If you have a signed paper timesheet, you can upload it as backup evidence.
+                        This is <strong>optional</strong> but may be useful during the transition period.
+                    </p>
+                    <p style="margin: 10px 0; color: #1e3a8a;">
+                        <strong>To upload:</strong> Staff Portal → Timesheets → Upload Document
+                    </p>
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="${portalLink}" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                       color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px;
+                       font-weight: 600; display: inline-block;">
+                        📱 View Timesheet
+                    </a>
+                </div>
+
+                <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+                    <strong>Forgot to clock out?</strong> Please clock out now via the app.<br>
+                    Sent by ${agencyName}
+                </p>
             </div>
+        `;
+    } else {
+        // ❌ NON-GPS STAFF - Action required message
+        whatsappMessage = `📋 TIMESHEET DUE [${agencyName}]: Your shift at ${client?.name} (${shift.date}) has ended. Please upload your signed timesheet via the Staff Portal: ${portalLink}`;
 
-            <div style="background: #dbeafe; padding: 15px; border-radius: 8px; border-left: 4px solid #0284c7;">
-                <h3 style="color: #1e40af; margin-top: 0;">📤 How to Submit Your Timesheet</h3>
-                <ol style="margin: 10px 0;">
-                    <li>Take a clear photo of your completed, signed timesheet</li>
-                    <li>Go to <strong>Staff Portal → Timesheets</strong></li>
-                    <li>Click on your timesheet for this shift</li>
-                    <li>Upload the document using the upload button</li>
-                </ol>
+        emailSubject = `⏱️ Timesheet Due - ${client?.name} (${shift.date})`;
+        emailBody = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #0284c7;">📋 Timesheet Submission Reminder</h2>
+
+                <p>Hi ${staffMember.first_name},</p>
+
+                <p>Your shift at <strong>${client?.name}</strong> has ended. Please upload your signed timesheet as soon as possible.</p>
+
+                <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="margin-top: 0;">Shift Details</h3>
+                    <p><strong>Client:</strong> ${client?.name}</p>
+                    <p><strong>Date:</strong> ${shift.date}</p>
+                    <p><strong>Time:</strong> ${shift.start_time} - ${shift.end_time}</p>
+                    ${shift.work_location_within_site ? `<p><strong>Location:</strong> ${shift.work_location_within_site}</p>` : ''}
+                </div>
+
+                <div style="background: #dbeafe; padding: 15px; border-radius: 8px; border-left: 4px solid #0284c7;">
+                    <h3 style="color: #1e40af; margin-top: 0;">📤 How to Submit Your Timesheet</h3>
+                    <ol style="margin: 10px 0;">
+                        <li>Take a clear photo of your completed, signed timesheet</li>
+                        <li>Go to <strong>Staff Portal → Timesheets</strong></li>
+                        <li>Click on your timesheet for this shift</li>
+                        <li>Upload the document using the upload button</li>
+                    </ol>
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="${portalLink}" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+                       color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px;
+                       font-weight: 600; display: inline-block;">
+                        📱 Upload Timesheet
+                    </a>
+                </div>
+
+                <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+                    Timesheets must be submitted within 48 hours of shift completion.<br>
+                    Sent by ${agencyName}
+                </p>
             </div>
-
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="${portalLink}" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-                   color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px;
-                   font-weight: 600; display: inline-block;">
-                    📱 Go to Staff Portal
-                </a>
-            </div>
-
-            <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
-                Timesheets must be submitted within 48 hours of shift completion.<br>
-                Sent by ${agencyName}
-            </p>
-        </div>
-    `;
+        `;
+    }
 
     const results = {
         whatsapp: { success: false },

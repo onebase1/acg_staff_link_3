@@ -103,6 +103,9 @@ const clientPortalItems = [
 // Super admin only items
 const superAdminItems = [
   { title: "Agency Onboarding", url: createPageUrl("SuperAdminAgencyOnboarding"), icon: Building2 },
+  { title: "Platform Analytics", url: createPageUrl("PerformanceAnalytics"), icon: TrendingUp }, // ✅ QUICK CONNECT: Platform-wide analytics
+  { title: "Timesheet Analytics", url: createPageUrl("TimesheetAnalytics"), icon: BarChart3 }, // ✅ QUICK CONNECT: Auto-approval metrics
+  { title: "CFO Dashboard", url: createPageUrl("CFODashboard"), icon: DollarSign }, // ✅ QUICK CONNECT: Financial monitoring
   { title: "Shift Journey Diagram", url: createPageUrl("ShiftJourneyDiagram"), icon: GitBranch }, // ✅ ADDED AT TOP
   { title: "Functions Audit", url: createPageUrl("FunctionsAudit"), icon: Shield },
   { title: "Admin Training Hub", url: createPageUrl("AdminTrainingHub"), icon: BookOpen },

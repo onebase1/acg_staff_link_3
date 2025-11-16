@@ -37,6 +37,7 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [urgencyFilter, setUrgencyFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showSearchResults, setShowSearchResults] = useState(false);
   const [assigningShift, setAssigningShift] = useState(null);
   const [user, setUser] = useState(null);
   const [agency, setAgency] = useState(null);
@@ -151,21 +152,27 @@ export default function Dashboard() {
     fetchUserAndAgency();
   }, [navigate]);
 
-  // ✅ FIXED: Direct Supabase queries (no enabled condition - run immediately)
+  // ✅ FIXED: Server-side filtering for security and performance
   const { data: staff = [] } = useQuery({
     queryKey: ['staff', agency?.id],
     queryFn: async () => {
       console.log('🔍 Fetching staff for agency:', agency.id);
-      const { data, error } = await supabase.from('staff').select('*');
+
+      // ✅ SECURITY FIX: Filter at DATABASE level, not client-side
+      let query = supabase.from('staff').select('*');
+
+      if (agency.id !== 'super_admin') {
+        query = query.eq('agency_id', agency.id);
+      }
+
+      const { data, error } = await query;
+
       if (error) {
         console.error('❌ Error fetching staff:', error);
         return [];
       }
-      console.log(`✅ Loaded ${data?.length || 0} staff members`);
-      // Filter by agency if not super admin
-      const filtered = agency.id === 'super_admin' ? data : data.filter(s => s.agency_id === agency.id);
-      console.log(`✅ Filtered to ${filtered.length} staff for this agency`);
-      return filtered;
+      console.log(`✅ Loaded ${data?.length || 0} staff members for agency ${agency.id}`);
+      return data;
     },
     enabled: !!agency?.id, // Only run when agency is loaded
     refetchOnMount: 'always'
@@ -175,14 +182,22 @@ export default function Dashboard() {
     queryKey: ['shifts', agency?.id],
     queryFn: async () => {
       console.log('🔍 Fetching shifts for agency:', agency.id);
-      const { data, error } = await supabase.from('shifts').select('*').order('date', { ascending: false });
+
+      // ✅ SECURITY FIX: Filter at DATABASE level, not client-side
+      let query = supabase.from('shifts').select('*').order('date', { ascending: false });
+
+      if (agency.id !== 'super_admin') {
+        query = query.eq('agency_id', agency.id);
+      }
+
+      const { data, error } = await query;
+
       if (error) {
         console.error('❌ Error fetching shifts:', error);
         return [];
       }
-      const filtered = agency.id === 'super_admin' ? data : data.filter(s => s.agency_id === agency.id);
-      console.log(`✅ Loaded ${data?.length || 0} shifts, filtered to ${filtered.length}`);
-      return filtered;
+      console.log(`✅ Loaded ${data?.length || 0} shifts for agency ${agency.id}`);
+      return data;
     },
     enabled: !!agency?.id,
     refetchOnMount: 'always'
@@ -191,12 +206,20 @@ export default function Dashboard() {
   const { data: bookings = [] } = useQuery({
     queryKey: ['bookings', agency?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('bookings').select('*').order('created_date', { ascending: false });
+      // ✅ SECURITY FIX: Filter at DATABASE level, not client-side
+      let query = supabase.from('bookings').select('*').order('created_date', { ascending: false });
+
+      if (agency.id !== 'super_admin') {
+        query = query.eq('agency_id', agency.id);
+      }
+
+      const { data, error } = await query;
+
       if (error) {
         console.error('❌ Error fetching bookings:', error);
         return [];
       }
-      return agency.id === 'super_admin' ? data : data.filter(b => b.agency_id === agency.id);
+      return data;
     },
     enabled: !!agency?.id,
     refetchOnMount: 'always'
@@ -205,12 +228,20 @@ export default function Dashboard() {
   const { data: timesheets = [] } = useQuery({
     queryKey: ['timesheets', agency?.id],
     queryFn: async () => {
-      const { data, error} = await supabase.from('timesheets').select('*').order('created_date', { ascending: false });
+      // ✅ SECURITY FIX: Filter at DATABASE level, not client-side
+      let query = supabase.from('timesheets').select('*').order('created_date', { ascending: false });
+
+      if (agency.id !== 'super_admin') {
+        query = query.eq('agency_id', agency.id);
+      }
+
+      const { data, error } = await query;
+
       if (error) {
         console.error('❌ Error fetching timesheets:', error);
         return [];
       }
-      return agency.id === 'super_admin' ? data : data.filter(t => t.agency_id === agency.id);
+      return data;
     },
     enabled: !!agency?.id,
     refetchOnMount: 'always'
@@ -220,14 +251,22 @@ export default function Dashboard() {
     queryKey: ['clients', agency?.id],
     queryFn: async () => {
       console.log('🔍 Fetching clients for agency:', agency.id);
-      const { data, error } = await supabase.from('clients').select('*');
+
+      // ✅ SECURITY FIX: Filter at DATABASE level, not client-side
+      let query = supabase.from('clients').select('*');
+
+      if (agency.id !== 'super_admin') {
+        query = query.eq('agency_id', agency.id);
+      }
+
+      const { data, error } = await query;
+
       if (error) {
         console.error('❌ Error fetching clients:', error);
         return [];
       }
-      const filtered = agency.id === 'super_admin' ? data : data.filter(c => c.agency_id === agency.id);
-      console.log(`✅ Loaded ${data?.length || 0} clients, filtered to ${filtered.length}`);
-      return filtered;
+      console.log(`✅ Loaded ${data?.length || 0} clients for agency ${agency.id}`);
+      return data;
     },
     enabled: !!agency?.id,
     refetchOnMount: 'always'
@@ -236,12 +275,20 @@ export default function Dashboard() {
   const { data: workflows = [] } = useQuery({
     queryKey: ['workflows', agency?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('admin_workflows').select('*').order('created_date', { ascending: false });
+      // ✅ SECURITY FIX: Filter at DATABASE level, not client-side
+      let query = supabase.from('admin_workflows').select('*').order('created_date', { ascending: false });
+
+      if (agency.id !== 'super_admin') {
+        query = query.eq('agency_id', agency.id);
+      }
+
+      const { data, error } = await query;
+
       if (error) {
         console.error('❌ Error fetching workflows:', error);
         return [];
       }
-      return agency.id === 'super_admin' ? data : data.filter(w => w.agency_id === agency.id);
+      return data;
     },
     enabled: !!agency?.id,
     refetchOnMount: 'always'
@@ -279,12 +326,50 @@ export default function Dashboard() {
     refetchOnWindowFocus: false
   });
 
-  // Filter shifts by search term for display
+  // ✅ QUICK WIN 3: Enhanced Global Search - searches across staff, clients, AND shifts
+  const globalSearchResults = () => {
+    if (!searchTerm || searchTerm.length < 2) return { staff: [], clients: [], shifts: [] };
+
+    const term = searchTerm.toLowerCase();
+
+    return {
+      staff: staff.filter(s =>
+        `${s.first_name} ${s.last_name}`.toLowerCase().includes(term) ||
+        s.email?.toLowerCase().includes(term) ||
+        s.phone?.includes(term) ||
+        s.role?.toLowerCase().includes(term)
+      ).slice(0, 5),
+
+      clients: clients.filter(c =>
+        c.name?.toLowerCase().includes(term) ||
+        c.location?.toLowerCase().includes(term) ||
+        c.email?.toLowerCase().includes(term)
+      ).slice(0, 5),
+
+      shifts: shifts.filter(shift => {
+        const client = clients.find(c => c.id === shift.client_id);
+        const assignedStaff = staff.find(s => s.id === shift.assigned_staff_id);
+        return (
+          shift.role_required?.toLowerCase().includes(term) ||
+          client?.name?.toLowerCase().includes(term) ||
+          client?.location?.toLowerCase().includes(term) ||
+          `${assignedStaff?.first_name} ${assignedStaff?.last_name}`.toLowerCase().includes(term) ||
+          shift.status?.toLowerCase().includes(term) ||
+          shift.id?.toLowerCase().includes(term)
+        );
+      }).slice(0, 5)
+    };
+  };
+
+  const searchResults = globalSearchResults();
+  const hasSearchResults = searchResults.staff.length > 0 || searchResults.clients.length > 0 || searchResults.shifts.length > 0;
+
+  // Filter shifts by search term for display (keep existing for shift list filtering)
   const searchFilteredShifts = shifts.filter(shift => {
     if (!searchTerm) return true;
     const client = clients.find(c => c.id === shift.client_id);
     const assignedStaff = staff.find(s => s.id === shift.assigned_staff_id);
-    
+
     const lowerCaseSearchTerm = searchTerm.toLowerCase();
 
     return (
@@ -573,15 +658,97 @@ export default function Dashboard() {
           )}
         </div>
         
-        {/* Search Bar */}
+        {/* ✅ QUICK WIN 3: Enhanced Global Search Bar with Results Dropdown */}
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input
-            placeholder="Search shifts, clients, staff..."
+            placeholder="Search staff, clients, shifts..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setShowSearchResults(e.target.value.length >= 2);
+            }}
+            onFocus={() => searchTerm.length >= 2 && setShowSearchResults(true)}
+            onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
             className="pl-10"
           />
+
+          {/* Search Results Dropdown */}
+          {showSearchResults && hasSearchResults && (
+            <Card className="absolute top-full mt-2 w-full z-50 max-h-96 overflow-y-auto shadow-2xl border-2 border-purple-200">
+              <CardContent className="p-0">
+                {searchResults.staff.length > 0 && (
+                  <div className="border-b">
+                    <div className="px-4 py-2 bg-blue-50 font-semibold text-sm text-blue-800 flex items-center gap-2">
+                      <Users className="w-4 h-4" /> Staff ({searchResults.staff.length})
+                    </div>
+                    {searchResults.staff.map(s => (
+                      <div
+                        key={s.id}
+                        className="px-4 py-3 hover:bg-blue-50 cursor-pointer flex items-center gap-3 border-b last:border-b-0"
+                        onClick={() => navigate(createPageUrl('Staff'))}
+                      >
+                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
+                          {s.first_name?.[0]}{s.last_name?.[0]}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-900">{s.first_name} {s.last_name}</p>
+                          <p className="text-xs text-gray-600">{s.role} • {s.email}</p>
+                        </div>
+                        <Badge className="text-xs">{s.status}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {searchResults.clients.length > 0 && (
+                  <div className="border-b">
+                    <div className="px-4 py-2 bg-green-50 font-semibold text-sm text-green-800 flex items-center gap-2">
+                      <Building2 className="w-4 h-4" /> Clients ({searchResults.clients.length})
+                    </div>
+                    {searchResults.clients.map(c => (
+                      <div
+                        key={c.id}
+                        className="px-4 py-3 hover:bg-green-50 cursor-pointer flex items-center gap-3 border-b last:border-b-0"
+                        onClick={() => navigate(createPageUrl('Clients'))}
+                      >
+                        <Building2 className="w-10 h-10 p-2 rounded-full bg-green-100 text-green-600" />
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-900">{c.name}</p>
+                          <p className="text-xs text-gray-600">{c.location}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {searchResults.shifts.length > 0 && (
+                  <div>
+                    <div className="px-4 py-2 bg-purple-50 font-semibold text-sm text-purple-800 flex items-center gap-2">
+                      <Calendar className="w-4 h-4" /> Shifts ({searchResults.shifts.length})
+                    </div>
+                    {searchResults.shifts.map(shift => {
+                      const client = clients.find(c => c.id === shift.client_id);
+                      return (
+                        <div
+                          key={shift.id}
+                          className="px-4 py-3 hover:bg-purple-50 cursor-pointer flex items-center gap-3 border-b last:border-b-0"
+                          onClick={() => navigate(createPageUrl('Shifts'))}
+                        >
+                          <Calendar className="w-10 h-10 p-2 rounded-full bg-purple-100 text-purple-600" />
+                          <div className="flex-1">
+                            <p className="font-semibold text-gray-900">{shift.role_required.replace('_', ' ')}</p>
+                            <p className="text-xs text-gray-600">{client?.name} • {format(new Date(shift.date), 'MMM d')}</p>
+                          </div>
+                          <Badge className="text-xs">{shift.status}</Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 
@@ -757,13 +924,34 @@ export default function Dashboard() {
                       })
                       .reduce((sum, t) => sum + (t.client_charge_amount || 0), 0);
 
+                    // ✅ QUICK WIN 2: Calculate Agency Health Score (0-100)
+                    const calculateAgencyHealth = () => {
+                      let score = 0;
+                      // Fill Rate Score (0-30 points)
+                      score += Math.min(30, agFillRate * 0.3);
+                      // Revenue Score (0-25 points) - £5k/week = 100%
+                      score += Math.min(25, (agRevenue / 5000) * 25);
+                      // Staff Count Score (0-20 points) - 50 staff = 100%
+                      score += Math.min(20, (agStaff.length / 50) * 20);
+                      // Activity Score (0-25 points) - 20 shifts/week = 100%
+                      score += Math.min(25, (agShifts.length / 20) * 25);
+                      return Math.round(Math.min(100, score));
+                    };
+
+                    const healthScore = calculateAgencyHealth();
+                    const healthColor = healthScore >= 80 ? 'green' : healthScore >= 60 ? 'yellow' : healthScore >= 40 ? 'orange' : 'red';
+                    const healthBgColor = healthScore >= 80 ? 'bg-green-100 text-green-800 border-green-300' :
+                                         healthScore >= 60 ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
+                                         healthScore >= 40 ? 'bg-orange-100 text-orange-800 border-orange-300' :
+                                         'bg-red-100 text-red-800 border-red-300';
+
                     return (
                       <div key={ag.id} className="p-5 border-2 rounded-xl hover:shadow-lg transition-all bg-gradient-to-br from-white to-gray-50">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-3">
                             {ag.logo_url ? (
-                              <img 
-                                src={ag.logo_url} 
+                              <img
+                                src={ag.logo_url}
                                 alt={ag.name}
                                 className="w-12 h-12 rounded-lg object-contain"
                               />
@@ -773,8 +961,13 @@ export default function Dashboard() {
                               </div>
                             )}
                             <div>
-                              <h3 className="font-bold text-gray-900">{ag.name}</h3>
-                              <Badge className="mt-1 text-xs">{ag.subscription_tier}</Badge>
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-bold text-gray-900">{ag.name}</h3>
+                                <Badge className={`text-xs font-bold border ${healthBgColor}`}>
+                                  {healthScore >= 80 ? '🟢' : healthScore >= 60 ? '🟡' : healthScore >= 40 ? '🟠' : '🔴'} {healthScore}
+                                </Badge>
+                              </div>
+                              <Badge className="text-xs">{ag.subscription_tier}</Badge>
                             </div>
                           </div>
                           <Award className="w-6 h-6 text-yellow-500" />

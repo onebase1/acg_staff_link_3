@@ -192,25 +192,48 @@ serve(async (req) => {
             if (staff_email) {
                 const html = `
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
-                            <h1 style="margin: 0; font-size: 24px;">🔄 Shift Reassigned</h1>
+                        <!-- Header: ACG StaffLink Standard Gradient -->
+                        <div style="background: linear-gradient(to right, #06b6d4, #3b82f6); color: white; padding: 40px 30px; text-align: center;">
+                            <h1 style="margin: 0; font-size: 28px; font-weight: 600;">Shift Update Notice</h1>
                         </div>
-                        <div style="background: #fff; padding: 30px; border: 2px solid #fef3c7; border-top: none; border-radius: 0 0 10px 10px;">
-                            <p style="font-size: 16px; color: #1f2937;">Dear ${staff_name},</p>
 
-                            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
-                                <p style="margin: 0; color: #92400e; font-weight: bold;">Your shift has been reassigned to another staff member</p>
-                                <p style="margin: 10px 0 0 0; color: #78350f;">
+                        <!-- Body -->
+                        <div style="background: #fff; padding: 40px 30px;">
+                            <p style="font-size: 16px; color: #1f2937; margin-bottom: 20px;">Hi ${staff_name},</p>
+
+                            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; margin: 25px 0;">
+                                <p style="margin: 0 0 15px 0; color: #92400e; font-weight: bold; font-size: 15px;">You have been removed from the following shift:</p>
+                                <p style="margin: 0; color: #78350f; line-height: 1.8;">
                                     <strong>Client:</strong> ${client_name}<br/>
                                     <strong>Date:</strong> ${shift_date}<br/>
                                     <strong>Time:</strong> ${shift_time}<br/>
-                                    <strong>Reason:</strong> ${reason || 'Not specified'}
+                                    <strong>Reason:</strong> ${reason || 'Admin updated shift records'}
                                 </p>
                             </div>
 
-                            <p style="color: #6b7280; font-size: 14px;">
-                                If you did not request this change or have questions, please contact the agency immediately.
+                            <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 20px; margin: 25px 0;">
+                                <p style="margin: 0 0 10px 0; color: #0c4a6e; font-size: 15px; font-weight: bold;">
+                                    ⚠️ ACTION REQUIRED (if this is an error):
+                                </p>
+                                <p style="margin: 0; color: #0c4a6e; font-size: 14px; line-height: 1.6;">
+                                    If you <strong>planned to work</strong> or <strong>already worked</strong> this shift, please contact the agency immediately.
+                                </p>
+                            </div>
+
+                            <div style="background: #f9fafb; border-left: 4px solid #10b981; padding: 20px; margin: 25px 0;">
+                                <p style="margin: 0; color: #065f46; font-size: 14px; line-height: 1.6;">
+                                    ✅ <strong>If this change is correct:</strong> No action needed. You will not be paid for this shift.
+                                </p>
+                            </div>
+
+                            <p style="color: #6b7280; font-size: 13px; margin-top: 30px; line-height: 1.6;">
+                                This is an automated notification to protect both you and the agency from payroll errors.
                             </p>
+                        </div>
+
+                        <!-- Footer: ACG StaffLink Standard -->
+                        <div style="background: #1e293b; color: #94a3b8; padding: 25px 30px; text-align: center;">
+                            <p style="margin: 0; font-size: 13px;">© 2025 ACG StaffLink. All rights reserved.</p>
                         </div>
                     </div>
                 `;
@@ -218,7 +241,7 @@ serve(async (req) => {
                 notifications.push({
                     from: `ACG StaffLink <noreply@${RESEND_FROM_DOMAIN}>`,
                     to: [staff_email],
-                    subject: `🔄 Shift Reassigned - ${client_name} on ${shift_date}`,
+                    subject: `Shift Update - You've been removed from ${client_name} on ${shift_date}`,
                     html: html
                 });
             }

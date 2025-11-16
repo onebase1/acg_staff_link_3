@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Connection Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-box {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .warning { color: #f59e0b; }
+        button {
+            background: #06b6d4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0891b2;
+        }
+        pre {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Supabase Connection Test</h1>
+    
+    <div class="test-box">
+        <h2>Test 1: Environment Check</h2>
+        <div id="env-check">Running...</div>
+    </div>
+
+    <div class="test-box">
+        <h2>Test 2: Network Connectivity</h2>
+        <div id="network-check">Running...</div>
+    </div>
+
+    <div class="test-box">
+        <h2>Test 3: Supabase Client Creation</h2>
+        <div id="client-check">Running...</div>
+    </div>
+
+    <div class="test-box">
+        <h2>Test 4: Authentication Test</h2>
+        <button onclick="testSignIn()">Test Sign In</button>
+        <div id="auth-check" style="margin-top: 10px;"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>Console Logs</h2>
+        <pre id="console-logs"></pre>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://rzzxxkppkiasuouuglaf.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1OTYwNDgsImV4cCI6MjA3NzE3MjA0OH0.eYyjJTxHeYSGJEmDhOEq-b1v473kg-OqHhAtC4BBHrY';
+        
+        let logs = [];
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.push(`[${timestamp}] ${message}`);
+            document.getElementById('console-logs').textContent = logs.join('\n');
+            console.log(message);
+        }
+
+        // Test 1: Environment Check
+        function testEnvironment() {
+            const envCheck = document.getElementById('env-check');
+            if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+                envCheck.innerHTML = '<span class="success">✅ Environment variables loaded</span>';
+                log('✅ Environment check passed');
+            } else {
+                envCheck.innerHTML = '<span class="error">❌ Missing environment variables</span>';
+                log('❌ Environment check failed');
+            }
+        }
+
+        // Test 2: Network Connectivity
+        async function testNetwork() {
+            const networkCheck = document.getElementById('network-check');
+            try {
+                log('Testing network connectivity to Supabase...');
+                const response = await fetch(SUPABASE_URL);
+                networkCheck.innerHTML = `<span class="success">✅ Network reachable (Status: ${response.status})</span>`;
+                log(`✅ Network check passed (Status: ${response.status})`);
+            } catch (error) {
+                networkCheck.innerHTML = `<span class="error">❌ Network error: ${error.message}</span>`;
+                log(`❌ Network check failed: ${error.message}`);
+            }
+        }
+
+        // Test 3: Supabase Client Creation
+        let supabase;
+        function testClient() {
+            const clientCheck = document.getElementById('client-check');
+            try {
+                log('Creating Supabase client...');
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                    auth: {
+                        autoRefreshToken: true,
+                        persistSession: true,
+                        detectSessionInUrl: true
+                    }
+                });
+                clientCheck.innerHTML = '<span class="success">✅ Supabase client created successfully</span>';
+                log('✅ Client creation passed');
+            } catch (error) {
+                clientCheck.innerHTML = `<span class="error">❌ Client creation failed: ${error.message}</span>`;
+                log(`❌ Client creation failed: ${error.message}`);
+            }
+        }
+
+        // Test 4: Authentication
+        async function testSignIn() {
+            const authCheck = document.getElementById('auth-check');
+            authCheck.innerHTML = '<span class="warning">⏳ Testing sign in...</span>';
+            
+            const email = 'g.basera5+chadaira@gmail.com';
+            const password = 'Broadband@123';
+            
+            try {
+                log(`Attempting sign in with ${email}...`);
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+                
+                if (error) {
+                    authCheck.innerHTML = `<span class="error">❌ Sign in failed: ${error.message}</span>`;
+                    log(`❌ Sign in failed: ${error.message}`);
+                } else {
+                    authCheck.innerHTML = `<span class="success">✅ Sign in successful!<br>User: ${data.user.email}<br>ID: ${data.user.id}</span>`;
+                    log(`✅ Sign in successful for ${data.user.email}`);
+                    
+                    // Sign out
+                    await supabase.auth.signOut();
+                    log('✅ Signed out');
+                }
+            } catch (error) {
+                authCheck.innerHTML = `<span class="error">❌ Sign in error: ${error.message}</span>`;
+                log(`❌ Sign in error: ${error.message}`);
+            }
+        }
+
+        // Run tests on page load
+        window.onload = () => {
+            testEnvironment();
+            testNetwork();
+            testClient();
+        };
+    </script>
+</body>
+</html>
+

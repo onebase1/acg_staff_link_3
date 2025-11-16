@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  Settings, Save, Info, Bell, AlertTriangle, Upload, Building2, 
-  Shield, Zap, DollarSign, RefreshCw, CheckCircle, Rocket, Star
+import {
+  Settings, Save, Info, Bell, AlertTriangle, Upload, Building2,
+  Shield, Zap, DollarSign, RefreshCw, CheckCircle, Rocket, Star, MapPin, XCircle
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -201,15 +201,15 @@ export default function AgencySettings() {
 
     setUploading(true);
     try {
-      const fileName = `agency-logos/${Date.now()}-${file.name}`;
+      const fileName = `${Date.now()}-${file.name}`;
       const { data, error: uploadError } = await supabase.storage
-        .from('documents')
+        .from('profile-photos')
         .upload(fileName, file);
-      
+
       if (uploadError) throw uploadError;
-      
+
       const { data: { publicUrl } } = supabase.storage
-        .from('documents')
+        .from('profile-photos')
         .getPublicUrl(fileName);
       
       setChange('logo_url', publicUrl);
@@ -641,6 +641,56 @@ export default function AgencySettings() {
               </div>
               <p className="text-xs text-purple-700 mt-3 bg-purple-100 p-2 rounded">
                 💡 Timesheets that don't meet criteria will be flagged for manual review via Admin Workflows
+              </p>
+            </div>
+          </div>
+
+          {/* GPS Auto-Completion Setting */}
+          <div className="border-l-4 border-green-500 pl-4 py-2">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <MapPin className="w-5 h-5 text-green-600" />
+                <div>
+                  <h4 className="font-semibold text-gray-900">🎯 GPS Auto-Complete Shifts</h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Automatically mark shifts as completed when GPS-validated timesheets are approved
+                  </p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={getCurrentValue('settings.automation_settings.gps_auto_complete_shifts', true)}
+                  onChange={(e) => updateField('settings.automation_settings.gps_auto_complete_shifts', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+              </label>
+            </div>
+
+            {/* GPS Auto-Completion Details */}
+            <div className="ml-8 space-y-2 text-sm">
+              <p className="font-medium text-gray-700 mb-2">When enabled:</p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span>Shifts with GPS-validated clock-in/out auto-complete</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span>Actual start/end times auto-populated from GPS timestamps</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span>No manual admin closure required for GPS shifts</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <XCircle className="w-4 h-4 text-orange-600" />
+                  <span>Non-GPS shifts still require manual admin closure</span>
+                </div>
+              </div>
+              <p className="text-xs text-green-700 mt-3 bg-green-100 p-2 rounded">
+                💡 Recommended: Keep enabled for maximum automation. Disable if you want to manually review all shifts regardless of GPS validation.
               </p>
             </div>
           </div>

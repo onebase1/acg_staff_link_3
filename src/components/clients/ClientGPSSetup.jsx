@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { 
+import {
   MapPin, Loader2, CheckCircle, Search, AlertTriangle
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from "react-leaflet";
@@ -34,6 +34,7 @@ function MapClickHandler({ onLocationSet }) {
 
 export default function ClientGPSSetup({ client, onComplete }) {
   const queryClient = useQueryClient();
+  const [mapReady, setMapReady] = useState(false);
   const [searchAddress, setSearchAddress] = useState(
     client.address ? `${client.address.line1 || ''}, ${client.address.city || ''}, ${client.address.postcode || ''}` : ''
   );
@@ -44,6 +45,16 @@ export default function ClientGPSSetup({ client, onComplete }) {
   const [radius, setRadius] = useState(
     client?.geofence_radius_meters || 100
   );
+
+  // Ensure map is ready before rendering
+  useEffect(() => {
+    // Small delay to ensure DOM is ready for Leaflet
+    const timer = setTimeout(() => {
+      setMapReady(true);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const updateClientMutation = useMutation({
     mutationFn: async (data) => {
@@ -253,29 +264,35 @@ export default function ClientGPSSetup({ client, onComplete }) {
         </div>
 
         <div className="rounded-lg overflow-hidden border">
-          <MapContainer 
-            center={[coordinates.latitude, coordinates.longitude]} 
-            zoom={13} 
-            scrollWheelZoom={true}
-            style={{ height: '400px', width: '100%' }}
-            key={`map-${coordinates.latitude}-${coordinates.longitude}`}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            {coordinates.latitude && coordinates.longitude && (
-              <>
-                <Marker position={[coordinates.latitude, coordinates.longitude]} />
-                <Circle 
-                  center={[coordinates.latitude, coordinates.longitude]} 
-                  radius={radius} 
-                  pathOptions={{ color: 'blue', fillColor: '#30f', fillOpacity: 0.2 }}
-                />
-              </>
-            )}
-            <MapClickHandler onLocationSet={handleMapClick} />
-          </MapContainer>
+          {!mapReady ? (
+            <div className="flex items-center justify-center h-[400px] bg-gray-50">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+            </div>
+          ) : (
+            <MapContainer
+              center={[coordinates.latitude, coordinates.longitude]}
+              zoom={13}
+              scrollWheelZoom={true}
+              style={{ height: '400px', width: '100%' }}
+              key={`map-${coordinates.latitude}-${coordinates.longitude}`}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              {coordinates.latitude && coordinates.longitude && (
+                <>
+                  <Marker position={[coordinates.latitude, coordinates.longitude]} />
+                  <Circle
+                    center={[coordinates.latitude, coordinates.longitude]}
+                    radius={radius}
+                    pathOptions={{ color: 'blue', fillColor: '#30f', fillOpacity: 0.2 }}
+                  />
+                </>
+              )}
+              <MapClickHandler onLocationSet={handleMapClick} />
+            </MapContainer>
+          )}
         </div>
 
         {coordinates.latitude && coordinates.longitude && (

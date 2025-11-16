@@ -291,13 +291,14 @@ serve(async (req) => {
                         .eq("id", t.staff_id);
                     const staff = staffRecords && staffRecords.length > 0 ? staffRecords[0] : null;
 
-                    // ✅ FIX 1: Get ACTUAL role from shift (not generic "Care Staff")
+                    // ✅ FIX 1: Get ACTUAL role and shift_type from shift (not generic "Care Staff")
                     const { data: bookings } = await supabase
                         .from("bookings")
                         .select("*")
                         .eq("id", t.booking_id);
                     const booking = bookings && bookings.length > 0 ? bookings[0] : null;
                     let actualRole = 'Care Staff'; // Fallback
+                    let shiftType = 'day'; // Fallback
 
                     if (booking) {
                         const { data: shifts } = await supabase
@@ -312,6 +313,9 @@ serve(async (req) => {
                                 .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                                 .join(' ');
                         }
+                        if (shift?.shift_type) {
+                            shiftType = shift.shift_type;
+                        }
                     }
 
                     const lineItem = {
@@ -320,6 +324,7 @@ serve(async (req) => {
                         staff_name: staff ? `${staff.first_name} ${staff.last_name}` : 'Staff',
                         shift_date: t.shift_date,
                         role: actualRole,
+                        shift_type: shiftType, // ✅ NEW: Include shift_type in line item
                         hours: t.total_hours || 0,
                         rate: t.charge_rate || 0,
                         amount: t.client_charge_amount || 0

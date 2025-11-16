@@ -30,9 +30,32 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import ShiftRateDisplay from "../components/shifts/ShiftRateDisplay";
 import { Label } from "@/components/ui/label";
 import ShiftCompletionModal from "../components/shifts/ShiftCompletionModal";
+
+/**
+ * Format time from ISO timestamp to HH:MM
+ * Handles both ISO timestamps (2025-11-15T09:00:00+00:00) and plain times (09:00)
+ */
+const formatTime = (isoString) => {
+  if (!isoString) return 'N/A';
+  try {
+    // If it's already in HH:MM format, return as is
+    if (/^\d{2}:\d{2}$/.test(isoString)) return isoString;
+
+    // Extract time from ISO timestamp (e.g., "2025-11-15T09:00:00+00:00" -> "09:00")
+    const timePart = isoString.split('T')[1];
+    if (timePart) {
+      return timePart.substring(0, 5); // Get HH:MM
+    }
+    return isoString;
+  } catch (error) {
+    console.error('Time formatting error:', isoString, error);
+    return isoString;
+  }
+};
 
 export default function Shifts() {
   const [statusFilter, setStatusFilter] = useState('all');
@@ -46,6 +69,7 @@ export default function Shifts() {
 
   const [currentAgency, setCurrentAgency] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const [editingShift, setEditingShift] = useState(null);
   const [editFormData, setEditFormData] = useState({
@@ -154,6 +178,8 @@ export default function Shifts() {
         }
 
         console.log('✅ [Shifts] Loaded user:', profile.email, 'Agency:', profile.agency_id);
+
+        setCurrentUser(profile); // Store full profile for role checking
 
         if (profile.agency_id) {
           setCurrentAgency(profile.agency_id);
@@ -289,7 +315,7 @@ export default function Shifts() {
   }, [staff]);
 
   const updateShiftMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
+    mutationFn: async ({ id, data, staffReassigned, oldStaffId, newStaffId }) => {
       const shiftToEdit = shifts.find(s => s.id === id);
 
       if (shiftToEdit?.financial_locked) {
@@ -309,18 +335,68 @@ export default function Shifts() {
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
+
+      // ✅ AUDIT TRAIL: Send emails if staff was reassigned
+      if (staffReassigned && oldStaffId && newStaffId) {
+        const oldStaff = staff.find(s => s.id === oldStaffId);
+        const newStaff = staff.find(s => s.id === newStaffId);
+        const client = clients.find(c => c.id === shiftToEdit.client_id);
+        const agency = agencies.find(a => a.id === shiftToEdit.agency_id);
+
+        // 1. Email old staff (cancellation/reassignment notice)
+        if (oldStaff?.email) {
+          try {
+            await supabase.functions.invoke('critical-change-notifier', {
+              body: {
+                change_type: 'shift_reassigned',
+                affected_entity_type: 'shift',
+                affected_entity_id: id,
+                staff_email: oldStaff.email,
+                staff_name: `${oldStaff.first_name} ${oldStaff.last_name}`,
+                client_name: client?.name || 'Unknown Client',
+                shift_date: shiftToEdit.date,
+                shift_time: `${shiftToEdit.start_time} - ${shiftToEdit.end_time}`,
+                reason: 'Admin updated who actually worked this shift'
+              }
+            });
+            console.log(`✅ [Edit Shift] Reassignment email sent to old staff: ${oldStaff.email}`);
+          } catch (emailError) {
+            console.warn(`⚠️ [Edit Shift] Failed to email old staff:`, emailError);
+          }
+        }
+
+        // 2. Email new staff (confirmation notice)
+        if (newStaff?.email) {
+          try {
+            await NotificationService.notifyShiftConfirmedToStaff({
+              staff: newStaff,
+              shift: updated,
+              client: client,
+              agency: agency
+            });
+            console.log(`✅ [Edit Shift] Confirmation email sent to new staff: ${newStaff.email}`);
+          } catch (emailError) {
+            console.warn(`⚠️ [Edit Shift] Failed to email new staff:`, emailError);
+          }
+        }
+      }
+
       return updated;
     },
-    onSuccess: async (updatedShift, { id, data }) => {
+    onSuccess: async (updatedShift, { id, data, staffReassigned }) => {
       queryClient.invalidateQueries({ queryKey: ['shifts'], exact: false });
 
       if (data.status || data.assigned_staff_id) {
         queryClient.invalidateQueries({ queryKey: ['bookings'], exact: false });
       }
 
-      toast.success('Shift updated');
+      if (staffReassigned) {
+        toast.success('✅ Shift updated! Emails sent to both staff members for audit trail.');
+      } else {
+        toast.success('Shift updated');
+      }
       setEditingShift(null);
     },
     onError: (error) => {
@@ -789,31 +865,113 @@ export default function Shifts() {
 
   const handleEditShift = (shift) => {
     setEditingShift(shift);
+
+    // Check if shift is past-dated (can edit actual times)
+    const shiftDate = new Date(shift.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isPastShift = shiftDate < today;
+
     setEditFormData({
-      client_id: shift.client_id || '',
-      assigned_staff_id: shift.assigned_staff_id || '',
-      status: shift.status || 'open'
+      status: shift.status || 'open',
+      notes: shift.notes || '',
+      // Actual times (only for past shifts)
+      actual_start_time: shift.shift_started_at ? formatTime(shift.shift_started_at) : formatTime(shift.start_time),
+      actual_end_time: shift.shift_ended_at ? formatTime(shift.shift_ended_at) : formatTime(shift.end_time),
+      // Who actually worked the shift
+      actual_staff_id: shift.actual_staff_id || shift.assigned_staff_id || null,
+      assigned_staff_id: shift.assigned_staff_id || null
     });
   };
 
-  const handleSaveShiftEdit = () => {
+  const handleSaveShiftEdit = async () => {
     if (updateShiftMutation.isPending) {
       return;
     }
 
-    if (!editFormData.client_id) {
-      toast.error('Client is required');
-      return;
+    // Check if shift is past-dated
+    const shiftDate = new Date(editingShift.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isPastShift = shiftDate < today;
+
+    // Validate actual_staff_id (check for conflicts if past shift)
+    if (isPastShift && editFormData.actual_staff_id && editFormData.actual_staff_id !== 'none') {
+      const { data: conflictingShifts } = await supabase
+        .from('shifts')
+        .select('id, start_time, end_time, client_id, clients(name)')
+        .eq('actual_staff_id', editFormData.actual_staff_id)
+        .eq('date', editingShift.date)
+        .neq('id', editingShift.id)
+        .in('status', ['completed', 'in_progress']);
+
+      if (conflictingShifts && conflictingShifts.length > 0) {
+        const conflict = conflictingShifts[0];
+        const staffMember = staff.find(s => s.id === editFormData.actual_staff_id);
+        const staffName = staffMember ? `${staffMember.first_name} ${staffMember.last_name}` : 'Staff';
+
+        toast.error(
+          `⚠️ ${staffName} already worked at ${conflict.clients?.name || 'another client'} on ${editingShift.date} (${formatTime(conflict.start_time)} - ${formatTime(conflict.end_time)}). Staff cannot work in two places at the same time.`
+        );
+        return;
+      }
     }
 
-    const updates = { ...editFormData };
-    if (updates.assigned_staff_id === 'none') {
-        updates.assigned_staff_id = null;
+    const updates = {
+      status: editFormData.status,
+      notes: editFormData.notes
+    };
+
+    // Add actual times if shift is past-dated
+    if (isPastShift && editFormData.actual_start_time && editFormData.actual_end_time) {
+      updates.shift_started_at = `${editingShift.date}T${editFormData.actual_start_time}:00`;
+      updates.shift_ended_at = `${editingShift.date}T${editFormData.actual_end_time}:00`;
+
+      // Calculate actual hours
+      const [startH, startM] = editFormData.actual_start_time.split(':').map(Number);
+      const [endH, endM] = editFormData.actual_end_time.split(':').map(Number);
+      let startMinutes = startH * 60 + startM;
+      let endMinutes = endH * 60 + endM;
+      if (endMinutes <= startMinutes) endMinutes += 24 * 60; // Handle overnight
+      const actualHours = (endMinutes - startMinutes) / 60;
+
+      // Warn if >15min difference from scheduled
+      const scheduledHours = editingShift.duration_hours || 0;
+      const hoursDiff = Math.abs(actualHours - scheduledHours);
+      if (hoursDiff > 0.25) { // 15 minutes
+        const proceed = window.confirm(
+          `⚠️ Actual hours (${actualHours.toFixed(2)}h) differ from scheduled hours (${scheduledHours}h) by ${hoursDiff.toFixed(2)}h.\n\nThis will affect payroll and billing. Continue?`
+        );
+        if (!proceed) {
+          return;
+        }
+      }
+    }
+
+    // ✅ AUDIT TRAIL: Detect staff reassignment and send emails
+    let staffReassigned = false;
+    let oldStaffId = null;
+    let newStaffId = null;
+
+    if (isPastShift) {
+      const oldActualStaffId = editingShift.actual_staff_id || editingShift.assigned_staff_id;
+      const newActualStaffId = editFormData.actual_staff_id === 'none' ? null : editFormData.actual_staff_id;
+
+      if (oldActualStaffId && newActualStaffId && oldActualStaffId !== newActualStaffId) {
+        staffReassigned = true;
+        oldStaffId = oldActualStaffId;
+        newStaffId = newActualStaffId;
+      }
+
+      updates.actual_staff_id = newActualStaffId;
     }
 
     updateShiftMutation.mutate({
       id: editingShift.id,
-      data: updates
+      data: updates,
+      staffReassigned,
+      oldStaffId,
+      newStaffId
     });
   };
 
@@ -1595,7 +1753,7 @@ export default function Shifts() {
                         </div>
                         <div className="flex items-center gap-2 text-gray-700">
                           <Clock className="w-4 h-4 text-gray-400" />
-                          <span>{shift.start_time} - {shift.end_time} ({shift.duration_hours}h)</span>
+                          <span>{formatTime(shift.start_time)} - {formatTime(shift.end_time)} ({shift.duration_hours}h)</span>
                         </div>
                       </div>
 
@@ -1605,7 +1763,7 @@ export default function Shifts() {
                         </div>
                       )}
 
-                      {client && (
+                      {client && currentUser?.role === 'agency_owner' && (
                         <div className="mt-3">
                           <ShiftRateDisplay shift={shift} client={client} compact={false} />
                         </div>
@@ -1823,90 +1981,162 @@ export default function Shifts() {
             </DialogHeader>
 
             <div className="space-y-4 py-4">
-              <div>
-                <Label htmlFor="edit-client">Client / Care Home *</Label>
-                <Select
-                  value={editFormData.client_id}
-                  onValueChange={(value) => setEditFormData({...editFormData, client_id: value})}
-                >
-                  <SelectTrigger id="edit-client">
-                    <SelectValue placeholder="Select client..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.map(client => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="edit-staff">Assigned Staff (Optional)</Label>
-                <Select
-                  value={editFormData.assigned_staff_id || 'none'}
-                  onValueChange={(value) => setEditFormData({
-                    ...editFormData,
-                    assigned_staff_id: value === 'none' ? null : value
-                  })}
-                >
-                  <SelectTrigger id="edit-staff">
-                    <SelectValue placeholder="No staff assigned" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No staff assigned</SelectItem>
-                    {staff.map(staffMember => (
-                      <SelectItem key={staffMember.id} value={staffMember.id}>
-                        {staffMember.first_name} {staffMember.last_name} {staffMember.role ? `- ${staffMember.role}` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="edit-status">Shift Status</Label>
-                <Select
-                  value={editFormData.status}
-                  onValueChange={(value) => setEditFormData({...editFormData, status: value})}
-                >
-                  <SelectTrigger id="edit-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="assigned">Assigned</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="awaiting_admin_closure">Awaiting Admin Closure</SelectItem>
-                    <SelectItem value="completed">✅ Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                    <SelectItem value="no_show">No Show</SelectItem>
-                    <SelectItem value="disputed">Disputed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
+              {/* READ-ONLY SHIFT DETAILS */}
               {editingShift && (() => {
                 let formattedDate = 'Invalid Date';
+                let isPastShift = false;
                 try {
                   if (editingShift.date) {
                     const shiftDate = new Date(editingShift.date);
                     if (!isNaN(shiftDate.getTime())) {
                       formattedDate = format(shiftDate, 'EEE, MMM d, yyyy');
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      isPastShift = shiftDate < today;
                     }
                   }
                 } catch (error) {
                   console.error('Date formatting error in modal:', editingShift.date, error);
                 }
 
+                const clientName = clients.find(c => c.id === editingShift.client_id)?.name || 'Unknown';
+
                 return (
-                  <div className="p-3 bg-gray-50 rounded text-sm">
-                    <p><strong>Date:</strong> {formattedDate}</p>
-                    <p><strong>Time:</strong> {editingShift.start_time} - {editingShift.end_time} ({editingShift.duration_hours}h)</p>
-                    <p><strong>Role:</strong> {editingShift.role_required?.replace('_', ' ')}</p>
-                  </div>
+                  <>
+                    <div className="p-4 bg-gray-50 rounded space-y-2 text-sm">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="text-gray-600">Date:</span>
+                          <p className="font-semibold">{formattedDate}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Care Home:</span>
+                          <p className="font-semibold">{clientName}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="text-gray-600">Scheduled Time:</span>
+                          <p className="font-semibold">{formatTime(editingShift.start_time)} - {formatTime(editingShift.end_time)} ({editingShift.duration_hours}h)</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Role Required:</span>
+                          <p className="font-semibold">{editingShift.role_required?.replace('_', ' ')}</p>
+                        </div>
+                      </div>
+                      {editingShift.assigned_staff_id && (
+                        <div>
+                          <span className="text-gray-600">Currently Assigned:</span>
+                          <p className="font-semibold">
+                            {(() => {
+                              const assignedStaff = staff.find(s => s.id === editingShift.assigned_staff_id);
+                              return assignedStaff ? `${assignedStaff.first_name} ${assignedStaff.last_name} - ${assignedStaff.role}` : 'Unknown';
+                            })()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* EDITABLE: SHIFT STATUS */}
+                    <div>
+                      <Label htmlFor="edit-status">Shift Status</Label>
+                      <Select
+                        value={editFormData.status}
+                        onValueChange={(value) => setEditFormData({...editFormData, status: value})}
+                      >
+                        <SelectTrigger id="edit-status">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="open">Open</SelectItem>
+                          <SelectItem value="assigned">Assigned</SelectItem>
+                          <SelectItem value="confirmed">Confirmed</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="awaiting_admin_closure">Awaiting Admin Closure</SelectItem>
+                          <SelectItem value="completed">✅ Completed</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                          <SelectItem value="no_show">No Show</SelectItem>
+                          <SelectItem value="disputed">Disputed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* EDITABLE: ACTUAL TIMES (Post-Shift Only) */}
+                    {isPastShift && (
+                      <div className="space-y-3 p-4 bg-blue-50 border border-blue-200 rounded">
+                        <div className="flex items-center gap-2 text-blue-900 font-semibold">
+                          <Clock className="w-4 h-4" />
+                          <span>Actual Times (Post-Shift)</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor="actual-start" className="text-xs">Actual Start Time</Label>
+                            <Input
+                              id="actual-start"
+                              type="time"
+                              value={editFormData.actual_start_time || ''}
+                              onChange={(e) => setEditFormData({...editFormData, actual_start_time: e.target.value})}
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="actual-end" className="text-xs">Actual End Time</Label>
+                            <Input
+                              id="actual-end"
+                              type="time"
+                              value={editFormData.actual_end_time || ''}
+                              onChange={(e) => setEditFormData({...editFormData, actual_end_time: e.target.value})}
+                              className="text-sm"
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-blue-700">
+                          💡 Enter actual times worked for accurate payroll and billing
+                        </p>
+                      </div>
+                    )}
+
+                    {/* EDITABLE: WHO ACTUALLY DID THE SHIFT (Post-Shift Only) */}
+                    {isPastShift && (
+                      <div className="space-y-2">
+                        <Label htmlFor="actual-staff">Who Actually Worked This Shift?</Label>
+                        <Select
+                          value={editFormData.actual_staff_id || editFormData.assigned_staff_id || 'none'}
+                          onValueChange={(value) => setEditFormData({
+                            ...editFormData,
+                            actual_staff_id: value === 'none' ? null : value
+                          })}
+                        >
+                          <SelectTrigger id="actual-staff">
+                            <SelectValue placeholder="Select staff who worked..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No one worked (No Show)</SelectItem>
+                            {staff.filter(s => s.role === editingShift.role_required).map(staffMember => (
+                              <SelectItem key={staffMember.id} value={staffMember.id}>
+                                {staffMember.first_name} {staffMember.last_name} - {staffMember.role}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-gray-600">
+                          ⚠️ Only showing staff with matching role: {editingShift.role_required?.replace('_', ' ')}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* EDITABLE: NOTES */}
+                    <div>
+                      <Label htmlFor="edit-notes">Admin Notes (Optional)</Label>
+                      <Textarea
+                        id="edit-notes"
+                        value={editFormData.notes || ''}
+                        onChange={(e) => setEditFormData({...editFormData, notes: e.target.value})}
+                        placeholder="Add any notes about this shift..."
+                        rows={3}
+                      />
+                    </div>
+                  </>
                 );
               })()}
             </div>
@@ -1921,7 +2151,7 @@ export default function Shifts() {
               </Button>
               <Button
                 onClick={handleSaveShiftEdit}
-                disabled={updateShiftMutation.isPending || !editFormData.client_id}
+                disabled={updateShiftMutation.isPending}
               >
                 {updateShiftMutation.isPending ? (
                   <>

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { formatShiftTimeRange } from "../utils/shiftTimeFormatter";
 
 export default function ShiftMarketplace() {
   const navigate = useNavigate();
@@ -128,46 +129,63 @@ export default function ShiftMarketplace() {
     queryKey: ['available-shifts', staffProfile?.id],
     queryFn: async () => {
       if (!staffProfile) return [];
-      
+
+      // Fetch all shifts
       const { data: allShifts, error: shiftsError } = await supabase
         .from('shifts')
         .select('*')
         .order('date', { ascending: false });
-      
+
       if (shiftsError) {
         console.error('❌ Error fetching shifts:', shiftsError);
         return [];
       }
-      
-      // CRITICAL: Only show truly UNASSIGNED open shifts OR shifts marked for marketplace
+
+      // ✅ Get staff's assigned shifts to prevent double-booking
+      const assignedShiftDates = allShifts
+        .filter(s => s.assigned_staff_id === staffProfile.id && s.status === 'assigned')
+        .map(s => s.date);
+
+      console.log('📅 Staff already working on:', assignedShiftDates);
+
+      // CRITICAL: Only show truly UNASSIGNED open shifts that match staff role
       const openShifts = allShifts.filter(shift => {
         // Must be open status
         if (shift.status !== 'open') return false;
-        
+
         // Must NOT have any staff assigned
         if (shift.assigned_staff_id) return false;
-        
+
         // Must be same agency
         if (shift.agency_id !== staffProfile.agency_id) return false;
-        
+
+        // ✅ CRITICAL FIX: ALWAYS check role matching first
+        // Staff should NEVER see shifts for roles they can't work
+        // Even if marketplace_visible=true, role must match
+        if (shift.role_required !== staffProfile.role) return false;
+
+        // ✅ CRITICAL FIX: Check for double-booking
+        // Staff should NOT see shifts on days they're already working
+        if (assignedShiftDates.includes(shift.date)) {
+          console.log(`🚫 Filtering out shift on ${shift.date} - staff already working`);
+          return false;
+        }
+
         // EITHER: Admin has marked it visible in marketplace
-        // OR: Matches staff role and availability (auto-matched)
+        // OR: Matches staff availability (auto-matched)
         const isAdminApproved = shift.marketplace_visible === true;
-        
+
         const isAutoMatched = (() => {
-          // Must match staff role
-          if (shift.role_required !== staffProfile.role) return false;
-          
           // Check availability
           const shiftDay = format(new Date(shift.date), 'EEEE').toLowerCase();
           const availability = staffProfile.availability?.[shiftDay] || [];
-          
+
           const isNightShift = shift.start_time >= '20:00' || shift.start_time <= '08:00';
           const shiftType = isNightShift ? 'night' : 'day';
-          
+
           return availability.includes(shiftType);
         })();
-        
+
         return isAdminApproved || isAutoMatched;
       });
       
@@ -196,47 +214,52 @@ export default function ShiftMarketplace() {
     refetchOnMount: 'always'
   });
 
+  // ✅ Track which shift is being accepted to show loading state per-shift
+  const [acceptingShiftId, setAcceptingShiftId] = React.useState(null);
+
   const acceptShiftMutation = useMutation({
     mutationFn: async (shiftId) => {
+      setAcceptingShiftId(shiftId);
+
       // CRITICAL: Double-check shift is still available before accepting
       await refetchShifts();
       const shift = availableShifts.find(s => s.id === shiftId);
-      
+
       if (!shift) {
         throw new Error('Shift not found - it may have been removed');
       }
-      
+
       if (shift.assigned_staff_id) {
         throw new Error('Sorry, this shift was just accepted by someone else');
       }
-      
+
       if (shift.status !== 'open') {
         throw new Error('This shift is no longer available');
       }
 
-      // ✅ FIXED: Update shift status to "assigned" (not "confirmed")
-      // Staff must explicitly confirm via portal
+      // ✅ AUTO-CONFIRM: When staff accepts shift themselves, auto-confirm to "confirmed"
+      // Only require manual confirmation when admin assigns without staff consent
       const { error: shiftError } = await supabase
         .from('shifts')
         .update({
-          status: 'assigned',
+          status: 'confirmed',
           assigned_staff_id: staffProfile.id,
           shift_journey_log: [
             ...(shift.shift_journey_log || []),
             {
-              state: 'assigned',
+              state: 'confirmed',
               timestamp: new Date().toISOString(),
               staff_id: staffProfile.id,
               method: 'marketplace_accept',
-              notes: 'Staff accepted from marketplace - awaiting confirmation'
+              notes: 'Staff accepted from marketplace - auto-confirmed'
             }
           ]
         })
         .eq('id', shiftId);
-      
+
       if (shiftError) throw shiftError;
-      
-      // Create booking with pending status (awaiting confirmation)
+
+      // Create booking with confirmed status (staff accepted themselves)
       const { error: bookingError } = await supabase
         .from('bookings')
         .insert({
@@ -244,7 +267,7 @@ export default function ShiftMarketplace() {
           shift_id: shiftId,
           staff_id: staffProfile.id,
           client_id: shift.client_id,
-          status: 'pending',
+          status: 'confirmed',
           booking_date: new Date().toISOString(),
           shift_date: shift.date,
           start_time: shift.start_time,
@@ -252,34 +275,36 @@ export default function ShiftMarketplace() {
           confirmation_method: 'app',
           created_date: new Date().toISOString()
         });
-      
+
       if (bookingError) throw bookingError;
 
       return { shift, client: clients.find(c => c.id === shift.client_id) };
     },
     onSuccess: ({ shift, client }) => {
+      setAcceptingShiftId(null);
       queryClient.invalidateQueries(['available-shifts']);
       queryClient.invalidateQueries(['my-shifts']);
       queryClient.invalidateQueries(['my-bookings']);
       queryClient.invalidateQueries(['shifts']); // Admin view
-      
-      toast.success('🎉 Shift Accepted!', {
-        description: `${client?.name || 'Client'} on ${format(new Date(shift.date), 'MMM d, yyyy')} - Please CONFIRM your attendance in your portal`,
+
+      toast.success('🎉 Shift Confirmed!', {
+        description: `${client?.name || 'Client'} on ${format(new Date(shift.date), 'MMM d, yyyy')} - You're all set! Remember to clock in on the day.`,
         duration: 6000,
         position: 'top-center',
         action: {
-          label: 'Confirm Now',
+          label: 'View My Shifts',
           onClick: () => navigate(createPageUrl('StaffPortal'))
         }
       });
     },
     onError: (error) => {
+      setAcceptingShiftId(null);
       toast.error('❌ Failed to Accept Shift', {
         description: error.message,
         duration: 4000,
         position: 'top-center'
       });
-      
+
       // Refresh the list to remove stale shifts
       refetchShifts();
     }
@@ -466,7 +491,7 @@ export default function ShiftMarketplace() {
                         </div>
                         <div className="flex items-center gap-2 text-gray-700">
                           <Clock className="w-4 h-4 text-gray-400" />
-                          <span>{shift.start_time} - {shift.end_time}</span>
+                          <span>{formatShiftTimeRange(shift.start_time, shift.end_time)}</span>
                         </div>
                       </div>
 
@@ -489,12 +514,12 @@ export default function ShiftMarketplace() {
                           £{shift.pay_rate}/hr
                         </p>
                       </div>
-                      <Button 
+                      <Button
                         onClick={() => acceptShiftMutation.mutate(shift.id)}
-                        disabled={acceptShiftMutation.isPending}
+                        disabled={acceptingShiftId === shift.id}
                         className="bg-red-600 hover:bg-red-700 text-lg py-6"
                       >
-                        {acceptShiftMutation.isPending ? (
+                        {acceptingShiftId === shift.id ? (
                           <>
                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
                             Accepting...
@@ -554,7 +579,7 @@ export default function ShiftMarketplace() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4" />
-                      <span>{shift.start_time} - {shift.end_time} ({shift.duration_hours}h)</span>
+                      <span>{formatShiftTimeRange(shift.start_time, shift.end_time)} ({shift.duration_hours}h)</span>
                     </div>
                   </div>
 
@@ -564,12 +589,12 @@ export default function ShiftMarketplace() {
                     </p>
                   )}
 
-                  <Button 
+                  <Button
                     onClick={() => acceptShiftMutation.mutate(shift.id)}
-                    disabled={acceptShiftMutation.isPending}
+                    disabled={acceptingShiftId === shift.id}
                     className="w-full bg-gradient-to-r from-cyan-500 to-blue-600"
                   >
-                    {acceptShiftMutation.isPending ? (
+                    {acceptingShiftId === shift.id ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
                         Accepting...

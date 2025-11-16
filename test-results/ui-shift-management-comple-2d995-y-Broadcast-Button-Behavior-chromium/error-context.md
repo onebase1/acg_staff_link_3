@@ -1,0 +1,5515 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - img "Dominion Healthcare Services Ltd" [ref=e7]
+        - generic [ref=e8]:
+          - heading "Dominion Healthcare Services Ltd" [level=2] [ref=e9]
+          - paragraph [ref=e10]: Agency Portal
+      - navigation [ref=e11]:
+        - generic [ref=e12]:
+          - generic [ref=e13] [cursor=pointer]:
+            - img [ref=e14]
+            - generic [ref=e19]: OPERATIONS
+            - img [ref=e20]
+          - generic [ref=e22]:
+            - link "Dashboard" [ref=e23] [cursor=pointer]:
+              - /url: /dashboard
+              - img [ref=e24]
+              - generic [ref=e29]: Dashboard
+            - link "Quick Actions" [ref=e30] [cursor=pointer]:
+              - /url: /quickactions
+              - img [ref=e31]
+              - generic [ref=e33]: Quick Actions
+            - link "Shifts" [ref=e34] [cursor=pointer]:
+              - /url: /shifts
+              - img [ref=e35]
+              - generic [ref=e37]: Shifts
+            - link "Bulk Shift Creation" [ref=e38] [cursor=pointer]:
+              - /url: /bulkshiftcreation
+              - img [ref=e39]
+              - generic [ref=e42]: Bulk Shift Creation
+            - link "Shift Calendar" [ref=e43] [cursor=pointer]:
+              - /url: /shiftcalendar
+              - img [ref=e44]
+              - generic [ref=e47]: Shift Calendar
+            - link "Live Shift Map" [ref=e48] [cursor=pointer]:
+              - /url: /liveshiftmap
+              - img [ref=e49]
+              - generic [ref=e52]: Live Shift Map
+            - link "Bookings" [ref=e53] [cursor=pointer]:
+              - /url: /bookings
+              - img [ref=e54]
+              - generic [ref=e57]: Bookings
+            - link "Timesheets" [ref=e58] [cursor=pointer]:
+              - /url: /timesheets
+              - img [ref=e59]
+              - generic [ref=e62]: Timesheets
+        - generic [ref=e64] [cursor=pointer]:
+          - img [ref=e65]
+          - generic [ref=e70]: WORKFORCE
+          - img [ref=e71]
+        - generic [ref=e74] [cursor=pointer]:
+          - img [ref=e75]
+          - generic [ref=e78]: FINANCIALS
+          - img [ref=e79]
+        - generic [ref=e82] [cursor=pointer]:
+          - img [ref=e83]
+          - generic [ref=e86]: MANAGEMENT
+          - img [ref=e87]
+        - generic [ref=e89] [cursor=pointer]:
+          - img [ref=e90]
+          - generic [ref=e93]: Settings
+        - generic [ref=e94]:
+          - link "Agency Profile" [ref=e95] [cursor=pointer]:
+            - /url: /agencysettings
+            - img [ref=e96]
+            - generic [ref=e99]: Agency Profile
+          - link "GPS Consent" [ref=e100] [cursor=pointer]:
+            - /url: /staffgpsconsent
+            - img [ref=e101]
+            - generic [ref=e104]: GPS Consent
+          - link "Help Center" [ref=e105] [cursor=pointer]:
+            - /url: /helpcenter
+            - img [ref=e106]
+            - generic [ref=e109]: Help Center
+    - generic [ref=e110]:
+      - banner [ref=e111]:
+        - generic [ref=e112]:
+          - generic [ref=e114]:
+            - heading "Shifts" [level=1] [ref=e115]
+            - paragraph [ref=e116]: Dominion Healthcare Services Ltd
+          - generic [ref=e117]:
+            - button [ref=e119] [cursor=pointer]:
+              - img [ref=e120]
+            - button "Dominion Agency Admin Dominion Agency Admin" [ref=e123] [cursor=pointer]:
+              - img "Dominion Agency Admin" [ref=e124]
+              - generic [ref=e125]: Dominion Agency Admin
+              - img
+      - main [ref=e126]:
+        - generic [ref=e127]:
+          - generic [ref=e128]:
+            - generic [ref=e129]:
+              - heading "Shift Management" [level=2] [ref=e130]
+              - paragraph [ref=e131]: 105 shifts shown
+              - generic [ref=e132]: Dominion Healthcare Services Ltd
+            - generic [ref=e133]:
+              - button "Export CSV" [ref=e134] [cursor=pointer]:
+                - img
+                - text: Export CSV
+              - link "Create Shift" [ref=e135] [cursor=pointer]:
+                - /url: /postshiftv2
+                - button "Create Shift" [ref=e136]:
+                  - img
+                  - text: Create Shift
+          - generic [ref=e139]:
+            - generic [ref=e140]:
+              - button "This Month 105" [ref=e141] [cursor=pointer]:
+                - generic [ref=e142]:
+                  - img
+                  - generic [ref=e143]: This Month
+                - generic [ref=e144]: "105"
+              - combobox [ref=e145] [cursor=pointer]:
+                - generic [ref=e146]:
+                  - img [ref=e147]
+                  - generic:
+                    - strong: All Care Homes
+                    - text: (105)
+                - img [ref=e151]
+            - generic [ref=e153]:
+              - generic [ref=e154]:
+                - button "All (105)" [ref=e155] [cursor=pointer]
+                - button "Open (29)" [ref=e156] [cursor=pointer]
+                - button "Assigned (13)" [ref=e157] [cursor=pointer]
+                - button "Confirmed (19)" [ref=e158] [cursor=pointer]
+                - button "In Progress (0)" [ref=e159] [cursor=pointer]
+              - generic [ref=e160]:
+                - button "Awaiting Closure (7)" [ref=e161] [cursor=pointer]
+                - button "✅ Completed (24)" [ref=e162] [cursor=pointer]
+                - button "Cancelled (13)" [ref=e163] [cursor=pointer]
+                - button "No Show (0)" [ref=e164] [cursor=pointer]
+                - button "Disputed (0)" [ref=e165] [cursor=pointer]
+            - generic [ref=e166]:
+              - button "Cards" [ref=e167] [cursor=pointer]:
+                - img
+                - text: Cards
+              - button "Table" [ref=e168] [cursor=pointer]:
+                - img
+                - text: Table
+          - generic [ref=e169]:
+            - generic [ref=e171]:
+              - generic [ref=e174]: assigned
+              - generic [ref=e175]:
+                - generic [ref=e176]:
+                  - generic [ref=e177]:
+                    - generic [ref=e178]: healthcare assistant
+                    - generic [ref=e179]: 📢 In Marketplace
+                    - generic [ref=e180]: 💰 Rate Override
+                  - generic [ref=e181]:
+                    - generic [ref=e182]:
+                      - img [ref=e183]
+                      - generic [ref=e186]: Divine Care Center
+                    - generic [ref=e187]:
+                      - img [ref=e188]
+                      - generic [ref=e190]: Thu, Nov 27, 2025
+                    - generic [ref=e191]:
+                      - img [ref=e192]
+                      - generic [ref=e195]: 2025-11-27T18:00:00+00:00 - 2025-11-27T22:00:00+00:00 (4h)
+                  - generic [ref=e196]: ✓ Assigned to Chadaira Basera
+                  - generic [ref=e198]:
+                    - generic [ref=e199]:
+                      - generic [ref=e200]:
+                        - img [ref=e201]
+                        - heading "Rate Breakdown" [level=4] [ref=e203]
+                      - generic [ref=e204]: Standard Rate
+                    - generic [ref=e205]:
+                      - generic [ref=e206]:
+                        - paragraph [ref=e207]: Staff Pay Rate
+                        - paragraph [ref=e208]: £15.50/hr
+                      - generic [ref=e209]:
+                        - paragraph [ref=e210]: Client Charge Rate
+                        - paragraph [ref=e211]: £22.00/hr
+                    - generic [ref=e213]:
+                      - generic [ref=e214]:
+                        - paragraph [ref=e215]: Staff Cost
+                        - paragraph [ref=e216]: £62.00
+                      - generic [ref=e217]:
+                        - paragraph [ref=e218]: Client Charge
+                        - paragraph [ref=e219]: £88.00
+                      - generic [ref=e220]:
+                        - paragraph [ref=e221]:
+                          - img [ref=e222]
+                          - text: Margin (29.5%)
+                        - paragraph [ref=e225]: £26.00
+                  - generic [ref=e226]:
+                    - paragraph [ref=e227]:
+                      - strong [ref=e228]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e229]: "Reason:"
+                  - paragraph [ref=e230]: Marketplace - evening shift
+                - generic [ref=e231]:
+                  - generic [ref=e232]: ⏳ Awaiting Confirmation
+                  - button "Edit Shift" [ref=e233] [cursor=pointer]
+            - generic [ref=e235]:
+              - generic [ref=e238]: open
+              - generic [ref=e239]:
+                - generic [ref=e240]:
+                  - generic [ref=e241]:
+                    - generic [ref=e242]: healthcare assistant
+                    - generic [ref=e243]: 💰 Rate Override
+                  - generic [ref=e244]:
+                    - generic [ref=e245]:
+                      - img [ref=e246]
+                      - generic [ref=e249]: Divine Care Center
+                    - generic [ref=e250]:
+                      - img [ref=e251]
+                      - generic [ref=e253]: Mon, Nov 24, 2025
+                    - generic [ref=e254]:
+                      - img [ref=e255]
+                      - generic [ref=e258]: 2025-11-24T08:00:00+00:00 - 2025-11-24T20:00:00+00:00 (12h)
+                  - generic [ref=e260]:
+                    - generic [ref=e261]:
+                      - generic [ref=e262]:
+                        - img [ref=e263]
+                        - heading "Rate Breakdown" [level=4] [ref=e265]
+                      - generic [ref=e266]: Standard Rate
+                    - generic [ref=e267]:
+                      - generic [ref=e268]:
+                        - paragraph [ref=e269]: Staff Pay Rate
+                        - paragraph [ref=e270]: £14.00/hr
+                      - generic [ref=e271]:
+                        - paragraph [ref=e272]: Client Charge Rate
+                        - paragraph [ref=e273]: £16.00/hr
+                    - generic [ref=e275]:
+                      - generic [ref=e276]:
+                        - paragraph [ref=e277]: Staff Cost
+                        - paragraph [ref=e278]: £168.00
+                      - generic [ref=e279]:
+                        - paragraph [ref=e280]: Client Charge
+                        - paragraph [ref=e281]: £192.00
+                      - generic [ref=e282]:
+                        - paragraph [ref=e283]:
+                          - img [ref=e284]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e287]: £24.00
+                  - generic [ref=e288]:
+                    - paragraph [ref=e289]:
+                      - strong [ref=e290]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e291]: "Reason:"
+                  - generic [ref=e292]:
+                    - switch [ref=e293] [cursor=pointer]
+                    - generic [ref=e294] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e295]:
+                  - button "Assign Staff" [ref=e296] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e297] [cursor=pointer]
+            - generic [ref=e299]:
+              - generic [ref=e302]: confirmed
+              - generic [ref=e303]:
+                - generic [ref=e304]:
+                  - generic [ref=e305]:
+                    - generic [ref=e306]: healthcare assistant
+                    - generic [ref=e307]: 💰 Rate Override
+                  - generic [ref=e308]:
+                    - generic [ref=e309]:
+                      - img [ref=e310]
+                      - generic [ref=e313]: Divine Care Center
+                    - generic [ref=e314]:
+                      - img [ref=e315]
+                      - generic [ref=e317]: Mon, Nov 24, 2025
+                    - generic [ref=e318]:
+                      - img [ref=e319]
+                      - generic [ref=e322]: 2025-11-24T08:00:00+00:00 - 2025-11-24T20:00:00+00:00 (12h)
+                  - generic [ref=e323]: ✓ Assigned to Liam Osei
+                  - generic [ref=e325]:
+                    - generic [ref=e326]:
+                      - generic [ref=e327]:
+                        - img [ref=e328]
+                        - heading "Rate Breakdown" [level=4] [ref=e330]
+                      - generic [ref=e331]: Standard Rate
+                    - generic [ref=e332]:
+                      - generic [ref=e333]:
+                        - paragraph [ref=e334]: Staff Pay Rate
+                        - paragraph [ref=e335]: £14.00/hr
+                      - generic [ref=e336]:
+                        - paragraph [ref=e337]: Client Charge Rate
+                        - paragraph [ref=e338]: £16.00/hr
+                    - generic [ref=e340]:
+                      - generic [ref=e341]:
+                        - paragraph [ref=e342]: Staff Cost
+                        - paragraph [ref=e343]: £168.00
+                      - generic [ref=e344]:
+                        - paragraph [ref=e345]: Client Charge
+                        - paragraph [ref=e346]: £192.00
+                      - generic [ref=e347]:
+                        - paragraph [ref=e348]:
+                          - img [ref=e349]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e352]: £24.00
+                  - generic [ref=e353]:
+                    - paragraph [ref=e354]:
+                      - strong [ref=e355]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e356]: "Reason:"
+                - button "Edit Shift" [ref=e358] [cursor=pointer]
+            - generic [ref=e360]:
+              - generic [ref=e363]: assigned
+              - generic [ref=e364]:
+                - generic [ref=e365]:
+                  - generic [ref=e366]:
+                    - generic [ref=e367]: healthcare assistant
+                    - generic [ref=e368]: 💰 Rate Override
+                  - generic [ref=e369]:
+                    - generic [ref=e370]:
+                      - img [ref=e371]
+                      - generic [ref=e374]: Divine Care Center
+                    - generic [ref=e375]:
+                      - img [ref=e376]
+                      - generic [ref=e378]: Mon, Nov 24, 2025
+                    - generic [ref=e379]:
+                      - img [ref=e380]
+                      - generic [ref=e383]: 2025-11-24T08:00:00+00:00 - 2025-11-24T20:00:00+00:00 (12h)
+                  - generic [ref=e384]: ✓ Assigned to Chadaira Basera
+                  - generic [ref=e386]:
+                    - generic [ref=e387]:
+                      - generic [ref=e388]:
+                        - img [ref=e389]
+                        - heading "Rate Breakdown" [level=4] [ref=e391]
+                      - generic [ref=e392]: Standard Rate
+                    - generic [ref=e393]:
+                      - generic [ref=e394]:
+                        - paragraph [ref=e395]: Staff Pay Rate
+                        - paragraph [ref=e396]: £14.00/hr
+                      - generic [ref=e397]:
+                        - paragraph [ref=e398]: Client Charge Rate
+                        - paragraph [ref=e399]: £16.00/hr
+                    - generic [ref=e401]:
+                      - generic [ref=e402]:
+                        - paragraph [ref=e403]: Staff Cost
+                        - paragraph [ref=e404]: £168.00
+                      - generic [ref=e405]:
+                        - paragraph [ref=e406]: Client Charge
+                        - paragraph [ref=e407]: £192.00
+                      - generic [ref=e408]:
+                        - paragraph [ref=e409]:
+                          - img [ref=e410]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e413]: £24.00
+                  - generic [ref=e414]:
+                    - paragraph [ref=e415]:
+                      - strong [ref=e416]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e417]: "Reason:"
+                - generic [ref=e418]:
+                  - generic [ref=e419]: ⏳ Awaiting Confirmation
+                  - button "Edit Shift" [ref=e420] [cursor=pointer]
+            - generic [ref=e422]:
+              - generic [ref=e425]: open
+              - generic [ref=e426]:
+                - generic [ref=e427]:
+                  - generic [ref=e428]:
+                    - generic [ref=e429]: healthcare assistant
+                    - generic [ref=e430]: 💰 Rate Override
+                  - generic [ref=e431]:
+                    - generic [ref=e432]:
+                      - img [ref=e433]
+                      - generic [ref=e436]: Divine Care Center
+                    - generic [ref=e437]:
+                      - img [ref=e438]
+                      - generic [ref=e440]: Sun, Nov 23, 2025
+                    - generic [ref=e441]:
+                      - img [ref=e442]
+                      - generic [ref=e445]: 2025-11-23T08:00:00+00:00 - 2025-11-23T20:00:00+00:00 (12h)
+                  - generic [ref=e447]:
+                    - generic [ref=e448]:
+                      - generic [ref=e449]:
+                        - img [ref=e450]
+                        - heading "Rate Breakdown" [level=4] [ref=e452]
+                      - generic [ref=e453]: Standard Rate
+                    - generic [ref=e454]:
+                      - generic [ref=e455]:
+                        - paragraph [ref=e456]: Staff Pay Rate
+                        - paragraph [ref=e457]: £14.00/hr
+                      - generic [ref=e458]:
+                        - paragraph [ref=e459]: Client Charge Rate
+                        - paragraph [ref=e460]: £16.00/hr
+                    - generic [ref=e462]:
+                      - generic [ref=e463]:
+                        - paragraph [ref=e464]: Staff Cost
+                        - paragraph [ref=e465]: £168.00
+                      - generic [ref=e466]:
+                        - paragraph [ref=e467]: Client Charge
+                        - paragraph [ref=e468]: £192.00
+                      - generic [ref=e469]:
+                        - paragraph [ref=e470]:
+                          - img [ref=e471]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e474]: £24.00
+                  - generic [ref=e475]:
+                    - paragraph [ref=e476]:
+                      - strong [ref=e477]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e478]: "Reason:"
+                  - generic [ref=e479]:
+                    - switch [ref=e480] [cursor=pointer]
+                    - generic [ref=e481] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e482]:
+                  - button "Assign Staff" [ref=e483] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e484] [cursor=pointer]
+            - generic [ref=e486]:
+              - generic [ref=e489]: confirmed
+              - generic [ref=e490]:
+                - generic [ref=e491]:
+                  - generic [ref=e492]:
+                    - generic [ref=e493]: healthcare assistant
+                    - generic [ref=e494]: 💰 Rate Override
+                  - generic [ref=e495]:
+                    - generic [ref=e496]:
+                      - img [ref=e497]
+                      - generic [ref=e500]: Divine Care Center
+                    - generic [ref=e501]:
+                      - img [ref=e502]
+                      - generic [ref=e504]: Sun, Nov 23, 2025
+                    - generic [ref=e505]:
+                      - img [ref=e506]
+                      - generic [ref=e509]: 2025-11-23T08:00:00+00:00 - 2025-11-23T20:00:00+00:00 (12h)
+                  - generic [ref=e510]: ✓ Assigned to Liam Osei
+                  - generic [ref=e512]:
+                    - generic [ref=e513]:
+                      - generic [ref=e514]:
+                        - img [ref=e515]
+                        - heading "Rate Breakdown" [level=4] [ref=e517]
+                      - generic [ref=e518]: Standard Rate
+                    - generic [ref=e519]:
+                      - generic [ref=e520]:
+                        - paragraph [ref=e521]: Staff Pay Rate
+                        - paragraph [ref=e522]: £14.00/hr
+                      - generic [ref=e523]:
+                        - paragraph [ref=e524]: Client Charge Rate
+                        - paragraph [ref=e525]: £16.00/hr
+                    - generic [ref=e527]:
+                      - generic [ref=e528]:
+                        - paragraph [ref=e529]: Staff Cost
+                        - paragraph [ref=e530]: £168.00
+                      - generic [ref=e531]:
+                        - paragraph [ref=e532]: Client Charge
+                        - paragraph [ref=e533]: £192.00
+                      - generic [ref=e534]:
+                        - paragraph [ref=e535]:
+                          - img [ref=e536]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e539]: £24.00
+                  - generic [ref=e540]:
+                    - paragraph [ref=e541]:
+                      - strong [ref=e542]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e543]: "Reason:"
+                - button "Edit Shift" [ref=e545] [cursor=pointer]
+            - generic [ref=e547]:
+              - generic [ref=e550]: open
+              - generic [ref=e551]:
+                - generic [ref=e552]:
+                  - generic [ref=e553]:
+                    - generic [ref=e554]: healthcare assistant
+                    - generic [ref=e555]: 💰 Rate Override
+                  - generic [ref=e556]:
+                    - generic [ref=e557]:
+                      - img [ref=e558]
+                      - generic [ref=e561]: Divine Care Center
+                    - generic [ref=e562]:
+                      - img [ref=e563]
+                      - generic [ref=e565]: Sun, Nov 23, 2025
+                    - generic [ref=e566]:
+                      - img [ref=e567]
+                      - generic [ref=e570]: 2025-11-23T08:00:00+00:00 - 2025-11-23T20:00:00+00:00 (12h)
+                  - generic [ref=e572]:
+                    - generic [ref=e573]:
+                      - generic [ref=e574]:
+                        - img [ref=e575]
+                        - heading "Rate Breakdown" [level=4] [ref=e577]
+                      - generic [ref=e578]: Standard Rate
+                    - generic [ref=e579]:
+                      - generic [ref=e580]:
+                        - paragraph [ref=e581]: Staff Pay Rate
+                        - paragraph [ref=e582]: £14.00/hr
+                      - generic [ref=e583]:
+                        - paragraph [ref=e584]: Client Charge Rate
+                        - paragraph [ref=e585]: £16.00/hr
+                    - generic [ref=e587]:
+                      - generic [ref=e588]:
+                        - paragraph [ref=e589]: Staff Cost
+                        - paragraph [ref=e590]: £168.00
+                      - generic [ref=e591]:
+                        - paragraph [ref=e592]: Client Charge
+                        - paragraph [ref=e593]: £192.00
+                      - generic [ref=e594]:
+                        - paragraph [ref=e595]:
+                          - img [ref=e596]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e599]: £24.00
+                  - generic [ref=e600]:
+                    - paragraph [ref=e601]:
+                      - strong [ref=e602]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e603]: "Reason:"
+                  - generic [ref=e604]:
+                    - switch [ref=e605] [cursor=pointer]
+                    - generic [ref=e606] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e607]:
+                  - button "Assign Staff" [ref=e608] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e609] [cursor=pointer]
+            - generic [ref=e611]:
+              - generic [ref=e614]: open
+              - generic [ref=e615]:
+                - generic [ref=e616]:
+                  - generic [ref=e617]:
+                    - generic [ref=e618]: healthcare assistant
+                    - generic [ref=e619]: 📢 In Marketplace
+                    - generic [ref=e620]: 💰 Rate Override
+                  - generic [ref=e621]:
+                    - generic [ref=e622]:
+                      - img [ref=e623]
+                      - generic [ref=e626]: Divine Care Center
+                    - generic [ref=e627]:
+                      - img [ref=e628]
+                      - generic [ref=e630]: Sun, Nov 23, 2025
+                    - generic [ref=e631]:
+                      - img [ref=e632]
+                      - generic [ref=e635]: 2025-11-23T07:00:00+00:00 - 2025-11-23T15:00:00+00:00 (8h)
+                  - generic [ref=e637]:
+                    - generic [ref=e638]:
+                      - generic [ref=e639]:
+                        - img [ref=e640]
+                        - heading "Rate Breakdown" [level=4] [ref=e642]
+                      - generic [ref=e643]: Standard Rate
+                    - generic [ref=e644]:
+                      - generic [ref=e645]:
+                        - paragraph [ref=e646]: Staff Pay Rate
+                        - paragraph [ref=e647]: £15.50/hr
+                      - generic [ref=e648]:
+                        - paragraph [ref=e649]: Client Charge Rate
+                        - paragraph [ref=e650]: £22.00/hr
+                    - generic [ref=e652]:
+                      - generic [ref=e653]:
+                        - paragraph [ref=e654]: Staff Cost
+                        - paragraph [ref=e655]: £124.00
+                      - generic [ref=e656]:
+                        - paragraph [ref=e657]: Client Charge
+                        - paragraph [ref=e658]: £176.00
+                      - generic [ref=e659]:
+                        - paragraph [ref=e660]:
+                          - img [ref=e661]
+                          - text: Margin (29.5%)
+                        - paragraph [ref=e664]: £52.00
+                  - generic [ref=e665]:
+                    - paragraph [ref=e666]:
+                      - strong [ref=e667]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e668]: "Reason:"
+                  - paragraph [ref=e669]: Marketplace - early morning shift
+                  - generic [ref=e670]:
+                    - switch [checked] [ref=e671] [cursor=pointer]
+                    - generic [ref=e672] [cursor=pointer]: 📢 Visible in Marketplace
+                - generic [ref=e673]:
+                  - button "Assign Staff" [ref=e674] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e675] [cursor=pointer]
+            - generic [ref=e677]:
+              - generic [ref=e680]: assigned
+              - generic [ref=e681]:
+                - generic [ref=e682]:
+                  - generic [ref=e683]:
+                    - generic [ref=e684]: healthcare assistant
+                    - generic [ref=e685]: 💰 Rate Override
+                  - generic [ref=e686]:
+                    - generic [ref=e687]:
+                      - img [ref=e688]
+                      - generic [ref=e691]: Divine Care Center
+                    - generic [ref=e692]:
+                      - img [ref=e693]
+                      - generic [ref=e695]: Sun, Nov 23, 2025
+                    - generic [ref=e696]:
+                      - img [ref=e697]
+                      - generic [ref=e700]: 2025-11-23T08:00:00+00:00 - 2025-11-23T20:00:00+00:00 (12h)
+                  - generic [ref=e701]: ✓ Assigned to Chadaira Basera
+                  - generic [ref=e703]:
+                    - generic [ref=e704]:
+                      - generic [ref=e705]:
+                        - img [ref=e706]
+                        - heading "Rate Breakdown" [level=4] [ref=e708]
+                      - generic [ref=e709]: Standard Rate
+                    - generic [ref=e710]:
+                      - generic [ref=e711]:
+                        - paragraph [ref=e712]: Staff Pay Rate
+                        - paragraph [ref=e713]: £14.00/hr
+                      - generic [ref=e714]:
+                        - paragraph [ref=e715]: Client Charge Rate
+                        - paragraph [ref=e716]: £16.00/hr
+                    - generic [ref=e718]:
+                      - generic [ref=e719]:
+                        - paragraph [ref=e720]: Staff Cost
+                        - paragraph [ref=e721]: £168.00
+                      - generic [ref=e722]:
+                        - paragraph [ref=e723]: Client Charge
+                        - paragraph [ref=e724]: £192.00
+                      - generic [ref=e725]:
+                        - paragraph [ref=e726]:
+                          - img [ref=e727]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e730]: £24.00
+                  - generic [ref=e731]:
+                    - paragraph [ref=e732]:
+                      - strong [ref=e733]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e734]: "Reason:"
+                - generic [ref=e735]:
+                  - generic [ref=e736]: ⏳ Awaiting Confirmation
+                  - button "Edit Shift" [ref=e737] [cursor=pointer]
+            - generic [ref=e739]:
+              - generic [ref=e742]: open
+              - generic [ref=e743]:
+                - generic [ref=e744]:
+                  - generic [ref=e745]:
+                    - generic [ref=e746]: healthcare assistant
+                    - generic [ref=e747]: 💰 Rate Override
+                  - generic [ref=e748]:
+                    - generic [ref=e749]:
+                      - img [ref=e750]
+                      - generic [ref=e753]: Divine Care Center
+                    - generic [ref=e754]:
+                      - img [ref=e755]
+                      - generic [ref=e757]: Fri, Nov 21, 2025
+                    - generic [ref=e758]:
+                      - img [ref=e759]
+                      - generic [ref=e762]: 2025-11-21T08:00:00+00:00 - 2025-11-21T20:00:00+00:00 (12h)
+                  - generic [ref=e764]:
+                    - generic [ref=e765]:
+                      - generic [ref=e766]:
+                        - img [ref=e767]
+                        - heading "Rate Breakdown" [level=4] [ref=e769]
+                      - generic [ref=e770]: Standard Rate
+                    - generic [ref=e771]:
+                      - generic [ref=e772]:
+                        - paragraph [ref=e773]: Staff Pay Rate
+                        - paragraph [ref=e774]: £14.00/hr
+                      - generic [ref=e775]:
+                        - paragraph [ref=e776]: Client Charge Rate
+                        - paragraph [ref=e777]: £16.00/hr
+                    - generic [ref=e779]:
+                      - generic [ref=e780]:
+                        - paragraph [ref=e781]: Staff Cost
+                        - paragraph [ref=e782]: £168.00
+                      - generic [ref=e783]:
+                        - paragraph [ref=e784]: Client Charge
+                        - paragraph [ref=e785]: £192.00
+                      - generic [ref=e786]:
+                        - paragraph [ref=e787]:
+                          - img [ref=e788]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e791]: £24.00
+                  - generic [ref=e792]:
+                    - paragraph [ref=e793]:
+                      - strong [ref=e794]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e795]: "Reason:"
+                  - generic [ref=e796]:
+                    - switch [ref=e797] [cursor=pointer]
+                    - generic [ref=e798] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e799]:
+                  - button "Assign Staff" [ref=e800] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e801] [cursor=pointer]
+            - generic [ref=e803]:
+              - generic [ref=e806]: open
+              - generic [ref=e807]:
+                - generic [ref=e808]:
+                  - generic [ref=e809]:
+                    - generic [ref=e810]: healthcare assistant
+                    - generic [ref=e811]: 💰 Rate Override
+                  - generic [ref=e812]:
+                    - generic [ref=e813]:
+                      - img [ref=e814]
+                      - generic [ref=e817]: Divine Care Center
+                    - generic [ref=e818]:
+                      - img [ref=e819]
+                      - generic [ref=e821]: Fri, Nov 21, 2025
+                    - generic [ref=e822]:
+                      - img [ref=e823]
+                      - generic [ref=e826]: 2025-11-21T08:00:00+00:00 - 2025-11-21T20:00:00+00:00 (12h)
+                  - generic [ref=e828]:
+                    - generic [ref=e829]:
+                      - generic [ref=e830]:
+                        - img [ref=e831]
+                        - heading "Rate Breakdown" [level=4] [ref=e833]
+                      - generic [ref=e834]: Standard Rate
+                    - generic [ref=e835]:
+                      - generic [ref=e836]:
+                        - paragraph [ref=e837]: Staff Pay Rate
+                        - paragraph [ref=e838]: £14.00/hr
+                      - generic [ref=e839]:
+                        - paragraph [ref=e840]: Client Charge Rate
+                        - paragraph [ref=e841]: £16.00/hr
+                    - generic [ref=e843]:
+                      - generic [ref=e844]:
+                        - paragraph [ref=e845]: Staff Cost
+                        - paragraph [ref=e846]: £168.00
+                      - generic [ref=e847]:
+                        - paragraph [ref=e848]: Client Charge
+                        - paragraph [ref=e849]: £192.00
+                      - generic [ref=e850]:
+                        - paragraph [ref=e851]:
+                          - img [ref=e852]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e855]: £24.00
+                  - generic [ref=e856]:
+                    - paragraph [ref=e857]:
+                      - strong [ref=e858]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e859]: "Reason:"
+                  - generic [ref=e860]:
+                    - switch [ref=e861] [cursor=pointer]
+                    - generic [ref=e862] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e863]:
+                  - button "Assign Staff" [ref=e864] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e865] [cursor=pointer]
+            - generic [ref=e867]:
+              - generic [ref=e870]: open
+              - generic [ref=e871]:
+                - generic [ref=e872]:
+                  - generic [ref=e873]:
+                    - generic [ref=e874]: healthcare assistant
+                    - generic [ref=e875]: 💰 Rate Override
+                  - generic [ref=e876]:
+                    - generic [ref=e877]:
+                      - img [ref=e878]
+                      - generic [ref=e881]: Divine Care Center
+                    - generic [ref=e882]:
+                      - img [ref=e883]
+                      - generic [ref=e885]: Fri, Nov 21, 2025
+                    - generic [ref=e886]:
+                      - img [ref=e887]
+                      - generic [ref=e890]: 2025-11-21T08:00:00+00:00 - 2025-11-21T20:00:00+00:00 (12h)
+                  - generic [ref=e892]:
+                    - generic [ref=e893]:
+                      - generic [ref=e894]:
+                        - img [ref=e895]
+                        - heading "Rate Breakdown" [level=4] [ref=e897]
+                      - generic [ref=e898]: Standard Rate
+                    - generic [ref=e899]:
+                      - generic [ref=e900]:
+                        - paragraph [ref=e901]: Staff Pay Rate
+                        - paragraph [ref=e902]: £14.00/hr
+                      - generic [ref=e903]:
+                        - paragraph [ref=e904]: Client Charge Rate
+                        - paragraph [ref=e905]: £16.00/hr
+                    - generic [ref=e907]:
+                      - generic [ref=e908]:
+                        - paragraph [ref=e909]: Staff Cost
+                        - paragraph [ref=e910]: £168.00
+                      - generic [ref=e911]:
+                        - paragraph [ref=e912]: Client Charge
+                        - paragraph [ref=e913]: £192.00
+                      - generic [ref=e914]:
+                        - paragraph [ref=e915]:
+                          - img [ref=e916]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e919]: £24.00
+                  - generic [ref=e920]:
+                    - paragraph [ref=e921]:
+                      - strong [ref=e922]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e923]: "Reason:"
+                  - generic [ref=e924]:
+                    - switch [ref=e925] [cursor=pointer]
+                    - generic [ref=e926] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e927]:
+                  - button "Assign Staff" [ref=e928] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e929] [cursor=pointer]
+            - generic [ref=e931]:
+              - generic [ref=e934]: confirmed
+              - generic [ref=e935]:
+                - generic [ref=e936]:
+                  - generic [ref=e937]:
+                    - generic [ref=e938]: healthcare assistant
+                    - generic [ref=e939]: 📢 In Marketplace
+                    - generic [ref=e940]: 💰 Rate Override
+                  - generic [ref=e941]:
+                    - generic [ref=e942]:
+                      - img [ref=e943]
+                      - generic [ref=e946]: Divine Care Center
+                    - generic [ref=e947]:
+                      - img [ref=e948]
+                      - generic [ref=e950]: Thu, Nov 20, 2025
+                    - generic [ref=e951]:
+                      - img [ref=e952]
+                      - generic [ref=e955]: 2025-11-20T09:00:00+00:00 - 2025-11-20T17:00:00+00:00 (8h)
+                  - generic [ref=e956]: ✓ Assigned to Chadaira Basera
+                  - generic [ref=e958]:
+                    - generic [ref=e959]:
+                      - generic [ref=e960]:
+                        - img [ref=e961]
+                        - heading "Rate Breakdown" [level=4] [ref=e963]
+                      - generic [ref=e964]: Standard Rate
+                    - generic [ref=e965]:
+                      - generic [ref=e966]:
+                        - paragraph [ref=e967]: Staff Pay Rate
+                        - paragraph [ref=e968]: £15.50/hr
+                      - generic [ref=e969]:
+                        - paragraph [ref=e970]: Client Charge Rate
+                        - paragraph [ref=e971]: £22.00/hr
+                    - generic [ref=e973]:
+                      - generic [ref=e974]:
+                        - paragraph [ref=e975]: Staff Cost
+                        - paragraph [ref=e976]: £124.00
+                      - generic [ref=e977]:
+                        - paragraph [ref=e978]: Client Charge
+                        - paragraph [ref=e979]: £176.00
+                      - generic [ref=e980]:
+                        - paragraph [ref=e981]:
+                          - img [ref=e982]
+                          - text: Margin (29.5%)
+                        - paragraph [ref=e985]: £52.00
+                  - generic [ref=e986]:
+                    - paragraph [ref=e987]:
+                      - strong [ref=e988]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e989]: "Reason:"
+                  - paragraph [ref=e990]: Marketplace - available shift
+                - button "Edit Shift" [ref=e992] [cursor=pointer]
+            - generic [ref=e994]:
+              - generic [ref=e997]: open
+              - generic [ref=e998]:
+                - generic [ref=e999]:
+                  - generic [ref=e1000]:
+                    - generic [ref=e1001]: healthcare assistant
+                    - generic [ref=e1002]: 💰 Rate Override
+                  - generic [ref=e1003]:
+                    - generic [ref=e1004]:
+                      - img [ref=e1005]
+                      - generic [ref=e1008]: Divine Care Center
+                    - generic [ref=e1009]:
+                      - img [ref=e1010]
+                      - generic [ref=e1012]: Wed, Nov 19, 2025
+                    - generic [ref=e1013]:
+                      - img [ref=e1014]
+                      - generic [ref=e1017]: 2025-11-19T08:00:00+00:00 - 2025-11-19T20:00:00+00:00 (12h)
+                  - generic [ref=e1019]:
+                    - generic [ref=e1020]:
+                      - generic [ref=e1021]:
+                        - img [ref=e1022]
+                        - heading "Rate Breakdown" [level=4] [ref=e1024]
+                      - generic [ref=e1025]: Standard Rate
+                    - generic [ref=e1026]:
+                      - generic [ref=e1027]:
+                        - paragraph [ref=e1028]: Staff Pay Rate
+                        - paragraph [ref=e1029]: £14.00/hr
+                      - generic [ref=e1030]:
+                        - paragraph [ref=e1031]: Client Charge Rate
+                        - paragraph [ref=e1032]: £16.00/hr
+                    - generic [ref=e1034]:
+                      - generic [ref=e1035]:
+                        - paragraph [ref=e1036]: Staff Cost
+                        - paragraph [ref=e1037]: £168.00
+                      - generic [ref=e1038]:
+                        - paragraph [ref=e1039]: Client Charge
+                        - paragraph [ref=e1040]: £192.00
+                      - generic [ref=e1041]:
+                        - paragraph [ref=e1042]:
+                          - img [ref=e1043]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e1046]: £24.00
+                  - generic [ref=e1047]:
+                    - paragraph [ref=e1048]:
+                      - strong [ref=e1049]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e1050]: "Reason:"
+                  - generic [ref=e1051]:
+                    - switch [ref=e1052] [cursor=pointer]
+                    - generic [ref=e1053] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e1054]:
+                  - button "Assign Staff" [ref=e1055] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e1056] [cursor=pointer]
+            - generic [ref=e1058]:
+              - generic [ref=e1061]: open
+              - generic [ref=e1062]:
+                - generic [ref=e1063]:
+                  - generic [ref=e1064]:
+                    - generic [ref=e1065]: healthcare assistant
+                    - generic [ref=e1066]: 💰 Rate Override
+                  - generic [ref=e1067]:
+                    - generic [ref=e1068]:
+                      - img [ref=e1069]
+                      - generic [ref=e1072]: Divine Care Center
+                    - generic [ref=e1073]:
+                      - img [ref=e1074]
+                      - generic [ref=e1076]: Wed, Nov 19, 2025
+                    - generic [ref=e1077]:
+                      - img [ref=e1078]
+                      - generic [ref=e1081]: 2025-11-19T08:00:00+00:00 - 2025-11-19T20:00:00+00:00 (12h)
+                  - generic [ref=e1083]:
+                    - generic [ref=e1084]:
+                      - generic [ref=e1085]:
+                        - img [ref=e1086]
+                        - heading "Rate Breakdown" [level=4] [ref=e1088]
+                      - generic [ref=e1089]: Standard Rate
+                    - generic [ref=e1090]:
+                      - generic [ref=e1091]:
+                        - paragraph [ref=e1092]: Staff Pay Rate
+                        - paragraph [ref=e1093]: £14.00/hr
+                      - generic [ref=e1094]:
+                        - paragraph [ref=e1095]: Client Charge Rate
+                        - paragraph [ref=e1096]: £16.00/hr
+                    - generic [ref=e1098]:
+                      - generic [ref=e1099]:
+                        - paragraph [ref=e1100]: Staff Cost
+                        - paragraph [ref=e1101]: £168.00
+                      - generic [ref=e1102]:
+                        - paragraph [ref=e1103]: Client Charge
+                        - paragraph [ref=e1104]: £192.00
+                      - generic [ref=e1105]:
+                        - paragraph [ref=e1106]:
+                          - img [ref=e1107]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e1110]: £24.00
+                  - generic [ref=e1111]:
+                    - paragraph [ref=e1112]:
+                      - strong [ref=e1113]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e1114]: "Reason:"
+                  - generic [ref=e1115]:
+                    - switch [ref=e1116] [cursor=pointer]
+                    - generic [ref=e1117] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e1118]:
+                  - button "Assign Staff" [ref=e1119] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e1120] [cursor=pointer]
+            - generic [ref=e1122]:
+              - generic [ref=e1124]:
+                - generic [ref=e1125]: open
+                - generic [ref=e1126]:
+                  - img [ref=e1127]
+                  - text: URGENT
+              - generic [ref=e1129]:
+                - generic [ref=e1130]:
+                  - generic [ref=e1131]:
+                    - generic [ref=e1132]: healthcare assistant
+                    - generic [ref=e1133]: 📢 In Marketplace
+                    - generic [ref=e1134]: 💰 Rate Override
+                  - generic [ref=e1135]:
+                    - generic [ref=e1136]:
+                      - img [ref=e1137]
+                      - generic [ref=e1140]: Divine Care Center
+                    - generic [ref=e1141]:
+                      - img [ref=e1142]
+                      - generic [ref=e1144]: Wed, Nov 19, 2025
+                    - generic [ref=e1145]:
+                      - img [ref=e1146]
+                      - generic [ref=e1149]: 2025-11-19T09:00:00+00:00 - 2025-11-19T17:00:00+00:00 (8h)
+                  - generic [ref=e1151]:
+                    - generic [ref=e1152]:
+                      - generic [ref=e1153]:
+                        - img [ref=e1154]
+                        - heading "Rate Breakdown" [level=4] [ref=e1156]
+                      - generic [ref=e1157]: Standard Rate
+                    - generic [ref=e1158]:
+                      - generic [ref=e1159]:
+                        - paragraph [ref=e1160]: Staff Pay Rate
+                        - paragraph [ref=e1161]: £16.00/hr
+                      - generic [ref=e1162]:
+                        - paragraph [ref=e1163]: Client Charge Rate
+                        - paragraph [ref=e1164]: £24.00/hr
+                    - generic [ref=e1166]:
+                      - generic [ref=e1167]:
+                        - paragraph [ref=e1168]: Staff Cost
+                        - paragraph [ref=e1169]: £128.00
+                      - generic [ref=e1170]:
+                        - paragraph [ref=e1171]: Client Charge
+                        - paragraph [ref=e1172]: £192.00
+                      - generic [ref=e1173]:
+                        - paragraph [ref=e1174]:
+                          - img [ref=e1175]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e1178]: £64.00
+                  - generic [ref=e1179]:
+                    - paragraph [ref=e1180]:
+                      - strong [ref=e1181]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e1182]: "Reason:"
+                  - paragraph [ref=e1183]: FILTERING TEST - HCA Marketplace Visible (SHOULD BE VISIBLE - Admin Approved)
+                  - generic [ref=e1184]:
+                    - switch [checked] [ref=e1185] [cursor=pointer]
+                    - generic [ref=e1186] [cursor=pointer]: 📢 Visible in Marketplace
+                - generic [ref=e1187]:
+                  - button "Assign Staff" [ref=e1188] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Broadcast Alert" [ref=e1189] [cursor=pointer]:
+                    - img
+                    - text: Broadcast Alert
+                  - button "Edit Shift" [ref=e1190] [cursor=pointer]
+            - generic [ref=e1192]:
+              - generic [ref=e1195]: open
+              - generic [ref=e1196]:
+                - generic [ref=e1197]:
+                  - generic [ref=e1198]:
+                    - generic [ref=e1199]: healthcare assistant
+                    - generic [ref=e1200]: 💰 Rate Override
+                  - generic [ref=e1201]:
+                    - generic [ref=e1202]:
+                      - img [ref=e1203]
+                      - generic [ref=e1206]: Divine Care Center
+                    - generic [ref=e1207]:
+                      - img [ref=e1208]
+                      - generic [ref=e1210]: Wed, Nov 19, 2025
+                    - generic [ref=e1211]:
+                      - img [ref=e1212]
+                      - generic [ref=e1215]: 2025-11-19T08:00:00+00:00 - 2025-11-19T20:00:00+00:00 (12h)
+                  - generic [ref=e1217]:
+                    - generic [ref=e1218]:
+                      - generic [ref=e1219]:
+                        - img [ref=e1220]
+                        - heading "Rate Breakdown" [level=4] [ref=e1222]
+                      - generic [ref=e1223]: Standard Rate
+                    - generic [ref=e1224]:
+                      - generic [ref=e1225]:
+                        - paragraph [ref=e1226]: Staff Pay Rate
+                        - paragraph [ref=e1227]: £14.00/hr
+                      - generic [ref=e1228]:
+                        - paragraph [ref=e1229]: Client Charge Rate
+                        - paragraph [ref=e1230]: £16.00/hr
+                    - generic [ref=e1232]:
+                      - generic [ref=e1233]:
+                        - paragraph [ref=e1234]: Staff Cost
+                        - paragraph [ref=e1235]: £168.00
+                      - generic [ref=e1236]:
+                        - paragraph [ref=e1237]: Client Charge
+                        - paragraph [ref=e1238]: £192.00
+                      - generic [ref=e1239]:
+                        - paragraph [ref=e1240]:
+                          - img [ref=e1241]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e1244]: £24.00
+                  - generic [ref=e1245]:
+                    - paragraph [ref=e1246]:
+                      - strong [ref=e1247]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e1248]: "Reason:"
+                  - generic [ref=e1249]:
+                    - switch [ref=e1250] [cursor=pointer]
+                    - generic [ref=e1251] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e1252]:
+                  - button "Assign Staff" [ref=e1253] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e1254] [cursor=pointer]
+            - generic [ref=e1256]:
+              - generic [ref=e1259]: open
+              - generic [ref=e1260]:
+                - generic [ref=e1261]:
+                  - generic [ref=e1262]:
+                    - generic [ref=e1263]: healthcare assistant
+                    - generic [ref=e1264]: 💰 Rate Override
+                  - generic [ref=e1265]:
+                    - generic [ref=e1266]:
+                      - img [ref=e1267]
+                      - generic [ref=e1270]: Divine Care Center
+                    - generic [ref=e1271]:
+                      - img [ref=e1272]
+                      - generic [ref=e1274]: Wed, Nov 19, 2025
+                    - generic [ref=e1275]:
+                      - img [ref=e1276]
+                      - generic [ref=e1279]: 2025-11-19T08:00:00+00:00 - 2025-11-19T20:00:00+00:00 (12h)
+                  - generic [ref=e1281]:
+                    - generic [ref=e1282]:
+                      - generic [ref=e1283]:
+                        - img [ref=e1284]
+                        - heading "Rate Breakdown" [level=4] [ref=e1286]
+                      - generic [ref=e1287]: Standard Rate
+                    - generic [ref=e1288]:
+                      - generic [ref=e1289]:
+                        - paragraph [ref=e1290]: Staff Pay Rate
+                        - paragraph [ref=e1291]: £14.00/hr
+                      - generic [ref=e1292]:
+                        - paragraph [ref=e1293]: Client Charge Rate
+                        - paragraph [ref=e1294]: £16.00/hr
+                    - generic [ref=e1296]:
+                      - generic [ref=e1297]:
+                        - paragraph [ref=e1298]: Staff Cost
+                        - paragraph [ref=e1299]: £168.00
+                      - generic [ref=e1300]:
+                        - paragraph [ref=e1301]: Client Charge
+                        - paragraph [ref=e1302]: £192.00
+                      - generic [ref=e1303]:
+                        - paragraph [ref=e1304]:
+                          - img [ref=e1305]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e1308]: £24.00
+                  - generic [ref=e1309]:
+                    - paragraph [ref=e1310]:
+                      - strong [ref=e1311]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e1312]: "Reason:"
+                  - generic [ref=e1313]:
+                    - switch [ref=e1314] [cursor=pointer]
+                    - generic [ref=e1315] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e1316]:
+                  - button "Assign Staff" [ref=e1317] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e1318] [cursor=pointer]
+            - generic [ref=e1320]:
+              - generic [ref=e1323]: open
+              - generic [ref=e1324]:
+                - generic [ref=e1325]:
+                  - generic [ref=e1326]:
+                    - generic [ref=e1327]: nurse
+                    - generic [ref=e1328]: 💰 Rate Override
+                  - generic [ref=e1329]:
+                    - generic [ref=e1330]:
+                      - img [ref=e1331]
+                      - generic [ref=e1334]: Divine Care Center
+                    - generic [ref=e1335]:
+                      - img [ref=e1336]
+                      - generic [ref=e1338]: Tue, Nov 18, 2025
+                    - generic [ref=e1339]:
+                      - img [ref=e1340]
+                      - generic [ref=e1343]: 2025-11-18T09:00:00+00:00 - 2025-11-18T17:00:00+00:00 (8h)
+                  - generic [ref=e1345]:
+                    - generic [ref=e1346]:
+                      - generic [ref=e1347]:
+                        - img [ref=e1348]
+                        - heading "Rate Breakdown" [level=4] [ref=e1350]
+                      - generic [ref=e1351]: Standard Rate
+                    - generic [ref=e1352]:
+                      - generic [ref=e1353]:
+                        - paragraph [ref=e1354]: Staff Pay Rate
+                        - paragraph [ref=e1355]: £25.00/hr
+                      - generic [ref=e1356]:
+                        - paragraph [ref=e1357]: Client Charge Rate
+                        - paragraph [ref=e1358]: £37.50/hr
+                    - generic [ref=e1360]:
+                      - generic [ref=e1361]:
+                        - paragraph [ref=e1362]: Staff Cost
+                        - paragraph [ref=e1363]: £200.00
+                      - generic [ref=e1364]:
+                        - paragraph [ref=e1365]: Client Charge
+                        - paragraph [ref=e1366]: £300.00
+                      - generic [ref=e1367]:
+                        - paragraph [ref=e1368]:
+                          - img [ref=e1369]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e1372]: £100.00
+                  - generic [ref=e1373]:
+                    - paragraph [ref=e1374]:
+                      - strong [ref=e1375]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e1376]: "Reason:"
+                  - paragraph [ref=e1377]: FILTERING TEST - Nurse Shift (SHOULD NOT BE VISIBLE)
+                  - generic [ref=e1378]:
+                    - switch [ref=e1379] [cursor=pointer]
+                    - generic [ref=e1380] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e1381]:
+                  - button "Assign Staff" [ref=e1382] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e1383] [cursor=pointer]
+            - generic [ref=e1385]:
+              - generic [ref=e1388]: confirmed
+              - generic [ref=e1389]:
+                - generic [ref=e1390]:
+                  - generic [ref=e1391]:
+                    - generic [ref=e1392]: healthcare assistant
+                    - generic [ref=e1393]: 💰 Rate Override
+                  - generic [ref=e1394]:
+                    - generic [ref=e1395]:
+                      - img [ref=e1396]
+                      - generic [ref=e1399]: Divine Care Center
+                    - generic [ref=e1400]:
+                      - img [ref=e1401]
+                      - generic [ref=e1403]: Tue, Nov 18, 2025
+                    - generic [ref=e1404]:
+                      - img [ref=e1405]
+                      - generic [ref=e1408]: 2025-11-18T14:00:00+00:00 - 2025-11-18T22:00:00+00:00 (8h)
+                  - generic [ref=e1409]: ✓ Assigned to Chadaira Basera
+                  - generic [ref=e1411]:
+                    - generic [ref=e1412]:
+                      - generic [ref=e1413]:
+                        - img [ref=e1414]
+                        - heading "Rate Breakdown" [level=4] [ref=e1416]
+                      - generic [ref=e1417]: Standard Rate
+                    - generic [ref=e1418]:
+                      - generic [ref=e1419]:
+                        - paragraph [ref=e1420]: Staff Pay Rate
+                        - paragraph [ref=e1421]: £15.50/hr
+                      - generic [ref=e1422]:
+                        - paragraph [ref=e1423]: Client Charge Rate
+                        - paragraph [ref=e1424]: £22.00/hr
+                    - generic [ref=e1426]:
+                      - generic [ref=e1427]:
+                        - paragraph [ref=e1428]: Staff Cost
+                        - paragraph [ref=e1429]: £124.00
+                      - generic [ref=e1430]:
+                        - paragraph [ref=e1431]: Client Charge
+                        - paragraph [ref=e1432]: £176.00
+                      - generic [ref=e1433]:
+                        - paragraph [ref=e1434]:
+                          - img [ref=e1435]
+                          - text: Margin (29.5%)
+                        - paragraph [ref=e1438]: £52.00
+                  - generic [ref=e1439]:
+                    - paragraph [ref=e1440]:
+                      - strong [ref=e1441]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e1442]: "Reason:"
+                  - paragraph [ref=e1443]: Future confirmed shift
+                - button "Edit Shift" [ref=e1445] [cursor=pointer]
+            - generic [ref=e1447]:
+              - generic [ref=e1450]: open
+              - generic [ref=e1451]:
+                - generic [ref=e1452]:
+                  - generic [ref=e1453]:
+                    - generic [ref=e1454]: healthcare assistant
+                    - generic [ref=e1455]: 💰 Rate Override
+                  - generic [ref=e1456]:
+                    - generic [ref=e1457]:
+                      - img [ref=e1458]
+                      - generic [ref=e1461]: Divine Care Center
+                    - generic [ref=e1462]:
+                      - img [ref=e1463]
+                      - generic [ref=e1465]: Mon, Nov 17, 2025
+                    - generic [ref=e1466]:
+                      - img [ref=e1467]
+                      - generic [ref=e1470]: 2025-11-17T08:00:00+00:00 - 2025-11-17T20:00:00+00:00 (12h)
+                  - generic [ref=e1472]:
+                    - generic [ref=e1473]:
+                      - generic [ref=e1474]:
+                        - img [ref=e1475]
+                        - heading "Rate Breakdown" [level=4] [ref=e1477]
+                      - generic [ref=e1478]: Standard Rate
+                    - generic [ref=e1479]:
+                      - generic [ref=e1480]:
+                        - paragraph [ref=e1481]: Staff Pay Rate
+                        - paragraph [ref=e1482]: £14.00/hr
+                      - generic [ref=e1483]:
+                        - paragraph [ref=e1484]: Client Charge Rate
+                        - paragraph [ref=e1485]: £16.00/hr
+                    - generic [ref=e1487]:
+                      - generic [ref=e1488]:
+                        - paragraph [ref=e1489]: Staff Cost
+                        - paragraph [ref=e1490]: £168.00
+                      - generic [ref=e1491]:
+                        - paragraph [ref=e1492]: Client Charge
+                        - paragraph [ref=e1493]: £192.00
+                      - generic [ref=e1494]:
+                        - paragraph [ref=e1495]:
+                          - img [ref=e1496]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e1499]: £24.00
+                  - generic [ref=e1500]:
+                    - paragraph [ref=e1501]:
+                      - strong [ref=e1502]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e1503]: "Reason:"
+                  - generic [ref=e1504]:
+                    - switch [ref=e1505] [cursor=pointer]
+                    - generic [ref=e1506] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e1507]:
+                  - button "Assign Staff" [ref=e1508] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e1509] [cursor=pointer]
+            - generic [ref=e1511]:
+              - generic [ref=e1514]: open
+              - generic [ref=e1515]:
+                - generic [ref=e1516]:
+                  - generic [ref=e1517]:
+                    - generic [ref=e1518]: senior care_worker
+                    - generic [ref=e1519]: 💰 Rate Override
+                  - generic [ref=e1520]:
+                    - generic [ref=e1521]:
+                      - img [ref=e1522]
+                      - generic [ref=e1525]: Divine Care Center
+                    - generic [ref=e1526]:
+                      - img [ref=e1527]
+                      - generic [ref=e1529]: Mon, Nov 17, 2025
+                    - generic [ref=e1530]:
+                      - img [ref=e1531]
+                      - generic [ref=e1534]: 2025-11-17T09:00:00+00:00 - 2025-11-17T17:00:00+00:00 (8h)
+                  - generic [ref=e1536]:
+                    - generic [ref=e1537]:
+                      - generic [ref=e1538]:
+                        - img [ref=e1539]
+                        - heading "Rate Breakdown" [level=4] [ref=e1541]
+                      - generic [ref=e1542]: Standard Rate
+                    - generic [ref=e1543]:
+                      - generic [ref=e1544]:
+                        - paragraph [ref=e1545]: Staff Pay Rate
+                        - paragraph [ref=e1546]: £18.00/hr
+                      - generic [ref=e1547]:
+                        - paragraph [ref=e1548]: Client Charge Rate
+                        - paragraph [ref=e1549]: £27.00/hr
+                    - generic [ref=e1551]:
+                      - generic [ref=e1552]:
+                        - paragraph [ref=e1553]: Staff Cost
+                        - paragraph [ref=e1554]: £144.00
+                      - generic [ref=e1555]:
+                        - paragraph [ref=e1556]: Client Charge
+                        - paragraph [ref=e1557]: £216.00
+                      - generic [ref=e1558]:
+                        - paragraph [ref=e1559]:
+                          - img [ref=e1560]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e1563]: £72.00
+                  - generic [ref=e1564]:
+                    - paragraph [ref=e1565]:
+                      - strong [ref=e1566]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e1567]: "Reason:"
+                  - paragraph [ref=e1568]: FILTERING TEST - Senior Care Worker (SHOULD NOT BE VISIBLE)
+                  - generic [ref=e1569]:
+                    - switch [ref=e1570] [cursor=pointer]
+                    - generic [ref=e1571] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e1572]:
+                  - button "Assign Staff" [ref=e1573] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e1574] [cursor=pointer]
+            - generic [ref=e1576]:
+              - generic [ref=e1579]: open
+              - generic [ref=e1580]:
+                - generic [ref=e1581]:
+                  - generic [ref=e1582]:
+                    - generic [ref=e1583]: healthcare assistant
+                    - generic [ref=e1584]: 💰 Rate Override
+                  - generic [ref=e1585]:
+                    - generic [ref=e1586]:
+                      - img [ref=e1587]
+                      - generic [ref=e1590]: Divine Care Center
+                    - generic [ref=e1591]:
+                      - img [ref=e1592]
+                      - generic [ref=e1594]: Mon, Nov 17, 2025
+                    - generic [ref=e1595]:
+                      - img [ref=e1596]
+                      - generic [ref=e1599]: 2025-11-17T08:00:00+00:00 - 2025-11-17T20:00:00+00:00 (12h)
+                  - generic [ref=e1601]:
+                    - generic [ref=e1602]:
+                      - generic [ref=e1603]:
+                        - img [ref=e1604]
+                        - heading "Rate Breakdown" [level=4] [ref=e1606]
+                      - generic [ref=e1607]: Standard Rate
+                    - generic [ref=e1608]:
+                      - generic [ref=e1609]:
+                        - paragraph [ref=e1610]: Staff Pay Rate
+                        - paragraph [ref=e1611]: £14.00/hr
+                      - generic [ref=e1612]:
+                        - paragraph [ref=e1613]: Client Charge Rate
+                        - paragraph [ref=e1614]: £16.00/hr
+                    - generic [ref=e1616]:
+                      - generic [ref=e1617]:
+                        - paragraph [ref=e1618]: Staff Cost
+                        - paragraph [ref=e1619]: £168.00
+                      - generic [ref=e1620]:
+                        - paragraph [ref=e1621]: Client Charge
+                        - paragraph [ref=e1622]: £192.00
+                      - generic [ref=e1623]:
+                        - paragraph [ref=e1624]:
+                          - img [ref=e1625]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e1628]: £24.00
+                  - generic [ref=e1629]:
+                    - paragraph [ref=e1630]:
+                      - strong [ref=e1631]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e1632]: "Reason:"
+                  - generic [ref=e1633]:
+                    - switch [ref=e1634] [cursor=pointer]
+                    - generic [ref=e1635] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e1636]:
+                  - button "Assign Staff" [ref=e1637] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e1638] [cursor=pointer]
+            - generic [ref=e1640]:
+              - generic [ref=e1643]: open
+              - generic [ref=e1644]:
+                - generic [ref=e1645]:
+                  - generic [ref=e1646]:
+                    - generic [ref=e1647]: healthcare assistant
+                    - generic [ref=e1648]: 📢 In Marketplace
+                    - generic [ref=e1649]: 💰 Rate Override
+                  - generic [ref=e1650]:
+                    - generic [ref=e1651]:
+                      - img [ref=e1652]
+                      - generic [ref=e1655]: Harbor View Lodge
+                    - generic [ref=e1656]:
+                      - img [ref=e1657]
+                      - generic [ref=e1659]: Sun, Nov 16, 2025
+                    - generic [ref=e1660]:
+                      - img [ref=e1661]
+                      - generic [ref=e1664]: 2025-11-16T10:00:00+00:00 - 2025-11-16T18:00:00+00:00 (8h)
+                  - generic [ref=e1666]:
+                    - generic [ref=e1667]:
+                      - generic [ref=e1668]:
+                        - img [ref=e1669]
+                        - heading "Rate Breakdown" [level=4] [ref=e1671]
+                      - generic [ref=e1672]: Standard Rate
+                    - generic [ref=e1673]:
+                      - generic [ref=e1674]:
+                        - paragraph [ref=e1675]: Staff Pay Rate
+                        - paragraph [ref=e1676]: £15.00/hr
+                      - generic [ref=e1677]:
+                        - paragraph [ref=e1678]: Client Charge Rate
+                        - paragraph [ref=e1679]: £22.50/hr
+                    - generic [ref=e1681]:
+                      - generic [ref=e1682]:
+                        - paragraph [ref=e1683]: Staff Cost
+                        - paragraph [ref=e1684]: £120.00
+                      - generic [ref=e1685]:
+                        - paragraph [ref=e1686]: Client Charge
+                        - paragraph [ref=e1687]: £180.00
+                      - generic [ref=e1688]:
+                        - paragraph [ref=e1689]:
+                          - img [ref=e1690]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e1693]: £60.00
+                  - generic [ref=e1694]:
+                    - paragraph [ref=e1695]:
+                      - strong [ref=e1696]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e1697]: "Reason:"
+                  - paragraph [ref=e1698]: Weekend activities support
+                  - generic [ref=e1699]:
+                    - switch [checked] [ref=e1700] [cursor=pointer]
+                    - generic [ref=e1701] [cursor=pointer]: 📢 Visible in Marketplace
+                - generic [ref=e1702]:
+                  - button "Assign Staff" [ref=e1703] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e1704] [cursor=pointer]
+            - generic [ref=e1706]:
+              - generic [ref=e1709]: open
+              - generic [ref=e1710]:
+                - generic [ref=e1711]:
+                  - generic [ref=e1712]:
+                    - generic [ref=e1713]: healthcare assistant
+                    - generic [ref=e1714]: 💰 Rate Override
+                  - generic [ref=e1715]:
+                    - generic [ref=e1716]:
+                      - img [ref=e1717]
+                      - generic [ref=e1720]: Divine Care Center
+                    - generic [ref=e1721]:
+                      - img [ref=e1722]
+                      - generic [ref=e1724]: Sun, Nov 16, 2025
+                    - generic [ref=e1725]:
+                      - img [ref=e1726]
+                      - generic [ref=e1729]: 2025-11-16T09:00:00+00:00 - 2025-11-16T17:00:00+00:00 (8h)
+                  - generic [ref=e1731]:
+                    - generic [ref=e1732]:
+                      - generic [ref=e1733]:
+                        - img [ref=e1734]
+                        - heading "Rate Breakdown" [level=4] [ref=e1736]
+                      - generic [ref=e1737]: Standard Rate
+                    - generic [ref=e1738]:
+                      - generic [ref=e1739]:
+                        - paragraph [ref=e1740]: Staff Pay Rate
+                        - paragraph [ref=e1741]: £15.00/hr
+                      - generic [ref=e1742]:
+                        - paragraph [ref=e1743]: Client Charge Rate
+                        - paragraph [ref=e1744]: £22.50/hr
+                    - generic [ref=e1746]:
+                      - generic [ref=e1747]:
+                        - paragraph [ref=e1748]: Staff Cost
+                        - paragraph [ref=e1749]: £120.00
+                      - generic [ref=e1750]:
+                        - paragraph [ref=e1751]: Client Charge
+                        - paragraph [ref=e1752]: £180.00
+                      - generic [ref=e1753]:
+                        - paragraph [ref=e1754]:
+                          - img [ref=e1755]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e1758]: £60.00
+                  - generic [ref=e1759]:
+                    - paragraph [ref=e1760]:
+                      - strong [ref=e1761]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e1762]: "Reason:"
+                  - paragraph [ref=e1763]: FILTERING TEST - Healthcare Assistant Shift (SHOULD BE VISIBLE)
+                  - generic [ref=e1764]:
+                    - switch [ref=e1765] [cursor=pointer]
+                    - generic [ref=e1766] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e1767]:
+                  - button "Assign Staff" [ref=e1768] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e1769] [cursor=pointer]
+            - generic [ref=e1771]:
+              - generic [ref=e1774]: confirmed
+              - generic [ref=e1775]:
+                - generic [ref=e1776]:
+                  - generic [ref=e1777]:
+                    - generic [ref=e1778]: senior care_worker
+                    - generic [ref=e1779]: 📢 In Marketplace
+                    - generic [ref=e1780]: 💰 Rate Override
+                  - generic [ref=e1781]:
+                    - generic [ref=e1782]:
+                      - img [ref=e1783]
+                      - generic [ref=e1786]: Divine Care Center Copy
+                    - generic [ref=e1787]:
+                      - img [ref=e1788]
+                      - generic [ref=e1790]: Sat, Nov 15, 2025
+                    - generic [ref=e1791]:
+                      - img [ref=e1792]
+                      - generic [ref=e1795]: 2025-11-15T09:00:00+00:00 - 2025-11-15T17:00:00+00:00 (8h)
+                  - generic [ref=e1796]: ✓ Assigned to Panashe Basera
+                  - generic [ref=e1798]:
+                    - generic [ref=e1799]:
+                      - generic [ref=e1800]:
+                        - img [ref=e1801]
+                        - heading "Rate Breakdown" [level=4] [ref=e1803]
+                      - generic [ref=e1804]: Standard Rate
+                    - generic [ref=e1805]:
+                      - generic [ref=e1806]:
+                        - paragraph [ref=e1807]: Staff Pay Rate
+                        - paragraph [ref=e1808]: £17.50/hr
+                      - generic [ref=e1809]:
+                        - paragraph [ref=e1810]: Client Charge Rate
+                        - paragraph [ref=e1811]: £26.00/hr
+                    - generic [ref=e1813]:
+                      - generic [ref=e1814]:
+                        - paragraph [ref=e1815]: Staff Cost
+                        - paragraph [ref=e1816]: £140.00
+                      - generic [ref=e1817]:
+                        - paragraph [ref=e1818]: Client Charge
+                        - paragraph [ref=e1819]: £208.00
+                      - generic [ref=e1820]:
+                        - paragraph [ref=e1821]:
+                          - img [ref=e1822]
+                          - text: Margin (32.7%)
+                        - paragraph [ref=e1825]: £68.00
+                  - generic [ref=e1826]:
+                    - paragraph [ref=e1827]:
+                      - strong [ref=e1828]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e1829]: "Reason:"
+                  - paragraph [ref=e1830]: Medication administration required - Level 3 qualification needed
+                - button "Edit Shift" [ref=e1832] [cursor=pointer]
+            - generic [ref=e1834]:
+              - generic [ref=e1837]: open
+              - generic [ref=e1838]:
+                - generic [ref=e1839]:
+                  - generic [ref=e1840]:
+                    - generic [ref=e1841]: healthcare assistant
+                    - generic [ref=e1842]: 💰 Rate Override
+                  - generic [ref=e1843]:
+                    - generic [ref=e1844]:
+                      - img [ref=e1845]
+                      - generic [ref=e1848]: Divine Care Center
+                    - generic [ref=e1849]:
+                      - img [ref=e1850]
+                      - generic [ref=e1852]: Sat, Nov 15, 2025
+                    - generic [ref=e1853]:
+                      - img [ref=e1854]
+                      - generic [ref=e1857]: 2025-11-15T08:00:00+00:00 - 2025-11-15T20:00:00+00:00 (12h)
+                  - generic [ref=e1859]:
+                    - generic [ref=e1860]:
+                      - generic [ref=e1861]:
+                        - img [ref=e1862]
+                        - heading "Rate Breakdown" [level=4] [ref=e1864]
+                      - generic [ref=e1865]: Standard Rate
+                    - generic [ref=e1866]:
+                      - generic [ref=e1867]:
+                        - paragraph [ref=e1868]: Staff Pay Rate
+                        - paragraph [ref=e1869]: £14.00/hr
+                      - generic [ref=e1870]:
+                        - paragraph [ref=e1871]: Client Charge Rate
+                        - paragraph [ref=e1872]: £16.00/hr
+                    - generic [ref=e1874]:
+                      - generic [ref=e1875]:
+                        - paragraph [ref=e1876]: Staff Cost
+                        - paragraph [ref=e1877]: £168.00
+                      - generic [ref=e1878]:
+                        - paragraph [ref=e1879]: Client Charge
+                        - paragraph [ref=e1880]: £192.00
+                      - generic [ref=e1881]:
+                        - paragraph [ref=e1882]:
+                          - img [ref=e1883]
+                          - text: Margin (12.5%)
+                        - paragraph [ref=e1886]: £24.00
+                  - generic [ref=e1887]:
+                    - paragraph [ref=e1888]:
+                      - strong [ref=e1889]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e1890]: "Reason:"
+                  - generic [ref=e1891]:
+                    - switch [ref=e1892] [cursor=pointer]
+                    - generic [ref=e1893] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e1894]:
+                  - button "Assign Staff" [ref=e1895] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e1896] [cursor=pointer]
+            - generic [ref=e1898]:
+              - generic [ref=e1901]: assigned
+              - generic [ref=e1902]:
+                - generic [ref=e1903]:
+                  - generic [ref=e1904]:
+                    - generic [ref=e1905]: healthcare assistant
+                    - generic [ref=e1906]: 💰 Rate Override
+                  - generic [ref=e1907]:
+                    - generic [ref=e1908]:
+                      - img [ref=e1909]
+                      - generic [ref=e1912]: Divine Care Center
+                    - generic [ref=e1913]:
+                      - img [ref=e1914]
+                      - generic [ref=e1916]: Sat, Nov 15, 2025
+                    - generic [ref=e1917]:
+                      - img [ref=e1918]
+                      - generic [ref=e1921]: 2025-11-15T09:00:00+00:00 - 2025-11-15T17:00:00+00:00 (8h)
+                  - generic [ref=e1922]: ✓ Assigned to Chadaira Basera
+                  - generic [ref=e1924]:
+                    - generic [ref=e1925]:
+                      - generic [ref=e1926]:
+                        - img [ref=e1927]
+                        - heading "Rate Breakdown" [level=4] [ref=e1929]
+                      - generic [ref=e1930]: Standard Rate
+                    - generic [ref=e1931]:
+                      - generic [ref=e1932]:
+                        - paragraph [ref=e1933]: Staff Pay Rate
+                        - paragraph [ref=e1934]: £15.50/hr
+                      - generic [ref=e1935]:
+                        - paragraph [ref=e1936]: Client Charge Rate
+                        - paragraph [ref=e1937]: £22.00/hr
+                    - generic [ref=e1939]:
+                      - generic [ref=e1940]:
+                        - paragraph [ref=e1941]: Staff Cost
+                        - paragraph [ref=e1942]: £124.00
+                      - generic [ref=e1943]:
+                        - paragraph [ref=e1944]: Client Charge
+                        - paragraph [ref=e1945]: £176.00
+                      - generic [ref=e1946]:
+                        - paragraph [ref=e1947]:
+                          - img [ref=e1948]
+                          - text: Margin (29.5%)
+                        - paragraph [ref=e1951]: £52.00
+                  - generic [ref=e1952]:
+                    - paragraph [ref=e1953]:
+                      - strong [ref=e1954]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e1955]: "Reason:"
+                  - paragraph [ref=e1956]: Future assigned shift
+                - generic [ref=e1957]:
+                  - generic [ref=e1958]: ⏳ Awaiting Confirmation
+                  - button "Edit Shift" [ref=e1959] [cursor=pointer]
+            - generic [ref=e1961]:
+              - generic [ref=e1964]: open
+              - generic [ref=e1965]:
+                - generic [ref=e1966]:
+                  - generic [ref=e1967]:
+                    - generic [ref=e1968]: healthcare assistant
+                    - generic [ref=e1969]: 📢 In Marketplace
+                    - generic [ref=e1970]: 💰 Rate Override
+                  - generic [ref=e1971]:
+                    - generic [ref=e1972]:
+                      - img [ref=e1973]
+                      - generic [ref=e1976]: Harbor View Lodge
+                    - generic [ref=e1977]:
+                      - img [ref=e1978]
+                      - generic [ref=e1980]: Fri, Nov 14, 2025
+                    - generic [ref=e1981]:
+                      - img [ref=e1982]
+                      - generic [ref=e1985]: 2025-11-14T08:00:00+00:00 - 2025-11-14T16:00:00+00:00 (8h)
+                  - generic [ref=e1987]:
+                    - generic [ref=e1988]:
+                      - generic [ref=e1989]:
+                        - img [ref=e1990]
+                        - heading "Rate Breakdown" [level=4] [ref=e1992]
+                      - generic [ref=e1993]: Standard Rate
+                    - generic [ref=e1994]:
+                      - generic [ref=e1995]:
+                        - paragraph [ref=e1996]: Staff Pay Rate
+                        - paragraph [ref=e1997]: £14.00/hr
+                      - generic [ref=e1998]:
+                        - paragraph [ref=e1999]: Client Charge Rate
+                        - paragraph [ref=e2000]: £20.00/hr
+                    - generic [ref=e2002]:
+                      - generic [ref=e2003]:
+                        - paragraph [ref=e2004]: Staff Cost
+                        - paragraph [ref=e2005]: £112.00
+                      - generic [ref=e2006]:
+                        - paragraph [ref=e2007]: Client Charge
+                        - paragraph [ref=e2008]: £160.00
+                      - generic [ref=e2009]:
+                        - paragraph [ref=e2010]:
+                          - img [ref=e2011]
+                          - text: Margin (30.0%)
+                        - paragraph [ref=e2014]: £48.00
+                  - generic [ref=e2015]:
+                    - paragraph [ref=e2016]:
+                      - strong [ref=e2017]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e2018]: "Reason:"
+                  - paragraph [ref=e2019]: General care support and activities
+                  - generic [ref=e2020]:
+                    - switch [checked] [ref=e2021] [cursor=pointer]
+                    - generic [ref=e2022] [cursor=pointer]: 📢 Visible in Marketplace
+                - generic [ref=e2023]:
+                  - button "Assign Staff" [ref=e2024] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e2025] [cursor=pointer]
+            - generic [ref=e2027]:
+              - generic [ref=e2030]: open
+              - generic [ref=e2031]:
+                - generic [ref=e2032]:
+                  - generic [ref=e2033]:
+                    - generic [ref=e2034]: healthcare assistant
+                    - generic [ref=e2035]: 📢 In Marketplace
+                    - generic [ref=e2036]: 💰 Rate Override
+                  - generic [ref=e2037]:
+                    - generic [ref=e2038]:
+                      - img [ref=e2039]
+                      - generic [ref=e2042]: Instay Sunderland
+                    - generic [ref=e2043]:
+                      - img [ref=e2044]
+                      - generic [ref=e2046]: Fri, Nov 14, 2025
+                    - generic [ref=e2047]:
+                      - img [ref=e2048]
+                      - generic [ref=e2051]: 2025-11-14T20:00:00+00:00 - 2025-11-15T08:00:00+00:00 (12h)
+                  - generic [ref=e2053]:
+                    - generic [ref=e2054]:
+                      - generic [ref=e2055]:
+                        - img [ref=e2056]
+                        - heading "Rate Breakdown" [level=4] [ref=e2058]
+                      - generic [ref=e2059]: Standard Rate
+                    - generic [ref=e2060]:
+                      - generic [ref=e2061]:
+                        - paragraph [ref=e2062]: Staff Pay Rate
+                        - paragraph [ref=e2063]: £16.00/hr
+                      - generic [ref=e2064]:
+                        - paragraph [ref=e2065]: Client Charge Rate
+                        - paragraph [ref=e2066]: £24.00/hr
+                    - generic [ref=e2068]:
+                      - generic [ref=e2069]:
+                        - paragraph [ref=e2070]: Staff Cost
+                        - paragraph [ref=e2071]: £192.00
+                      - generic [ref=e2072]:
+                        - paragraph [ref=e2073]: Client Charge
+                        - paragraph [ref=e2074]: £288.00
+                      - generic [ref=e2075]:
+                        - paragraph [ref=e2076]:
+                          - img [ref=e2077]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e2080]: £96.00
+                  - generic [ref=e2081]:
+                    - paragraph [ref=e2082]:
+                      - strong [ref=e2083]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e2084]: "Reason:"
+                  - paragraph [ref=e2085]: Overnight care and monitoring
+                  - generic [ref=e2086]:
+                    - switch [checked] [ref=e2087] [cursor=pointer]
+                    - generic [ref=e2088] [cursor=pointer]: 📢 Visible in Marketplace
+                - generic [ref=e2089]:
+                  - button "Assign Staff" [ref=e2090] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e2091] [cursor=pointer]
+            - generic [ref=e2093]:
+              - generic [ref=e2095]:
+                - generic [ref=e2096]: open
+                - generic [ref=e2097]:
+                  - img [ref=e2098]
+                  - text: URGENT
+              - generic [ref=e2100]:
+                - generic [ref=e2101]:
+                  - generic [ref=e2102]:
+                    - generic [ref=e2103]: nurse
+                    - generic [ref=e2104]: 💰 Rate Override
+                  - generic [ref=e2105]:
+                    - generic [ref=e2106]:
+                      - img [ref=e2107]
+                      - generic [ref=e2110]:
+                        - text: Divine Care Center
+                        - generic [ref=e2111]: → Room 3
+                    - generic [ref=e2112]:
+                      - img [ref=e2113]
+                      - generic [ref=e2115]: Fri, Nov 14, 2025
+                    - generic [ref=e2116]:
+                      - img [ref=e2117]
+                      - generic [ref=e2120]: 2025-11-14T08:00:00+00:00 - 2025-11-14T20:00:00+00:00 (12h)
+                  - generic [ref=e2122]:
+                    - generic [ref=e2123]:
+                      - generic [ref=e2124]:
+                        - img [ref=e2125]
+                        - heading "Rate Breakdown" [level=4] [ref=e2127]
+                      - generic [ref=e2128]: Standard Rate
+                    - generic [ref=e2129]:
+                      - generic [ref=e2130]:
+                        - paragraph [ref=e2131]: Staff Pay Rate
+                        - paragraph [ref=e2132]: £22.00/hr
+                      - generic [ref=e2133]:
+                        - paragraph [ref=e2134]: Client Charge Rate
+                        - paragraph [ref=e2135]: £25.00/hr
+                    - generic [ref=e2137]:
+                      - generic [ref=e2138]:
+                        - paragraph [ref=e2139]: Staff Cost
+                        - paragraph [ref=e2140]: £264.00
+                      - generic [ref=e2141]:
+                        - paragraph [ref=e2142]: Client Charge
+                        - paragraph [ref=e2143]: £300.00
+                      - generic [ref=e2144]:
+                        - paragraph [ref=e2145]:
+                          - img [ref=e2146]
+                          - text: Margin (12.0%)
+                        - paragraph [ref=e2149]: £36.00
+                  - generic [ref=e2150]:
+                    - paragraph [ref=e2151]:
+                      - strong [ref=e2152]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e2153]: "Reason:"
+                  - generic [ref=e2154]:
+                    - switch [ref=e2155] [cursor=pointer]
+                    - generic [ref=e2156] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e2157]:
+                  - button "Assign Staff" [ref=e2158] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Broadcast Alert" [ref=e2159] [cursor=pointer]:
+                    - img
+                    - text: Broadcast Alert
+                  - button "Edit Shift" [ref=e2160] [cursor=pointer]
+            - generic [ref=e2162]:
+              - generic [ref=e2164]:
+                - generic [ref=e2165]: open
+                - generic [ref=e2166]:
+                  - img [ref=e2167]
+                  - text: URGENT
+              - generic [ref=e2169]:
+                - generic [ref=e2170]:
+                  - generic [ref=e2171]:
+                    - generic [ref=e2172]: healthcare assistant
+                    - generic [ref=e2173]: 💰 Rate Override
+                  - generic [ref=e2174]:
+                    - generic [ref=e2175]:
+                      - img [ref=e2176]
+                      - generic [ref=e2179]:
+                        - text: Divine Care Center
+                        - generic [ref=e2180]: → Room 2
+                    - generic [ref=e2181]:
+                      - img [ref=e2182]
+                      - generic [ref=e2184]: Fri, Nov 14, 2025
+                    - generic [ref=e2185]:
+                      - img [ref=e2186]
+                      - generic [ref=e2189]: 2025-11-14T08:00:00+00:00 - 2025-11-14T20:00:00+00:00 (12h)
+                  - generic [ref=e2191]:
+                    - generic [ref=e2192]:
+                      - generic [ref=e2193]:
+                        - img [ref=e2194]
+                        - heading "Rate Breakdown" [level=4] [ref=e2196]
+                      - generic [ref=e2197]: Standard Rate
+                    - generic [ref=e2198]:
+                      - generic [ref=e2199]:
+                        - paragraph [ref=e2200]: Staff Pay Rate
+                        - paragraph [ref=e2201]: £14.75/hr
+                      - generic [ref=e2202]:
+                        - paragraph [ref=e2203]: Client Charge Rate
+                        - paragraph [ref=e2204]: £19.18/hr
+                    - generic [ref=e2206]:
+                      - generic [ref=e2207]:
+                        - paragraph [ref=e2208]: Staff Cost
+                        - paragraph [ref=e2209]: £177.00
+                      - generic [ref=e2210]:
+                        - paragraph [ref=e2211]: Client Charge
+                        - paragraph [ref=e2212]: £230.16
+                      - generic [ref=e2213]:
+                        - paragraph [ref=e2214]:
+                          - img [ref=e2215]
+                          - text: Margin (23.1%)
+                        - paragraph [ref=e2218]: £53.16
+                  - generic [ref=e2219]:
+                    - paragraph [ref=e2220]:
+                      - strong [ref=e2221]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e2222]: "Reason:"
+                  - generic [ref=e2223]:
+                    - switch [ref=e2224] [cursor=pointer]
+                    - generic [ref=e2225] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e2226]:
+                  - button "Assign Staff" [ref=e2227] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Broadcast Again" [ref=e2228] [cursor=pointer]:
+                    - img
+                    - text: Broadcast Again
+                  - button "Edit Shift" [ref=e2229] [cursor=pointer]
+            - generic [ref=e2231]:
+              - generic [ref=e2234]: confirmed
+              - generic [ref=e2235]:
+                - generic [ref=e2236]:
+                  - generic [ref=e2237]:
+                    - generic [ref=e2238]: healthcare assistant
+                    - generic [ref=e2239]: 💰 Rate Override
+                  - generic [ref=e2240]:
+                    - generic [ref=e2241]:
+                      - img [ref=e2242]
+                      - generic [ref=e2245]: Divine Care Center
+                    - generic [ref=e2246]:
+                      - img [ref=e2247]
+                      - generic [ref=e2249]: Thu, Nov 13, 2025
+                    - generic [ref=e2250]:
+                      - img [ref=e2251]
+                      - generic [ref=e2254]: 2025-11-13T09:00:00+00:00 - 2025-11-13T17:00:00+00:00 (8h)
+                  - generic [ref=e2255]: ✓ Assigned to Chadaira Basera
+                  - generic [ref=e2257]:
+                    - generic [ref=e2258]:
+                      - generic [ref=e2259]:
+                        - img [ref=e2260]
+                        - heading "Rate Breakdown" [level=4] [ref=e2262]
+                      - generic [ref=e2263]: Standard Rate
+                    - generic [ref=e2264]:
+                      - generic [ref=e2265]:
+                        - paragraph [ref=e2266]: Staff Pay Rate
+                        - paragraph [ref=e2267]: £15.50/hr
+                      - generic [ref=e2268]:
+                        - paragraph [ref=e2269]: Client Charge Rate
+                        - paragraph [ref=e2270]: £22.00/hr
+                    - generic [ref=e2272]:
+                      - generic [ref=e2273]:
+                        - paragraph [ref=e2274]: Staff Cost
+                        - paragraph [ref=e2275]: £124.00
+                      - generic [ref=e2276]:
+                        - paragraph [ref=e2277]: Client Charge
+                        - paragraph [ref=e2278]: £176.00
+                      - generic [ref=e2279]:
+                        - paragraph [ref=e2280]:
+                          - img [ref=e2281]
+                          - text: Margin (29.5%)
+                        - paragraph [ref=e2284]: £52.00
+                  - generic [ref=e2285]:
+                    - paragraph [ref=e2286]:
+                      - strong [ref=e2287]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e2288]: "Reason:"
+                  - paragraph [ref=e2289]: Today - assigned shift
+                - button "Edit Shift" [ref=e2291] [cursor=pointer]
+            - generic [ref=e2293]:
+              - generic [ref=e2296]: cancelled
+              - generic [ref=e2297]:
+                - generic [ref=e2298]:
+                  - generic [ref=e2299]:
+                    - generic [ref=e2300]: care assistant
+                    - generic [ref=e2301]: 💰 Rate Override
+                  - generic [ref=e2302]:
+                    - generic [ref=e2303]:
+                      - img [ref=e2304]
+                      - generic [ref=e2307]: Divine Care Center
+                    - generic [ref=e2308]:
+                      - img [ref=e2309]
+                      - generic [ref=e2311]: Thu, Nov 13, 2025
+                    - generic [ref=e2312]:
+                      - img [ref=e2313]
+                      - generic [ref=e2316]: 2025-11-13T09:00:00+00:00 - 2025-11-13T17:00:00+00:00 (8h)
+                  - generic [ref=e2318]:
+                    - generic [ref=e2319]:
+                      - generic [ref=e2320]:
+                        - img [ref=e2321]
+                        - heading "Rate Breakdown" [level=4] [ref=e2323]
+                      - generic [ref=e2324]: Standard Rate
+                    - generic [ref=e2325]:
+                      - generic [ref=e2326]:
+                        - paragraph [ref=e2327]: Staff Pay Rate
+                        - paragraph [ref=e2328]: £15.00/hr
+                      - generic [ref=e2329]:
+                        - paragraph [ref=e2330]: Client Charge Rate
+                        - paragraph [ref=e2331]: £25.00/hr
+                    - generic [ref=e2333]:
+                      - generic [ref=e2334]:
+                        - paragraph [ref=e2335]: Staff Cost
+                        - paragraph [ref=e2336]: £120.00
+                      - generic [ref=e2337]:
+                        - paragraph [ref=e2338]: Client Charge
+                        - paragraph [ref=e2339]: £200.00
+                      - generic [ref=e2340]:
+                        - paragraph [ref=e2341]:
+                          - img [ref=e2342]
+                          - text: Margin (40.0%)
+                        - paragraph [ref=e2345]: £80.00
+                  - generic [ref=e2346]:
+                    - paragraph [ref=e2347]:
+                      - strong [ref=e2348]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e2349]: "Reason:"
+                - button "Edit Shift" [ref=e2351] [cursor=pointer]
+            - generic [ref=e2353]:
+              - generic [ref=e2356]: cancelled
+              - generic [ref=e2357]:
+                - generic [ref=e2358]:
+                  - generic [ref=e2359]:
+                    - generic [ref=e2360]: care assistant
+                    - generic [ref=e2361]: 💰 Rate Override
+                  - generic [ref=e2362]:
+                    - generic [ref=e2363]:
+                      - img [ref=e2364]
+                      - generic [ref=e2367]: Divine Care Center
+                    - generic [ref=e2368]:
+                      - img [ref=e2369]
+                      - generic [ref=e2371]: Thu, Nov 13, 2025
+                    - generic [ref=e2372]:
+                      - img [ref=e2373]
+                      - generic [ref=e2376]: 2025-11-13T09:00:00+00:00 - 2025-11-13T17:00:00+00:00 (8h)
+                  - generic [ref=e2378]:
+                    - generic [ref=e2379]:
+                      - generic [ref=e2380]:
+                        - img [ref=e2381]
+                        - heading "Rate Breakdown" [level=4] [ref=e2383]
+                      - generic [ref=e2384]: Standard Rate
+                    - generic [ref=e2385]:
+                      - generic [ref=e2386]:
+                        - paragraph [ref=e2387]: Staff Pay Rate
+                        - paragraph [ref=e2388]: £15.00/hr
+                      - generic [ref=e2389]:
+                        - paragraph [ref=e2390]: Client Charge Rate
+                        - paragraph [ref=e2391]: £25.00/hr
+                    - generic [ref=e2393]:
+                      - generic [ref=e2394]:
+                        - paragraph [ref=e2395]: Staff Cost
+                        - paragraph [ref=e2396]: £120.00
+                      - generic [ref=e2397]:
+                        - paragraph [ref=e2398]: Client Charge
+                        - paragraph [ref=e2399]: £200.00
+                      - generic [ref=e2400]:
+                        - paragraph [ref=e2401]:
+                          - img [ref=e2402]
+                          - text: Margin (40.0%)
+                        - paragraph [ref=e2405]: £80.00
+                  - generic [ref=e2406]:
+                    - paragraph [ref=e2407]:
+                      - strong [ref=e2408]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e2409]: "Reason:"
+                - button "Edit Shift" [ref=e2411] [cursor=pointer]
+            - generic [ref=e2413]:
+              - generic [ref=e2416]: confirmed
+              - generic [ref=e2417]:
+                - generic [ref=e2418]:
+                  - generic [ref=e2419]:
+                    - generic [ref=e2420]: healthcare assistant
+                    - generic [ref=e2421]: 💰 Rate Override
+                  - generic [ref=e2422]:
+                    - generic [ref=e2423]:
+                      - img [ref=e2424]
+                      - generic [ref=e2427]: Divine Care Center
+                    - generic [ref=e2428]:
+                      - img [ref=e2429]
+                      - generic [ref=e2431]: Thu, Nov 13, 2025
+                    - generic [ref=e2432]:
+                      - img [ref=e2433]
+                      - generic [ref=e2436]: 2025-11-13T18:00:00+00:00 - 2025-11-13T22:00:00+00:00 (4h)
+                  - generic [ref=e2437]: ✓ Assigned to Chadaira Basera
+                  - generic [ref=e2439]:
+                    - generic [ref=e2440]:
+                      - generic [ref=e2441]:
+                        - img [ref=e2442]
+                        - heading "Rate Breakdown" [level=4] [ref=e2444]
+                      - generic [ref=e2445]: Standard Rate
+                    - generic [ref=e2446]:
+                      - generic [ref=e2447]:
+                        - paragraph [ref=e2448]: Staff Pay Rate
+                        - paragraph [ref=e2449]: £15.50/hr
+                      - generic [ref=e2450]:
+                        - paragraph [ref=e2451]: Client Charge Rate
+                        - paragraph [ref=e2452]: £22.00/hr
+                    - generic [ref=e2454]:
+                      - generic [ref=e2455]:
+                        - paragraph [ref=e2456]: Staff Cost
+                        - paragraph [ref=e2457]: £62.00
+                      - generic [ref=e2458]:
+                        - paragraph [ref=e2459]: Client Charge
+                        - paragraph [ref=e2460]: £88.00
+                      - generic [ref=e2461]:
+                        - paragraph [ref=e2462]:
+                          - img [ref=e2463]
+                          - text: Margin (29.5%)
+                        - paragraph [ref=e2466]: £26.00
+                  - generic [ref=e2467]:
+                    - paragraph [ref=e2468]:
+                      - strong [ref=e2469]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e2470]: "Reason:"
+                  - paragraph [ref=e2471]: Today - evening confirmed shift
+                - button "Edit Shift" [ref=e2473] [cursor=pointer]
+            - generic [ref=e2475]:
+              - generic [ref=e2478]: open
+              - generic [ref=e2479]:
+                - generic [ref=e2480]:
+                  - generic [ref=e2481]:
+                    - generic [ref=e2482]: healthcare assistant
+                    - generic [ref=e2483]: 📢 In Marketplace
+                    - generic [ref=e2484]: 💰 Rate Override
+                  - generic [ref=e2485]:
+                    - generic [ref=e2486]:
+                      - img [ref=e2487]
+                      - generic [ref=e2490]: Divine Care Center Copy
+                    - generic [ref=e2491]:
+                      - img [ref=e2492]
+                      - generic [ref=e2494]: Thu, Nov 13, 2025
+                    - generic [ref=e2495]:
+                      - img [ref=e2496]
+                      - generic [ref=e2499]: 2025-11-13T18:00:00+00:00 - 2025-11-13T22:00:00+00:00 (4h)
+                  - generic [ref=e2501]:
+                    - generic [ref=e2502]:
+                      - generic [ref=e2503]:
+                        - img [ref=e2504]
+                        - heading "Rate Breakdown" [level=4] [ref=e2506]
+                      - generic [ref=e2507]: Standard Rate
+                    - generic [ref=e2508]:
+                      - generic [ref=e2509]:
+                        - paragraph [ref=e2510]: Staff Pay Rate
+                        - paragraph [ref=e2511]: £15.50/hr
+                      - generic [ref=e2512]:
+                        - paragraph [ref=e2513]: Client Charge Rate
+                        - paragraph [ref=e2514]: £22.00/hr
+                    - generic [ref=e2516]:
+                      - generic [ref=e2517]:
+                        - paragraph [ref=e2518]: Staff Cost
+                        - paragraph [ref=e2519]: £62.00
+                      - generic [ref=e2520]:
+                        - paragraph [ref=e2521]: Client Charge
+                        - paragraph [ref=e2522]: £88.00
+                      - generic [ref=e2523]:
+                        - paragraph [ref=e2524]:
+                          - img [ref=e2525]
+                          - text: Margin (29.5%)
+                        - paragraph [ref=e2528]: £26.00
+                  - generic [ref=e2529]:
+                    - paragraph [ref=e2530]:
+                      - strong [ref=e2531]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e2532]: "Reason:"
+                  - paragraph [ref=e2533]: Evening care duties - medication rounds
+                  - generic [ref=e2534]:
+                    - switch [checked] [ref=e2535] [cursor=pointer]
+                    - generic [ref=e2536] [cursor=pointer]: 📢 Visible in Marketplace
+                - generic [ref=e2537]:
+                  - button "Assign Staff" [ref=e2538] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e2539] [cursor=pointer]
+            - generic [ref=e2541]:
+              - generic [ref=e2544]: cancelled
+              - generic [ref=e2545]:
+                - generic [ref=e2546]:
+                  - generic [ref=e2547]:
+                    - generic [ref=e2548]: care assistant
+                    - generic [ref=e2549]: 💰 Rate Override
+                  - generic [ref=e2550]:
+                    - generic [ref=e2551]:
+                      - img [ref=e2552]
+                      - generic [ref=e2555]: Divine Care Center
+                    - generic [ref=e2556]:
+                      - img [ref=e2557]
+                      - generic [ref=e2559]: Thu, Nov 13, 2025
+                    - generic [ref=e2560]:
+                      - img [ref=e2561]
+                      - generic [ref=e2564]: 2025-11-13T09:00:00+00:00 - 2025-11-13T17:00:00+00:00 (8h)
+                  - generic [ref=e2566]:
+                    - generic [ref=e2567]:
+                      - generic [ref=e2568]:
+                        - img [ref=e2569]
+                        - heading "Rate Breakdown" [level=4] [ref=e2571]
+                      - generic [ref=e2572]: Standard Rate
+                    - generic [ref=e2573]:
+                      - generic [ref=e2574]:
+                        - paragraph [ref=e2575]: Staff Pay Rate
+                        - paragraph [ref=e2576]: £15.00/hr
+                      - generic [ref=e2577]:
+                        - paragraph [ref=e2578]: Client Charge Rate
+                        - paragraph [ref=e2579]: £25.00/hr
+                    - generic [ref=e2581]:
+                      - generic [ref=e2582]:
+                        - paragraph [ref=e2583]: Staff Cost
+                        - paragraph [ref=e2584]: £120.00
+                      - generic [ref=e2585]:
+                        - paragraph [ref=e2586]: Client Charge
+                        - paragraph [ref=e2587]: £200.00
+                      - generic [ref=e2588]:
+                        - paragraph [ref=e2589]:
+                          - img [ref=e2590]
+                          - text: Margin (40.0%)
+                        - paragraph [ref=e2593]: £80.00
+                  - generic [ref=e2594]:
+                    - paragraph [ref=e2595]:
+                      - strong [ref=e2596]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e2597]: "Reason:"
+                - button "Edit Shift" [ref=e2599] [cursor=pointer]
+            - generic [ref=e2601]:
+              - generic [ref=e2604]: cancelled
+              - generic [ref=e2605]:
+                - generic [ref=e2606]:
+                  - generic [ref=e2607]:
+                    - generic [ref=e2608]: care assistant
+                    - generic [ref=e2609]: 💰 Rate Override
+                  - generic [ref=e2610]:
+                    - generic [ref=e2611]:
+                      - img [ref=e2612]
+                      - generic [ref=e2615]: Divine Care Center
+                    - generic [ref=e2616]:
+                      - img [ref=e2617]
+                      - generic [ref=e2619]: Thu, Nov 13, 2025
+                    - generic [ref=e2620]:
+                      - img [ref=e2621]
+                      - generic [ref=e2624]: 2025-11-13T09:00:00+00:00 - 2025-11-13T17:00:00+00:00 (8h)
+                  - generic [ref=e2626]:
+                    - generic [ref=e2627]:
+                      - generic [ref=e2628]:
+                        - img [ref=e2629]
+                        - heading "Rate Breakdown" [level=4] [ref=e2631]
+                      - generic [ref=e2632]: Standard Rate
+                    - generic [ref=e2633]:
+                      - generic [ref=e2634]:
+                        - paragraph [ref=e2635]: Staff Pay Rate
+                        - paragraph [ref=e2636]: £15.00/hr
+                      - generic [ref=e2637]:
+                        - paragraph [ref=e2638]: Client Charge Rate
+                        - paragraph [ref=e2639]: £25.00/hr
+                    - generic [ref=e2641]:
+                      - generic [ref=e2642]:
+                        - paragraph [ref=e2643]: Staff Cost
+                        - paragraph [ref=e2644]: £120.00
+                      - generic [ref=e2645]:
+                        - paragraph [ref=e2646]: Client Charge
+                        - paragraph [ref=e2647]: £200.00
+                      - generic [ref=e2648]:
+                        - paragraph [ref=e2649]:
+                          - img [ref=e2650]
+                          - text: Margin (40.0%)
+                        - paragraph [ref=e2653]: £80.00
+                  - generic [ref=e2654]:
+                    - paragraph [ref=e2655]:
+                      - strong [ref=e2656]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e2657]: "Reason:"
+                - button "Edit Shift" [ref=e2659] [cursor=pointer]
+            - generic [ref=e2661]:
+              - generic [ref=e2664]: cancelled
+              - generic [ref=e2665]:
+                - generic [ref=e2666]:
+                  - generic [ref=e2667]:
+                    - generic [ref=e2668]: care assistant
+                    - generic [ref=e2669]: 💰 Rate Override
+                  - generic [ref=e2670]:
+                    - generic [ref=e2671]:
+                      - img [ref=e2672]
+                      - generic [ref=e2675]: Divine Care Center
+                    - generic [ref=e2676]:
+                      - img [ref=e2677]
+                      - generic [ref=e2679]: Thu, Nov 13, 2025
+                    - generic [ref=e2680]:
+                      - img [ref=e2681]
+                      - generic [ref=e2684]: 2025-11-13T09:00:00+00:00 - 2025-11-13T17:00:00+00:00 (8h)
+                  - generic [ref=e2686]:
+                    - generic [ref=e2687]:
+                      - generic [ref=e2688]:
+                        - img [ref=e2689]
+                        - heading "Rate Breakdown" [level=4] [ref=e2691]
+                      - generic [ref=e2692]: Standard Rate
+                    - generic [ref=e2693]:
+                      - generic [ref=e2694]:
+                        - paragraph [ref=e2695]: Staff Pay Rate
+                        - paragraph [ref=e2696]: £15.00/hr
+                      - generic [ref=e2697]:
+                        - paragraph [ref=e2698]: Client Charge Rate
+                        - paragraph [ref=e2699]: £25.00/hr
+                    - generic [ref=e2701]:
+                      - generic [ref=e2702]:
+                        - paragraph [ref=e2703]: Staff Cost
+                        - paragraph [ref=e2704]: £120.00
+                      - generic [ref=e2705]:
+                        - paragraph [ref=e2706]: Client Charge
+                        - paragraph [ref=e2707]: £200.00
+                      - generic [ref=e2708]:
+                        - paragraph [ref=e2709]:
+                          - img [ref=e2710]
+                          - text: Margin (40.0%)
+                        - paragraph [ref=e2713]: £80.00
+                  - generic [ref=e2714]:
+                    - paragraph [ref=e2715]:
+                      - strong [ref=e2716]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e2717]: "Reason:"
+                - button "Edit Shift" [ref=e2719] [cursor=pointer]
+            - generic [ref=e2721]:
+              - generic [ref=e2724]: cancelled
+              - generic [ref=e2725]:
+                - generic [ref=e2726]:
+                  - generic [ref=e2727]:
+                    - generic [ref=e2728]: care assistant
+                    - generic [ref=e2729]: 💰 Rate Override
+                  - generic [ref=e2730]:
+                    - generic [ref=e2731]:
+                      - img [ref=e2732]
+                      - generic [ref=e2735]: Divine Care Center
+                    - generic [ref=e2736]:
+                      - img [ref=e2737]
+                      - generic [ref=e2739]: Thu, Nov 13, 2025
+                    - generic [ref=e2740]:
+                      - img [ref=e2741]
+                      - generic [ref=e2744]: 2025-11-13T09:00:00+00:00 - 2025-11-13T17:00:00+00:00 (8h)
+                  - generic [ref=e2746]:
+                    - generic [ref=e2747]:
+                      - generic [ref=e2748]:
+                        - img [ref=e2749]
+                        - heading "Rate Breakdown" [level=4] [ref=e2751]
+                      - generic [ref=e2752]: Standard Rate
+                    - generic [ref=e2753]:
+                      - generic [ref=e2754]:
+                        - paragraph [ref=e2755]: Staff Pay Rate
+                        - paragraph [ref=e2756]: £15.00/hr
+                      - generic [ref=e2757]:
+                        - paragraph [ref=e2758]: Client Charge Rate
+                        - paragraph [ref=e2759]: £25.00/hr
+                    - generic [ref=e2761]:
+                      - generic [ref=e2762]:
+                        - paragraph [ref=e2763]: Staff Cost
+                        - paragraph [ref=e2764]: £120.00
+                      - generic [ref=e2765]:
+                        - paragraph [ref=e2766]: Client Charge
+                        - paragraph [ref=e2767]: £200.00
+                      - generic [ref=e2768]:
+                        - paragraph [ref=e2769]:
+                          - img [ref=e2770]
+                          - text: Margin (40.0%)
+                        - paragraph [ref=e2773]: £80.00
+                  - generic [ref=e2774]:
+                    - paragraph [ref=e2775]:
+                      - strong [ref=e2776]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e2777]: "Reason:"
+                - button "Edit Shift" [ref=e2779] [cursor=pointer]
+            - generic [ref=e2781]:
+              - generic [ref=e2784]: confirmed
+              - generic [ref=e2785]:
+                - generic [ref=e2786]:
+                  - generic [ref=e2787]:
+                    - generic [ref=e2788]: nurse
+                    - generic [ref=e2789]: 💰 Rate Override
+                  - generic [ref=e2790]:
+                    - generic [ref=e2791]:
+                      - img [ref=e2792]
+                      - generic [ref=e2795]: Divine Care Center
+                    - generic [ref=e2796]:
+                      - img [ref=e2797]
+                      - generic [ref=e2799]: Wed, Nov 12, 2025
+                    - generic [ref=e2800]:
+                      - img [ref=e2801]
+                      - generic [ref=e2804]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e2805]: ✓ Assigned to Amelia Grant
+                  - generic [ref=e2807]:
+                    - generic [ref=e2808]:
+                      - generic [ref=e2809]:
+                        - img [ref=e2810]
+                        - heading "Rate Breakdown" [level=4] [ref=e2812]
+                      - generic [ref=e2813]: Standard Rate
+                    - generic [ref=e2814]:
+                      - generic [ref=e2815]:
+                        - paragraph [ref=e2816]: Staff Pay Rate
+                        - paragraph [ref=e2817]: £25.00/hr
+                      - generic [ref=e2818]:
+                        - paragraph [ref=e2819]: Client Charge Rate
+                        - paragraph [ref=e2820]: £30.00/hr
+                    - generic [ref=e2822]:
+                      - generic [ref=e2823]:
+                        - paragraph [ref=e2824]: Staff Cost
+                        - paragraph [ref=e2825]: £300.00
+                      - generic [ref=e2826]:
+                        - paragraph [ref=e2827]: Client Charge
+                        - paragraph [ref=e2828]: £360.00
+                      - generic [ref=e2829]:
+                        - paragraph [ref=e2830]:
+                          - img [ref=e2831]
+                          - text: Margin (16.7%)
+                        - paragraph [ref=e2834]: £60.00
+                  - generic [ref=e2835]:
+                    - paragraph [ref=e2836]:
+                      - strong [ref=e2837]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e2838]: "Reason:"
+                - button "Edit Shift" [ref=e2840] [cursor=pointer]
+            - generic [ref=e2842]:
+              - generic [ref=e2845]: completed
+              - generic [ref=e2846]:
+                - generic [ref=e2847]:
+                  - generic [ref=e2848]:
+                    - generic [ref=e2849]: nurse
+                    - generic [ref=e2850]: 💰 Rate Override
+                  - generic [ref=e2851]:
+                    - generic [ref=e2852]:
+                      - img [ref=e2853]
+                      - generic [ref=e2856]: Divine Care Center
+                    - generic [ref=e2857]:
+                      - img [ref=e2858]
+                      - generic [ref=e2860]: Wed, Nov 12, 2025
+                    - generic [ref=e2861]:
+                      - img [ref=e2862]
+                      - generic [ref=e2865]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e2867]:
+                    - generic [ref=e2868]:
+                      - generic [ref=e2869]:
+                        - img [ref=e2870]
+                        - heading "Rate Breakdown" [level=4] [ref=e2872]
+                      - generic [ref=e2873]: Standard Rate
+                    - generic [ref=e2874]:
+                      - generic [ref=e2875]:
+                        - paragraph [ref=e2876]: Staff Pay Rate
+                        - paragraph [ref=e2877]: £25.00/hr
+                      - generic [ref=e2878]:
+                        - paragraph [ref=e2879]: Client Charge Rate
+                        - paragraph [ref=e2880]: £35.00/hr
+                    - generic [ref=e2882]:
+                      - generic [ref=e2883]:
+                        - paragraph [ref=e2884]: Staff Cost
+                        - paragraph [ref=e2885]: £300.00
+                      - generic [ref=e2886]:
+                        - paragraph [ref=e2887]: Client Charge
+                        - paragraph [ref=e2888]: £420.00
+                      - generic [ref=e2889]:
+                        - paragraph [ref=e2890]:
+                          - img [ref=e2891]
+                          - text: Margin (28.6%)
+                        - paragraph [ref=e2894]: £120.00
+                  - generic [ref=e2895]:
+                    - paragraph [ref=e2896]:
+                      - strong [ref=e2897]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e2898]: "Reason:"
+                - button "Edit Shift" [ref=e2900] [cursor=pointer]
+            - generic [ref=e2902]:
+              - generic [ref=e2905]: completed
+              - generic [ref=e2906]:
+                - generic [ref=e2907]:
+                  - generic [ref=e2908]:
+                    - generic [ref=e2909]: nurse
+                    - generic [ref=e2910]: 💰 Rate Override
+                  - generic [ref=e2911]:
+                    - generic [ref=e2912]:
+                      - img [ref=e2913]
+                      - generic [ref=e2916]: Divine Care Center
+                    - generic [ref=e2917]:
+                      - img [ref=e2918]
+                      - generic [ref=e2920]: Wed, Nov 12, 2025
+                    - generic [ref=e2921]:
+                      - img [ref=e2922]
+                      - generic [ref=e2925]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e2927]:
+                    - generic [ref=e2928]:
+                      - generic [ref=e2929]:
+                        - img [ref=e2930]
+                        - heading "Rate Breakdown" [level=4] [ref=e2932]
+                      - generic [ref=e2933]: Standard Rate
+                    - generic [ref=e2934]:
+                      - generic [ref=e2935]:
+                        - paragraph [ref=e2936]: Staff Pay Rate
+                        - paragraph [ref=e2937]: £20.00/hr
+                      - generic [ref=e2938]:
+                        - paragraph [ref=e2939]: Client Charge Rate
+                        - paragraph [ref=e2940]: £30.00/hr
+                    - generic [ref=e2942]:
+                      - generic [ref=e2943]:
+                        - paragraph [ref=e2944]: Staff Cost
+                        - paragraph [ref=e2945]: £240.00
+                      - generic [ref=e2946]:
+                        - paragraph [ref=e2947]: Client Charge
+                        - paragraph [ref=e2948]: £360.00
+                      - generic [ref=e2949]:
+                        - paragraph [ref=e2950]:
+                          - img [ref=e2951]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e2954]: £120.00
+                  - generic [ref=e2955]:
+                    - paragraph [ref=e2956]:
+                      - strong [ref=e2957]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e2958]: "Reason:"
+                - button "Edit Shift" [ref=e2960] [cursor=pointer]
+            - generic [ref=e2962]:
+              - generic [ref=e2965]: assigned
+              - generic [ref=e2966]:
+                - generic [ref=e2967]:
+                  - generic [ref=e2968]:
+                    - generic [ref=e2969]: nurse
+                    - generic [ref=e2970]: 💰 Rate Override
+                  - generic [ref=e2971]:
+                    - generic [ref=e2972]:
+                      - img [ref=e2973]
+                      - generic [ref=e2976]: Divine Care Center
+                    - generic [ref=e2977]:
+                      - img [ref=e2978]
+                      - generic [ref=e2980]: Wed, Nov 12, 2025
+                    - generic [ref=e2981]:
+                      - img [ref=e2982]
+                      - generic [ref=e2985]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e2987]:
+                    - generic [ref=e2988]:
+                      - generic [ref=e2989]:
+                        - img [ref=e2990]
+                        - heading "Rate Breakdown" [level=4] [ref=e2992]
+                      - generic [ref=e2993]: Standard Rate
+                    - generic [ref=e2994]:
+                      - generic [ref=e2995]:
+                        - paragraph [ref=e2996]: Staff Pay Rate
+                        - paragraph [ref=e2997]: £20.00/hr
+                      - generic [ref=e2998]:
+                        - paragraph [ref=e2999]: Client Charge Rate
+                        - paragraph [ref=e3000]: £30.00/hr
+                    - generic [ref=e3002]:
+                      - generic [ref=e3003]:
+                        - paragraph [ref=e3004]: Staff Cost
+                        - paragraph [ref=e3005]: £240.00
+                      - generic [ref=e3006]:
+                        - paragraph [ref=e3007]: Client Charge
+                        - paragraph [ref=e3008]: £360.00
+                      - generic [ref=e3009]:
+                        - paragraph [ref=e3010]:
+                          - img [ref=e3011]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e3014]: £120.00
+                  - generic [ref=e3015]:
+                    - paragraph [ref=e3016]:
+                      - strong [ref=e3017]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3018]: "Reason:"
+                - generic [ref=e3019]:
+                  - generic [ref=e3020]: ⏳ Awaiting Confirmation
+                  - button "Edit Shift" [ref=e3021] [cursor=pointer]
+            - generic [ref=e3023]:
+              - generic [ref=e3026]: confirmed
+              - generic [ref=e3027]:
+                - generic [ref=e3028]:
+                  - generic [ref=e3029]:
+                    - generic [ref=e3030]: nurse
+                    - generic [ref=e3031]: 💰 Rate Override
+                  - generic [ref=e3032]:
+                    - generic [ref=e3033]:
+                      - img [ref=e3034]
+                      - generic [ref=e3037]: Divine Care Center
+                    - generic [ref=e3038]:
+                      - img [ref=e3039]
+                      - generic [ref=e3041]: Wed, Nov 12, 2025
+                    - generic [ref=e3042]:
+                      - img [ref=e3043]
+                      - generic [ref=e3046]: 2025-11-12T10:00:00+00:00 - 2025-11-12T22:00:00+00:00 (12h)
+                  - generic [ref=e3048]:
+                    - generic [ref=e3049]:
+                      - generic [ref=e3050]:
+                        - img [ref=e3051]
+                        - heading "Rate Breakdown" [level=4] [ref=e3053]
+                      - generic [ref=e3054]: Standard Rate
+                    - generic [ref=e3055]:
+                      - generic [ref=e3056]:
+                        - paragraph [ref=e3057]: Staff Pay Rate
+                        - paragraph [ref=e3058]: £20.00/hr
+                      - generic [ref=e3059]:
+                        - paragraph [ref=e3060]: Client Charge Rate
+                        - paragraph [ref=e3061]: £30.00/hr
+                    - generic [ref=e3063]:
+                      - generic [ref=e3064]:
+                        - paragraph [ref=e3065]: Staff Cost
+                        - paragraph [ref=e3066]: £240.00
+                      - generic [ref=e3067]:
+                        - paragraph [ref=e3068]: Client Charge
+                        - paragraph [ref=e3069]: £360.00
+                      - generic [ref=e3070]:
+                        - paragraph [ref=e3071]:
+                          - img [ref=e3072]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e3075]: £120.00
+                  - generic [ref=e3076]:
+                    - paragraph [ref=e3077]:
+                      - strong [ref=e3078]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3079]: "Reason:"
+                - button "Edit Shift" [ref=e3081] [cursor=pointer]
+            - generic [ref=e3083]:
+              - generic [ref=e3086]: completed
+              - generic [ref=e3087]:
+                - generic [ref=e3088]:
+                  - generic [ref=e3089]:
+                    - generic [ref=e3090]: nurse
+                    - generic [ref=e3091]: 💰 Rate Override
+                  - generic [ref=e3092]:
+                    - generic [ref=e3093]:
+                      - img [ref=e3094]
+                      - generic [ref=e3097]: Divine Care Center
+                    - generic [ref=e3098]:
+                      - img [ref=e3099]
+                      - generic [ref=e3101]: Wed, Nov 12, 2025
+                    - generic [ref=e3102]:
+                      - img [ref=e3103]
+                      - generic [ref=e3106]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e3108]:
+                    - generic [ref=e3109]:
+                      - generic [ref=e3110]:
+                        - img [ref=e3111]
+                        - heading "Rate Breakdown" [level=4] [ref=e3113]
+                      - generic [ref=e3114]: Standard Rate
+                    - generic [ref=e3115]:
+                      - generic [ref=e3116]:
+                        - paragraph [ref=e3117]: Staff Pay Rate
+                        - paragraph [ref=e3118]: £20.00/hr
+                      - generic [ref=e3119]:
+                        - paragraph [ref=e3120]: Client Charge Rate
+                        - paragraph [ref=e3121]: £30.00/hr
+                    - generic [ref=e3123]:
+                      - generic [ref=e3124]:
+                        - paragraph [ref=e3125]: Staff Cost
+                        - paragraph [ref=e3126]: £240.00
+                      - generic [ref=e3127]:
+                        - paragraph [ref=e3128]: Client Charge
+                        - paragraph [ref=e3129]: £360.00
+                      - generic [ref=e3130]:
+                        - paragraph [ref=e3131]:
+                          - img [ref=e3132]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e3135]: £120.00
+                  - generic [ref=e3136]:
+                    - paragraph [ref=e3137]:
+                      - strong [ref=e3138]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3139]: "Reason:"
+                - button "Edit Shift" [ref=e3141] [cursor=pointer]
+            - generic [ref=e3143]:
+              - generic [ref=e3146]: cancelled
+              - generic [ref=e3147]:
+                - generic [ref=e3148]:
+                  - generic [ref=e3149]:
+                    - generic [ref=e3150]: care assistant
+                    - generic [ref=e3151]: 💰 Rate Override
+                  - generic [ref=e3152]:
+                    - generic [ref=e3153]:
+                      - img [ref=e3154]
+                      - generic [ref=e3157]: Divine Care Center
+                    - generic [ref=e3158]:
+                      - img [ref=e3159]
+                      - generic [ref=e3161]: Wed, Nov 12, 2025
+                    - generic [ref=e3162]:
+                      - img [ref=e3163]
+                      - generic [ref=e3166]: 2025-11-12T09:00:00+00:00 - 2025-11-12T17:00:00+00:00 (8h)
+                  - generic [ref=e3168]:
+                    - generic [ref=e3169]:
+                      - generic [ref=e3170]:
+                        - img [ref=e3171]
+                        - heading "Rate Breakdown" [level=4] [ref=e3173]
+                      - generic [ref=e3174]: Standard Rate
+                    - generic [ref=e3175]:
+                      - generic [ref=e3176]:
+                        - paragraph [ref=e3177]: Staff Pay Rate
+                        - paragraph [ref=e3178]: £15.00/hr
+                      - generic [ref=e3179]:
+                        - paragraph [ref=e3180]: Client Charge Rate
+                        - paragraph [ref=e3181]: £25.00/hr
+                    - generic [ref=e3183]:
+                      - generic [ref=e3184]:
+                        - paragraph [ref=e3185]: Staff Cost
+                        - paragraph [ref=e3186]: £120.00
+                      - generic [ref=e3187]:
+                        - paragraph [ref=e3188]: Client Charge
+                        - paragraph [ref=e3189]: £200.00
+                      - generic [ref=e3190]:
+                        - paragraph [ref=e3191]:
+                          - img [ref=e3192]
+                          - text: Margin (40.0%)
+                        - paragraph [ref=e3195]: £80.00
+                  - generic [ref=e3196]:
+                    - paragraph [ref=e3197]:
+                      - strong [ref=e3198]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3199]: "Reason:"
+                - button "Edit Shift" [ref=e3201] [cursor=pointer]
+            - generic [ref=e3203]:
+              - generic [ref=e3206]: completed
+              - generic [ref=e3207]:
+                - generic [ref=e3208]:
+                  - generic [ref=e3209]:
+                    - generic [ref=e3210]: nurse
+                    - generic [ref=e3211]: 💰 Rate Override
+                  - generic [ref=e3212]:
+                    - generic [ref=e3213]:
+                      - img [ref=e3214]
+                      - generic [ref=e3217]: Divine Care Center
+                    - generic [ref=e3218]:
+                      - img [ref=e3219]
+                      - generic [ref=e3221]: Wed, Nov 12, 2025
+                    - generic [ref=e3222]:
+                      - img [ref=e3223]
+                      - generic [ref=e3226]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e3228]:
+                    - generic [ref=e3229]:
+                      - generic [ref=e3230]:
+                        - img [ref=e3231]
+                        - heading "Rate Breakdown" [level=4] [ref=e3233]
+                      - generic [ref=e3234]: Standard Rate
+                    - generic [ref=e3235]:
+                      - generic [ref=e3236]:
+                        - paragraph [ref=e3237]: Staff Pay Rate
+                        - paragraph [ref=e3238]: £20.00/hr
+                      - generic [ref=e3239]:
+                        - paragraph [ref=e3240]: Client Charge Rate
+                        - paragraph [ref=e3241]: £30.00/hr
+                    - generic [ref=e3243]:
+                      - generic [ref=e3244]:
+                        - paragraph [ref=e3245]: Staff Cost
+                        - paragraph [ref=e3246]: £240.00
+                      - generic [ref=e3247]:
+                        - paragraph [ref=e3248]: Client Charge
+                        - paragraph [ref=e3249]: £360.00
+                      - generic [ref=e3250]:
+                        - paragraph [ref=e3251]:
+                          - img [ref=e3252]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e3255]: £120.00
+                  - generic [ref=e3256]:
+                    - paragraph [ref=e3257]:
+                      - strong [ref=e3258]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3259]: "Reason:"
+                - button "Edit Shift" [ref=e3261] [cursor=pointer]
+            - generic [ref=e3263]:
+              - generic [ref=e3266]: confirmed
+              - generic [ref=e3267]:
+                - generic [ref=e3268]:
+                  - generic [ref=e3269]:
+                    - generic [ref=e3270]: nurse
+                    - generic [ref=e3271]: 💰 Rate Override
+                  - generic [ref=e3272]:
+                    - generic [ref=e3273]:
+                      - img [ref=e3274]
+                      - generic [ref=e3277]: Divine Care Center
+                    - generic [ref=e3278]:
+                      - img [ref=e3279]
+                      - generic [ref=e3281]: Wed, Nov 12, 2025
+                    - generic [ref=e3282]:
+                      - img [ref=e3283]
+                      - generic [ref=e3286]: 2025-11-12T10:00:00+00:00 - 2025-11-12T22:00:00+00:00 (12h)
+                  - generic [ref=e3288]:
+                    - generic [ref=e3289]:
+                      - generic [ref=e3290]:
+                        - img [ref=e3291]
+                        - heading "Rate Breakdown" [level=4] [ref=e3293]
+                      - generic [ref=e3294]: Standard Rate
+                    - generic [ref=e3295]:
+                      - generic [ref=e3296]:
+                        - paragraph [ref=e3297]: Staff Pay Rate
+                        - paragraph [ref=e3298]: £20.00/hr
+                      - generic [ref=e3299]:
+                        - paragraph [ref=e3300]: Client Charge Rate
+                        - paragraph [ref=e3301]: £30.00/hr
+                    - generic [ref=e3303]:
+                      - generic [ref=e3304]:
+                        - paragraph [ref=e3305]: Staff Cost
+                        - paragraph [ref=e3306]: £240.00
+                      - generic [ref=e3307]:
+                        - paragraph [ref=e3308]: Client Charge
+                        - paragraph [ref=e3309]: £360.00
+                      - generic [ref=e3310]:
+                        - paragraph [ref=e3311]:
+                          - img [ref=e3312]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e3315]: £120.00
+                  - generic [ref=e3316]:
+                    - paragraph [ref=e3317]:
+                      - strong [ref=e3318]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3319]: "Reason:"
+                - button "Edit Shift" [ref=e3321] [cursor=pointer]
+            - generic [ref=e3323]:
+              - generic [ref=e3326]: completed
+              - generic [ref=e3327]:
+                - generic [ref=e3328]:
+                  - generic [ref=e3329]:
+                    - generic [ref=e3330]: nurse
+                    - generic [ref=e3331]: 💰 Rate Override
+                  - generic [ref=e3332]:
+                    - generic [ref=e3333]:
+                      - img [ref=e3334]
+                      - generic [ref=e3337]: Divine Care Center
+                    - generic [ref=e3338]:
+                      - img [ref=e3339]
+                      - generic [ref=e3341]: Wed, Nov 12, 2025
+                    - generic [ref=e3342]:
+                      - img [ref=e3343]
+                      - generic [ref=e3346]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e3348]:
+                    - generic [ref=e3349]:
+                      - generic [ref=e3350]:
+                        - img [ref=e3351]
+                        - heading "Rate Breakdown" [level=4] [ref=e3353]
+                      - generic [ref=e3354]: Standard Rate
+                    - generic [ref=e3355]:
+                      - generic [ref=e3356]:
+                        - paragraph [ref=e3357]: Staff Pay Rate
+                        - paragraph [ref=e3358]: £20.00/hr
+                      - generic [ref=e3359]:
+                        - paragraph [ref=e3360]: Client Charge Rate
+                        - paragraph [ref=e3361]: £30.00/hr
+                    - generic [ref=e3363]:
+                      - generic [ref=e3364]:
+                        - paragraph [ref=e3365]: Staff Cost
+                        - paragraph [ref=e3366]: £240.00
+                      - generic [ref=e3367]:
+                        - paragraph [ref=e3368]: Client Charge
+                        - paragraph [ref=e3369]: £360.00
+                      - generic [ref=e3370]:
+                        - paragraph [ref=e3371]:
+                          - img [ref=e3372]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e3375]: £120.00
+                  - generic [ref=e3376]:
+                    - paragraph [ref=e3377]:
+                      - strong [ref=e3378]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3379]: "Reason:"
+                - button "Edit Shift" [ref=e3381] [cursor=pointer]
+            - generic [ref=e3383]:
+              - generic [ref=e3386]: cancelled
+              - generic [ref=e3387]:
+                - generic [ref=e3388]:
+                  - generic [ref=e3389]:
+                    - generic [ref=e3390]: care assistant
+                    - generic [ref=e3391]: 💰 Rate Override
+                  - generic [ref=e3392]:
+                    - generic [ref=e3393]:
+                      - img [ref=e3394]
+                      - generic [ref=e3397]: Divine Care Center
+                    - generic [ref=e3398]:
+                      - img [ref=e3399]
+                      - generic [ref=e3401]: Wed, Nov 12, 2025
+                    - generic [ref=e3402]:
+                      - img [ref=e3403]
+                      - generic [ref=e3406]: 2025-11-12T09:00:00+00:00 - 2025-11-12T17:00:00+00:00 (8h)
+                  - generic [ref=e3408]:
+                    - generic [ref=e3409]:
+                      - generic [ref=e3410]:
+                        - img [ref=e3411]
+                        - heading "Rate Breakdown" [level=4] [ref=e3413]
+                      - generic [ref=e3414]: Standard Rate
+                    - generic [ref=e3415]:
+                      - generic [ref=e3416]:
+                        - paragraph [ref=e3417]: Staff Pay Rate
+                        - paragraph [ref=e3418]: £15.00/hr
+                      - generic [ref=e3419]:
+                        - paragraph [ref=e3420]: Client Charge Rate
+                        - paragraph [ref=e3421]: £25.00/hr
+                    - generic [ref=e3423]:
+                      - generic [ref=e3424]:
+                        - paragraph [ref=e3425]: Staff Cost
+                        - paragraph [ref=e3426]: £120.00
+                      - generic [ref=e3427]:
+                        - paragraph [ref=e3428]: Client Charge
+                        - paragraph [ref=e3429]: £200.00
+                      - generic [ref=e3430]:
+                        - paragraph [ref=e3431]:
+                          - img [ref=e3432]
+                          - text: Margin (40.0%)
+                        - paragraph [ref=e3435]: £80.00
+                  - generic [ref=e3436]:
+                    - paragraph [ref=e3437]:
+                      - strong [ref=e3438]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3439]: "Reason:"
+                - button "Edit Shift" [ref=e3441] [cursor=pointer]
+            - generic [ref=e3443]:
+              - generic [ref=e3446]: completed
+              - generic [ref=e3447]:
+                - generic [ref=e3448]:
+                  - generic [ref=e3449]:
+                    - generic [ref=e3450]: nurse
+                    - generic [ref=e3451]: 💰 Rate Override
+                  - generic [ref=e3452]:
+                    - generic [ref=e3453]:
+                      - img [ref=e3454]
+                      - generic [ref=e3457]: Divine Care Center
+                    - generic [ref=e3458]:
+                      - img [ref=e3459]
+                      - generic [ref=e3461]: Wed, Nov 12, 2025
+                    - generic [ref=e3462]:
+                      - img [ref=e3463]
+                      - generic [ref=e3466]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e3468]:
+                    - generic [ref=e3469]:
+                      - generic [ref=e3470]:
+                        - img [ref=e3471]
+                        - heading "Rate Breakdown" [level=4] [ref=e3473]
+                      - generic [ref=e3474]: Standard Rate
+                    - generic [ref=e3475]:
+                      - generic [ref=e3476]:
+                        - paragraph [ref=e3477]: Staff Pay Rate
+                        - paragraph [ref=e3478]: £20.00/hr
+                      - generic [ref=e3479]:
+                        - paragraph [ref=e3480]: Client Charge Rate
+                        - paragraph [ref=e3481]: £30.00/hr
+                    - generic [ref=e3483]:
+                      - generic [ref=e3484]:
+                        - paragraph [ref=e3485]: Staff Cost
+                        - paragraph [ref=e3486]: £240.00
+                      - generic [ref=e3487]:
+                        - paragraph [ref=e3488]: Client Charge
+                        - paragraph [ref=e3489]: £360.00
+                      - generic [ref=e3490]:
+                        - paragraph [ref=e3491]:
+                          - img [ref=e3492]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e3495]: £120.00
+                  - generic [ref=e3496]:
+                    - paragraph [ref=e3497]:
+                      - strong [ref=e3498]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3499]: "Reason:"
+                - button "Edit Shift" [ref=e3501] [cursor=pointer]
+            - generic [ref=e3503]:
+              - generic [ref=e3506]: confirmed
+              - generic [ref=e3507]:
+                - generic [ref=e3508]:
+                  - generic [ref=e3509]:
+                    - generic [ref=e3510]: nurse
+                    - generic [ref=e3511]: 💰 Rate Override
+                  - generic [ref=e3512]:
+                    - generic [ref=e3513]:
+                      - img [ref=e3514]
+                      - generic [ref=e3517]: Divine Care Center
+                    - generic [ref=e3518]:
+                      - img [ref=e3519]
+                      - generic [ref=e3521]: Wed, Nov 12, 2025
+                    - generic [ref=e3522]:
+                      - img [ref=e3523]
+                      - generic [ref=e3526]: 2025-11-12T10:00:00+00:00 - 2025-11-12T22:00:00+00:00 (12h)
+                  - generic [ref=e3528]:
+                    - generic [ref=e3529]:
+                      - generic [ref=e3530]:
+                        - img [ref=e3531]
+                        - heading "Rate Breakdown" [level=4] [ref=e3533]
+                      - generic [ref=e3534]: Standard Rate
+                    - generic [ref=e3535]:
+                      - generic [ref=e3536]:
+                        - paragraph [ref=e3537]: Staff Pay Rate
+                        - paragraph [ref=e3538]: £20.00/hr
+                      - generic [ref=e3539]:
+                        - paragraph [ref=e3540]: Client Charge Rate
+                        - paragraph [ref=e3541]: £30.00/hr
+                    - generic [ref=e3543]:
+                      - generic [ref=e3544]:
+                        - paragraph [ref=e3545]: Staff Cost
+                        - paragraph [ref=e3546]: £240.00
+                      - generic [ref=e3547]:
+                        - paragraph [ref=e3548]: Client Charge
+                        - paragraph [ref=e3549]: £360.00
+                      - generic [ref=e3550]:
+                        - paragraph [ref=e3551]:
+                          - img [ref=e3552]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e3555]: £120.00
+                  - generic [ref=e3556]:
+                    - paragraph [ref=e3557]:
+                      - strong [ref=e3558]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3559]: "Reason:"
+                - button "Edit Shift" [ref=e3561] [cursor=pointer]
+            - generic [ref=e3563]:
+              - generic [ref=e3566]: completed
+              - generic [ref=e3567]:
+                - generic [ref=e3568]:
+                  - generic [ref=e3569]:
+                    - generic [ref=e3570]: nurse
+                    - generic [ref=e3571]: 💰 Rate Override
+                  - generic [ref=e3572]:
+                    - generic [ref=e3573]:
+                      - img [ref=e3574]
+                      - generic [ref=e3577]: Divine Care Center
+                    - generic [ref=e3578]:
+                      - img [ref=e3579]
+                      - generic [ref=e3581]: Wed, Nov 12, 2025
+                    - generic [ref=e3582]:
+                      - img [ref=e3583]
+                      - generic [ref=e3586]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e3588]:
+                    - generic [ref=e3589]:
+                      - generic [ref=e3590]:
+                        - img [ref=e3591]
+                        - heading "Rate Breakdown" [level=4] [ref=e3593]
+                      - generic [ref=e3594]: Standard Rate
+                    - generic [ref=e3595]:
+                      - generic [ref=e3596]:
+                        - paragraph [ref=e3597]: Staff Pay Rate
+                        - paragraph [ref=e3598]: £20.00/hr
+                      - generic [ref=e3599]:
+                        - paragraph [ref=e3600]: Client Charge Rate
+                        - paragraph [ref=e3601]: £30.00/hr
+                    - generic [ref=e3603]:
+                      - generic [ref=e3604]:
+                        - paragraph [ref=e3605]: Staff Cost
+                        - paragraph [ref=e3606]: £240.00
+                      - generic [ref=e3607]:
+                        - paragraph [ref=e3608]: Client Charge
+                        - paragraph [ref=e3609]: £360.00
+                      - generic [ref=e3610]:
+                        - paragraph [ref=e3611]:
+                          - img [ref=e3612]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e3615]: £120.00
+                  - generic [ref=e3616]:
+                    - paragraph [ref=e3617]:
+                      - strong [ref=e3618]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3619]: "Reason:"
+                - button "Edit Shift" [ref=e3621] [cursor=pointer]
+            - generic [ref=e3623]:
+              - generic [ref=e3626]: cancelled
+              - generic [ref=e3627]:
+                - generic [ref=e3628]:
+                  - generic [ref=e3629]:
+                    - generic [ref=e3630]: care assistant
+                    - generic [ref=e3631]: 💰 Rate Override
+                  - generic [ref=e3632]:
+                    - generic [ref=e3633]:
+                      - img [ref=e3634]
+                      - generic [ref=e3637]: Divine Care Center
+                    - generic [ref=e3638]:
+                      - img [ref=e3639]
+                      - generic [ref=e3641]: Wed, Nov 12, 2025
+                    - generic [ref=e3642]:
+                      - img [ref=e3643]
+                      - generic [ref=e3646]: 2025-11-12T09:00:00+00:00 - 2025-11-12T17:00:00+00:00 (8h)
+                  - generic [ref=e3648]:
+                    - generic [ref=e3649]:
+                      - generic [ref=e3650]:
+                        - img [ref=e3651]
+                        - heading "Rate Breakdown" [level=4] [ref=e3653]
+                      - generic [ref=e3654]: Standard Rate
+                    - generic [ref=e3655]:
+                      - generic [ref=e3656]:
+                        - paragraph [ref=e3657]: Staff Pay Rate
+                        - paragraph [ref=e3658]: £15.00/hr
+                      - generic [ref=e3659]:
+                        - paragraph [ref=e3660]: Client Charge Rate
+                        - paragraph [ref=e3661]: £25.00/hr
+                    - generic [ref=e3663]:
+                      - generic [ref=e3664]:
+                        - paragraph [ref=e3665]: Staff Cost
+                        - paragraph [ref=e3666]: £120.00
+                      - generic [ref=e3667]:
+                        - paragraph [ref=e3668]: Client Charge
+                        - paragraph [ref=e3669]: £200.00
+                      - generic [ref=e3670]:
+                        - paragraph [ref=e3671]:
+                          - img [ref=e3672]
+                          - text: Margin (40.0%)
+                        - paragraph [ref=e3675]: £80.00
+                  - generic [ref=e3676]:
+                    - paragraph [ref=e3677]:
+                      - strong [ref=e3678]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3679]: "Reason:"
+                - button "Edit Shift" [ref=e3681] [cursor=pointer]
+            - generic [ref=e3683]:
+              - generic [ref=e3686]: completed
+              - generic [ref=e3687]:
+                - generic [ref=e3688]:
+                  - generic [ref=e3689]:
+                    - generic [ref=e3690]: nurse
+                    - generic [ref=e3691]: 💰 Rate Override
+                  - generic [ref=e3692]:
+                    - generic [ref=e3693]:
+                      - img [ref=e3694]
+                      - generic [ref=e3697]: Divine Care Center
+                    - generic [ref=e3698]:
+                      - img [ref=e3699]
+                      - generic [ref=e3701]: Wed, Nov 12, 2025
+                    - generic [ref=e3702]:
+                      - img [ref=e3703]
+                      - generic [ref=e3706]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e3708]:
+                    - generic [ref=e3709]:
+                      - generic [ref=e3710]:
+                        - img [ref=e3711]
+                        - heading "Rate Breakdown" [level=4] [ref=e3713]
+                      - generic [ref=e3714]: Standard Rate
+                    - generic [ref=e3715]:
+                      - generic [ref=e3716]:
+                        - paragraph [ref=e3717]: Staff Pay Rate
+                        - paragraph [ref=e3718]: £20.00/hr
+                      - generic [ref=e3719]:
+                        - paragraph [ref=e3720]: Client Charge Rate
+                        - paragraph [ref=e3721]: £30.00/hr
+                    - generic [ref=e3723]:
+                      - generic [ref=e3724]:
+                        - paragraph [ref=e3725]: Staff Cost
+                        - paragraph [ref=e3726]: £240.00
+                      - generic [ref=e3727]:
+                        - paragraph [ref=e3728]: Client Charge
+                        - paragraph [ref=e3729]: £360.00
+                      - generic [ref=e3730]:
+                        - paragraph [ref=e3731]:
+                          - img [ref=e3732]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e3735]: £120.00
+                  - generic [ref=e3736]:
+                    - paragraph [ref=e3737]:
+                      - strong [ref=e3738]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3739]: "Reason:"
+                - button "Edit Shift" [ref=e3741] [cursor=pointer]
+            - generic [ref=e3743]:
+              - generic [ref=e3746]: confirmed
+              - generic [ref=e3747]:
+                - generic [ref=e3748]:
+                  - generic [ref=e3749]:
+                    - generic [ref=e3750]: nurse
+                    - generic [ref=e3751]: 💰 Rate Override
+                  - generic [ref=e3752]:
+                    - generic [ref=e3753]:
+                      - img [ref=e3754]
+                      - generic [ref=e3757]: Divine Care Center
+                    - generic [ref=e3758]:
+                      - img [ref=e3759]
+                      - generic [ref=e3761]: Wed, Nov 12, 2025
+                    - generic [ref=e3762]:
+                      - img [ref=e3763]
+                      - generic [ref=e3766]: 2025-11-12T10:00:00+00:00 - 2025-11-12T22:00:00+00:00 (12h)
+                  - generic [ref=e3768]:
+                    - generic [ref=e3769]:
+                      - generic [ref=e3770]:
+                        - img [ref=e3771]
+                        - heading "Rate Breakdown" [level=4] [ref=e3773]
+                      - generic [ref=e3774]: Standard Rate
+                    - generic [ref=e3775]:
+                      - generic [ref=e3776]:
+                        - paragraph [ref=e3777]: Staff Pay Rate
+                        - paragraph [ref=e3778]: £20.00/hr
+                      - generic [ref=e3779]:
+                        - paragraph [ref=e3780]: Client Charge Rate
+                        - paragraph [ref=e3781]: £30.00/hr
+                    - generic [ref=e3783]:
+                      - generic [ref=e3784]:
+                        - paragraph [ref=e3785]: Staff Cost
+                        - paragraph [ref=e3786]: £240.00
+                      - generic [ref=e3787]:
+                        - paragraph [ref=e3788]: Client Charge
+                        - paragraph [ref=e3789]: £360.00
+                      - generic [ref=e3790]:
+                        - paragraph [ref=e3791]:
+                          - img [ref=e3792]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e3795]: £120.00
+                  - generic [ref=e3796]:
+                    - paragraph [ref=e3797]:
+                      - strong [ref=e3798]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3799]: "Reason:"
+                - button "Edit Shift" [ref=e3801] [cursor=pointer]
+            - generic [ref=e3803]:
+              - generic [ref=e3806]: completed
+              - generic [ref=e3807]:
+                - generic [ref=e3808]:
+                  - generic [ref=e3809]:
+                    - generic [ref=e3810]: nurse
+                    - generic [ref=e3811]: 💰 Rate Override
+                  - generic [ref=e3812]:
+                    - generic [ref=e3813]:
+                      - img [ref=e3814]
+                      - generic [ref=e3817]: Divine Care Center
+                    - generic [ref=e3818]:
+                      - img [ref=e3819]
+                      - generic [ref=e3821]: Wed, Nov 12, 2025
+                    - generic [ref=e3822]:
+                      - img [ref=e3823]
+                      - generic [ref=e3826]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e3828]:
+                    - generic [ref=e3829]:
+                      - generic [ref=e3830]:
+                        - img [ref=e3831]
+                        - heading "Rate Breakdown" [level=4] [ref=e3833]
+                      - generic [ref=e3834]: Standard Rate
+                    - generic [ref=e3835]:
+                      - generic [ref=e3836]:
+                        - paragraph [ref=e3837]: Staff Pay Rate
+                        - paragraph [ref=e3838]: £20.00/hr
+                      - generic [ref=e3839]:
+                        - paragraph [ref=e3840]: Client Charge Rate
+                        - paragraph [ref=e3841]: £30.00/hr
+                    - generic [ref=e3843]:
+                      - generic [ref=e3844]:
+                        - paragraph [ref=e3845]: Staff Cost
+                        - paragraph [ref=e3846]: £240.00
+                      - generic [ref=e3847]:
+                        - paragraph [ref=e3848]: Client Charge
+                        - paragraph [ref=e3849]: £360.00
+                      - generic [ref=e3850]:
+                        - paragraph [ref=e3851]:
+                          - img [ref=e3852]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e3855]: £120.00
+                  - generic [ref=e3856]:
+                    - paragraph [ref=e3857]:
+                      - strong [ref=e3858]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3859]: "Reason:"
+                - button "Edit Shift" [ref=e3861] [cursor=pointer]
+            - generic [ref=e3863]:
+              - generic [ref=e3866]: cancelled
+              - generic [ref=e3867]:
+                - generic [ref=e3868]:
+                  - generic [ref=e3869]:
+                    - generic [ref=e3870]: care assistant
+                    - generic [ref=e3871]: 💰 Rate Override
+                  - generic [ref=e3872]:
+                    - generic [ref=e3873]:
+                      - img [ref=e3874]
+                      - generic [ref=e3877]: Divine Care Center
+                    - generic [ref=e3878]:
+                      - img [ref=e3879]
+                      - generic [ref=e3881]: Wed, Nov 12, 2025
+                    - generic [ref=e3882]:
+                      - img [ref=e3883]
+                      - generic [ref=e3886]: 2025-11-12T09:00:00+00:00 - 2025-11-12T17:00:00+00:00 (8h)
+                  - generic [ref=e3888]:
+                    - generic [ref=e3889]:
+                      - generic [ref=e3890]:
+                        - img [ref=e3891]
+                        - heading "Rate Breakdown" [level=4] [ref=e3893]
+                      - generic [ref=e3894]: Standard Rate
+                    - generic [ref=e3895]:
+                      - generic [ref=e3896]:
+                        - paragraph [ref=e3897]: Staff Pay Rate
+                        - paragraph [ref=e3898]: £15.00/hr
+                      - generic [ref=e3899]:
+                        - paragraph [ref=e3900]: Client Charge Rate
+                        - paragraph [ref=e3901]: £25.00/hr
+                    - generic [ref=e3903]:
+                      - generic [ref=e3904]:
+                        - paragraph [ref=e3905]: Staff Cost
+                        - paragraph [ref=e3906]: £120.00
+                      - generic [ref=e3907]:
+                        - paragraph [ref=e3908]: Client Charge
+                        - paragraph [ref=e3909]: £200.00
+                      - generic [ref=e3910]:
+                        - paragraph [ref=e3911]:
+                          - img [ref=e3912]
+                          - text: Margin (40.0%)
+                        - paragraph [ref=e3915]: £80.00
+                  - generic [ref=e3916]:
+                    - paragraph [ref=e3917]:
+                      - strong [ref=e3918]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3919]: "Reason:"
+                - button "Edit Shift" [ref=e3921] [cursor=pointer]
+            - generic [ref=e3923]:
+              - generic [ref=e3926]: cancelled
+              - generic [ref=e3927]:
+                - generic [ref=e3928]:
+                  - generic [ref=e3929]:
+                    - generic [ref=e3930]: care assistant
+                    - generic [ref=e3931]: 💰 Rate Override
+                  - generic [ref=e3932]:
+                    - generic [ref=e3933]:
+                      - img [ref=e3934]
+                      - generic [ref=e3937]: Divine Care Center
+                    - generic [ref=e3938]:
+                      - img [ref=e3939]
+                      - generic [ref=e3941]: Wed, Nov 12, 2025
+                    - generic [ref=e3942]:
+                      - img [ref=e3943]
+                      - generic [ref=e3946]: 2025-11-12T09:00:00+00:00 - 2025-11-12T17:00:00+00:00 (8h)
+                  - generic [ref=e3948]:
+                    - generic [ref=e3949]:
+                      - generic [ref=e3950]:
+                        - img [ref=e3951]
+                        - heading "Rate Breakdown" [level=4] [ref=e3953]
+                      - generic [ref=e3954]: Standard Rate
+                    - generic [ref=e3955]:
+                      - generic [ref=e3956]:
+                        - paragraph [ref=e3957]: Staff Pay Rate
+                        - paragraph [ref=e3958]: £15.00/hr
+                      - generic [ref=e3959]:
+                        - paragraph [ref=e3960]: Client Charge Rate
+                        - paragraph [ref=e3961]: £25.00/hr
+                    - generic [ref=e3963]:
+                      - generic [ref=e3964]:
+                        - paragraph [ref=e3965]: Staff Cost
+                        - paragraph [ref=e3966]: £120.00
+                      - generic [ref=e3967]:
+                        - paragraph [ref=e3968]: Client Charge
+                        - paragraph [ref=e3969]: £200.00
+                      - generic [ref=e3970]:
+                        - paragraph [ref=e3971]:
+                          - img [ref=e3972]
+                          - text: Margin (40.0%)
+                        - paragraph [ref=e3975]: £80.00
+                  - generic [ref=e3976]:
+                    - paragraph [ref=e3977]:
+                      - strong [ref=e3978]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e3979]: "Reason:"
+                - button "Edit Shift" [ref=e3981] [cursor=pointer]
+            - generic [ref=e3983]:
+              - generic [ref=e3986]: confirmed
+              - generic [ref=e3987]:
+                - generic [ref=e3988]:
+                  - generic [ref=e3989]:
+                    - generic [ref=e3990]: nurse
+                    - generic [ref=e3991]: 💰 Rate Override
+                  - generic [ref=e3992]:
+                    - generic [ref=e3993]:
+                      - img [ref=e3994]
+                      - generic [ref=e3997]: Divine Care Center
+                    - generic [ref=e3998]:
+                      - img [ref=e3999]
+                      - generic [ref=e4001]: Wed, Nov 12, 2025
+                    - generic [ref=e4002]:
+                      - img [ref=e4003]
+                      - generic [ref=e4006]: 2025-11-12T10:00:00+00:00 - 2025-11-12T22:00:00+00:00 (12h)
+                  - generic [ref=e4008]:
+                    - generic [ref=e4009]:
+                      - generic [ref=e4010]:
+                        - img [ref=e4011]
+                        - heading "Rate Breakdown" [level=4] [ref=e4013]
+                      - generic [ref=e4014]: Standard Rate
+                    - generic [ref=e4015]:
+                      - generic [ref=e4016]:
+                        - paragraph [ref=e4017]: Staff Pay Rate
+                        - paragraph [ref=e4018]: £20.00/hr
+                      - generic [ref=e4019]:
+                        - paragraph [ref=e4020]: Client Charge Rate
+                        - paragraph [ref=e4021]: £30.00/hr
+                    - generic [ref=e4023]:
+                      - generic [ref=e4024]:
+                        - paragraph [ref=e4025]: Staff Cost
+                        - paragraph [ref=e4026]: £240.00
+                      - generic [ref=e4027]:
+                        - paragraph [ref=e4028]: Client Charge
+                        - paragraph [ref=e4029]: £360.00
+                      - generic [ref=e4030]:
+                        - paragraph [ref=e4031]:
+                          - img [ref=e4032]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e4035]: £120.00
+                  - generic [ref=e4036]:
+                    - paragraph [ref=e4037]:
+                      - strong [ref=e4038]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e4039]: "Reason:"
+                - button "Edit Shift" [ref=e4041] [cursor=pointer]
+            - generic [ref=e4043]:
+              - generic [ref=e4046]: completed
+              - generic [ref=e4047]:
+                - generic [ref=e4048]:
+                  - generic [ref=e4049]:
+                    - generic [ref=e4050]: nurse
+                    - generic [ref=e4051]: 💰 Rate Override
+                  - generic [ref=e4052]:
+                    - generic [ref=e4053]:
+                      - img [ref=e4054]
+                      - generic [ref=e4057]: Divine Care Center
+                    - generic [ref=e4058]:
+                      - img [ref=e4059]
+                      - generic [ref=e4061]: Wed, Nov 12, 2025
+                    - generic [ref=e4062]:
+                      - img [ref=e4063]
+                      - generic [ref=e4066]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e4068]:
+                    - generic [ref=e4069]:
+                      - generic [ref=e4070]:
+                        - img [ref=e4071]
+                        - heading "Rate Breakdown" [level=4] [ref=e4073]
+                      - generic [ref=e4074]: Standard Rate
+                    - generic [ref=e4075]:
+                      - generic [ref=e4076]:
+                        - paragraph [ref=e4077]: Staff Pay Rate
+                        - paragraph [ref=e4078]: £20.00/hr
+                      - generic [ref=e4079]:
+                        - paragraph [ref=e4080]: Client Charge Rate
+                        - paragraph [ref=e4081]: £30.00/hr
+                    - generic [ref=e4083]:
+                      - generic [ref=e4084]:
+                        - paragraph [ref=e4085]: Staff Cost
+                        - paragraph [ref=e4086]: £240.00
+                      - generic [ref=e4087]:
+                        - paragraph [ref=e4088]: Client Charge
+                        - paragraph [ref=e4089]: £360.00
+                      - generic [ref=e4090]:
+                        - paragraph [ref=e4091]:
+                          - img [ref=e4092]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e4095]: £120.00
+                  - generic [ref=e4096]:
+                    - paragraph [ref=e4097]:
+                      - strong [ref=e4098]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e4099]: "Reason:"
+                - button "Edit Shift" [ref=e4101] [cursor=pointer]
+            - generic [ref=e4103]:
+              - generic [ref=e4106]: completed
+              - generic [ref=e4107]:
+                - generic [ref=e4108]:
+                  - generic [ref=e4109]:
+                    - generic [ref=e4110]: nurse
+                    - generic [ref=e4111]: 💰 Rate Override
+                  - generic [ref=e4112]:
+                    - generic [ref=e4113]:
+                      - img [ref=e4114]
+                      - generic [ref=e4117]: Divine Care Center
+                    - generic [ref=e4118]:
+                      - img [ref=e4119]
+                      - generic [ref=e4121]: Wed, Nov 12, 2025
+                    - generic [ref=e4122]:
+                      - img [ref=e4123]
+                      - generic [ref=e4126]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e4128]:
+                    - generic [ref=e4129]:
+                      - generic [ref=e4130]:
+                        - img [ref=e4131]
+                        - heading "Rate Breakdown" [level=4] [ref=e4133]
+                      - generic [ref=e4134]: Standard Rate
+                    - generic [ref=e4135]:
+                      - generic [ref=e4136]:
+                        - paragraph [ref=e4137]: Staff Pay Rate
+                        - paragraph [ref=e4138]: £20.00/hr
+                      - generic [ref=e4139]:
+                        - paragraph [ref=e4140]: Client Charge Rate
+                        - paragraph [ref=e4141]: £30.00/hr
+                    - generic [ref=e4143]:
+                      - generic [ref=e4144]:
+                        - paragraph [ref=e4145]: Staff Cost
+                        - paragraph [ref=e4146]: £240.00
+                      - generic [ref=e4147]:
+                        - paragraph [ref=e4148]: Client Charge
+                        - paragraph [ref=e4149]: £360.00
+                      - generic [ref=e4150]:
+                        - paragraph [ref=e4151]:
+                          - img [ref=e4152]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e4155]: £120.00
+                  - generic [ref=e4156]:
+                    - paragraph [ref=e4157]:
+                      - strong [ref=e4158]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e4159]: "Reason:"
+                - button "Edit Shift" [ref=e4161] [cursor=pointer]
+            - generic [ref=e4163]:
+              - generic [ref=e4166]: confirmed
+              - generic [ref=e4167]:
+                - generic [ref=e4168]:
+                  - generic [ref=e4169]:
+                    - generic [ref=e4170]: nurse
+                    - generic [ref=e4171]: 💰 Rate Override
+                  - generic [ref=e4172]:
+                    - generic [ref=e4173]:
+                      - img [ref=e4174]
+                      - generic [ref=e4177]: Divine Care Center
+                    - generic [ref=e4178]:
+                      - img [ref=e4179]
+                      - generic [ref=e4181]: Wed, Nov 12, 2025
+                    - generic [ref=e4182]:
+                      - img [ref=e4183]
+                      - generic [ref=e4186]: 2025-11-12T10:00:00+00:00 - 2025-11-12T22:00:00+00:00 (12h)
+                  - generic [ref=e4188]:
+                    - generic [ref=e4189]:
+                      - generic [ref=e4190]:
+                        - img [ref=e4191]
+                        - heading "Rate Breakdown" [level=4] [ref=e4193]
+                      - generic [ref=e4194]: Standard Rate
+                    - generic [ref=e4195]:
+                      - generic [ref=e4196]:
+                        - paragraph [ref=e4197]: Staff Pay Rate
+                        - paragraph [ref=e4198]: £20.00/hr
+                      - generic [ref=e4199]:
+                        - paragraph [ref=e4200]: Client Charge Rate
+                        - paragraph [ref=e4201]: £30.00/hr
+                    - generic [ref=e4203]:
+                      - generic [ref=e4204]:
+                        - paragraph [ref=e4205]: Staff Cost
+                        - paragraph [ref=e4206]: £240.00
+                      - generic [ref=e4207]:
+                        - paragraph [ref=e4208]: Client Charge
+                        - paragraph [ref=e4209]: £360.00
+                      - generic [ref=e4210]:
+                        - paragraph [ref=e4211]:
+                          - img [ref=e4212]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e4215]: £120.00
+                  - generic [ref=e4216]:
+                    - paragraph [ref=e4217]:
+                      - strong [ref=e4218]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e4219]: "Reason:"
+                - button "Edit Shift" [ref=e4221] [cursor=pointer]
+            - generic [ref=e4223]:
+              - generic [ref=e4226]: completed
+              - generic [ref=e4227]:
+                - generic [ref=e4228]:
+                  - generic [ref=e4229]:
+                    - generic [ref=e4230]: nurse
+                    - generic [ref=e4231]: 💰 Rate Override
+                  - generic [ref=e4232]:
+                    - generic [ref=e4233]:
+                      - img [ref=e4234]
+                      - generic [ref=e4237]: Divine Care Center
+                    - generic [ref=e4238]:
+                      - img [ref=e4239]
+                      - generic [ref=e4241]: Wed, Nov 12, 2025
+                    - generic [ref=e4242]:
+                      - img [ref=e4243]
+                      - generic [ref=e4246]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e4248]:
+                    - generic [ref=e4249]:
+                      - generic [ref=e4250]:
+                        - img [ref=e4251]
+                        - heading "Rate Breakdown" [level=4] [ref=e4253]
+                      - generic [ref=e4254]: Standard Rate
+                    - generic [ref=e4255]:
+                      - generic [ref=e4256]:
+                        - paragraph [ref=e4257]: Staff Pay Rate
+                        - paragraph [ref=e4258]: £20.00/hr
+                      - generic [ref=e4259]:
+                        - paragraph [ref=e4260]: Client Charge Rate
+                        - paragraph [ref=e4261]: £30.00/hr
+                    - generic [ref=e4263]:
+                      - generic [ref=e4264]:
+                        - paragraph [ref=e4265]: Staff Cost
+                        - paragraph [ref=e4266]: £240.00
+                      - generic [ref=e4267]:
+                        - paragraph [ref=e4268]: Client Charge
+                        - paragraph [ref=e4269]: £360.00
+                      - generic [ref=e4270]:
+                        - paragraph [ref=e4271]:
+                          - img [ref=e4272]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e4275]: £120.00
+                  - generic [ref=e4276]:
+                    - paragraph [ref=e4277]:
+                      - strong [ref=e4278]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e4279]: "Reason:"
+                - button "Edit Shift" [ref=e4281] [cursor=pointer]
+            - generic [ref=e4283]:
+              - generic [ref=e4286]: cancelled
+              - generic [ref=e4287]:
+                - generic [ref=e4288]:
+                  - generic [ref=e4289]:
+                    - generic [ref=e4290]: care assistant
+                    - generic [ref=e4291]: 💰 Rate Override
+                  - generic [ref=e4292]:
+                    - generic [ref=e4293]:
+                      - img [ref=e4294]
+                      - generic [ref=e4297]: Divine Care Center
+                    - generic [ref=e4298]:
+                      - img [ref=e4299]
+                      - generic [ref=e4301]: Wed, Nov 12, 2025
+                    - generic [ref=e4302]:
+                      - img [ref=e4303]
+                      - generic [ref=e4306]: 2025-11-12T09:00:00+00:00 - 2025-11-12T17:00:00+00:00 (8h)
+                  - generic [ref=e4308]:
+                    - generic [ref=e4309]:
+                      - generic [ref=e4310]:
+                        - img [ref=e4311]
+                        - heading "Rate Breakdown" [level=4] [ref=e4313]
+                      - generic [ref=e4314]: Standard Rate
+                    - generic [ref=e4315]:
+                      - generic [ref=e4316]:
+                        - paragraph [ref=e4317]: Staff Pay Rate
+                        - paragraph [ref=e4318]: £15.00/hr
+                      - generic [ref=e4319]:
+                        - paragraph [ref=e4320]: Client Charge Rate
+                        - paragraph [ref=e4321]: £25.00/hr
+                    - generic [ref=e4323]:
+                      - generic [ref=e4324]:
+                        - paragraph [ref=e4325]: Staff Cost
+                        - paragraph [ref=e4326]: £120.00
+                      - generic [ref=e4327]:
+                        - paragraph [ref=e4328]: Client Charge
+                        - paragraph [ref=e4329]: £200.00
+                      - generic [ref=e4330]:
+                        - paragraph [ref=e4331]:
+                          - img [ref=e4332]
+                          - text: Margin (40.0%)
+                        - paragraph [ref=e4335]: £80.00
+                  - generic [ref=e4336]:
+                    - paragraph [ref=e4337]:
+                      - strong [ref=e4338]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e4339]: "Reason:"
+                - button "Edit Shift" [ref=e4341] [cursor=pointer]
+            - generic [ref=e4343]:
+              - generic [ref=e4346]: completed
+              - generic [ref=e4347]:
+                - generic [ref=e4348]:
+                  - generic [ref=e4349]:
+                    - generic [ref=e4350]: nurse
+                    - generic [ref=e4351]: 💰 Rate Override
+                  - generic [ref=e4352]:
+                    - generic [ref=e4353]:
+                      - img [ref=e4354]
+                      - generic [ref=e4357]: Divine Care Center
+                    - generic [ref=e4358]:
+                      - img [ref=e4359]
+                      - generic [ref=e4361]: Wed, Nov 12, 2025
+                    - generic [ref=e4362]:
+                      - img [ref=e4363]
+                      - generic [ref=e4366]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e4368]:
+                    - generic [ref=e4369]:
+                      - generic [ref=e4370]:
+                        - img [ref=e4371]
+                        - heading "Rate Breakdown" [level=4] [ref=e4373]
+                      - generic [ref=e4374]: Standard Rate
+                    - generic [ref=e4375]:
+                      - generic [ref=e4376]:
+                        - paragraph [ref=e4377]: Staff Pay Rate
+                        - paragraph [ref=e4378]: £20.00/hr
+                      - generic [ref=e4379]:
+                        - paragraph [ref=e4380]: Client Charge Rate
+                        - paragraph [ref=e4381]: £30.00/hr
+                    - generic [ref=e4383]:
+                      - generic [ref=e4384]:
+                        - paragraph [ref=e4385]: Staff Cost
+                        - paragraph [ref=e4386]: £240.00
+                      - generic [ref=e4387]:
+                        - paragraph [ref=e4388]: Client Charge
+                        - paragraph [ref=e4389]: £360.00
+                      - generic [ref=e4390]:
+                        - paragraph [ref=e4391]:
+                          - img [ref=e4392]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e4395]: £120.00
+                  - generic [ref=e4396]:
+                    - paragraph [ref=e4397]:
+                      - strong [ref=e4398]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e4399]: "Reason:"
+                - button "Edit Shift" [ref=e4401] [cursor=pointer]
+            - generic [ref=e4403]:
+              - generic [ref=e4406]: confirmed
+              - generic [ref=e4407]:
+                - generic [ref=e4408]:
+                  - generic [ref=e4409]:
+                    - generic [ref=e4410]: nurse
+                    - generic [ref=e4411]: 💰 Rate Override
+                  - generic [ref=e4412]:
+                    - generic [ref=e4413]:
+                      - img [ref=e4414]
+                      - generic [ref=e4417]: Divine Care Center
+                    - generic [ref=e4418]:
+                      - img [ref=e4419]
+                      - generic [ref=e4421]: Wed, Nov 12, 2025
+                    - generic [ref=e4422]:
+                      - img [ref=e4423]
+                      - generic [ref=e4426]: 2025-11-12T10:00:00+00:00 - 2025-11-12T22:00:00+00:00 (12h)
+                  - generic [ref=e4428]:
+                    - generic [ref=e4429]:
+                      - generic [ref=e4430]:
+                        - img [ref=e4431]
+                        - heading "Rate Breakdown" [level=4] [ref=e4433]
+                      - generic [ref=e4434]: Standard Rate
+                    - generic [ref=e4435]:
+                      - generic [ref=e4436]:
+                        - paragraph [ref=e4437]: Staff Pay Rate
+                        - paragraph [ref=e4438]: £20.00/hr
+                      - generic [ref=e4439]:
+                        - paragraph [ref=e4440]: Client Charge Rate
+                        - paragraph [ref=e4441]: £30.00/hr
+                    - generic [ref=e4443]:
+                      - generic [ref=e4444]:
+                        - paragraph [ref=e4445]: Staff Cost
+                        - paragraph [ref=e4446]: £240.00
+                      - generic [ref=e4447]:
+                        - paragraph [ref=e4448]: Client Charge
+                        - paragraph [ref=e4449]: £360.00
+                      - generic [ref=e4450]:
+                        - paragraph [ref=e4451]:
+                          - img [ref=e4452]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e4455]: £120.00
+                  - generic [ref=e4456]:
+                    - paragraph [ref=e4457]:
+                      - strong [ref=e4458]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e4459]: "Reason:"
+                - button "Edit Shift" [ref=e4461] [cursor=pointer]
+            - generic [ref=e4463]:
+              - generic [ref=e4466]: completed
+              - generic [ref=e4467]:
+                - generic [ref=e4468]:
+                  - generic [ref=e4469]:
+                    - generic [ref=e4470]: nurse
+                    - generic [ref=e4471]: 💰 Rate Override
+                  - generic [ref=e4472]:
+                    - generic [ref=e4473]:
+                      - img [ref=e4474]
+                      - generic [ref=e4477]: Divine Care Center
+                    - generic [ref=e4478]:
+                      - img [ref=e4479]
+                      - generic [ref=e4481]: Wed, Nov 12, 2025
+                    - generic [ref=e4482]:
+                      - img [ref=e4483]
+                      - generic [ref=e4486]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e4488]:
+                    - generic [ref=e4489]:
+                      - generic [ref=e4490]:
+                        - img [ref=e4491]
+                        - heading "Rate Breakdown" [level=4] [ref=e4493]
+                      - generic [ref=e4494]: Standard Rate
+                    - generic [ref=e4495]:
+                      - generic [ref=e4496]:
+                        - paragraph [ref=e4497]: Staff Pay Rate
+                        - paragraph [ref=e4498]: £20.00/hr
+                      - generic [ref=e4499]:
+                        - paragraph [ref=e4500]: Client Charge Rate
+                        - paragraph [ref=e4501]: £30.00/hr
+                    - generic [ref=e4503]:
+                      - generic [ref=e4504]:
+                        - paragraph [ref=e4505]: Staff Cost
+                        - paragraph [ref=e4506]: £240.00
+                      - generic [ref=e4507]:
+                        - paragraph [ref=e4508]: Client Charge
+                        - paragraph [ref=e4509]: £360.00
+                      - generic [ref=e4510]:
+                        - paragraph [ref=e4511]:
+                          - img [ref=e4512]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e4515]: £120.00
+                  - generic [ref=e4516]:
+                    - paragraph [ref=e4517]:
+                      - strong [ref=e4518]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e4519]: "Reason:"
+                - button "Edit Shift" [ref=e4521] [cursor=pointer]
+            - generic [ref=e4523]:
+              - generic [ref=e4526]: cancelled
+              - generic [ref=e4527]:
+                - generic [ref=e4528]:
+                  - generic [ref=e4529]:
+                    - generic [ref=e4530]: care assistant
+                    - generic [ref=e4531]: 💰 Rate Override
+                  - generic [ref=e4532]:
+                    - generic [ref=e4533]:
+                      - img [ref=e4534]
+                      - generic [ref=e4537]: Divine Care Center
+                    - generic [ref=e4538]:
+                      - img [ref=e4539]
+                      - generic [ref=e4541]: Wed, Nov 12, 2025
+                    - generic [ref=e4542]:
+                      - img [ref=e4543]
+                      - generic [ref=e4546]: 2025-11-12T09:00:00+00:00 - 2025-11-12T17:00:00+00:00 (8h)
+                  - generic [ref=e4548]:
+                    - generic [ref=e4549]:
+                      - generic [ref=e4550]:
+                        - img [ref=e4551]
+                        - heading "Rate Breakdown" [level=4] [ref=e4553]
+                      - generic [ref=e4554]: Standard Rate
+                    - generic [ref=e4555]:
+                      - generic [ref=e4556]:
+                        - paragraph [ref=e4557]: Staff Pay Rate
+                        - paragraph [ref=e4558]: £15.00/hr
+                      - generic [ref=e4559]:
+                        - paragraph [ref=e4560]: Client Charge Rate
+                        - paragraph [ref=e4561]: £25.00/hr
+                    - generic [ref=e4563]:
+                      - generic [ref=e4564]:
+                        - paragraph [ref=e4565]: Staff Cost
+                        - paragraph [ref=e4566]: £120.00
+                      - generic [ref=e4567]:
+                        - paragraph [ref=e4568]: Client Charge
+                        - paragraph [ref=e4569]: £200.00
+                      - generic [ref=e4570]:
+                        - paragraph [ref=e4571]:
+                          - img [ref=e4572]
+                          - text: Margin (40.0%)
+                        - paragraph [ref=e4575]: £80.00
+                  - generic [ref=e4576]:
+                    - paragraph [ref=e4577]:
+                      - strong [ref=e4578]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e4579]: "Reason:"
+                - button "Edit Shift" [ref=e4581] [cursor=pointer]
+            - generic [ref=e4583]:
+              - generic [ref=e4586]: completed
+              - generic [ref=e4587]:
+                - generic [ref=e4588]:
+                  - generic [ref=e4589]:
+                    - generic [ref=e4590]: nurse
+                    - generic [ref=e4591]: 💰 Rate Override
+                  - generic [ref=e4592]:
+                    - generic [ref=e4593]:
+                      - img [ref=e4594]
+                      - generic [ref=e4597]: Divine Care Center
+                    - generic [ref=e4598]:
+                      - img [ref=e4599]
+                      - generic [ref=e4601]: Wed, Nov 12, 2025
+                    - generic [ref=e4602]:
+                      - img [ref=e4603]
+                      - generic [ref=e4606]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e4608]:
+                    - generic [ref=e4609]:
+                      - generic [ref=e4610]:
+                        - img [ref=e4611]
+                        - heading "Rate Breakdown" [level=4] [ref=e4613]
+                      - generic [ref=e4614]: Standard Rate
+                    - generic [ref=e4615]:
+                      - generic [ref=e4616]:
+                        - paragraph [ref=e4617]: Staff Pay Rate
+                        - paragraph [ref=e4618]: £20.00/hr
+                      - generic [ref=e4619]:
+                        - paragraph [ref=e4620]: Client Charge Rate
+                        - paragraph [ref=e4621]: £30.00/hr
+                    - generic [ref=e4623]:
+                      - generic [ref=e4624]:
+                        - paragraph [ref=e4625]: Staff Cost
+                        - paragraph [ref=e4626]: £240.00
+                      - generic [ref=e4627]:
+                        - paragraph [ref=e4628]: Client Charge
+                        - paragraph [ref=e4629]: £360.00
+                      - generic [ref=e4630]:
+                        - paragraph [ref=e4631]:
+                          - img [ref=e4632]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e4635]: £120.00
+                  - generic [ref=e4636]:
+                    - paragraph [ref=e4637]:
+                      - strong [ref=e4638]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e4639]: "Reason:"
+                - button "Edit Shift" [ref=e4641] [cursor=pointer]
+            - generic [ref=e4643]:
+              - generic [ref=e4646]: completed
+              - generic [ref=e4647]:
+                - generic [ref=e4648]:
+                  - generic [ref=e4649]:
+                    - generic [ref=e4650]: nurse
+                    - generic [ref=e4651]: 💰 Rate Override
+                  - generic [ref=e4652]:
+                    - generic [ref=e4653]:
+                      - img [ref=e4654]
+                      - generic [ref=e4657]: Divine Care Center
+                    - generic [ref=e4658]:
+                      - img [ref=e4659]
+                      - generic [ref=e4661]: Wed, Nov 12, 2025
+                    - generic [ref=e4662]:
+                      - img [ref=e4663]
+                      - generic [ref=e4666]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e4668]:
+                    - generic [ref=e4669]:
+                      - generic [ref=e4670]:
+                        - img [ref=e4671]
+                        - heading "Rate Breakdown" [level=4] [ref=e4673]
+                      - generic [ref=e4674]: Standard Rate
+                    - generic [ref=e4675]:
+                      - generic [ref=e4676]:
+                        - paragraph [ref=e4677]: Staff Pay Rate
+                        - paragraph [ref=e4678]: £20.00/hr
+                      - generic [ref=e4679]:
+                        - paragraph [ref=e4680]: Client Charge Rate
+                        - paragraph [ref=e4681]: £30.00/hr
+                    - generic [ref=e4683]:
+                      - generic [ref=e4684]:
+                        - paragraph [ref=e4685]: Staff Cost
+                        - paragraph [ref=e4686]: £240.00
+                      - generic [ref=e4687]:
+                        - paragraph [ref=e4688]: Client Charge
+                        - paragraph [ref=e4689]: £360.00
+                      - generic [ref=e4690]:
+                        - paragraph [ref=e4691]:
+                          - img [ref=e4692]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e4695]: £120.00
+                  - generic [ref=e4696]:
+                    - paragraph [ref=e4697]:
+                      - strong [ref=e4698]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e4699]: "Reason:"
+                - button "Edit Shift" [ref=e4701] [cursor=pointer]
+            - generic [ref=e4703]:
+              - generic [ref=e4706]: completed
+              - generic [ref=e4707]:
+                - generic [ref=e4708]:
+                  - generic [ref=e4709]:
+                    - generic [ref=e4710]: nurse
+                    - generic [ref=e4711]: 💰 Rate Override
+                  - generic [ref=e4712]:
+                    - generic [ref=e4713]:
+                      - img [ref=e4714]
+                      - generic [ref=e4717]: Divine Care Center
+                    - generic [ref=e4718]:
+                      - img [ref=e4719]
+                      - generic [ref=e4721]: Wed, Nov 12, 2025
+                    - generic [ref=e4722]:
+                      - img [ref=e4723]
+                      - generic [ref=e4726]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e4728]:
+                    - generic [ref=e4729]:
+                      - generic [ref=e4730]:
+                        - img [ref=e4731]
+                        - heading "Rate Breakdown" [level=4] [ref=e4733]
+                      - generic [ref=e4734]: Standard Rate
+                    - generic [ref=e4735]:
+                      - generic [ref=e4736]:
+                        - paragraph [ref=e4737]: Staff Pay Rate
+                        - paragraph [ref=e4738]: £20.00/hr
+                      - generic [ref=e4739]:
+                        - paragraph [ref=e4740]: Client Charge Rate
+                        - paragraph [ref=e4741]: £30.00/hr
+                    - generic [ref=e4743]:
+                      - generic [ref=e4744]:
+                        - paragraph [ref=e4745]: Staff Cost
+                        - paragraph [ref=e4746]: £240.00
+                      - generic [ref=e4747]:
+                        - paragraph [ref=e4748]: Client Charge
+                        - paragraph [ref=e4749]: £360.00
+                      - generic [ref=e4750]:
+                        - paragraph [ref=e4751]:
+                          - img [ref=e4752]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e4755]: £120.00
+                  - generic [ref=e4756]:
+                    - paragraph [ref=e4757]:
+                      - strong [ref=e4758]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e4759]: "Reason:"
+                - button "Edit Shift" [ref=e4761] [cursor=pointer]
+            - generic [ref=e4763]:
+              - generic [ref=e4766]: confirmed
+              - generic [ref=e4767]:
+                - generic [ref=e4768]:
+                  - generic [ref=e4769]:
+                    - generic [ref=e4770]: nurse
+                    - generic [ref=e4771]: 💰 Rate Override
+                  - generic [ref=e4772]:
+                    - generic [ref=e4773]:
+                      - img [ref=e4774]
+                      - generic [ref=e4777]: Divine Care Center
+                    - generic [ref=e4778]:
+                      - img [ref=e4779]
+                      - generic [ref=e4781]: Wed, Nov 12, 2025
+                    - generic [ref=e4782]:
+                      - img [ref=e4783]
+                      - generic [ref=e4786]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e4787]: ✓ Assigned to Amelia Grant
+                  - generic [ref=e4789]:
+                    - generic [ref=e4790]:
+                      - generic [ref=e4791]:
+                        - img [ref=e4792]
+                        - heading "Rate Breakdown" [level=4] [ref=e4794]
+                      - generic [ref=e4795]: Standard Rate
+                    - generic [ref=e4796]:
+                      - generic [ref=e4797]:
+                        - paragraph [ref=e4798]: Staff Pay Rate
+                        - paragraph [ref=e4799]: £25.00/hr
+                      - generic [ref=e4800]:
+                        - paragraph [ref=e4801]: Client Charge Rate
+                        - paragraph [ref=e4802]: £30.00/hr
+                    - generic [ref=e4804]:
+                      - generic [ref=e4805]:
+                        - paragraph [ref=e4806]: Staff Cost
+                        - paragraph [ref=e4807]: £300.00
+                      - generic [ref=e4808]:
+                        - paragraph [ref=e4809]: Client Charge
+                        - paragraph [ref=e4810]: £360.00
+                      - generic [ref=e4811]:
+                        - paragraph [ref=e4812]:
+                          - img [ref=e4813]
+                          - text: Margin (16.7%)
+                        - paragraph [ref=e4816]: £60.00
+                  - generic [ref=e4817]:
+                    - paragraph [ref=e4818]:
+                      - strong [ref=e4819]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e4820]: "Reason:"
+                - button "Edit Shift" [ref=e4822] [cursor=pointer]
+            - generic [ref=e4824]:
+              - generic [ref=e4827]: completed
+              - generic [ref=e4828]:
+                - generic [ref=e4829]:
+                  - generic [ref=e4830]:
+                    - generic [ref=e4831]: nurse
+                    - generic [ref=e4832]: 💰 Rate Override
+                  - generic [ref=e4833]:
+                    - generic [ref=e4834]:
+                      - img [ref=e4835]
+                      - generic [ref=e4838]: Divine Care Center
+                    - generic [ref=e4839]:
+                      - img [ref=e4840]
+                      - generic [ref=e4842]: Wed, Nov 12, 2025
+                    - generic [ref=e4843]:
+                      - img [ref=e4844]
+                      - generic [ref=e4847]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e4849]:
+                    - generic [ref=e4850]:
+                      - generic [ref=e4851]:
+                        - img [ref=e4852]
+                        - heading "Rate Breakdown" [level=4] [ref=e4854]
+                      - generic [ref=e4855]: Standard Rate
+                    - generic [ref=e4856]:
+                      - generic [ref=e4857]:
+                        - paragraph [ref=e4858]: Staff Pay Rate
+                        - paragraph [ref=e4859]: £20.00/hr
+                      - generic [ref=e4860]:
+                        - paragraph [ref=e4861]: Client Charge Rate
+                        - paragraph [ref=e4862]: £30.00/hr
+                    - generic [ref=e4864]:
+                      - generic [ref=e4865]:
+                        - paragraph [ref=e4866]: Staff Cost
+                        - paragraph [ref=e4867]: £240.00
+                      - generic [ref=e4868]:
+                        - paragraph [ref=e4869]: Client Charge
+                        - paragraph [ref=e4870]: £360.00
+                      - generic [ref=e4871]:
+                        - paragraph [ref=e4872]:
+                          - img [ref=e4873]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e4876]: £120.00
+                  - generic [ref=e4877]:
+                    - paragraph [ref=e4878]:
+                      - strong [ref=e4879]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e4880]: "Reason:"
+                - button "Edit Shift" [ref=e4882] [cursor=pointer]
+            - generic [ref=e4884]:
+              - generic [ref=e4887]: completed
+              - generic [ref=e4888]:
+                - generic [ref=e4889]:
+                  - generic [ref=e4890]:
+                    - generic [ref=e4891]: nurse
+                    - generic [ref=e4892]: 💰 Rate Override
+                  - generic [ref=e4893]:
+                    - generic [ref=e4894]:
+                      - img [ref=e4895]
+                      - generic [ref=e4898]: Divine Care Center
+                    - generic [ref=e4899]:
+                      - img [ref=e4900]
+                      - generic [ref=e4902]: Wed, Nov 12, 2025
+                    - generic [ref=e4903]:
+                      - img [ref=e4904]
+                      - generic [ref=e4907]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e4909]:
+                    - generic [ref=e4910]:
+                      - generic [ref=e4911]:
+                        - img [ref=e4912]
+                        - heading "Rate Breakdown" [level=4] [ref=e4914]
+                      - generic [ref=e4915]: Standard Rate
+                    - generic [ref=e4916]:
+                      - generic [ref=e4917]:
+                        - paragraph [ref=e4918]: Staff Pay Rate
+                        - paragraph [ref=e4919]: £20.00/hr
+                      - generic [ref=e4920]:
+                        - paragraph [ref=e4921]: Client Charge Rate
+                        - paragraph [ref=e4922]: £30.00/hr
+                    - generic [ref=e4924]:
+                      - generic [ref=e4925]:
+                        - paragraph [ref=e4926]: Staff Cost
+                        - paragraph [ref=e4927]: £240.00
+                      - generic [ref=e4928]:
+                        - paragraph [ref=e4929]: Client Charge
+                        - paragraph [ref=e4930]: £360.00
+                      - generic [ref=e4931]:
+                        - paragraph [ref=e4932]:
+                          - img [ref=e4933]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e4936]: £120.00
+                  - generic [ref=e4937]:
+                    - paragraph [ref=e4938]:
+                      - strong [ref=e4939]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e4940]: "Reason:"
+                - button "Edit Shift" [ref=e4942] [cursor=pointer]
+            - generic [ref=e4944]:
+              - generic [ref=e4947]: completed
+              - generic [ref=e4948]:
+                - generic [ref=e4949]:
+                  - generic [ref=e4950]:
+                    - generic [ref=e4951]: nurse
+                    - generic [ref=e4952]: 💰 Rate Override
+                  - generic [ref=e4953]:
+                    - generic [ref=e4954]:
+                      - img [ref=e4955]
+                      - generic [ref=e4958]: Divine Care Center
+                    - generic [ref=e4959]:
+                      - img [ref=e4960]
+                      - generic [ref=e4962]: Wed, Nov 12, 2025
+                    - generic [ref=e4963]:
+                      - img [ref=e4964]
+                      - generic [ref=e4967]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e4969]:
+                    - generic [ref=e4970]:
+                      - generic [ref=e4971]:
+                        - img [ref=e4972]
+                        - heading "Rate Breakdown" [level=4] [ref=e4974]
+                      - generic [ref=e4975]: Standard Rate
+                    - generic [ref=e4976]:
+                      - generic [ref=e4977]:
+                        - paragraph [ref=e4978]: Staff Pay Rate
+                        - paragraph [ref=e4979]: £20.00/hr
+                      - generic [ref=e4980]:
+                        - paragraph [ref=e4981]: Client Charge Rate
+                        - paragraph [ref=e4982]: £30.00/hr
+                    - generic [ref=e4984]:
+                      - generic [ref=e4985]:
+                        - paragraph [ref=e4986]: Staff Cost
+                        - paragraph [ref=e4987]: £240.00
+                      - generic [ref=e4988]:
+                        - paragraph [ref=e4989]: Client Charge
+                        - paragraph [ref=e4990]: £360.00
+                      - generic [ref=e4991]:
+                        - paragraph [ref=e4992]:
+                          - img [ref=e4993]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e4996]: £120.00
+                  - generic [ref=e4997]:
+                    - paragraph [ref=e4998]:
+                      - strong [ref=e4999]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5000]: "Reason:"
+                - button "Edit Shift" [ref=e5002] [cursor=pointer]
+            - generic [ref=e5004]:
+              - generic [ref=e5007]: completed
+              - generic [ref=e5008]:
+                - generic [ref=e5009]:
+                  - generic [ref=e5010]:
+                    - generic [ref=e5011]: nurse
+                    - generic [ref=e5012]: 💰 Rate Override
+                  - generic [ref=e5013]:
+                    - generic [ref=e5014]:
+                      - img [ref=e5015]
+                      - generic [ref=e5018]: Divine Care Center
+                    - generic [ref=e5019]:
+                      - img [ref=e5020]
+                      - generic [ref=e5022]: Wed, Nov 12, 2025
+                    - generic [ref=e5023]:
+                      - img [ref=e5024]
+                      - generic [ref=e5027]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e5029]:
+                    - generic [ref=e5030]:
+                      - generic [ref=e5031]:
+                        - img [ref=e5032]
+                        - heading "Rate Breakdown" [level=4] [ref=e5034]
+                      - generic [ref=e5035]: Standard Rate
+                    - generic [ref=e5036]:
+                      - generic [ref=e5037]:
+                        - paragraph [ref=e5038]: Staff Pay Rate
+                        - paragraph [ref=e5039]: £25.00/hr
+                      - generic [ref=e5040]:
+                        - paragraph [ref=e5041]: Client Charge Rate
+                        - paragraph [ref=e5042]: £35.00/hr
+                    - generic [ref=e5044]:
+                      - generic [ref=e5045]:
+                        - paragraph [ref=e5046]: Staff Cost
+                        - paragraph [ref=e5047]: £300.00
+                      - generic [ref=e5048]:
+                        - paragraph [ref=e5049]: Client Charge
+                        - paragraph [ref=e5050]: £420.00
+                      - generic [ref=e5051]:
+                        - paragraph [ref=e5052]:
+                          - img [ref=e5053]
+                          - text: Margin (28.6%)
+                        - paragraph [ref=e5056]: £120.00
+                  - generic [ref=e5057]:
+                    - paragraph [ref=e5058]:
+                      - strong [ref=e5059]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5060]: "Reason:"
+                - button "Edit Shift" [ref=e5062] [cursor=pointer]
+            - generic [ref=e5064]:
+              - generic [ref=e5067]: confirmed
+              - generic [ref=e5068]:
+                - generic [ref=e5069]:
+                  - generic [ref=e5070]:
+                    - generic [ref=e5071]: nurse
+                    - generic [ref=e5072]: 💰 Rate Override
+                  - generic [ref=e5073]:
+                    - generic [ref=e5074]:
+                      - img [ref=e5075]
+                      - generic [ref=e5078]: Divine Care Center
+                    - generic [ref=e5079]:
+                      - img [ref=e5080]
+                      - generic [ref=e5082]: Wed, Nov 12, 2025
+                    - generic [ref=e5083]:
+                      - img [ref=e5084]
+                      - generic [ref=e5087]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e5088]: ✓ Assigned to Amelia Grant
+                  - generic [ref=e5090]:
+                    - generic [ref=e5091]:
+                      - generic [ref=e5092]:
+                        - img [ref=e5093]
+                        - heading "Rate Breakdown" [level=4] [ref=e5095]
+                      - generic [ref=e5096]: Standard Rate
+                    - generic [ref=e5097]:
+                      - generic [ref=e5098]:
+                        - paragraph [ref=e5099]: Staff Pay Rate
+                        - paragraph [ref=e5100]: £25.00/hr
+                      - generic [ref=e5101]:
+                        - paragraph [ref=e5102]: Client Charge Rate
+                        - paragraph [ref=e5103]: £30.00/hr
+                    - generic [ref=e5105]:
+                      - generic [ref=e5106]:
+                        - paragraph [ref=e5107]: Staff Cost
+                        - paragraph [ref=e5108]: £300.00
+                      - generic [ref=e5109]:
+                        - paragraph [ref=e5110]: Client Charge
+                        - paragraph [ref=e5111]: £360.00
+                      - generic [ref=e5112]:
+                        - paragraph [ref=e5113]:
+                          - img [ref=e5114]
+                          - text: Margin (16.7%)
+                        - paragraph [ref=e5117]: £60.00
+                  - generic [ref=e5118]:
+                    - paragraph [ref=e5119]:
+                      - strong [ref=e5120]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5121]: "Reason:"
+                - button "Edit Shift" [ref=e5123] [cursor=pointer]
+            - generic [ref=e5125]:
+              - generic [ref=e5128]: assigned
+              - generic [ref=e5129]:
+                - generic [ref=e5130]:
+                  - generic [ref=e5131]:
+                    - generic [ref=e5132]: nurse
+                    - generic [ref=e5133]: 💰 Rate Override
+                  - generic [ref=e5134]:
+                    - generic [ref=e5135]:
+                      - img [ref=e5136]
+                      - generic [ref=e5139]: Divine Care Center
+                    - generic [ref=e5140]:
+                      - img [ref=e5141]
+                      - generic [ref=e5143]: Wed, Nov 12, 2025
+                    - generic [ref=e5144]:
+                      - img [ref=e5145]
+                      - generic [ref=e5148]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e5149]: ✓ Assigned to Amelia Grant
+                  - generic [ref=e5151]:
+                    - generic [ref=e5152]:
+                      - generic [ref=e5153]:
+                        - img [ref=e5154]
+                        - heading "Rate Breakdown" [level=4] [ref=e5156]
+                      - generic [ref=e5157]: Standard Rate
+                    - generic [ref=e5158]:
+                      - generic [ref=e5159]:
+                        - paragraph [ref=e5160]: Staff Pay Rate
+                        - paragraph [ref=e5161]: £25.00/hr
+                      - generic [ref=e5162]:
+                        - paragraph [ref=e5163]: Client Charge Rate
+                        - paragraph [ref=e5164]: £30.00/hr
+                    - generic [ref=e5166]:
+                      - generic [ref=e5167]:
+                        - paragraph [ref=e5168]: Staff Cost
+                        - paragraph [ref=e5169]: £300.00
+                      - generic [ref=e5170]:
+                        - paragraph [ref=e5171]: Client Charge
+                        - paragraph [ref=e5172]: £360.00
+                      - generic [ref=e5173]:
+                        - paragraph [ref=e5174]:
+                          - img [ref=e5175]
+                          - text: Margin (16.7%)
+                        - paragraph [ref=e5178]: £60.00
+                  - generic [ref=e5179]:
+                    - paragraph [ref=e5180]:
+                      - strong [ref=e5181]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5182]: "Reason:"
+                - generic [ref=e5183]:
+                  - generic [ref=e5184]: ⏳ Awaiting Confirmation
+                  - button "Edit Shift" [ref=e5185] [cursor=pointer]
+            - generic [ref=e5187]:
+              - generic [ref=e5190]: confirmed
+              - generic [ref=e5191]:
+                - generic [ref=e5192]:
+                  - generic [ref=e5193]:
+                    - generic [ref=e5194]: nurse
+                    - generic [ref=e5195]: 💰 Rate Override
+                  - generic [ref=e5196]:
+                    - generic [ref=e5197]:
+                      - img [ref=e5198]
+                      - generic [ref=e5201]: Divine Care Center
+                    - generic [ref=e5202]:
+                      - img [ref=e5203]
+                      - generic [ref=e5205]: Wed, Nov 12, 2025
+                    - generic [ref=e5206]:
+                      - img [ref=e5207]
+                      - generic [ref=e5210]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e5211]: ✓ Assigned to Amelia Grant
+                  - generic [ref=e5213]:
+                    - generic [ref=e5214]:
+                      - generic [ref=e5215]:
+                        - img [ref=e5216]
+                        - heading "Rate Breakdown" [level=4] [ref=e5218]
+                      - generic [ref=e5219]: Standard Rate
+                    - generic [ref=e5220]:
+                      - generic [ref=e5221]:
+                        - paragraph [ref=e5222]: Staff Pay Rate
+                        - paragraph [ref=e5223]: £25.00/hr
+                      - generic [ref=e5224]:
+                        - paragraph [ref=e5225]: Client Charge Rate
+                        - paragraph [ref=e5226]: £30.00/hr
+                    - generic [ref=e5228]:
+                      - generic [ref=e5229]:
+                        - paragraph [ref=e5230]: Staff Cost
+                        - paragraph [ref=e5231]: £300.00
+                      - generic [ref=e5232]:
+                        - paragraph [ref=e5233]: Client Charge
+                        - paragraph [ref=e5234]: £360.00
+                      - generic [ref=e5235]:
+                        - paragraph [ref=e5236]:
+                          - img [ref=e5237]
+                          - text: Margin (16.7%)
+                        - paragraph [ref=e5240]: £60.00
+                  - generic [ref=e5241]:
+                    - paragraph [ref=e5242]:
+                      - strong [ref=e5243]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5244]: "Reason:"
+                - button "Edit Shift" [ref=e5246] [cursor=pointer]
+            - generic [ref=e5248]:
+              - generic [ref=e5251]: confirmed
+              - generic [ref=e5252]:
+                - generic [ref=e5253]:
+                  - generic [ref=e5254]:
+                    - generic [ref=e5255]: nurse
+                    - generic [ref=e5256]: 💰 Rate Override
+                  - generic [ref=e5257]:
+                    - generic [ref=e5258]:
+                      - img [ref=e5259]
+                      - generic [ref=e5262]: Divine Care Center
+                    - generic [ref=e5263]:
+                      - img [ref=e5264]
+                      - generic [ref=e5266]: Wed, Nov 12, 2025
+                    - generic [ref=e5267]:
+                      - img [ref=e5268]
+                      - generic [ref=e5271]: 2025-11-12T08:00:00+00:00 - 2025-11-12T20:00:00+00:00 (12h)
+                  - generic [ref=e5272]: ✓ Assigned to Amelia Grant
+                  - generic [ref=e5274]:
+                    - generic [ref=e5275]:
+                      - generic [ref=e5276]:
+                        - img [ref=e5277]
+                        - heading "Rate Breakdown" [level=4] [ref=e5279]
+                      - generic [ref=e5280]: Standard Rate
+                    - generic [ref=e5281]:
+                      - generic [ref=e5282]:
+                        - paragraph [ref=e5283]: Staff Pay Rate
+                        - paragraph [ref=e5284]: £25.00/hr
+                      - generic [ref=e5285]:
+                        - paragraph [ref=e5286]: Client Charge Rate
+                        - paragraph [ref=e5287]: £30.00/hr
+                    - generic [ref=e5289]:
+                      - generic [ref=e5290]:
+                        - paragraph [ref=e5291]: Staff Cost
+                        - paragraph [ref=e5292]: £300.00
+                      - generic [ref=e5293]:
+                        - paragraph [ref=e5294]: Client Charge
+                        - paragraph [ref=e5295]: £360.00
+                      - generic [ref=e5296]:
+                        - paragraph [ref=e5297]:
+                          - img [ref=e5298]
+                          - text: Margin (16.7%)
+                        - paragraph [ref=e5301]: £60.00
+                  - generic [ref=e5302]:
+                    - paragraph [ref=e5303]:
+                      - strong [ref=e5304]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5305]: "Reason:"
+                - button "Edit Shift" [ref=e5307] [cursor=pointer]
+            - generic [ref=e5309]:
+              - generic [ref=e5312]: assigned
+              - generic [ref=e5313]:
+                - generic [ref=e5314]:
+                  - generic [ref=e5315]:
+                    - generic [ref=e5316]: nurse
+                    - generic [ref=e5317]: 💰 Rate Override
+                  - generic [ref=e5318]:
+                    - generic [ref=e5319]:
+                      - img [ref=e5320]
+                      - generic [ref=e5323]: Divine Care Center
+                    - generic [ref=e5324]:
+                      - img [ref=e5325]
+                      - generic [ref=e5327]: Tue, Nov 11, 2025
+                    - generic [ref=e5328]:
+                      - img [ref=e5329]
+                      - generic [ref=e5332]: 2025-11-11T10:48:00+00:00 - 2025-11-11T20:00:00+00:00 (9.2h)
+                  - generic [ref=e5334]:
+                    - generic [ref=e5335]:
+                      - generic [ref=e5336]:
+                        - img [ref=e5337]
+                        - heading "Rate Breakdown" [level=4] [ref=e5339]
+                      - generic [ref=e5340]: Standard Rate
+                    - generic [ref=e5341]:
+                      - generic [ref=e5342]:
+                        - paragraph [ref=e5343]: Staff Pay Rate
+                        - paragraph [ref=e5344]: £20.00/hr
+                      - generic [ref=e5345]:
+                        - paragraph [ref=e5346]: Client Charge Rate
+                        - paragraph [ref=e5347]: £30.00/hr
+                    - generic [ref=e5349]:
+                      - generic [ref=e5350]:
+                        - paragraph [ref=e5351]: Staff Cost
+                        - paragraph [ref=e5352]: £184.00
+                      - generic [ref=e5353]:
+                        - paragraph [ref=e5354]: Client Charge
+                        - paragraph [ref=e5355]: £276.00
+                      - generic [ref=e5356]:
+                        - paragraph [ref=e5357]:
+                          - img [ref=e5358]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e5361]: £92.00
+                  - generic [ref=e5362]:
+                    - paragraph [ref=e5363]:
+                      - strong [ref=e5364]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5365]: "Reason:"
+                - generic [ref=e5366]:
+                  - generic [ref=e5367]: ⏳ Awaiting Confirmation
+                  - button "Edit Shift" [ref=e5368] [cursor=pointer]
+            - generic [ref=e5370]:
+              - generic [ref=e5373]: assigned
+              - generic [ref=e5374]:
+                - generic [ref=e5375]:
+                  - generic [ref=e5376]:
+                    - generic [ref=e5377]: nurse
+                    - generic [ref=e5378]: 💰 Rate Override
+                  - generic [ref=e5379]:
+                    - generic [ref=e5380]:
+                      - img [ref=e5381]
+                      - generic [ref=e5384]: Divine Care Center
+                    - generic [ref=e5385]:
+                      - img [ref=e5386]
+                      - generic [ref=e5388]: Tue, Nov 11, 2025
+                    - generic [ref=e5389]:
+                      - img [ref=e5390]
+                      - generic [ref=e5393]: 2025-11-11T10:56:00+00:00 - 2025-11-11T20:00:00+00:00 (9.07h)
+                  - generic [ref=e5395]:
+                    - generic [ref=e5396]:
+                      - generic [ref=e5397]:
+                        - img [ref=e5398]
+                        - heading "Rate Breakdown" [level=4] [ref=e5400]
+                      - generic [ref=e5401]: Standard Rate
+                    - generic [ref=e5402]:
+                      - generic [ref=e5403]:
+                        - paragraph [ref=e5404]: Staff Pay Rate
+                        - paragraph [ref=e5405]: £20.00/hr
+                      - generic [ref=e5406]:
+                        - paragraph [ref=e5407]: Client Charge Rate
+                        - paragraph [ref=e5408]: £30.00/hr
+                    - generic [ref=e5410]:
+                      - generic [ref=e5411]:
+                        - paragraph [ref=e5412]: Staff Cost
+                        - paragraph [ref=e5413]: £181.40
+                      - generic [ref=e5414]:
+                        - paragraph [ref=e5415]: Client Charge
+                        - paragraph [ref=e5416]: £272.10
+                      - generic [ref=e5417]:
+                        - paragraph [ref=e5418]:
+                          - img [ref=e5419]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e5422]: £90.70
+                  - generic [ref=e5423]:
+                    - paragraph [ref=e5424]:
+                      - strong [ref=e5425]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5426]: "Reason:"
+                - generic [ref=e5427]:
+                  - generic [ref=e5428]: ⏳ Awaiting Confirmation
+                  - button "Edit Shift" [ref=e5429] [cursor=pointer]
+            - generic [ref=e5431]:
+              - generic [ref=e5434]: assigned
+              - generic [ref=e5435]:
+                - generic [ref=e5436]:
+                  - generic [ref=e5437]:
+                    - generic [ref=e5438]: nurse
+                    - generic [ref=e5439]: 💰 Rate Override
+                  - generic [ref=e5440]:
+                    - generic [ref=e5441]:
+                      - img [ref=e5442]
+                      - generic [ref=e5445]: Divine Care Center
+                    - generic [ref=e5446]:
+                      - img [ref=e5447]
+                      - generic [ref=e5449]: Tue, Nov 11, 2025
+                    - generic [ref=e5450]:
+                      - img [ref=e5451]
+                      - generic [ref=e5454]: 2025-11-11T11:02:00+00:00 - 2025-11-11T20:00:00+00:00 (8.97h)
+                  - generic [ref=e5456]:
+                    - generic [ref=e5457]:
+                      - generic [ref=e5458]:
+                        - img [ref=e5459]
+                        - heading "Rate Breakdown" [level=4] [ref=e5461]
+                      - generic [ref=e5462]: Standard Rate
+                    - generic [ref=e5463]:
+                      - generic [ref=e5464]:
+                        - paragraph [ref=e5465]: Staff Pay Rate
+                        - paragraph [ref=e5466]: £20.00/hr
+                      - generic [ref=e5467]:
+                        - paragraph [ref=e5468]: Client Charge Rate
+                        - paragraph [ref=e5469]: £30.00/hr
+                    - generic [ref=e5471]:
+                      - generic [ref=e5472]:
+                        - paragraph [ref=e5473]: Staff Cost
+                        - paragraph [ref=e5474]: £179.40
+                      - generic [ref=e5475]:
+                        - paragraph [ref=e5476]: Client Charge
+                        - paragraph [ref=e5477]: £269.10
+                      - generic [ref=e5478]:
+                        - paragraph [ref=e5479]:
+                          - img [ref=e5480]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e5483]: £89.70
+                  - generic [ref=e5484]:
+                    - paragraph [ref=e5485]:
+                      - strong [ref=e5486]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5487]: "Reason:"
+                - generic [ref=e5488]:
+                  - generic [ref=e5489]: ⏳ Awaiting Confirmation
+                  - button "Edit Shift" [ref=e5490] [cursor=pointer]
+            - generic [ref=e5492]:
+              - generic [ref=e5495]: assigned
+              - generic [ref=e5496]:
+                - generic [ref=e5497]:
+                  - generic [ref=e5498]:
+                    - generic [ref=e5499]: nurse
+                    - generic [ref=e5500]: 💰 Rate Override
+                  - generic [ref=e5501]:
+                    - generic [ref=e5502]:
+                      - img [ref=e5503]
+                      - generic [ref=e5506]: Divine Care Center
+                    - generic [ref=e5507]:
+                      - img [ref=e5508]
+                      - generic [ref=e5510]: Tue, Nov 11, 2025
+                    - generic [ref=e5511]:
+                      - img [ref=e5512]
+                      - generic [ref=e5515]: 2025-11-11T10:57:00+00:00 - 2025-11-11T20:00:00+00:00 (9.05h)
+                  - generic [ref=e5517]:
+                    - generic [ref=e5518]:
+                      - generic [ref=e5519]:
+                        - img [ref=e5520]
+                        - heading "Rate Breakdown" [level=4] [ref=e5522]
+                      - generic [ref=e5523]: Standard Rate
+                    - generic [ref=e5524]:
+                      - generic [ref=e5525]:
+                        - paragraph [ref=e5526]: Staff Pay Rate
+                        - paragraph [ref=e5527]: £20.00/hr
+                      - generic [ref=e5528]:
+                        - paragraph [ref=e5529]: Client Charge Rate
+                        - paragraph [ref=e5530]: £30.00/hr
+                    - generic [ref=e5532]:
+                      - generic [ref=e5533]:
+                        - paragraph [ref=e5534]: Staff Cost
+                        - paragraph [ref=e5535]: £181.00
+                      - generic [ref=e5536]:
+                        - paragraph [ref=e5537]: Client Charge
+                        - paragraph [ref=e5538]: £271.50
+                      - generic [ref=e5539]:
+                        - paragraph [ref=e5540]:
+                          - img [ref=e5541]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e5544]: £90.50
+                  - generic [ref=e5545]:
+                    - paragraph [ref=e5546]:
+                      - strong [ref=e5547]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5548]: "Reason:"
+                - generic [ref=e5549]:
+                  - generic [ref=e5550]: ⏳ Awaiting Confirmation
+                  - button "Edit Shift" [ref=e5551] [cursor=pointer]
+            - generic [ref=e5553]:
+              - generic [ref=e5556]: assigned
+              - generic [ref=e5557]:
+                - generic [ref=e5558]:
+                  - generic [ref=e5559]:
+                    - generic [ref=e5560]: nurse
+                    - generic [ref=e5561]: 💰 Rate Override
+                  - generic [ref=e5562]:
+                    - generic [ref=e5563]:
+                      - img [ref=e5564]
+                      - generic [ref=e5567]: Divine Care Center
+                    - generic [ref=e5568]:
+                      - img [ref=e5569]
+                      - generic [ref=e5571]: Tue, Nov 11, 2025
+                    - generic [ref=e5572]:
+                      - img [ref=e5573]
+                      - generic [ref=e5576]: 2025-11-11T11:13:00+00:00 - 2025-11-11T20:00:00+00:00 (8.78h)
+                  - generic [ref=e5578]:
+                    - generic [ref=e5579]:
+                      - generic [ref=e5580]:
+                        - img [ref=e5581]
+                        - heading "Rate Breakdown" [level=4] [ref=e5583]
+                      - generic [ref=e5584]: Standard Rate
+                    - generic [ref=e5585]:
+                      - generic [ref=e5586]:
+                        - paragraph [ref=e5587]: Staff Pay Rate
+                        - paragraph [ref=e5588]: £20.00/hr
+                      - generic [ref=e5589]:
+                        - paragraph [ref=e5590]: Client Charge Rate
+                        - paragraph [ref=e5591]: £30.00/hr
+                    - generic [ref=e5593]:
+                      - generic [ref=e5594]:
+                        - paragraph [ref=e5595]: Staff Cost
+                        - paragraph [ref=e5596]: £175.60
+                      - generic [ref=e5597]:
+                        - paragraph [ref=e5598]: Client Charge
+                        - paragraph [ref=e5599]: £263.40
+                      - generic [ref=e5600]:
+                        - paragraph [ref=e5601]:
+                          - img [ref=e5602]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e5605]: £87.80
+                  - generic [ref=e5606]:
+                    - paragraph [ref=e5607]:
+                      - strong [ref=e5608]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5609]: "Reason:"
+                - generic [ref=e5610]:
+                  - generic [ref=e5611]: ⏳ Awaiting Confirmation
+                  - button "Edit Shift" [ref=e5612] [cursor=pointer]
+            - generic [ref=e5614]:
+              - generic [ref=e5617]: assigned
+              - generic [ref=e5618]:
+                - generic [ref=e5619]:
+                  - generic [ref=e5620]:
+                    - generic [ref=e5621]: nurse
+                    - generic [ref=e5622]: 💰 Rate Override
+                  - generic [ref=e5623]:
+                    - generic [ref=e5624]:
+                      - img [ref=e5625]
+                      - generic [ref=e5628]: Divine Care Center
+                    - generic [ref=e5629]:
+                      - img [ref=e5630]
+                      - generic [ref=e5632]: Tue, Nov 11, 2025
+                    - generic [ref=e5633]:
+                      - img [ref=e5634]
+                      - generic [ref=e5637]: 2025-11-11T10:58:00+00:00 - 2025-11-11T20:00:00+00:00 (9.03h)
+                  - generic [ref=e5639]:
+                    - generic [ref=e5640]:
+                      - generic [ref=e5641]:
+                        - img [ref=e5642]
+                        - heading "Rate Breakdown" [level=4] [ref=e5644]
+                      - generic [ref=e5645]: Standard Rate
+                    - generic [ref=e5646]:
+                      - generic [ref=e5647]:
+                        - paragraph [ref=e5648]: Staff Pay Rate
+                        - paragraph [ref=e5649]: £20.00/hr
+                      - generic [ref=e5650]:
+                        - paragraph [ref=e5651]: Client Charge Rate
+                        - paragraph [ref=e5652]: £30.00/hr
+                    - generic [ref=e5654]:
+                      - generic [ref=e5655]:
+                        - paragraph [ref=e5656]: Staff Cost
+                        - paragraph [ref=e5657]: £180.60
+                      - generic [ref=e5658]:
+                        - paragraph [ref=e5659]: Client Charge
+                        - paragraph [ref=e5660]: £270.90
+                      - generic [ref=e5661]:
+                        - paragraph [ref=e5662]:
+                          - img [ref=e5663]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e5666]: £90.30
+                  - generic [ref=e5667]:
+                    - paragraph [ref=e5668]:
+                      - strong [ref=e5669]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5670]: "Reason:"
+                - generic [ref=e5671]:
+                  - generic [ref=e5672]: ⏳ Awaiting Confirmation
+                  - button "Edit Shift" [ref=e5673] [cursor=pointer]
+            - generic [ref=e5675]:
+              - generic [ref=e5678]: awaiting admin_closure
+              - generic [ref=e5679]:
+                - generic [ref=e5680]:
+                  - generic [ref=e5681]:
+                    - generic [ref=e5682]: care assistant
+                    - generic [ref=e5683]: 💰 Rate Override
+                  - generic [ref=e5684]:
+                    - generic [ref=e5685]:
+                      - img [ref=e5686]
+                      - generic [ref=e5689]: Divine Care Center
+                    - generic [ref=e5690]:
+                      - img [ref=e5691]
+                      - generic [ref=e5693]: Mon, Nov 10, 2025
+                    - generic [ref=e5694]:
+                      - img [ref=e5695]
+                      - generic [ref=e5698]: 2025-11-10T08:00:00+00:00 - 2025-11-10T16:00:00+00:00 (8h)
+                  - generic [ref=e5700]:
+                    - generic [ref=e5701]:
+                      - generic [ref=e5702]:
+                        - img [ref=e5703]
+                        - heading "Rate Breakdown" [level=4] [ref=e5705]
+                      - generic [ref=e5706]: Standard Rate
+                    - generic [ref=e5707]:
+                      - generic [ref=e5708]:
+                        - paragraph [ref=e5709]: Staff Pay Rate
+                        - paragraph [ref=e5710]: £0.00/hr
+                      - generic [ref=e5711]:
+                        - paragraph [ref=e5712]: Client Charge Rate
+                        - paragraph [ref=e5713]: £0.00/hr
+                    - generic [ref=e5715]:
+                      - generic [ref=e5716]:
+                        - paragraph [ref=e5717]: Staff Cost
+                        - paragraph [ref=e5718]: £0.00
+                      - generic [ref=e5719]:
+                        - paragraph [ref=e5720]: Client Charge
+                        - paragraph [ref=e5721]: £0.00
+                      - generic [ref=e5722]:
+                        - paragraph [ref=e5723]:
+                          - img [ref=e5724]
+                          - text: Margin (0%)
+                        - paragraph [ref=e5727]: £0.00
+                  - generic [ref=e5728]:
+                    - paragraph [ref=e5729]:
+                      - strong [ref=e5730]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5731]: "Reason:"
+                - generic [ref=e5732]:
+                  - button "Complete Shift" [ref=e5733] [cursor=pointer]:
+                    - img
+                    - text: Complete Shift
+                  - button "Edit Shift" [ref=e5734] [cursor=pointer]
+            - generic [ref=e5736]:
+              - generic [ref=e5739]: awaiting admin_closure
+              - generic [ref=e5740]:
+                - generic [ref=e5741]:
+                  - generic [ref=e5742]:
+                    - generic [ref=e5743]: care assistant
+                    - generic [ref=e5744]: 💰 Rate Override
+                  - generic [ref=e5745]:
+                    - generic [ref=e5746]:
+                      - img [ref=e5747]
+                      - generic [ref=e5750]: Divine Care Center
+                    - generic [ref=e5751]:
+                      - img [ref=e5752]
+                      - generic [ref=e5754]: Mon, Nov 10, 2025
+                    - generic [ref=e5755]:
+                      - img [ref=e5756]
+                      - generic [ref=e5759]: 2025-11-10T08:00:00+00:00 - 2025-11-10T16:00:00+00:00 (8h)
+                  - generic [ref=e5761]:
+                    - generic [ref=e5762]:
+                      - generic [ref=e5763]:
+                        - img [ref=e5764]
+                        - heading "Rate Breakdown" [level=4] [ref=e5766]
+                      - generic [ref=e5767]: Standard Rate
+                    - generic [ref=e5768]:
+                      - generic [ref=e5769]:
+                        - paragraph [ref=e5770]: Staff Pay Rate
+                        - paragraph [ref=e5771]: £0.00/hr
+                      - generic [ref=e5772]:
+                        - paragraph [ref=e5773]: Client Charge Rate
+                        - paragraph [ref=e5774]: £0.00/hr
+                    - generic [ref=e5776]:
+                      - generic [ref=e5777]:
+                        - paragraph [ref=e5778]: Staff Cost
+                        - paragraph [ref=e5779]: £0.00
+                      - generic [ref=e5780]:
+                        - paragraph [ref=e5781]: Client Charge
+                        - paragraph [ref=e5782]: £0.00
+                      - generic [ref=e5783]:
+                        - paragraph [ref=e5784]:
+                          - img [ref=e5785]
+                          - text: Margin (0%)
+                        - paragraph [ref=e5788]: £0.00
+                  - generic [ref=e5789]:
+                    - paragraph [ref=e5790]:
+                      - strong [ref=e5791]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5792]: "Reason:"
+                - generic [ref=e5793]:
+                  - button "Complete Shift" [ref=e5794] [cursor=pointer]:
+                    - img
+                    - text: Complete Shift
+                  - button "Edit Shift" [ref=e5795] [cursor=pointer]
+            - generic [ref=e5797]:
+              - generic [ref=e5800]: awaiting admin_closure
+              - generic [ref=e5801]:
+                - generic [ref=e5802]:
+                  - generic [ref=e5803]:
+                    - generic [ref=e5804]: care assistant
+                    - generic [ref=e5805]: 💰 Rate Override
+                  - generic [ref=e5806]:
+                    - generic [ref=e5807]:
+                      - img [ref=e5808]
+                      - generic [ref=e5811]: Divine Care Center
+                    - generic [ref=e5812]:
+                      - img [ref=e5813]
+                      - generic [ref=e5815]: Mon, Nov 10, 2025
+                    - generic [ref=e5816]:
+                      - img [ref=e5817]
+                      - generic [ref=e5820]: 2025-11-10T08:00:00+00:00 - 2025-11-10T16:00:00+00:00 (8h)
+                  - generic [ref=e5822]:
+                    - generic [ref=e5823]:
+                      - generic [ref=e5824]:
+                        - img [ref=e5825]
+                        - heading "Rate Breakdown" [level=4] [ref=e5827]
+                      - generic [ref=e5828]: Standard Rate
+                    - generic [ref=e5829]:
+                      - generic [ref=e5830]:
+                        - paragraph [ref=e5831]: Staff Pay Rate
+                        - paragraph [ref=e5832]: £0.00/hr
+                      - generic [ref=e5833]:
+                        - paragraph [ref=e5834]: Client Charge Rate
+                        - paragraph [ref=e5835]: £0.00/hr
+                    - generic [ref=e5837]:
+                      - generic [ref=e5838]:
+                        - paragraph [ref=e5839]: Staff Cost
+                        - paragraph [ref=e5840]: £0.00
+                      - generic [ref=e5841]:
+                        - paragraph [ref=e5842]: Client Charge
+                        - paragraph [ref=e5843]: £0.00
+                      - generic [ref=e5844]:
+                        - paragraph [ref=e5845]:
+                          - img [ref=e5846]
+                          - text: Margin (0%)
+                        - paragraph [ref=e5849]: £0.00
+                  - generic [ref=e5850]:
+                    - paragraph [ref=e5851]:
+                      - strong [ref=e5852]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5853]: "Reason:"
+                - generic [ref=e5854]:
+                  - button "Complete Shift" [ref=e5855] [cursor=pointer]:
+                    - img
+                    - text: Complete Shift
+                  - button "Edit Shift" [ref=e5856] [cursor=pointer]
+            - generic [ref=e5858]:
+              - generic [ref=e5861]: awaiting admin_closure
+              - generic [ref=e5862]:
+                - generic [ref=e5863]:
+                  - generic [ref=e5864]:
+                    - generic [ref=e5865]: care assistant
+                    - generic [ref=e5866]: 💰 Rate Override
+                  - generic [ref=e5867]:
+                    - generic [ref=e5868]:
+                      - img [ref=e5869]
+                      - generic [ref=e5872]: Divine Care Center
+                    - generic [ref=e5873]:
+                      - img [ref=e5874]
+                      - generic [ref=e5876]: Mon, Nov 10, 2025
+                    - generic [ref=e5877]:
+                      - img [ref=e5878]
+                      - generic [ref=e5881]: 2025-11-10T08:00:00+00:00 - 2025-11-10T16:00:00+00:00 (8h)
+                  - generic [ref=e5883]:
+                    - generic [ref=e5884]:
+                      - generic [ref=e5885]:
+                        - img [ref=e5886]
+                        - heading "Rate Breakdown" [level=4] [ref=e5888]
+                      - generic [ref=e5889]: Standard Rate
+                    - generic [ref=e5890]:
+                      - generic [ref=e5891]:
+                        - paragraph [ref=e5892]: Staff Pay Rate
+                        - paragraph [ref=e5893]: £0.00/hr
+                      - generic [ref=e5894]:
+                        - paragraph [ref=e5895]: Client Charge Rate
+                        - paragraph [ref=e5896]: £0.00/hr
+                    - generic [ref=e5898]:
+                      - generic [ref=e5899]:
+                        - paragraph [ref=e5900]: Staff Cost
+                        - paragraph [ref=e5901]: £0.00
+                      - generic [ref=e5902]:
+                        - paragraph [ref=e5903]: Client Charge
+                        - paragraph [ref=e5904]: £0.00
+                      - generic [ref=e5905]:
+                        - paragraph [ref=e5906]:
+                          - img [ref=e5907]
+                          - text: Margin (0%)
+                        - paragraph [ref=e5910]: £0.00
+                  - generic [ref=e5911]:
+                    - paragraph [ref=e5912]:
+                      - strong [ref=e5913]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5914]: "Reason:"
+                - generic [ref=e5915]:
+                  - button "Complete Shift" [ref=e5916] [cursor=pointer]:
+                    - img
+                    - text: Complete Shift
+                  - button "Edit Shift" [ref=e5917] [cursor=pointer]
+            - generic [ref=e5919]:
+              - generic [ref=e5922]: awaiting admin_closure
+              - generic [ref=e5923]:
+                - generic [ref=e5924]:
+                  - generic [ref=e5925]:
+                    - generic [ref=e5926]: care assistant
+                    - generic [ref=e5927]: 💰 Rate Override
+                  - generic [ref=e5928]:
+                    - generic [ref=e5929]:
+                      - img [ref=e5930]
+                      - generic [ref=e5933]: Divine Care Center
+                    - generic [ref=e5934]:
+                      - img [ref=e5935]
+                      - generic [ref=e5937]: Mon, Nov 10, 2025
+                    - generic [ref=e5938]:
+                      - img [ref=e5939]
+                      - generic [ref=e5942]: 2025-11-10T08:00:00+00:00 - 2025-11-10T16:00:00+00:00 (8h)
+                  - generic [ref=e5944]:
+                    - generic [ref=e5945]:
+                      - generic [ref=e5946]:
+                        - img [ref=e5947]
+                        - heading "Rate Breakdown" [level=4] [ref=e5949]
+                      - generic [ref=e5950]: Standard Rate
+                    - generic [ref=e5951]:
+                      - generic [ref=e5952]:
+                        - paragraph [ref=e5953]: Staff Pay Rate
+                        - paragraph [ref=e5954]: £0.00/hr
+                      - generic [ref=e5955]:
+                        - paragraph [ref=e5956]: Client Charge Rate
+                        - paragraph [ref=e5957]: £0.00/hr
+                    - generic [ref=e5959]:
+                      - generic [ref=e5960]:
+                        - paragraph [ref=e5961]: Staff Cost
+                        - paragraph [ref=e5962]: £0.00
+                      - generic [ref=e5963]:
+                        - paragraph [ref=e5964]: Client Charge
+                        - paragraph [ref=e5965]: £0.00
+                      - generic [ref=e5966]:
+                        - paragraph [ref=e5967]:
+                          - img [ref=e5968]
+                          - text: Margin (0%)
+                        - paragraph [ref=e5971]: £0.00
+                  - generic [ref=e5972]:
+                    - paragraph [ref=e5973]:
+                      - strong [ref=e5974]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e5975]: "Reason:"
+                - generic [ref=e5976]:
+                  - button "Complete Shift" [ref=e5977] [cursor=pointer]:
+                    - img
+                    - text: Complete Shift
+                  - button "Edit Shift" [ref=e5978] [cursor=pointer]
+            - generic [ref=e5980]:
+              - generic [ref=e5983]: awaiting admin_closure
+              - generic [ref=e5984]:
+                - generic [ref=e5985]:
+                  - generic [ref=e5986]:
+                    - generic [ref=e5987]: care assistant
+                    - generic [ref=e5988]: 💰 Rate Override
+                  - generic [ref=e5989]:
+                    - generic [ref=e5990]:
+                      - img [ref=e5991]
+                      - generic [ref=e5994]: Divine Care Center
+                    - generic [ref=e5995]:
+                      - img [ref=e5996]
+                      - generic [ref=e5998]: Mon, Nov 10, 2025
+                    - generic [ref=e5999]:
+                      - img [ref=e6000]
+                      - generic [ref=e6003]: 2025-11-10T08:00:00+00:00 - 2025-11-10T16:00:00+00:00 (8h)
+                  - generic [ref=e6005]:
+                    - generic [ref=e6006]:
+                      - generic [ref=e6007]:
+                        - img [ref=e6008]
+                        - heading "Rate Breakdown" [level=4] [ref=e6010]
+                      - generic [ref=e6011]: Standard Rate
+                    - generic [ref=e6012]:
+                      - generic [ref=e6013]:
+                        - paragraph [ref=e6014]: Staff Pay Rate
+                        - paragraph [ref=e6015]: £0.00/hr
+                      - generic [ref=e6016]:
+                        - paragraph [ref=e6017]: Client Charge Rate
+                        - paragraph [ref=e6018]: £0.00/hr
+                    - generic [ref=e6020]:
+                      - generic [ref=e6021]:
+                        - paragraph [ref=e6022]: Staff Cost
+                        - paragraph [ref=e6023]: £0.00
+                      - generic [ref=e6024]:
+                        - paragraph [ref=e6025]: Client Charge
+                        - paragraph [ref=e6026]: £0.00
+                      - generic [ref=e6027]:
+                        - paragraph [ref=e6028]:
+                          - img [ref=e6029]
+                          - text: Margin (0%)
+                        - paragraph [ref=e6032]: £0.00
+                  - generic [ref=e6033]:
+                    - paragraph [ref=e6034]:
+                      - strong [ref=e6035]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e6036]: "Reason:"
+                - generic [ref=e6037]:
+                  - button "Complete Shift" [ref=e6038] [cursor=pointer]:
+                    - img
+                    - text: Complete Shift
+                  - button "Edit Shift" [ref=e6039] [cursor=pointer]
+            - generic [ref=e6041]:
+              - generic [ref=e6044]: awaiting admin_closure
+              - generic [ref=e6045]:
+                - generic [ref=e6046]:
+                  - generic [ref=e6047]:
+                    - generic [ref=e6048]: care assistant
+                    - generic [ref=e6049]: 💰 Rate Override
+                  - generic [ref=e6050]:
+                    - generic [ref=e6051]:
+                      - img [ref=e6052]
+                      - generic [ref=e6055]: Divine Care Center
+                    - generic [ref=e6056]:
+                      - img [ref=e6057]
+                      - generic [ref=e6059]: Mon, Nov 10, 2025
+                    - generic [ref=e6060]:
+                      - img [ref=e6061]
+                      - generic [ref=e6064]: 2025-11-10T08:00:00+00:00 - 2025-11-10T16:00:00+00:00 (8h)
+                  - generic [ref=e6066]:
+                    - generic [ref=e6067]:
+                      - generic [ref=e6068]:
+                        - img [ref=e6069]
+                        - heading "Rate Breakdown" [level=4] [ref=e6071]
+                      - generic [ref=e6072]: Standard Rate
+                    - generic [ref=e6073]:
+                      - generic [ref=e6074]:
+                        - paragraph [ref=e6075]: Staff Pay Rate
+                        - paragraph [ref=e6076]: £0.00/hr
+                      - generic [ref=e6077]:
+                        - paragraph [ref=e6078]: Client Charge Rate
+                        - paragraph [ref=e6079]: £0.00/hr
+                    - generic [ref=e6081]:
+                      - generic [ref=e6082]:
+                        - paragraph [ref=e6083]: Staff Cost
+                        - paragraph [ref=e6084]: £0.00
+                      - generic [ref=e6085]:
+                        - paragraph [ref=e6086]: Client Charge
+                        - paragraph [ref=e6087]: £0.00
+                      - generic [ref=e6088]:
+                        - paragraph [ref=e6089]:
+                          - img [ref=e6090]
+                          - text: Margin (0%)
+                        - paragraph [ref=e6093]: £0.00
+                  - generic [ref=e6094]:
+                    - paragraph [ref=e6095]:
+                      - strong [ref=e6096]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e6097]: "Reason:"
+                - generic [ref=e6098]:
+                  - button "Complete Shift" [ref=e6099] [cursor=pointer]:
+                    - img
+                    - text: Complete Shift
+                  - button "Edit Shift" [ref=e6100] [cursor=pointer]
+            - generic [ref=e6102]:
+              - generic [ref=e6105]: completed
+              - generic [ref=e6106]:
+                - generic [ref=e6107]:
+                  - generic [ref=e6108]:
+                    - generic [ref=e6109]: healthcare assistant
+                    - generic [ref=e6110]: 💰 Rate Override
+                  - generic [ref=e6111]:
+                    - generic [ref=e6112]:
+                      - img [ref=e6113]
+                      - generic [ref=e6116]: Divine Care Center
+                    - generic [ref=e6117]:
+                      - img [ref=e6118]
+                      - generic [ref=e6120]: Mon, Nov 10, 2025
+                    - generic [ref=e6121]:
+                      - img [ref=e6122]
+                      - generic [ref=e6125]: 2025-11-10T07:00:00+00:00 - 2025-11-10T15:00:00+00:00 (8h)
+                  - generic [ref=e6126]: ✓ Assigned to Chadaira Basera
+                  - generic [ref=e6128]:
+                    - generic [ref=e6129]:
+                      - generic [ref=e6130]:
+                        - img [ref=e6131]
+                        - heading "Rate Breakdown" [level=4] [ref=e6133]
+                      - generic [ref=e6134]: Standard Rate
+                    - generic [ref=e6135]:
+                      - generic [ref=e6136]:
+                        - paragraph [ref=e6137]: Staff Pay Rate
+                        - paragraph [ref=e6138]: £15.50/hr
+                      - generic [ref=e6139]:
+                        - paragraph [ref=e6140]: Client Charge Rate
+                        - paragraph [ref=e6141]: £22.00/hr
+                    - generic [ref=e6143]:
+                      - generic [ref=e6144]:
+                        - paragraph [ref=e6145]: Staff Cost
+                        - paragraph [ref=e6146]: £124.00
+                      - generic [ref=e6147]:
+                        - paragraph [ref=e6148]: Client Charge
+                        - paragraph [ref=e6149]: £176.00
+                      - generic [ref=e6150]:
+                        - paragraph [ref=e6151]:
+                          - img [ref=e6152]
+                          - text: Margin (29.5%)
+                        - paragraph [ref=e6155]: £52.00
+                  - generic [ref=e6156]:
+                    - paragraph [ref=e6157]:
+                      - strong [ref=e6158]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e6159]: "Reason:"
+                  - paragraph [ref=e6160]: Past confirmed shift
+                - button "Edit Shift" [ref=e6162] [cursor=pointer]
+            - generic [ref=e6164]:
+              - generic [ref=e6167]: open
+              - generic [ref=e6168]:
+                - generic [ref=e6169]:
+                  - generic [ref=e6170]:
+                    - generic [ref=e6171]: nurse
+                    - generic [ref=e6172]: 💰 Rate Override
+                  - generic [ref=e6173]:
+                    - generic [ref=e6174]:
+                      - img [ref=e6175]
+                      - generic [ref=e6178]: Divine Care Center
+                    - generic [ref=e6179]:
+                      - img [ref=e6180]
+                      - generic [ref=e6182]: Sun, Nov 9, 2025
+                    - generic [ref=e6183]:
+                      - img [ref=e6184]
+                      - generic [ref=e6187]: 2025-11-09T08:00:00+00:00 - 2025-11-09T20:00:00+00:00 (12h)
+                  - generic [ref=e6189]:
+                    - generic [ref=e6190]:
+                      - generic [ref=e6191]:
+                        - img [ref=e6192]
+                        - heading "Rate Breakdown" [level=4] [ref=e6194]
+                      - generic [ref=e6195]: Standard Rate
+                    - generic [ref=e6196]:
+                      - generic [ref=e6197]:
+                        - paragraph [ref=e6198]: Staff Pay Rate
+                        - paragraph [ref=e6199]: £20.00/hr
+                      - generic [ref=e6200]:
+                        - paragraph [ref=e6201]: Client Charge Rate
+                        - paragraph [ref=e6202]: £30.00/hr
+                    - generic [ref=e6204]:
+                      - generic [ref=e6205]:
+                        - paragraph [ref=e6206]: Staff Cost
+                        - paragraph [ref=e6207]: £240.00
+                      - generic [ref=e6208]:
+                        - paragraph [ref=e6209]: Client Charge
+                        - paragraph [ref=e6210]: £360.00
+                      - generic [ref=e6211]:
+                        - paragraph [ref=e6212]:
+                          - img [ref=e6213]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e6216]: £120.00
+                  - generic [ref=e6217]:
+                    - paragraph [ref=e6218]:
+                      - strong [ref=e6219]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e6220]: "Reason:"
+                  - generic [ref=e6221]:
+                    - switch [ref=e6222] [cursor=pointer]
+                    - generic [ref=e6223] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e6224]:
+                  - button "Assign Staff" [ref=e6225] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e6226] [cursor=pointer]
+            - generic [ref=e6228]:
+              - generic [ref=e6231]: open
+              - generic [ref=e6232]:
+                - generic [ref=e6233]:
+                  - generic [ref=e6234]:
+                    - generic [ref=e6235]: nurse
+                    - generic [ref=e6236]: 💰 Rate Override
+                  - generic [ref=e6237]:
+                    - generic [ref=e6238]:
+                      - img [ref=e6239]
+                      - generic [ref=e6242]: Divine Care Center
+                    - generic [ref=e6243]:
+                      - img [ref=e6244]
+                      - generic [ref=e6246]: Sun, Nov 9, 2025
+                    - generic [ref=e6247]:
+                      - img [ref=e6248]
+                      - generic [ref=e6251]: 2025-11-09T08:00:00+00:00 - 2025-11-09T20:00:00+00:00 (12h)
+                  - generic [ref=e6253]:
+                    - generic [ref=e6254]:
+                      - generic [ref=e6255]:
+                        - img [ref=e6256]
+                        - heading "Rate Breakdown" [level=4] [ref=e6258]
+                      - generic [ref=e6259]: Standard Rate
+                    - generic [ref=e6260]:
+                      - generic [ref=e6261]:
+                        - paragraph [ref=e6262]: Staff Pay Rate
+                        - paragraph [ref=e6263]: £20.00/hr
+                      - generic [ref=e6264]:
+                        - paragraph [ref=e6265]: Client Charge Rate
+                        - paragraph [ref=e6266]: £30.00/hr
+                    - generic [ref=e6268]:
+                      - generic [ref=e6269]:
+                        - paragraph [ref=e6270]: Staff Cost
+                        - paragraph [ref=e6271]: £240.00
+                      - generic [ref=e6272]:
+                        - paragraph [ref=e6273]: Client Charge
+                        - paragraph [ref=e6274]: £360.00
+                      - generic [ref=e6275]:
+                        - paragraph [ref=e6276]:
+                          - img [ref=e6277]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e6280]: £120.00
+                  - generic [ref=e6281]:
+                    - paragraph [ref=e6282]:
+                      - strong [ref=e6283]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e6284]: "Reason:"
+                  - generic [ref=e6285]:
+                    - switch [ref=e6286] [cursor=pointer]
+                    - generic [ref=e6287] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e6288]:
+                  - button "Assign Staff" [ref=e6289] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e6290] [cursor=pointer]
+            - generic [ref=e6292]:
+              - generic [ref=e6295]: open
+              - generic [ref=e6296]:
+                - generic [ref=e6297]:
+                  - generic [ref=e6298]:
+                    - generic [ref=e6299]: nurse
+                    - generic [ref=e6300]: 💰 Rate Override
+                  - generic [ref=e6301]:
+                    - generic [ref=e6302]:
+                      - img [ref=e6303]
+                      - generic [ref=e6306]: Divine Care Center
+                    - generic [ref=e6307]:
+                      - img [ref=e6308]
+                      - generic [ref=e6310]: Sun, Nov 9, 2025
+                    - generic [ref=e6311]:
+                      - img [ref=e6312]
+                      - generic [ref=e6315]: 2025-11-09T08:00:00+00:00 - 2025-11-09T20:00:00+00:00 (12h)
+                  - generic [ref=e6317]:
+                    - generic [ref=e6318]:
+                      - generic [ref=e6319]:
+                        - img [ref=e6320]
+                        - heading "Rate Breakdown" [level=4] [ref=e6322]
+                      - generic [ref=e6323]: Standard Rate
+                    - generic [ref=e6324]:
+                      - generic [ref=e6325]:
+                        - paragraph [ref=e6326]: Staff Pay Rate
+                        - paragraph [ref=e6327]: £20.00/hr
+                      - generic [ref=e6328]:
+                        - paragraph [ref=e6329]: Client Charge Rate
+                        - paragraph [ref=e6330]: £30.00/hr
+                    - generic [ref=e6332]:
+                      - generic [ref=e6333]:
+                        - paragraph [ref=e6334]: Staff Cost
+                        - paragraph [ref=e6335]: £240.00
+                      - generic [ref=e6336]:
+                        - paragraph [ref=e6337]: Client Charge
+                        - paragraph [ref=e6338]: £360.00
+                      - generic [ref=e6339]:
+                        - paragraph [ref=e6340]:
+                          - img [ref=e6341]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e6344]: £120.00
+                  - generic [ref=e6345]:
+                    - paragraph [ref=e6346]:
+                      - strong [ref=e6347]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e6348]: "Reason:"
+                  - generic [ref=e6349]:
+                    - switch [ref=e6350] [cursor=pointer]
+                    - generic [ref=e6351] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e6352]:
+                  - button "Assign Staff" [ref=e6353] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e6354] [cursor=pointer]
+            - generic [ref=e6356]:
+              - generic [ref=e6359]: assigned
+              - generic [ref=e6360]:
+                - generic [ref=e6361]:
+                  - generic [ref=e6362]:
+                    - generic [ref=e6363]: nurse
+                    - generic [ref=e6364]: 💰 Rate Override
+                  - generic [ref=e6365]:
+                    - generic [ref=e6366]:
+                      - img [ref=e6367]
+                      - generic [ref=e6370]: Divine Care Center
+                    - generic [ref=e6371]:
+                      - img [ref=e6372]
+                      - generic [ref=e6374]: Sun, Nov 9, 2025
+                    - generic [ref=e6375]:
+                      - img [ref=e6376]
+                      - generic [ref=e6379]: 2025-11-09T08:00:00+00:00 - 2025-11-09T20:00:00+00:00 (12h)
+                  - generic [ref=e6380]: ✓ Assigned to Amelia Grant
+                  - generic [ref=e6382]:
+                    - generic [ref=e6383]:
+                      - generic [ref=e6384]:
+                        - img [ref=e6385]
+                        - heading "Rate Breakdown" [level=4] [ref=e6387]
+                      - generic [ref=e6388]: Standard Rate
+                    - generic [ref=e6389]:
+                      - generic [ref=e6390]:
+                        - paragraph [ref=e6391]: Staff Pay Rate
+                        - paragraph [ref=e6392]: £20.00/hr
+                      - generic [ref=e6393]:
+                        - paragraph [ref=e6394]: Client Charge Rate
+                        - paragraph [ref=e6395]: £30.00/hr
+                    - generic [ref=e6397]:
+                      - generic [ref=e6398]:
+                        - paragraph [ref=e6399]: Staff Cost
+                        - paragraph [ref=e6400]: £240.00
+                      - generic [ref=e6401]:
+                        - paragraph [ref=e6402]: Client Charge
+                        - paragraph [ref=e6403]: £360.00
+                      - generic [ref=e6404]:
+                        - paragraph [ref=e6405]:
+                          - img [ref=e6406]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e6409]: £120.00
+                  - generic [ref=e6410]:
+                    - paragraph [ref=e6411]:
+                      - strong [ref=e6412]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e6413]: "Reason:"
+                - generic [ref=e6414]:
+                  - generic [ref=e6415]: ⏳ Awaiting Confirmation
+                  - button "Edit Shift" [ref=e6416] [cursor=pointer]
+            - generic [ref=e6418]:
+              - generic [ref=e6421]: open
+              - generic [ref=e6422]:
+                - generic [ref=e6423]:
+                  - generic [ref=e6424]:
+                    - generic [ref=e6425]: nurse
+                    - generic [ref=e6426]: 💰 Rate Override
+                  - generic [ref=e6427]:
+                    - generic [ref=e6428]:
+                      - img [ref=e6429]
+                      - generic [ref=e6432]: Divine Care Center
+                    - generic [ref=e6433]:
+                      - img [ref=e6434]
+                      - generic [ref=e6436]: Sun, Nov 9, 2025
+                    - generic [ref=e6437]:
+                      - img [ref=e6438]
+                      - generic [ref=e6441]: 2025-11-09T08:00:00+00:00 - 2025-11-09T20:00:00+00:00 (12h)
+                  - generic [ref=e6443]:
+                    - generic [ref=e6444]:
+                      - generic [ref=e6445]:
+                        - img [ref=e6446]
+                        - heading "Rate Breakdown" [level=4] [ref=e6448]
+                      - generic [ref=e6449]: Standard Rate
+                    - generic [ref=e6450]:
+                      - generic [ref=e6451]:
+                        - paragraph [ref=e6452]: Staff Pay Rate
+                        - paragraph [ref=e6453]: £20.00/hr
+                      - generic [ref=e6454]:
+                        - paragraph [ref=e6455]: Client Charge Rate
+                        - paragraph [ref=e6456]: £30.00/hr
+                    - generic [ref=e6458]:
+                      - generic [ref=e6459]:
+                        - paragraph [ref=e6460]: Staff Cost
+                        - paragraph [ref=e6461]: £240.00
+                      - generic [ref=e6462]:
+                        - paragraph [ref=e6463]: Client Charge
+                        - paragraph [ref=e6464]: £360.00
+                      - generic [ref=e6465]:
+                        - paragraph [ref=e6466]:
+                          - img [ref=e6467]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e6470]: £120.00
+                  - generic [ref=e6471]:
+                    - paragraph [ref=e6472]:
+                      - strong [ref=e6473]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e6474]: "Reason:"
+                  - generic [ref=e6475]:
+                    - switch [ref=e6476] [cursor=pointer]
+                    - generic [ref=e6477] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e6478]:
+                  - button "Assign Staff" [ref=e6479] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e6480] [cursor=pointer]
+            - generic [ref=e6482]:
+              - generic [ref=e6485]: open
+              - generic [ref=e6486]:
+                - generic [ref=e6487]:
+                  - generic [ref=e6488]:
+                    - generic [ref=e6489]: nurse
+                    - generic [ref=e6490]: 💰 Rate Override
+                  - generic [ref=e6491]:
+                    - generic [ref=e6492]:
+                      - img [ref=e6493]
+                      - generic [ref=e6496]: Divine Care Center
+                    - generic [ref=e6497]:
+                      - img [ref=e6498]
+                      - generic [ref=e6500]: Sun, Nov 9, 2025
+                    - generic [ref=e6501]:
+                      - img [ref=e6502]
+                      - generic [ref=e6505]: 2025-11-09T08:00:00+00:00 - 2025-11-09T20:00:00+00:00 (12h)
+                  - generic [ref=e6507]:
+                    - generic [ref=e6508]:
+                      - generic [ref=e6509]:
+                        - img [ref=e6510]
+                        - heading "Rate Breakdown" [level=4] [ref=e6512]
+                      - generic [ref=e6513]: Standard Rate
+                    - generic [ref=e6514]:
+                      - generic [ref=e6515]:
+                        - paragraph [ref=e6516]: Staff Pay Rate
+                        - paragraph [ref=e6517]: £20.00/hr
+                      - generic [ref=e6518]:
+                        - paragraph [ref=e6519]: Client Charge Rate
+                        - paragraph [ref=e6520]: £30.00/hr
+                    - generic [ref=e6522]:
+                      - generic [ref=e6523]:
+                        - paragraph [ref=e6524]: Staff Cost
+                        - paragraph [ref=e6525]: £240.00
+                      - generic [ref=e6526]:
+                        - paragraph [ref=e6527]: Client Charge
+                        - paragraph [ref=e6528]: £360.00
+                      - generic [ref=e6529]:
+                        - paragraph [ref=e6530]:
+                          - img [ref=e6531]
+                          - text: Margin (33.3%)
+                        - paragraph [ref=e6534]: £120.00
+                  - generic [ref=e6535]:
+                    - paragraph [ref=e6536]:
+                      - strong [ref=e6537]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e6538]: "Reason:"
+                  - generic [ref=e6539]:
+                    - switch [ref=e6540] [cursor=pointer]
+                    - generic [ref=e6541] [cursor=pointer]: Show in Marketplace
+                - generic [ref=e6542]:
+                  - button "Assign Staff" [ref=e6543] [cursor=pointer]:
+                    - img
+                    - text: Assign Staff
+                  - button "Edit Shift" [ref=e6544] [cursor=pointer]
+            - generic [ref=e6546]:
+              - generic [ref=e6549]: completed
+              - generic [ref=e6550]:
+                - generic [ref=e6551]:
+                  - generic [ref=e6552]:
+                    - generic [ref=e6553]: healthcare assistant
+                    - generic [ref=e6554]: 💰 Rate Override
+                  - generic [ref=e6555]:
+                    - generic [ref=e6556]:
+                      - img [ref=e6557]
+                      - generic [ref=e6560]: Divine Care Center
+                    - generic [ref=e6561]:
+                      - img [ref=e6562]
+                      - generic [ref=e6564]: Thu, Nov 6, 2025
+                    - generic [ref=e6565]:
+                      - img [ref=e6566]
+                      - generic [ref=e6569]: 2025-11-06T14:00:00+00:00 - 2025-11-06T22:00:00+00:00 (8h)
+                  - generic [ref=e6570]: ✓ Assigned to Chadaira Basera
+                  - generic [ref=e6572]:
+                    - generic [ref=e6573]:
+                      - generic [ref=e6574]:
+                        - img [ref=e6575]
+                        - heading "Rate Breakdown" [level=4] [ref=e6577]
+                      - generic [ref=e6578]: Standard Rate
+                    - generic [ref=e6579]:
+                      - generic [ref=e6580]:
+                        - paragraph [ref=e6581]: Staff Pay Rate
+                        - paragraph [ref=e6582]: £15.50/hr
+                      - generic [ref=e6583]:
+                        - paragraph [ref=e6584]: Client Charge Rate
+                        - paragraph [ref=e6585]: £22.00/hr
+                    - generic [ref=e6587]:
+                      - generic [ref=e6588]:
+                        - paragraph [ref=e6589]: Staff Cost
+                        - paragraph [ref=e6590]: £124.00
+                      - generic [ref=e6591]:
+                        - paragraph [ref=e6592]: Client Charge
+                        - paragraph [ref=e6593]: £176.00
+                      - generic [ref=e6594]:
+                        - paragraph [ref=e6595]:
+                          - img [ref=e6596]
+                          - text: Margin (29.5%)
+                        - paragraph [ref=e6599]: £52.00
+                  - generic [ref=e6600]:
+                    - paragraph [ref=e6601]:
+                      - strong [ref=e6602]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e6603]: "Reason:"
+                  - paragraph [ref=e6604]: Past evening shift
+                - button "Edit Shift" [ref=e6606] [cursor=pointer]
+            - generic [ref=e6608]:
+              - generic [ref=e6611]: completed
+              - generic [ref=e6612]:
+                - generic [ref=e6613]:
+                  - generic [ref=e6614]:
+                    - generic [ref=e6615]: healthcare assistant
+                    - generic [ref=e6616]: 💰 Rate Override
+                  - generic [ref=e6617]:
+                    - generic [ref=e6618]:
+                      - img [ref=e6619]
+                      - generic [ref=e6622]: Divine Care Center
+                    - generic [ref=e6623]:
+                      - img [ref=e6624]
+                      - generic [ref=e6626]: Mon, Nov 3, 2025
+                    - generic [ref=e6627]:
+                      - img [ref=e6628]
+                      - generic [ref=e6631]: 2025-11-03T09:00:00+00:00 - 2025-11-03T17:00:00+00:00 (8h)
+                  - generic [ref=e6632]: ✓ Assigned to Chadaira Basera
+                  - generic [ref=e6634]:
+                    - generic [ref=e6635]:
+                      - generic [ref=e6636]:
+                        - img [ref=e6637]
+                        - heading "Rate Breakdown" [level=4] [ref=e6639]
+                      - generic [ref=e6640]: Standard Rate
+                    - generic [ref=e6641]:
+                      - generic [ref=e6642]:
+                        - paragraph [ref=e6643]: Staff Pay Rate
+                        - paragraph [ref=e6644]: £15.50/hr
+                      - generic [ref=e6645]:
+                        - paragraph [ref=e6646]: Client Charge Rate
+                        - paragraph [ref=e6647]: £22.00/hr
+                    - generic [ref=e6649]:
+                      - generic [ref=e6650]:
+                        - paragraph [ref=e6651]: Staff Cost
+                        - paragraph [ref=e6652]: £124.00
+                      - generic [ref=e6653]:
+                        - paragraph [ref=e6654]: Client Charge
+                        - paragraph [ref=e6655]: £176.00
+                      - generic [ref=e6656]:
+                        - paragraph [ref=e6657]:
+                          - img [ref=e6658]
+                          - text: Margin (29.5%)
+                        - paragraph [ref=e6661]: £52.00
+                  - generic [ref=e6662]:
+                    - paragraph [ref=e6663]:
+                      - strong [ref=e6664]: "Override:"
+                      - text: £ → £/hr
+                    - paragraph [ref=e6665]: "Reason:"
+                  - paragraph [ref=e6666]: Past completed shift
+                - button "Edit Shift" [ref=e6668] [cursor=pointer]
+  - region "Notifications alt+T"
+```

@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Trash2, AlertTriangle, CheckCircle, Calendar, 
-  Clock, FileText, Users, Building2, Loader2
+import {
+  Trash2, AlertTriangle, CheckCircle, Calendar,
+  Clock, FileText, Users, Building2, Loader2, Database
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -16,6 +16,7 @@ export default function CleanSlate() {
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteProgress, setDeleteProgress] = useState({ current: 0, total: 0, entity: '' });
+  const [useSqlMethod, setUseSqlMethod] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch counts for display
@@ -59,9 +60,9 @@ export default function CleanSlate() {
     }
   });
 
-  const handleBulkDelete = async () => {
+  const handleSqlDelete = async () => {
     const CONFIRM_PHRASE = 'DELETE ALL SHIFTS';
-    
+
     if (confirmText !== CONFIRM_PHRASE) {
       toast.error(`Please type "${CONFIRM_PHRASE}" exactly to confirm`);
       return;
@@ -70,38 +71,102 @@ export default function CleanSlate() {
     setIsDeleting(true);
 
     try {
-      // Step 1: Delete all Timesheets (depends on Shifts/Bookings)
+      console.log('🗑️ Starting SQL-based deletion...');
+
+      // Use RPC function or direct SQL via Supabase
+      setDeleteProgress({ current: 1, total: 5, entity: 'AdminWorkflows' });
+
+      // Step 1: Delete AdminWorkflows
+      const { error: workflowError } = await supabase.rpc('delete_all_shift_data');
+
+      if (workflowError) {
+        console.error('❌ SQL deletion error:', workflowError);
+        // Fallback to manual deletion
+        console.log('⚠️ RPC failed, falling back to manual deletion...');
+        return handleBulkDelete();
+      }
+
+      toast.success('🎉 All shifts, bookings, and timesheets deleted via SQL!');
+
+      // Refresh all queries
+      queryClient.invalidateQueries();
+      setConfirmText('');
+
+    } catch (error) {
+      console.error('❌ SQL deletion error:', error);
+      toast.error(`SQL deletion failed: ${error.message}. Try the manual method.`);
+    } finally {
+      setIsDeleting(false);
+      setDeleteProgress({ current: 0, total: 0, entity: '' });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const CONFIRM_PHRASE = 'DELETE ALL SHIFTS';
+
+    if (confirmText !== CONFIRM_PHRASE) {
+      toast.error(`Please type "${CONFIRM_PHRASE}" exactly to confirm`);
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      console.log('🗑️ Starting bulk deletion...');
+      console.log(`📊 Counts: ${timesheets.length} timesheets, ${bookings.length} bookings, ${shifts.length} shifts`);
+
+      // ✅ IMPROVED: Use bulk delete with proper error handling
+
+      // Step 1: Delete all Timesheets
       console.log('🗑️ Step 1: Deleting timesheets...');
       setDeleteProgress({ current: 0, total: timesheets.length, entity: 'Timesheets' });
-      
-      for (let i = 0; i < timesheets.length; i++) {
-        await supabase.from('timesheets').delete().eq('id', timesheets[i].id);
-        setDeleteProgress({ current: i + 1, total: timesheets.length, entity: 'Timesheets' });
-      }
-      
-      toast.success(`✅ Deleted ${timesheets.length} timesheets`);
 
-      // Step 2: Delete all Bookings (depends on Shifts)
+      const { error: timesheetError, count: timesheetCount } = await supabase
+        .from('timesheets')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all (using dummy condition)
+
+      if (timesheetError) {
+        console.error('❌ Timesheet deletion error:', timesheetError);
+        throw new Error(`Failed to delete timesheets: ${timesheetError.message}`);
+      }
+
+      console.log(`✅ Deleted timesheets (count: ${timesheetCount})`);
+      toast.success(`✅ Deleted timesheets`);
+
+      // Step 2: Delete all Bookings
       console.log('🗑️ Step 2: Deleting bookings...');
       setDeleteProgress({ current: 0, total: bookings.length, entity: 'Bookings' });
-      
-      for (let i = 0; i < bookings.length; i++) {
-        await supabase.from('bookings').delete().eq('id', bookings[i].id);
-        setDeleteProgress({ current: i + 1, total: bookings.length, entity: 'Bookings' });
-      }
-      
-      toast.success(`✅ Deleted ${bookings.length} bookings`);
 
-      // Step 3: Delete all Shifts (core entity)
+      const { error: bookingError, count: bookingCount } = await supabase
+        .from('bookings')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+
+      if (bookingError) {
+        console.error('❌ Booking deletion error:', bookingError);
+        throw new Error(`Failed to delete bookings: ${bookingError.message}`);
+      }
+
+      console.log(`✅ Deleted bookings (count: ${bookingCount})`);
+      toast.success(`✅ Deleted bookings`);
+
+      // Step 3: Delete all Shifts
       console.log('🗑️ Step 3: Deleting shifts...');
       setDeleteProgress({ current: 0, total: shifts.length, entity: 'Shifts' });
-      
-      for (let i = 0; i < shifts.length; i++) {
-        await supabase.from('shifts').delete().eq('id', shifts[i].id);
-        setDeleteProgress({ current: i + 1, total: shifts.length, entity: 'Shifts' });
+
+      const { error: shiftError, count: shiftCount } = await supabase
+        .from('shifts')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+
+      if (shiftError) {
+        console.error('❌ Shift deletion error:', shiftError);
+        throw new Error(`Failed to delete shifts: ${shiftError.message}`);
       }
-      
-      toast.success(`✅ Deleted ${shifts.length} shifts`);
+
+      console.log(`✅ Deleted shifts (count: ${shiftCount})`);
+      toast.success(`✅ Deleted shifts`);
 
       // Refresh all queries
       queryClient.invalidateQueries(['shifts']);

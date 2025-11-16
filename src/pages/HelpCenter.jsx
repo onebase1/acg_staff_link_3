@@ -37,6 +37,7 @@ export default function HelpCenter() {
     { id: 'getting-started', name: 'Getting Started', icon: Rocket, count: 3 },
     { id: 'shifts', name: 'Shifts & Bookings', icon: Calendar, count: 5 },
     { id: 'timesheets', name: 'Timesheets', icon: Clock, count: 4 },
+    { id: 'gps', name: 'GPS Tracking', icon: FileText, count: 6 },
     { id: 'compliance', name: 'Compliance & Documents', icon: Shield, count: 4 },
     { id: 'portal', name: 'Staff Portal', icon: Users, count: 4 },
     { id: 'technical', name: 'Technical Issues', icon: AlertTriangle, count: 3 }
@@ -58,6 +59,43 @@ export default function HelpCenter() {
         <p class="mt-3"><strong>Didn't receive an email?</strong> Check your spam folder or contact your agency admin.</p>
       `,
       tags: ['login', 'password', 'first-time', 'invitation']
+    },
+    {
+      id: 'getting-started-uninvited',
+      category: 'getting-started',
+      question: '⏳ I signed up but my account says "Under Review" - what does this mean?',
+      answer: `
+        <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-4">
+          <h4 class="font-bold text-yellow-900 mb-3">⏳ Account Under Review</h4>
+          <p class="text-sm text-yellow-800 mb-3">Your account is awaiting approval from an agency administrator. This happens when you sign up without an invitation.</p>
+
+          <p class="text-sm text-yellow-800 mb-2"><strong>What this means:</strong></p>
+          <ul class="list-disc pl-6 text-sm text-yellow-800 space-y-1">
+            <li>You can log in and view the profile setup page</li>
+            <li>You cannot access any dashboards or features yet</li>
+            <li>An administrator has been notified of your signup</li>
+            <li>You will be assigned to an agency and given a role</li>
+          </ul>
+        </div>
+
+        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
+          <h4 class="font-bold text-blue-900 mb-3">⏱️ How long does approval take?</h4>
+          <p class="text-sm text-blue-800">Typically within 1-2 business days. The super admin will review your details and assign you to the appropriate agency.</p>
+        </div>
+
+        <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+          <h4 class="font-bold text-green-900 mb-3">✅ After Approval</h4>
+          <p class="text-sm text-green-800 mb-2">Once approved, you'll be able to:</p>
+          <ul class="list-disc pl-6 text-sm text-green-800 space-y-1">
+            <li>Access your assigned dashboard (Staff Portal, Client Portal, or Admin Dashboard)</li>
+            <li>Complete your profile setup</li>
+            <li>Upload compliance documents (if staff)</li>
+            <li>View shifts, timesheets, and other features</li>
+          </ul>
+          <p class="text-sm text-green-800 mt-3"><strong>Note:</strong> You will NOT receive an email notification when approved. Simply try logging in again after 1-2 days.</p>
+        </div>
+      `,
+      tags: ['signup', 'pending', 'approval', 'under review', 'uninvited']
     },
     {
       id: 'timesheets-upload',
@@ -162,6 +200,200 @@ export default function HelpCenter() {
         </div>
       `,
       tags: ['ai', 'confidence', 'ocr', 'accuracy']
+    },
+    // GPS FAQs
+    {
+      id: 'gps-what-is',
+      category: 'gps',
+      question: '📍 What is GPS timesheet tracking?',
+      answer: `
+        <div class="bg-green-50 p-4 rounded-lg border border-green-200 mb-4">
+          <h4 class="font-bold text-green-900 mb-3">📍 GPS Timesheet Tracking</h4>
+          <p class="text-sm text-green-800 mb-3">GPS tracking automatically creates your timesheet when you clock in and out using your phone's location.</p>
+
+          <p class="text-sm text-green-800 mb-2"><strong>How it works:</strong></p>
+          <ol class="list-decimal pl-6 text-sm text-green-800 space-y-2">
+            <li>You arrive at the client location</li>
+            <li>Open Staff Portal → My Shifts → Click "Clock In"</li>
+            <li>App captures your GPS location and validates you're within 100m of the client</li>
+            <li>Work your shift</li>
+            <li>Click "Clock Out" when finished</li>
+            <li>Timesheet automatically created with actual start/end times</li>
+            <li>Timesheet auto-approved if GPS validated</li>
+            <li>Shift auto-completed - ready for payment!</li>
+          </ol>
+        </div>
+
+        <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+          <p class="text-sm text-blue-900"><strong>✅ Benefits:</strong> No manual timesheet upload, instant approval, faster payment!</p>
+        </div>
+      `,
+      tags: ['gps', 'tracking', 'location', 'clock-in', 'clock-out', 'automatic']
+    },
+    {
+      id: 'gps-upload-required',
+      category: 'gps',
+      question: '📤 Do I need to upload a timesheet if I used GPS?',
+      answer: `
+        <div class="bg-green-50 p-4 rounded-lg border-2 border-green-300 mb-4">
+          <h4 class="font-bold text-green-900 mb-3">✅ NO - GPS Timesheets Are Automatic!</h4>
+          <p class="text-sm text-green-800 mb-3">If you successfully clocked in and out with GPS, your timesheet is automatically created and submitted. <strong>No upload needed!</strong></p>
+
+          <p class="text-sm text-green-800 mb-2"><strong>You'll receive a confirmation message:</strong></p>
+          <div class="bg-white p-3 rounded border border-green-200 font-mono text-sm text-green-900 mt-2">
+            ✅ SHIFT COMPLETE: Your shift at [Client] has ended.<br><br>
+            🎯 GPS STAFF - NO ACTION NEEDED!<br>
+            Your timesheet was auto-created from GPS clock-in/out.<br>
+            Status: Submitted for approval
+          </div>
+        </div>
+
+        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <h4 class="font-bold text-blue-900 mb-3">📋 Optional: Upload Paper Timesheet as Backup</h4>
+          <p class="text-sm text-blue-800 mb-2">Even though GPS timesheets are automatic, you can still upload a paper timesheet if you have one:</p>
+          <ul class="list-disc pl-6 text-sm text-blue-800 space-y-1">
+            <li>Provides extra evidence for disputes</li>
+            <li>Shows client signature</li>
+            <li>Useful if GPS data is questioned</li>
+          </ul>
+          <p class="text-sm text-blue-800 mt-2"><strong>How:</strong> Go to Staff Portal → Timesheets → Click your timesheet → Upload Document</p>
+        </div>
+      `,
+      tags: ['gps', 'upload', 'timesheet', 'automatic', 'no action needed']
+    },
+    {
+      id: 'gps-forgot-clock-out',
+      category: 'gps',
+      question: '⚠️ What if I forgot to clock out?',
+      answer: `
+        <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-4">
+          <h4 class="font-bold text-yellow-900 mb-3">⚠️ Forgot to Clock Out</h4>
+          <p class="text-sm text-yellow-800 mb-3">If you forgot to clock out, your timesheet won't be automatically created.</p>
+
+          <p class="text-sm text-yellow-800 mb-2"><strong>What to do:</strong></p>
+          <ol class="list-decimal pl-6 text-sm text-yellow-800 space-y-2">
+            <li><strong>Clock out as soon as you remember</strong> (even if it's late)</li>
+            <li>If too late, <strong>contact your admin immediately</strong></li>
+            <li>Provide your estimated end time</li>
+            <li>Admin will manually complete your timesheet</li>
+            <li>Upload a paper timesheet as backup evidence</li>
+          </ol>
+        </div>
+
+        <div class="bg-red-50 p-4 rounded-lg border border-red-200">
+          <h4 class="font-bold text-red-900 mb-3">🔋 Phone Battery Died?</h4>
+          <p class="text-sm text-red-800 mb-2">Same process:</p>
+          <ol class="list-decimal pl-6 text-sm text-red-800 space-y-1">
+            <li>Charge phone and clock out ASAP</li>
+            <li>If too late, contact admin with estimated time</li>
+            <li>Admin will manually complete timesheet</li>
+            <li>Upload paper timesheet as backup</li>
+          </ol>
+        </div>
+      `,
+      tags: ['gps', 'forgot', 'clock-out', 'battery', 'phone died']
+    },
+    {
+      id: 'gps-rejection',
+      category: 'gps',
+      question: '❌ Why was my GPS timesheet rejected?',
+      answer: `
+        <div class="bg-red-50 p-4 rounded-lg border border-red-200 mb-4">
+          <h4 class="font-bold text-red-900 mb-3">❌ Common GPS Rejection Reasons</h4>
+
+          <div class="space-y-3">
+            <div class="bg-white p-3 rounded border border-red-200">
+              <p class="font-semibold text-red-900 mb-1">1. Geofence Validation Failed</p>
+              <p class="text-sm text-red-800"><strong>Reason:</strong> You were more than 100m from the client location</p>
+              <p class="text-sm text-red-800 mt-1"><strong>Fix:</strong> Make sure you're at the correct location before clocking in/out. If client address is wrong, contact admin.</p>
+            </div>
+
+            <div class="bg-white p-3 rounded border border-red-200">
+              <p class="font-semibold text-red-900 mb-1">2. Missing Clock-In or Clock-Out</p>
+              <p class="text-sm text-red-800"><strong>Reason:</strong> You forgot to clock in or clock out</p>
+              <p class="text-sm text-red-800 mt-1"><strong>Fix:</strong> Contact admin immediately with estimated times. Upload paper timesheet.</p>
+            </div>
+
+            <div class="bg-white p-3 rounded border border-red-200">
+              <p class="font-semibold text-red-900 mb-1">3. Overtime Detected</p>
+              <p class="text-sm text-red-800"><strong>Reason:</strong> You worked more hours than scheduled (e.g., 12.5 hours instead of 12)</p>
+              <p class="text-sm text-red-800 mt-1"><strong>Fix:</strong> Admin will review and approve overtime if authorized by client.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+          <p class="text-sm text-blue-900"><strong>💡 Tip:</strong> Always check for the "Clock-in successful" message before starting your shift!</p>
+        </div>
+      `,
+      tags: ['gps', 'rejected', 'failed', 'geofence', 'overtime']
+    },
+    {
+      id: 'gps-turn-off',
+      category: 'gps',
+      question: '📱 Can I turn off GPS after clocking in?',
+      answer: `
+        <div class="bg-green-50 p-4 rounded-lg border-2 border-green-300 mb-4">
+          <h4 class="font-bold text-green-900 mb-3">✅ YES - GPS Only Captured at Clock-In/Out</h4>
+          <p class="text-sm text-green-800 mb-3">GPS is <strong>NOT</strong> tracked continuously during your shift. It's only captured when you click "Clock In" and "Clock Out".</p>
+
+          <p class="text-sm text-green-800 mb-2"><strong>What this means:</strong></p>
+          <ul class="list-disc pl-6 text-sm text-green-800 space-y-1">
+            <li>✅ You can turn off GPS/location services during your shift</li>
+            <li>✅ You can turn off your phone completely</li>
+            <li>✅ Your location is NOT tracked while working</li>
+            <li>⚠️ You MUST turn GPS back on before clocking out</li>
+          </ul>
+        </div>
+
+        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <h4 class="font-bold text-blue-900 mb-3">📵 Care Home Requires Phones Off?</h4>
+          <p class="text-sm text-blue-800 mb-2">No problem! Clock in/out at the entrance:</p>
+          <ol class="list-decimal pl-6 text-sm text-blue-800 space-y-1">
+            <li>Clock in at care home entrance (before entering ward)</li>
+            <li>Turn off phone and work shift</li>
+            <li>Clock out at care home entrance (after leaving ward)</li>
+            <li>GPS validates location at entrance (still within 100m)</li>
+            <li>Timesheet auto-created successfully ✅</li>
+          </ol>
+        </div>
+      `,
+      tags: ['gps', 'turn off', 'location', 'privacy', 'phones off']
+    },
+    {
+      id: 'gps-consent',
+      category: 'gps',
+      question: '🔒 How do I grant GPS consent?',
+      answer: `
+        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
+          <h4 class="font-bold text-blue-900 mb-3">🔒 Granting GPS Consent</h4>
+          <p class="text-sm text-blue-800 mb-3">GPS consent is required to use automatic GPS timesheets. It's a one-time setup.</p>
+
+          <p class="text-sm text-blue-800 mb-2"><strong>How to grant consent:</strong></p>
+          <ol class="list-decimal pl-6 text-sm text-blue-800 space-y-2">
+            <li>Go to <strong>Staff Portal → My Profile</strong></li>
+            <li>Scroll to <strong>"GPS Consent"</strong> section</li>
+            <li>Read the consent statement</li>
+            <li>Check the box: "I consent to GPS tracking for timesheet verification"</li>
+            <li>Click <strong>"Save"</strong></li>
+          </ol>
+        </div>
+
+        <div class="bg-green-50 p-4 rounded-lg border border-green-200 mb-4">
+          <h4 class="font-bold text-green-900 mb-3">✅ What GPS Consent Allows</h4>
+          <ul class="list-disc pl-6 text-sm text-green-800 space-y-1">
+            <li>Capture your location when you click "Clock In"</li>
+            <li>Capture your location when you click "Clock Out"</li>
+            <li>Validate you're within 100m of client location</li>
+            <li>Automatically create timesheets from GPS data</li>
+          </ul>
+        </div>
+
+        <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+          <p class="text-sm text-yellow-900"><strong>⚠️ Privacy:</strong> GPS is ONLY captured at clock-in/out. Your location is NOT tracked continuously during shifts.</p>
+        </div>
+      `,
+      tags: ['gps', 'consent', 'privacy', 'permission', 'location']
     },
     {
       id: 'shifts-confirm',

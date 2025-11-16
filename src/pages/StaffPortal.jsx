@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, isWithinInterval, isFuture, isPast, isToday, parseISO, addDays } from "date-fns";
 import MobileClockIn from "../components/staff/MobileClockIn";
+import { formatShiftTimeRange, formatTodayShiftTime, getShiftType, formatTime12Hour } from "../utils/shiftTimeFormatter";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -365,6 +366,8 @@ export default function StaffPortal() {
       // Create or update booking
       const existingBooking = myBookings.find(b => b.shift_id === shiftId && b.staff_id === staffRecord?.id); // Use myBookings and staffRecord
       
+      let bookingId = null;
+
       if (existingBooking) {
         const { error: bookingUpdateError } = await supabase
           .from('bookings')
@@ -375,9 +378,10 @@ export default function StaffPortal() {
           .eq('id', existingBooking.id);
 
         if (bookingUpdateError) throw bookingUpdateError;
+        bookingId = existingBooking.id;
       } else {
         // If booking doesn't exist, create it. This might happen if a shift was assigned directly.
-        const { error: bookingCreateError } = await supabase
+        const { data: newBooking, error: bookingCreateError } = await supabase
           .from('bookings')
           .insert({
             agency_id: shift.agency_id,
@@ -392,12 +396,49 @@ export default function StaffPortal() {
             confirmation_method: 'app',
             confirmed_by_staff_at: new Date().toISOString(),
             created_date: new Date().toISOString()
-          });
+          })
+          .select()
+          .single();
 
         if (bookingCreateError) throw bookingCreateError;
+        bookingId = newBooking?.id;
       }
 
-      return shiftId;
+      // 🚨 CRITICAL FIX: Create timesheet when staff confirms shift
+      // This ensures every confirmed shift has a timesheet record for staff to upload to
+      let timesheetId = null;
+      try {
+        if (bookingId) {
+          console.log('✅ [Timesheet Creation] Creating timesheet for booking:', bookingId);
+
+          const { data: timesheetResponse, error: timesheetError } = await supabase.functions.invoke('auto-timesheet-creator', {
+            body: {
+              booking_id: bookingId,
+              shift_id: shiftId,
+              staff_id: staffRecord.id,
+              client_id: shift.client_id,
+              agency_id: shift.agency_id
+            }
+          });
+
+          if (timesheetError) {
+            console.error('❌ [Timesheet Creation] Failed:', timesheetError);
+          } else if (timesheetResponse?.data?.success) {
+            timesheetId = timesheetResponse.data.timesheet_id;
+            console.log('✅ [Timesheet Creation] Success! Timesheet ID:', timesheetId);
+          } else {
+            console.warn('⚠️ [Timesheet Creation] Unexpected response:', timesheetResponse);
+          }
+        } else {
+          console.error('❌ [Timesheet Creation] No booking ID available');
+        }
+      } catch (timesheetError) {
+        console.error('❌ [Timesheet Creation] Exception:', timesheetError);
+        // Don't fail the confirmation if timesheet creation fails
+        // The shift is still confirmed, timesheet can be created manually if needed
+      }
+
+      return { shiftId, timesheetId };
     },
     onMutate: (shiftId) => {
       // ✅ FIX: Add this shift to confirming set
@@ -690,13 +731,29 @@ export default function StaffPortal() {
       missing.push({ item: '💼 Employment History', priority: 'important', action: 'Add in Profile Settings' });
     }
     
-    const trainingCount = compliance.filter(c => c.document_type === 'training_certificate' && c.status === 'verified').length;
-    if (trainingCount >= 3) { // Assuming 3 mandatory trainings
+    const mandatoryTraining = staffRecord.mandatory_training || {};
+    const mandatoryTrainingValues = Object.values(mandatoryTraining);
+    const validMandatoryTrainingCount = mandatoryTrainingValues.filter((t) => {
+      if (!t || typeof t !== 'object') return false;
+      if (!t.completed_date) return false;
+      if (!t.expiry_date) return true;
+      return new Date(t.expiry_date) > new Date();
+    }).length;
+
+    const totalMandatoryTrainingItems = 10;
+    const trainingCount = validMandatoryTrainingCount;
+
+    if (trainingCount >= totalMandatoryTrainingItems) {
       completed++;
     } else {
-      missing.push({ item: `📜 Mandatory Training (${trainingCount}/3)`, priority: 'important', action: 'Upload in My Docs' });
+      const remaining = Math.max(0, totalMandatoryTrainingItems - trainingCount);
+      missing.push({
+        item: `📜 Mandatory Training (${trainingCount}/${totalMandatoryTrainingItems} – ${remaining} missing)`,
+        priority: 'important',
+        action: 'Upload in My Docs',
+      });
     }
-    
+
     if (staffRecord.occupational_health?.cleared_to_work) {
       completed++;
     } else {
@@ -770,12 +827,23 @@ export default function StaffPortal() {
                 {/* Missing Items */}
                 <div className="space-y-2">
                   {onboardingProgress.missing.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2 bg-white rounded border border-orange-200">
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        // Navigate based on action type
+                        if (item.action.includes('Profile Settings')) {
+                          navigate('/profilesetup');
+                        } else if (item.action.includes('My Docs')) {
+                          navigate('/compliancetracker');
+                        }
+                      }}
+                      className="w-full flex items-center justify-between p-2 bg-white rounded border border-orange-200 hover:bg-orange-50 hover:border-orange-400 transition-all cursor-pointer"
+                    >
                       <span className="text-sm font-medium text-gray-900">{item.item}</span>
-                      <Badge className={item.priority === 'critical' ? 'bg-red-600' : 'bg-orange-600'}>
+                      <Badge className={item.priority === 'critical' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'}>
                         {item.priority === 'critical' ? '🔴 Critical' : '🟡 Important'}
                       </Badge>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -813,7 +881,7 @@ export default function StaffPortal() {
                 <p className="text-xl opacity-90">{format(new Date(nextShift.date), 'MMM d')}</p>
               </div>
               <Badge className="bg-white text-blue-600 text-lg px-3 py-1">
-                {nextShift.start_time}
+                {formatTime12Hour(nextShift.start_time)}
               </Badge>
             </div>
             
@@ -822,7 +890,7 @@ export default function StaffPortal() {
                 <MapPin className="w-5 h-5" />
                 <div>
                   <p className="font-semibold text-lg">{getClientName(nextShift.client_id)}</p>
-                  <p className="text-sm opacity-90">{nextShift.start_time} - {nextShift.end_time}</p>
+                  <p className="text-sm opacity-90">{formatTodayShiftTime(nextShift)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -1031,7 +1099,7 @@ export default function StaffPortal() {
                         {format(new Date(shift.date), 'EEE, MMM d')}
                       </Badge>
                       <Badge variant="outline">
-                        {shift.start_time} - {shift.end_time}
+                        {formatTodayShiftTime(shift)}
                       </Badge>
                     </div>
                     
@@ -1160,7 +1228,7 @@ export default function StaffPortal() {
                       <div className="flex items-center gap-3 text-sm text-gray-600">
                         <div className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
-                          <span>{shift.start_time}</span>
+                          <span>{formatTodayShiftTime(shift)}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <DollarSign className="w-4 h-4" />
@@ -1228,7 +1296,7 @@ export default function StaffPortal() {
                     <span className="font-semibold">Time</span>
                   </div>
                   <p className="text-2xl font-bold text-gray-900">
-                    {selectedShift.start_time} - {selectedShift.end_time}
+                    {formatTodayShiftTime(selectedShift)}
                   </p>
                   <p className="text-sm text-gray-600 mt-1">{selectedShift.duration_hours} hours</p>
                 </div>

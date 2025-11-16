@@ -4,8 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  CheckSquare, User, Users, Building2, UserCog, Shield, 
-  FileText, Download, AlertTriangle, Zap, Eye, Camera
+  CheckSquare, User, Users, Building2, UserCog, Shield,
+  FileText, Download, AlertTriangle, Zap, Eye, Camera, UserPlus
 } from "lucide-react";
 
 export default function UATTesterGuide() {
@@ -123,6 +123,71 @@ export default function UATTesterGuide() {
     },
     {
       id: 2,
+      category: "SUPER ADMIN: Uninvited User Signup & Approval",
+      priority: "HIGH",
+      icon: UserPlus,
+      color: "purple",
+      tests: [
+        {
+          step: "Create uninvited user signup",
+          action: "Open incognito window → Navigate to login page → Click 'Sign Up'",
+          expected: "Signup form appears with 4 fields: First Name, Last Name, Email, Password",
+          passIf: "Form is clean and simple (no role selection, no agency dropdown)",
+          screenshot: "✅ Take screenshot of signup form"
+        },
+        {
+          step: "Complete signup",
+          action: "Fill in: First='Test', Last='Uninvited', Email='test.uninvited.3@example.com', Password='Test123!'",
+          expected: "Account created, redirected to profile setup page with 'Account Under Review' banner",
+          passIf: "Yellow banner visible: 'Your account is awaiting approval from an agency administrator'",
+          screenshot: "✅ Take screenshot of pending account view"
+        },
+        {
+          step: "Verify workflow created",
+          action: "Login as super admin (g.basera@yahoo.com) → Navigate to Admin Workflows",
+          expected: "New workflow appears: 'New User Signup: Test Uninvited'",
+          passIf: "Workflow status is 'pending', shows user email and name",
+          screenshot: "✅ Take screenshot of workflow in list"
+        },
+        {
+          step: "Click Approve button",
+          action: "Click green 'Approve' button on the workflow",
+          expected: "Modal opens showing user details (email, name) with agency and role dropdowns",
+          passIf: "Modal displays correctly with all fields",
+          screenshot: "✅ Take screenshot of approval modal"
+        },
+        {
+          step: "Select agency and role",
+          action: "Select Agency: 'Agile Care Group', Role: 'Staff Member', Notes: 'Test approval'",
+          expected: "Dropdowns populate correctly, all agencies visible",
+          passIf: "Can select agency and role without errors",
+          screenshot: "✅ Take screenshot of filled modal"
+        },
+        {
+          step: "Approve user",
+          action: "Click 'Approve User' button",
+          expected: "Success toast appears, modal closes, workflow marked as resolved",
+          passIf: "Workflow disappears from pending list or status changes to 'resolved'",
+          screenshot: "✅ Take screenshot of success message"
+        },
+        {
+          step: "Verify user can access system",
+          action: "Login as test.uninvited.3@example.com",
+          expected: "User redirected to Staff Portal (no 'Account Under Review' banner)",
+          passIf: "Staff Portal loads, user can see shifts/timesheets/compliance tabs",
+          screenshot: "✅ Take screenshot of Staff Portal access"
+        },
+        {
+          step: "Verify profile updated",
+          action: "Check Supabase Dashboard → profiles table → Find test.uninvited.3@example.com",
+          expected: "Profile shows: user_type='staff_member', agency_id='00000000-0000-0000-0000-000000000001'",
+          passIf: "Database record updated correctly",
+          screenshot: "✅ Take screenshot of database record"
+        }
+      ]
+    },
+    {
+      id: 3,
       category: "ADMIN: Shift Cancellation (Critical Change)",
       priority: "CRITICAL",
       icon: AlertTriangle,

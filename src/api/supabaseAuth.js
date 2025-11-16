@@ -135,22 +135,32 @@ export const supabaseAuth = {
 
   /**
    * Sign up with email and password
+   * ✅ SIMPLIFIED: Database trigger handles role detection and linking
    * @param {string} email
    * @param {string} password
-   * @param {object} metadata - Optional user metadata
+   * @param {object} metadata - Optional user metadata (e.g., full_name)
    */
   async signUp(email, password, metadata = {}) {
     try {
       const siteUrl = getSiteUrl();
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: metadata,
-          emailRedirectTo: `${siteUrl}${RESET_PASSWORD_PATH}`,
+          emailRedirectTo: `${siteUrl}/`,
         },
       });
+
       if (error) throw error;
+
+      // Database trigger automatically:
+      // ✅ Checks if email exists in staff/agencies/clients tables
+      // ✅ Creates profile with correct user_type
+      // ✅ Links to agency_id if invited
+      // ✅ Sends notification if uninvited
+
       return data;
     } catch (error) {
       console.error('Error signing up:', error);

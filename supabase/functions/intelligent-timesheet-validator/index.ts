@@ -59,6 +59,15 @@ serve(async (req) => {
 
         const shiftData = shift && shift.length > 0 ? shift[0] : null;
 
+        // Fetch agency settings for GPS auto-completion
+        const { data: agency } = await supabase
+            .from("agencies")
+            .select("settings")
+            .eq("id", timesheet.agency_id)
+            .single();
+
+        const gpsAutoCompleteEnabled = agency?.settings?.automation_settings?.gps_auto_complete_shifts ?? true;
+
         // Initialize validation results
         const validations = {
             gps_verified: false,
@@ -222,6 +231,57 @@ serve(async (req) => {
             .from("timesheets")
             .update(updates)
             .eq("id", timesheet_id);
+
+        // 🎯 GPS AUTOMATION: Auto-complete shift when GPS timesheet is auto-approved
+        if ((decision === 'auto_approve' || decision === 'auto_approve_with_notes') && validations.gps_verified && shiftData && gpsAutoCompleteEnabled) {
+            console.log(`🎯 [GPS Auto-Complete] Shift ${shiftData.id.substring(0, 8)} - GPS validated, auto-completing shift`);
+
+            await supabase
+                .from("shifts")
+                .update({
+                    status: 'completed',
+                    shift_ended_at: timesheet.clock_out_time || new Date().toISOString(),
+                    admin_closure_outcome: 'auto_completed_gps',
+                    admin_closed_at: new Date().toISOString(),
+                    shift_journey_log: [
+                        ...(shiftData.shift_journey_log || []),
+                        {
+                            state: 'completed',
+                            timestamp: new Date().toISOString(),
+                            method: 'gps_auto_completion',
+                            notes: `Auto-completed via GPS validation. Timesheet auto-approved. Actual times: ${timesheet.actual_start_time || 'N/A'} - ${timesheet.actual_end_time || 'N/A'}`,
+                            gps_validated: true,
+                            geofence_distance: timesheet.geofence_distance_meters
+                        }
+                    ]
+                })
+                .eq("id", shiftData.id);
+
+            console.log(`✅ [GPS Auto-Complete] Shift ${shiftData.id.substring(0, 8)} marked as completed`);
+        } else if ((decision === 'auto_approve' || decision === 'auto_approve_with_notes') && (!validations.gps_verified || !gpsAutoCompleteEnabled) && shiftData) {
+            // Timesheet approved but no GPS or GPS auto-complete disabled - set to awaiting_admin_closure for manual review
+            const reason = !gpsAutoCompleteEnabled
+                ? 'GPS auto-completion disabled in agency settings'
+                : 'No GPS validation';
+            console.log(`⚠️  [Manual Closure Required] Shift ${shiftData.id.substring(0, 8)} - ${reason}, requires admin closure`);
+
+            await supabase
+                .from("shifts")
+                .update({
+                    status: 'awaiting_admin_closure',
+                    shift_ended_at: timesheet.clock_out_time || new Date().toISOString(),
+                    shift_journey_log: [
+                        ...(shiftData.shift_journey_log || []),
+                        {
+                            state: 'awaiting_admin_closure',
+                            timestamp: new Date().toISOString(),
+                            method: 'automated',
+                            notes: `Timesheet approved but ${reason} - requires manual admin closure`
+                        }
+                    ]
+                })
+                .eq("id", shiftData.id);
+        }
 
         // CREATE ADMIN WORKFLOW IF NEEDED
         if (decision === 'escalate_to_admin') {

@@ -32,17 +32,21 @@ export default function CapabilitiesMatrix() {
         { feature: "View shift details (location, client, time)", available: true, critical: true, phase: "Live" },
         { feature: "Contact client (phone number provided)", available: true, critical: false, phase: "Live" },
         
-        // ✅ Shift Day Activities
-        { feature: "Clock in with GPS validation", available: true, critical: true, phase: "Live" },
-        { feature: "Clock out with GPS validation", available: true, critical: true, phase: "Live" },
-        { feature: "GPS location tracked during shift", available: true, critical: true, phase: "Live" },
+        // ✅ Shift Day Activities & GPS
+        { feature: "Clock in with GPS validation (100m geofence)", available: true, critical: true, phase: "Live" },
+        { feature: "Clock out with GPS validation (100m geofence)", available: true, critical: true, phase: "Live" },
+        { feature: "View GPS clock-in/out timestamps", available: true, critical: true, phase: "Live" },
+        { feature: "View geofence validation status", available: true, critical: true, phase: "Live" },
+        { feature: "Grant/revoke GPS consent (one-time setup)", available: true, critical: true, phase: "Live" },
         { feature: "Digital signature (staff + client)", available: true, critical: true, phase: "Live" },
-        { feature: "Grant/revoke GPS consent", available: true, critical: true, phase: "Live" },
         
         // ✅ Timesheet & Documentation
-        { feature: "Submit timesheets with photos", available: true, critical: true, phase: "Live" },
+        { feature: "GPS timesheets auto-created from clock-in/out", available: true, critical: true, phase: "Live" },
+        { feature: "View GPS-verified timesheet data", available: true, critical: true, phase: "Live" },
+        { feature: "Optional: Upload paper timesheet as backup", available: true, critical: false, phase: "Live" },
+        { feature: "Submit timesheets with photos (non-GPS)", available: true, critical: true, phase: "Live" },
         { feature: "Upload signed timesheet documents", available: true, critical: true, phase: "Live" },
-        { feature: "Receive timesheet upload reminder", available: true, critical: true, phase: "Live" },
+        { feature: "Receive GPS-optimized post-shift notifications", available: true, critical: true, phase: "Live" },
         { feature: "View timesheet approval status", available: true, critical: true, phase: "Live" },
         { feature: "Resubmit rejected timesheets", available: true, critical: true, phase: "Live" },
         
@@ -171,15 +175,24 @@ export default function CapabilitiesMatrix() {
         { feature: "Manage client internal locations", available: true, critical: true, phase: "Live" },
         { feature: "Track contract status", available: true, critical: true, phase: "Live" },
         
-        // ✅ Shift Monitoring
+        // ✅ Shift Monitoring & GPS
         { feature: "View live shift map (GPS tracking)", available: true, critical: true, phase: "Live" },
         { feature: "Monitor shift status transitions", available: true, critical: true, phase: "Live" },
         { feature: "View shift journey log (audit trail)", available: true, critical: true, phase: "Live" },
+        { feature: "View GPS clock-in/out coordinates", available: true, critical: true, phase: "Live" },
+        { feature: "View geofence validation results", available: true, critical: true, phase: "Live" },
+        { feature: "View device info (browser, OS, IP)", available: true, critical: true, phase: "Live" },
         { feature: "Detect no-shows (15 min alert)", available: true, critical: true, phase: "Live" },
         { feature: "Manually mark shifts completed", available: true, critical: true, phase: "Live" },
         { feature: "Override geofence violations", available: true, critical: true, phase: "Live" },
+        { feature: "Review overtime flagged by GPS", available: true, critical: true, phase: "Live" },
         
-        // ✅ Timesheet Processing
+        // ✅ Timesheet Processing & GPS Evidence
+        { feature: "View GPS-verified timesheets with coordinates", available: true, critical: true, phase: "Live" },
+        { feature: "Export GPS evidence for disputes (PDF)", available: true, critical: true, phase: "Live" },
+        { feature: "Auto-approve GPS timesheets (zero admin work)", available: true, critical: true, phase: "Live" },
+        { feature: "Review overtime flagged by GPS timesheets", available: true, critical: true, phase: "Live" },
+        { feature: "Manually complete incomplete GPS timesheets", available: true, critical: true, phase: "Live" },
         { feature: "View uploaded timesheet documents", available: true, critical: true, phase: "Live" },
         { feature: "AI OCR extraction confidence scores", available: true, critical: true, phase: "Live" },
         { feature: "Auto-approve high-confidence timesheets", available: true, critical: true, phase: "Live" },
@@ -237,6 +250,69 @@ export default function CapabilitiesMatrix() {
         "📊 Reports: Weekly performance summary, Monthly financial report, Compliance status updates"
       ]
     },
+    super_admin: {
+      icon: Shield,
+      color: "purple",
+      label: "Super Admin (g.basera@yahoo.com - Platform Owner)",
+      can_do: [
+        // ✅ Multi-Agency Management
+        { feature: "View all agencies across platform", available: true, critical: true, phase: "Live" },
+        { feature: "Switch between agency views", available: true, critical: true, phase: "Live" },
+        { feature: "Create new agencies", available: true, critical: true, phase: "Live" },
+        { feature: "Onboard new agency admins", available: true, critical: true, phase: "Live" },
+        { feature: "View platform-wide analytics", available: true, critical: true, phase: "Live" },
+
+        // ✅ User Management
+        { feature: "Approve uninvited user signups", available: true, critical: true, phase: "Live" },
+        { feature: "Assign users to agencies", available: true, critical: true, phase: "Live" },
+        { feature: "Assign user roles (admin/staff/client)", available: true, critical: true, phase: "Live" },
+        { feature: "View all user profiles across agencies", available: true, critical: true, phase: "Live" },
+        { feature: "Override agency permissions", available: true, critical: true, phase: "Live" },
+
+        // ✅ Admin Workflows (All Agencies)
+        { feature: "View workflows from all agencies", available: true, critical: true, phase: "Live" },
+        { feature: "Resolve cross-agency issues", available: true, critical: true, phase: "Live" },
+        { feature: "Review uninvited user signup workflows", available: true, critical: true, phase: "Live" },
+
+        // ✅ Platform Analytics & GPS Insights
+        { feature: "CFO Dashboard (all agencies)", available: true, critical: true, phase: "Live" },
+        { feature: "Platform performance analytics", available: true, critical: true, phase: "Live" },
+        { feature: "Timesheet analytics (all agencies)", available: true, critical: true, phase: "Live" },
+        { feature: "Revenue tracking across agencies", available: true, critical: true, phase: "Live" },
+        { feature: "GPS adoption rate across platform", available: true, critical: true, phase: "Live" },
+        { feature: "GPS auto-approval success rate", available: true, critical: true, phase: "Live" },
+        { feature: "GPS vs paper timesheet comparison", available: true, critical: true, phase: "Live" },
+        { feature: "Geofence violation analytics", available: true, critical: true, phase: "Live" },
+        { feature: "Overtime detection analytics", available: true, critical: true, phase: "Live" },
+
+        // ✅ System Configuration
+        { feature: "Configure platform-wide settings", available: true, critical: true, phase: "Live" },
+        { feature: "Manage Supabase Edge Functions", available: true, critical: true, phase: "Live" },
+        { feature: "View function audit logs", available: true, critical: true, phase: "Live" },
+        { feature: "Configure automation rules", available: true, critical: true, phase: "Live" },
+
+        // ✅ Testing & Development
+        { feature: "Access data simulation tools", available: true, critical: false, phase: "Live" },
+        { feature: "Clean slate utility (reset test data)", available: true, critical: false, phase: "Live" },
+        { feature: "Email notification tester", available: true, critical: false, phase: "Live" },
+        { feature: "View test user credentials", available: true, critical: false, phase: "Live" },
+        { feature: "Testing tracker dashboard", available: true, critical: false, phase: "Live" },
+
+        // ✅ Documentation & Training
+        { feature: "View capabilities matrix", available: true, critical: false, phase: "Live" },
+        { feature: "Access shift journey diagram", available: true, critical: false, phase: "Live" },
+        { feature: "View stakeholder presentations", available: true, critical: false, phase: "Live" },
+
+        // ✅ All Agency Admin Features
+        { feature: "All agency admin capabilities (for any agency)", available: true, critical: true, phase: "Live" }
+      ],
+      receives_from_system: [
+        "📧 Email: Uninvited user signup notifications, Platform health reports, Cross-agency alerts",
+        "⚠️ Admin Workflows: Uninvited user signups, Cross-agency issues, System-level alerts",
+        "🔔 Push: Critical platform alerts, New agency onboarding requests",
+        "📊 Reports: Platform-wide performance, Multi-agency financial summaries"
+      ]
+    },
     acg_automation: {
       icon: Zap,
       color: "orange",
@@ -273,10 +349,18 @@ export default function CapabilitiesMatrix() {
         { feature: "Auto-approve compliant timesheets (80%+ confidence)", available: true, critical: true, phase: "Live" },
         { feature: "Flag discrepancies for admin review", available: true, critical: true, phase: "Live" },
         
-        // ✅ GPS & Geofencing
-        { feature: "Validate GPS coordinates", available: true, critical: true, phase: "Live" },
+        // ✅ GPS & Geofencing Automation
+        { feature: "Validate GPS coordinates (100m geofence)", available: true, critical: true, phase: "Live" },
         { feature: "Calculate distance from geofence", available: true, critical: true, phase: "Live" },
+        { feature: "Auto-create timesheets from GPS clock-in/out", available: true, critical: true, phase: "Live" },
+        { feature: "Auto-populate actual times (30-min rounding)", available: true, critical: true, phase: "Live" },
+        { feature: "Auto-approve GPS-verified timesheets", available: true, critical: true, phase: "Live" },
+        { feature: "Auto-complete GPS-verified shifts", available: true, critical: true, phase: "Live" },
+        { feature: "Detect overtime (12-hour cap)", available: true, critical: true, phase: "Live" },
+        { feature: "Flag incomplete GPS timesheets", available: true, critical: true, phase: "Live" },
         { feature: "Create workflow for geofence violations", available: true, critical: true, phase: "Live" },
+        { feature: "Send GPS-optimized post-shift notifications", available: true, critical: true, phase: "Live" },
+        { feature: "Send GPS reminders in pre-shift notifications", available: true, critical: true, phase: "Live" },
         
         // ✅ Invoicing & Payment
         { feature: "Auto-generate invoices (weekly/monthly)", available: true, critical: true, phase: "Live" },

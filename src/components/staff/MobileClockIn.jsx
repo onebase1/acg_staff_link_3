@@ -10,6 +10,7 @@ import {
   Navigation, Shield, Info, XCircle, Building2
 } from "lucide-react";
 import { toast } from "sonner";
+import { formatTodayShiftTime } from "../../utils/shiftTimeFormatter";
 
 export default function MobileClockIn({ shift, onClockInComplete }) {
   const [loading, setLoading] = useState(false);
@@ -524,15 +525,53 @@ export default function MobileClockIn({ shift, onClockInComplete }) {
 
       const totalHoursRounded = parseFloat(totalHours.toFixed(2));
 
+      // 🎯 GPS AUTOMATION: Auto-populate actual times from GPS clock-in/out
+      // Round to 30-minute intervals for timesheet display
+      const roundToHalfHour = (isoTimestamp) => {
+        const date = new Date(isoTimestamp);
+        const hours = date.getHours();
+        const minutes = date.getMinutes();
+        const roundedMinutes = minutes < 15 ? 0 : minutes < 45 ? 30 : 0;
+        const roundedHours = minutes >= 45 ? hours + 1 : hours;
+        return `${String(roundedHours).padStart(2, '0')}:${String(roundedMinutes).padStart(2, '0')}`;
+      };
+
+      const actualStartTime = roundToHalfHour(existingTimesheet.clock_in_time);
+      const actualEndTime = roundToHalfHour(clockOutTime);
+
+      console.log(`🎯 [GPS Auto-Times] Clock-in: ${existingTimesheet.clock_in_time} → Actual: ${actualStartTime}`);
+      console.log(`🎯 [GPS Auto-Times] Clock-out: ${clockOutTime} → Actual: ${actualEndTime}`);
+
+      // 🎯 12-HOUR CAP: Cap total hours at scheduled shift duration
+      // Flag overtime for manual review
+      const scheduledHours = shift.duration_hours || 12;
+      let cappedHours = totalHoursRounded;
+      let overtimeHours = 0;
+      let overtimeFlag = false;
+
+      if (totalHoursRounded > scheduledHours) {
+        overtimeHours = parseFloat((totalHoursRounded - scheduledHours).toFixed(2));
+        cappedHours = scheduledHours;
+        overtimeFlag = true;
+        console.log(`⚠️ [Overtime Detected] Worked: ${totalHoursRounded}hrs, Scheduled: ${scheduledHours}hrs, Overtime: ${overtimeHours}hrs`);
+        toast.warning(`⚠️ Overtime detected: ${overtimeHours} hours over scheduled shift. Flagged for admin review.`);
+      }
+
       const { error: timesheetUpdateError } = await supabase
         .from('timesheets')
         .update({
           clock_out_time: clockOutTime,
           clock_out_location: location,
-          total_hours: totalHoursRounded,
-          staff_pay_amount: parseFloat((totalHours * (shift.pay_rate || 0)).toFixed(2)),
-          client_charge_amount: parseFloat((totalHours * (shift.charge_rate || 0)).toFixed(2)),
-          status: 'submitted'
+          total_hours: cappedHours, // Use capped hours
+          actual_start_time: actualStartTime,
+          actual_end_time: actualEndTime,
+          staff_pay_amount: parseFloat((cappedHours * (shift.pay_rate || 0)).toFixed(2)),
+          client_charge_amount: parseFloat((cappedHours * (shift.charge_rate || 0)).toFixed(2)),
+          status: 'submitted',
+          // Store overtime info for admin review
+          overtime_hours: overtimeFlag ? overtimeHours : null,
+          overtime_flag: overtimeFlag,
+          raw_total_hours: totalHoursRounded // Store uncapped hours for reference
         })
         .eq('id', existingTimesheet.id);
 
@@ -739,7 +778,7 @@ export default function MobileClockIn({ shift, onClockInComplete }) {
             )}
             <div className="flex items-center gap-2 text-blue-800 text-sm">
               <Clock className="w-4 h-4" />
-              <span>{shift.start_time} - {shift.end_time} ({shift.duration_hours}h)</span>
+              <span>{formatTodayShiftTime(shift)} ({shift.duration_hours}h)</span>
             </div>
           </div>
         )}

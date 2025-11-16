@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Shift Creation - Staff Management</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        :root {
+  /* Primitive Color Tokens */
+  --color-white: rgba(255, 255, 255, 1);
+  --color-black: rgba(0, 0, 0, 1);
+  --color-cream-50: rgba(252, 252, 249, 1);
+  --color-cream-100: rgba(255, 255, 253, 1);
+  --color-gray-200: rgba(245, 245, 245, 1);
+  --color-gray-300: rgba(167, 169, 169, 1);
+  --color-gray-400: rgba(119, 124, 124, 1);
+  --color-slate-500: rgba(98, 108, 113, 1);
+  --color-brown-600: rgba(94, 82, 64, 1);
+  --color-charcoal-700: rgba(31, 33, 33, 1);
+  --color-charcoal-800: rgba(38, 40, 40, 1);
+  --color-slate-900: rgba(19, 52, 59, 1);
+  --color-teal-300: rgba(50, 184, 198, 1);
+  --color-teal-400: rgba(45, 166, 178, 1);
+  --color-teal-500: rgba(33, 128, 141, 1);
+  --color-teal-600: rgba(29, 116, 128, 1);
+  --color-teal-700: rgba(26, 104, 115, 1);
+  --color-teal-800: rgba(41, 150, 161, 1);
+  --color-red-400: rgba(255, 84, 89, 1);
+  --color-red-500: rgba(192, 21, 47, 1);
+  --color-orange-400: rgba(230, 129, 97, 1);
+  --color-orange-500: rgba(168, 75, 47, 1);
+
+  /* RGB versions for opacity control */
+  --color-brown-600-rgb: 94, 82, 64;
+  --color-teal-500-rgb: 33, 128, 141;
+  --color-slate-900-rgb: 19, 52, 59;
+  --color-slate-500-rgb: 98, 108, 113;
+  --color-red-500-rgb: 192, 21, 47;
+  --color-red-400-rgb: 255, 84, 89;
+  --color-orange-500-rgb: 168, 75, 47;
+  --color-orange-400-rgb: 230, 129, 97;
+
+  /* Background color tokens (Light Mode) */
+  --color-bg-1: rgba(59, 130, 246, 0.08);
+  --color-bg-2: rgba(245, 158, 11, 0.08);
+  --color-bg-3: rgba(34, 197, 94, 0.08);
+  --color-bg-4: rgba(239, 68, 68, 0.08);
+  --color-bg-5: rgba(147, 51, 234, 0.08);
+  --color-bg-6: rgba(249, 115, 22, 0.08);
+  --color-bg-7: rgba(236, 72, 153, 0.08);
+  --color-bg-8: rgba(6, 182, 212, 0.08);
+
+  /* Semantic Color Tokens (Light Mode) */
+  --color-background: var(--color-cream-50);
+  --color-surface: var(--color-cream-100);
+  --color-text: var(--color-slate-900);
+  --color-text-secondary: var(--color-slate-500);
+  --color-primary: var(--color-teal-500);
+  --color-primary-hover: var(--color-teal-600);
+  --color-primary-active: var(--color-teal-700);
+  --color-secondary: rgba(var(--color-brown-600-rgb), 0.12);
+  --color-secondary-hover: rgba(var(--color-brown-600-rgb), 0.2);
+  --color-secondary-active: rgba(var(--color-brown-600-rgb), 0.25);
+  --color-border: rgba(var(--color-brown-600-rgb), 0.2);
+  --color-btn-primary-text: var(--color-cream-50);
+  --color-card-border: rgba(var(--color-brown-600-rgb), 0.12);
+  --color-card-border-inner: rgba(var(--color-brown-600-rgb), 0.12);
+  --color-error: var(--color-red-500);
+  --color-success: var(--color-teal-500);
+  --color-warning: var(--color-orange-500);
+  --color-info: var(--color-slate-500);
+  --color-focus-ring: rgba(var(--color-teal-500-rgb), 0.4);
+  --color-select-caret: rgba(var(--color-slate-900-rgb), 0.8);
+
+  --focus-ring: 0 0 0 3px var(--color-focus-ring);
+  --focus-outline: 2px solid var(--color-primary);
+
+  /* Typography */
+  --font-family-base: "FKGroteskNeue", "Geist", "Inter", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+  --font-size-4xl: 30px;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 550;
+  --font-weight-bold: 600;
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --letter-spacing-tight: -0.01em;
+
+  /* Spacing */
+  --space-0: 0;
+  --space-1: 1px;
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+
+  /* Border Radius */
+  --radius-sm: 6px;
+  --radius-base: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.04),
+    0 2px 4px -1px rgba(0, 0, 0, 0.02);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04),
+    0 4px 6px -2px rgba(0, 0, 0, 0.02);
+
+  /* Animation */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-gray-400-rgb: 119, 124, 124;
+    --color-teal-300-rgb: 50, 184, 198;
+    --color-gray-300-rgb: 167, 169, 169;
+    --color-gray-200-rgb: 245, 245, 245;
+    --color-background: var(--color-charcoal-700);
+    --color-surface: var(--color-charcoal-800);
+    --color-text: var(--color-gray-200);
+    --color-text-secondary: rgba(var(--color-gray-300-rgb), 0.7);
+    --color-primary: var(--color-teal-300);
+    --color-primary-hover: var(--color-teal-400);
+    --color-primary-active: var(--color-teal-800);
+    --color-secondary: rgba(var(--color-gray-400-rgb), 0.15);
+    --color-secondary-hover: rgba(var(--color-gray-400-rgb), 0.25);
+    --color-secondary-active: rgba(var(--color-gray-400-rgb), 0.3);
+    --color-border: rgba(var(--color-gray-400-rgb), 0.3);
+    --color-error: var(--color-red-400);
+    --color-success: var(--color-teal-300);
+    --color-warning: var(--color-orange-400);
+    --color-info: var(--color-gray-300);
+    --color-focus-ring: rgba(var(--color-teal-300-rgb), 0.4);
+    --color-btn-primary-text: var(--color-slate-900);
+    --color-card-border: rgba(var(--color-gray-400-rgb), 0.2);
+    --color-card-border-inner: rgba(var(--color-gray-400-rgb), 0.15);
+  }
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family-base);
+    background-color: var(--color-background);
+    color: var(--color-text);
+    line-height: var(--line-height-normal);
+    font-size: var(--font-size-base);
+    -webkit-font-smoothing: antialiased;
+}
+
+.app-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--space-24);
+}
+
+.header {
+    margin-bottom: var(--space-32);
+}
+
+.header h1 {
+    font-size: var(--font-size-4xl);
+    font-weight: var(--font-weight-bold);
+    margin-bottom: var(--space-8);
+    color: var(--color-text);
+}
+
+.header p {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-lg);
+}
+
+.card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-card-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-24);
+    margin-bottom: var(--space-24);
+    box-shadow: var(--shadow-sm);
+}
+
+.card-header {
+    margin-bottom: var(--space-20);
+}
+
+.card-header h2 {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+}
+
+.form-group {
+    margin-bottom: var(--space-20);
+}
+
+.form-label {
+    display: block;
+    font-weight: var(--font-weight-medium);
+    margin-bottom: var(--space-8);
+    color: var(--color-text);
+    font-size: var(--font-size-sm);
+}
+
+.form-select {
+    width: 100%;
+    padding: var(--space-10) var(--space-12);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-base);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: var(--font-size-base);
+    font-family: var(--font-family-base);
+    cursor: pointer;
+    transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: var(--focus-ring);
+}
+
+.defaults-summary {
+    background: var(--color-bg-1);
+    border: 1px solid var(--color-card-border);
+    border-radius: var(--radius-base);
+    padding: var(--space-16);
+    margin-top: var(--space-16);
+}
+
+.defaults-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-16);
+}
+
+.default-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.default-label {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--space-4);
+}
+
+.default-value {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+}
+
+.template-config {
+    display: flex;
+    gap: var(--space-16);
+    align-items: flex-end;
+}
+
+.template-config > div {
+    flex: 1;
+}
+
+.current-template {
+    background: var(--color-bg-3);
+    border: 1px solid var(--color-card-border);
+    border-radius: var(--radius-base);
+    padding: var(--space-16);
+    margin-top: var(--space-16);
+    text-align: center;
+}
+
+.current-template-text {
+    font-size: var(--font-size-base);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-4);
+}
+
+.current-template-value {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+}
+
+.shift-type-tabs {
+    display: flex;
+    gap: var(--space-8);
+    margin-bottom: var(--space-8);
+}
+
+.shift-type-tab {
+    flex: 1;
+    padding: var(--space-10) var(--space-16);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+    border-radius: var(--radius-base);
+    cursor: pointer;
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-base);
+    transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.shift-type-tab:hover {
+    background: var(--color-secondary);
+}
+
+.shift-type-tab.active {
+    background: var(--color-primary);
+    color: var(--color-btn-primary-text);
+    border-color: var(--color-primary);
+}
+
+.week-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-20);
+}
+
+.week-label {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+}
+
+.nav-buttons {
+    display: flex;
+    gap: var(--space-8);
+}
+
+.btn {
+    padding: var(--space-10) var(--space-16);
+    border: none;
+    border-radius: var(--radius-base);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-standard);
+    font-family: var(--font-family-base);
+}
+
+.btn-secondary {
+    background: var(--color-secondary);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+    background: var(--color-secondary-hover);
+}
+
+.btn-primary {
+    background: var(--color-primary);
+    color: var(--color-btn-primary-text);
+}
+
+.btn-primary:hover {
+    background: var(--color-primary-hover);
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-large {
+    padding: var(--space-12) var(--space-24);
+    font-size: var(--font-size-lg);
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: var(--space-12);
+}
+
+.calendar-cell {
+    border: 1px solid var(--color-card-border);
+    border-radius: var(--radius-base);
+    padding: var(--space-12);
+    background: var(--color-surface);
+    transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.calendar-cell.has-value {
+    background: var(--color-bg-3);
+    border-color: var(--color-success);
+}
+
+.day-header {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    margin-bottom: var(--space-4);
+}
+
+.date-label {
+    font-size: var(--font-size-sm);
+    color: var(--color-text);
+    margin-bottom: var(--space-8);
+}
+
+.quantity-input {
+    width: 100%;
+    padding: var(--space-8);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-background);
+    color: var(--color-text);
+    font-size: var(--font-size-base);
+    font-family: var(--font-family-base);
+    text-align: center;
+}
+
+.quantity-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: var(--focus-ring);
+}
+
+.action-buttons {
+    display: flex;
+    gap: var(--space-12);
+    margin-top: var(--space-24);
+}
+
+.preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: var(--space-16);
+}
+
+.preview-table th {
+    background: var(--color-secondary);
+    padding: var(--space-12);
+    text-align: left;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+    border-bottom: 2px solid var(--color-border);
+}
+
+.preview-table td {
+    padding: var(--space-10) var(--space-12);
+    border-bottom: 1px solid var(--color-card-border);
+    font-size: var(--font-size-sm);
+    color: var(--color-text);
+}
+
+.preview-table tr:hover {
+    background: var(--color-bg-1);
+}
+
+.delete-btn {
+    padding: var(--space-4) var(--space-8);
+    background: var(--color-error);
+    color: var(--color-white);
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+}
+
+.delete-btn:hover {
+    opacity: 0.8;
+}
+
+.validation-summary {
+    margin-top: var(--space-16);
+    padding: var(--space-16);
+    border-radius: var(--radius-base);
+    border: 1px solid var(--color-card-border);
+}
+
+.validation-summary.has-errors {
+    background: rgba(var(--color-error-rgb), 0.1);
+    border-color: var(--color-error);
+}
+
+.validation-summary.has-warnings {
+    background: rgba(var(--color-warning-rgb), 0.1);
+    border-color: var(--color-warning);
+}
+
+.validation-summary.success {
+    background: rgba(var(--color-success-rgb), 0.1);
+    border-color: var(--color-success);
+}
+
+.validation-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    margin-bottom: var(--space-8);
+    font-size: var(--font-size-sm);
+}
+
+.validation-item:last-child {
+    margin-bottom: 0;
+}
+
+.validation-item.error {
+    color: var(--color-error);
+}
+
+.validation-item.warning {
+    color: var(--color-warning);
+}
+
+.validation-item.success {
+    color: var(--color-success);
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--color-secondary);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin: var(--space-16) 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--color-primary);
+    transition: width var(--duration-normal) var(--ease-standard);
+}
+
+.success-message {
+    text-align: center;
+    padding: var(--space-32);
+}
+
+.success-icon {
+    font-size: 48px;
+    margin-bottom: var(--space-16);
+}
+
+.success-title {
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-success);
+    margin-bottom: var(--space-8);
+}
+
+.success-subtitle {
+    font-size: var(--font-size-lg);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-24);
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-16);
+    margin-top: var(--space-24);
+}
+
+.summary-card {
+    background: var(--color-bg-1);
+    border: 1px solid var(--color-card-border);
+    border-radius: var(--radius-base);
+    padding: var(--space-16);
+    text-align: center;
+}
+
+.summary-label {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-4);
+}
+
+.summary-value {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+}
+
+.shift-count {
+    display: inline-block;
+    background: var(--color-primary);
+    color: var(--color-btn-primary-text);
+    padding: var(--space-6) var(--space-12);
+    border-radius: var(--radius-full);
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-sm);
+    margin-left: var(--space-8);
+}
+
+.empty-state {
+    text-align: center;
+    padding: var(--space-32);
+    color: var(--color-text-secondary);
+}
+
+.role-badge {
+    display: inline-block;
+    padding: var(--space-4) var(--space-10);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+}
+
+.role-badge.nurses {
+    background: var(--color-bg-1);
+    color: var(--color-primary);
+}
+
+.role-badge.hca {
+    background: var(--color-bg-6);
+    color: var(--color-warning);
+}
+
+.shift-badge {
+    display: inline-block;
+    padding: var(--space-4) var(--space-10);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+}
+
+.shift-badge.day {
+    background: var(--color-bg-2);
+    color: var(--color-text);
+}
+
+.shift-badge.night {
+    background: var(--color-bg-5);
+    color: var(--color-text);
+}
+
+.weekend-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-warning);
+    margin-left: var(--space-4);
+}
+
+@media (max-width: 768px) {
+    .calendar-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .template-config {
+        flex-direction: column;
+    }
+    
+    .preview-table {
+        font-size: var(--font-size-xs);
+    }
+}
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // Mock data
+        const CLIENTS = [
+            {
+                id: 1,
+                name: "Sunderland Royal Hospital",
+                defaults: {
+                    nurseRate: 15.50,
+                    hcaRate: 12.00,
+                    dayShiftStart: "07:00",
+                    dayShiftEnd: "19:00",
+                    nightShiftStart: "19:00",
+                    nightShiftEnd: "07:00"
+                }
+            },
+            {
+                id: 2,
+                name: "Liverpool General Hospital",
+                defaults: {
+                    nurseRate: 16.00,
+                    hcaRate: 12.50,
+                    dayShiftStart: "08:00",
+                    dayShiftEnd: "20:00",
+                    nightShiftStart: "20:00",
+                    nightShiftEnd: "08:00"
+                }
+            }
+        ];
+
+        const ROLES = ["Nurses", "Healthcare Assistants"];
+        const SHIFT_TYPES = ["Day", "Night"];
+        const WEEK_DAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+        // Utility functions
+        function parseDate(dateStr) {
+            const [day, month, year] = dateStr.split('/');
+            return new Date(year, month - 1, day);
+        }
+
+        function formatDate(date) {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+
+        function addDays(dateStr, days) {
+            const date = parseDate(dateStr);
+            date.setDate(date.getDate() + days);
+            return formatDate(date);
+        }
+
+        function getDayName(dateStr) {
+            const date = parseDate(dateStr);
+            return WEEK_DAYS[date.getDay()];
+        }
+
+        function isWeekend(dateStr) {
+            const dayName = getDayName(dateStr);
+            return dayName === "Saturday" || dayName === "Sunday";
+        }
+
+        // Main App Component
+        function App() {
+            const [selectedClient, setSelectedClient] = useState(null);
+            const [currentRole, setCurrentRole] = useState("Nurses");
+            const [currentShiftType, setCurrentShiftType] = useState("Day");
+            const [currentWeekStart, setCurrentWeekStart] = useState("15/11/2025");
+            const [dateQuantities, setDateQuantities] = useState([]);
+            const [generatedShifts, setGeneratedShifts] = useState([]);
+            const [validationResults, setValidationResults] = useState({ errors: [], warnings: [] });
+            const [showPreview, setShowPreview] = useState(false);
+            const [isCreating, setIsCreating] = useState(false);
+            const [creationProgress, setCreationProgress] = useState(0);
+            const [showSuccess, setShowSuccess] = useState(false);
+            const [createdShifts, setCreatedShifts] = useState([]);
+
+            // Handle client selection
+            const handleClientSelect = (e) => {
+                const clientId = parseInt(e.target.value);
+                const client = CLIENTS.find(c => c.id === clientId);
+                setSelectedClient(client);
+            };
+
+            // Get current week dates
+            const currentWeekDates = useMemo(() => {
+                return Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
+            }, [currentWeekStart]);
+
+            // Handle quantity input
+            const handleQuantityChange = (date, value) => {
+                const quantity = parseInt(value) || 0;
+                
+                setDateQuantities(prev => {
+                    const existing = prev.find(dq => 
+                        dq.date === date && 
+                        dq.role === currentRole && 
+                        dq.shiftType === currentShiftType
+                    );
+
+                    if (existing) {
+                        if (quantity === 0) {
+                            return prev.filter(dq => dq !== existing);
+                        }
+                        return prev.map(dq => dq === existing ? { ...dq, quantity } : dq);
+                    } else if (quantity > 0) {
+                        return [...prev, { date, role: currentRole, shiftType: currentShiftType, quantity }];
+                    }
+                    return prev;
+                });
+            };
+
+            // Get quantity for a specific date
+            const getQuantity = (date) => {
+                const entry = dateQuantities.find(dq => 
+                    dq.date === date && 
+                    dq.role === currentRole && 
+                    dq.shiftType === currentShiftType
+                );
+                return entry ? entry.quantity : '';
+            };
+
+            // Check if cell has any value
+            const cellHasValue = (date) => {
+                return dateQuantities.some(dq => dq.date === date);
+            };
+
+            // Generate preview
+            const handleGeneratePreview = () => {
+                if (!selectedClient) return;
+
+                const shifts = [];
+                dateQuantities.forEach(dq => {
+                    const rate = dq.role === "Nurses" ? selectedClient.defaults.nurseRate : selectedClient.defaults.hcaRate;
+                    const startTime = dq.shiftType === "Day" ? selectedClient.defaults.dayShiftStart : selectedClient.defaults.nightShiftStart;
+                    const endTime = dq.shiftType === "Day" ? selectedClient.defaults.dayShiftEnd : selectedClient.defaults.nightShiftEnd;
+
+                    for (let i = 0; i < dq.quantity; i++) {
+                        shifts.push({
+                            id: `${dq.date}-${dq.role}-${dq.shiftType}-${i}`,
+                            role: dq.role,
+                            date: dq.date,
+                            dayOfWeek: getDayName(dq.date),
+                            shiftType: dq.shiftType,
+                            startTime,
+                            endTime,
+                            rate,
+                            clientId: selectedClient.id
+                        });
+                    }
+                });
+
+                setGeneratedShifts(shifts);
+                validateShifts(shifts);
+                setShowPreview(true);
+            };
+
+            // Validate shifts
+            const validateShifts = (shifts) => {
+                const errors = [];
+                const warnings = [];
+
+                if (shifts.length === 0) {
+                    errors.push("No shifts to create. Please enter quantities in the calendar.");
+                }
+
+                shifts.forEach(shift => {
+                    if (!shift.role || !shift.date || !shift.startTime || !shift.endTime || !shift.rate) {
+                        errors.push(`Shift on ${shift.date} is missing required fields.`);
+                    }
+                });
+
+                // Check for weekend shifts
+                const weekendShifts = shifts.filter(s => isWeekend(s.date));
+                if (weekendShifts.length > 0) {
+                    warnings.push(`${weekendShifts.length} shift(s) scheduled for weekends.`);
+                }
+
+                // Check for high quantities per day
+                const dateGroups = {};
+                shifts.forEach(shift => {
+                    const key = `${shift.date}-${shift.role}-${shift.shiftType}`;
+                    dateGroups[key] = (dateGroups[key] || 0) + 1;
+                });
+
+                Object.entries(dateGroups).forEach(([key, count]) => {
+                    if (count > 8) {
+                        warnings.push(`High quantity (${count}) for ${key.split('-')[1]} on ${key.split('-')[0]}.`);
+                    }
+                });
+
+                setValidationResults({ errors, warnings });
+            };
+
+            // Delete shift from preview
+            const handleDeleteShift = (shiftId) => {
+                const updatedShifts = generatedShifts.filter(s => s.id !== shiftId);
+                setGeneratedShifts(updatedShifts);
+                validateShifts(updatedShifts);
+            };
+
+            // Create shifts
+            const handleCreateShifts = async () => {
+                if (validationResults.errors.length > 0) return;
+
+                setIsCreating(true);
+                setCreationProgress(0);
+
+                const batchSize = 50;
+                const batches = [];
+                for (let i = 0; i < generatedShifts.length; i += batchSize) {
+                    batches.push(generatedShifts.slice(i, i + batchSize));
+                }
+
+                let processed = 0;
+                for (const batch of batches) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    processed += batch.length;
+                    setCreationProgress((processed / generatedShifts.length) * 100);
+                }
+
+                setCreatedShifts(generatedShifts);
+                setIsCreating(false);
+                setShowSuccess(true);
+            };
+
+            // Reset and create more
+            const handleCreateMore = () => {
+                setDateQuantities([]);
+                setGeneratedShifts([]);
+                setValidationResults({ errors: [], warnings: [] });
+                setShowPreview(false);
+                setShowSuccess(false);
+                setCreatedShifts([]);
+                setCreationProgress(0);
+            };
+
+            // Calculate summary statistics
+            const summaryStats = useMemo(() => {
+                if (createdShifts.length === 0) return {};
+
+                const stats = {
+                    total: createdShifts.length,
+                    byRole: {},
+                    byShiftType: {}
+                };
+
+                createdShifts.forEach(shift => {
+                    stats.byRole[shift.role] = (stats.byRole[shift.role] || 0) + 1;
+                    stats.byShiftType[shift.shiftType] = (stats.byShiftType[shift.shiftType] || 0) + 1;
+                });
+
+                return stats;
+            }, [createdShifts]);
+
+            // Navigate weeks
+            const handlePreviousWeek = () => {
+                setCurrentWeekStart(prev => addDays(prev, -7));
+            };
+
+            const handleNextWeek = () => {
+                setCurrentWeekStart(prev => addDays(prev, 7));
+            };
+
+            return (
+                <div className="app-container">
+                    <div className="header">
+                        <h1>Bulk Shift Creation</h1>
+                        <p>Create multiple shifts across roles, shift types, and dates</p>
+                    </div>
+
+                    {!showSuccess ? (
+                        <>
+                            {/* Client Selection */}
+                            <div className="card">
+                                <div className="card-header">
+                                    <h2>1. Select Client</h2>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Client</label>
+                                    <select 
+                                        className="form-select" 
+                                        value={selectedClient?.id || ''}
+                                        onChange={handleClientSelect}
+                                    >
+                                        <option value="">-- Select a client --</option>
+                                        {CLIENTS.map(client => (
+                                            <option key={client.id} value={client.id}>{client.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {selectedClient && (
+                                    <div className="defaults-summary">
+                                        <div className="defaults-grid">
+                                            <div className="default-item">
+                                                <div className="default-label">Nurse Rate</div>
+                                                <div className="default-value">£{selectedClient.defaults.nurseRate.toFixed(2)}/hr</div>
+                                            </div>
+                                            <div className="default-item">
+                                                <div className="default-label">HCA Rate</div>
+                                                <div className="default-value">£{selectedClient.defaults.hcaRate.toFixed(2)}/hr</div>
+                                            </div>
+                                            <div className="default-item">
+                                                <div className="default-label">Day Shift</div>
+                                                <div className="default-value">{selectedClient.defaults.dayShiftStart} - {selectedClient.defaults.dayShiftEnd}</div>
+                                            </div>
+                                            <div className="default-item">
+                                                <div className="default-label">Night Shift</div>
+                                                <div className="default-value">{selectedClient.defaults.nightShiftStart} - {selectedClient.defaults.nightShiftEnd}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Template Configuration */}
+                            {selectedClient && (
+                                <div className="card">
+                                    <div className="card-header">
+                                        <h2>2. Configure Shift Template</h2>
+                                    </div>
+                                    <div className="template-config">
+                                        <div className="form-group">
+                                            <label className="form-label">Role</label>
+                                            <select 
+                                                className="form-select" 
+                                                value={currentRole}
+                                                onChange={(e) => setCurrentRole(e.target.value)}
+                                            >
+                                                {ROLES.map(role => (
+                                                    <option key={role} value={role}>{role}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">Shift Type</label>
+                                            <div className="shift-type-tabs">
+                                                {SHIFT_TYPES.map(type => (
+                                                    <button
+                                                        key={type}
+                                                        className={`shift-type-tab ${currentShiftType === type ? 'active' : ''}`}
+                                                        onClick={() => setCurrentShiftType(type)}
+                                                    >
+                                                        {type}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="current-template">
+                                        <div className="current-template-text">Creating:</div>
+                                        <div className="current-template-value">{currentRole} - {currentShiftType} Shift</div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Calendar Grid */}
+                            {selectedClient && !showPreview && (
+                                <div className="card">
+                                    <div className="card-header">
+                                        <h2>3. Enter Quantities in Calendar</h2>
+                                    </div>
+                                    <div className="week-navigation">
+                                        <button className="btn btn-secondary" onClick={handlePreviousWeek}>
+                                            ← Previous Week
+                                        </button>
+                                        <div className="week-label">
+                                            Week starting {currentWeekStart}
+                                        </div>
+                                        <button className="btn btn-secondary" onClick={handleNextWeek}>
+                                            Next Week →
+                                        </button>
+                                    </div>
+                                    <div className="calendar-grid">
+                                        {currentWeekDates.map((date, index) => (
+                                            <div 
+                                                key={date} 
+                                                className={`calendar-cell ${cellHasValue(date) ? 'has-value' : ''}`}
+                                            >
+                                                <div className="day-header">{WEEK_DAYS[index]}</div>
+                                                <div className="date-label">{date}</div>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    className="quantity-input"
+                                                    value={getQuantity(date)}
+                                                    onChange={(e) => handleQuantityChange(date, e.target.value)}
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="action-buttons">
+                                        <button 
+                                            className="btn btn-primary btn-large"
+                                            onClick={handleGeneratePreview}
+                                            disabled={dateQuantities.length === 0}
+                                        >
+                                            Generate Preview
+                                            {dateQuantities.length > 0 && (
+                                                <span className="shift-count">
+                                                    {dateQuantities.reduce((sum, dq) => sum + dq.quantity, 0)} shifts
+                                                </span>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Preview & Validation */}
+                            {showPreview && (
+                                <div className="card">
+                                    <div className="card-header">
+                                        <h2>
+                                            4. Review &amp; Validate Shifts
+                                            <span className="shift-count">{generatedShifts.length} shifts</span>
+                                        </h2>
+                                    </div>
+
+                                    {/* Validation Summary */}
+                                    <div className={`validation-summary ${
+                                        validationResults.errors.length > 0 ? 'has-errors' : 
+                                        validationResults.warnings.length > 0 ? 'has-warnings' : 'success'
+                                    }`}>
+                                        {validationResults.errors.length === 0 && validationResults.warnings.length === 0 && (
+                                            <div className="validation-item success">
+                                                ✓ All shifts validated successfully
+                                            </div>
+                                        )}
+                                        {validationResults.errors.map((error, i) => (
+                                            <div key={i} className="validation-item error">
+                                                ✗ {error}
+                                            </div>
+                                        ))}
+                                        {validationResults.warnings.map((warning, i) => (
+                                            <div key={i} className="validation-item warning">
+                                                ⚠ {warning}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Preview Table */}
+                                    {generatedShifts.length > 0 && (
+                                        <div style={{ overflowX: 'auto', marginTop: 'var(--space-16)' }}>
+                                            <table className="preview-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Role</th>
+                                                        <th>Date</th>
+                                                        <th>Day</th>
+                                                        <th>Shift Type</th>
+                                                        <th>Start Time</th>
+                                                        <th>End Time</th>
+                                                        <th>Rate</th>
+                                                        <th>Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {generatedShifts.map(shift => (
+                                                        <tr key={shift.id}>
+                                                            <td>
+                                                                <span className={`role-badge ${shift.role === 'Nurses' ? 'nurses' : 'hca'}`}>
+                                                                    {shift.role}
+                                                                </span>
+                                                            </td>
+                                                            <td>{shift.date}</td>
+                                                            <td>
+                                                                {shift.dayOfWeek}
+                                                                {isWeekend(shift.date) && <span className="weekend-indicator" title="Weekend"></span>}
+                                                            </td>
+                                                            <td>
+                                                                <span className={`shift-badge ${shift.shiftType.toLowerCase()}`}>
+                                                                    {shift.shiftType}
+                                                                </span>
+                                                            </td>
+                                                            <td>{shift.startTime}</td>
+                                                            <td>{shift.endTime}</td>
+                                                            <td>£{shift.rate.toFixed(2)}</td>
+                                                            <td>
+                                                                <button 
+                                                                    className="delete-btn"
+                                                                    onClick={() => handleDeleteShift(shift.id)}
+                                                                >
+                                                                    Delete
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+
+                                    {/* Action Buttons */}
+                                    <div className="action-buttons">
+                                        <button 
+                                            className="btn btn-secondary btn-large"
+                                            onClick={() => setShowPreview(false)}
+                                        >
+                                            ← Back to Calendar
+                                        </button>
+                                        <button 
+                                            className="btn btn-primary btn-large"
+                                            onClick={handleCreateShifts}
+                                            disabled={validationResults.errors.length > 0 || generatedShifts.length === 0 || isCreating}
+                                        >
+                                            {isCreating ? 'Creating...' : 'Create Shifts'}
+                                        </button>
+                                    </div>
+
+                                    {/* Progress Bar */}
+                                    {isCreating && (
+                                        <div>
+                                            <div className="progress-bar">
+                                                <div 
+                                                    className="progress-fill" 
+                                                    style={{ width: `${creationProgress}%` }}
+                                                ></div>
+                                            </div>
+                                            <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                                                Creating shifts: {Math.round(creationProgress)}%
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        /* Success Message */
+                        <div className="card">
+                            <div className="success-message">
+                                <div className="success-icon">✓</div>
+                                <h2 className="success-title">Successfully Created {summaryStats.total} Shifts!</h2>
+                                <p className="success-subtitle">All shifts have been added to the system</p>
+
+                                <div className="summary-grid">
+                                    <div className="summary-card">
+                                        <div className="summary-label">Total Shifts</div>
+                                        <div className="summary-value">{summaryStats.total}</div>
+                                    </div>
+                                    {Object.entries(summaryStats.byRole).map(([role, count]) => (
+                                        <div key={role} className="summary-card">
+                                            <div className="summary-label">{role}</div>
+                                            <div className="summary-value">{count}</div>
+                                        </div>
+                                    ))}
+                                    {Object.entries(summaryStats.byShiftType).map(([type, count]) => (
+                                        <div key={type} className="summary-card">
+                                            <div className="summary-label">{type} Shifts</div>
+                                            <div className="summary-value">{count}</div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="action-buttons" style={{ justifyContent: 'center', marginTop: 'var(--space-32)' }}>
+                                    <button className="btn btn-primary btn-large" onClick={handleCreateMore}>
+                                        Create More Shifts
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Render the app
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

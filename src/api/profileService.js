@@ -10,6 +10,7 @@ export async function ensureUserProfile({
   fullName = null,
   userType = 'pending',
   phone = null,
+  agencyId = null,
 }) {
   if (!userId) {
     throw new Error('Missing userId when ensuring profile');
@@ -36,6 +37,7 @@ export async function ensureUserProfile({
       full_name: fullName,
       user_type: userType,
       phone,
+      agency_id: agencyId,
     };
 
     const { data: inserted, error: insertError } = await supabase

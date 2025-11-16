@@ -1,0 +1,387 @@
+import React, { useState, useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Calendar, Grid3x3, Plus, Trash2, Download, FileUp, CheckCircle, XCircle } from "lucide-react";
+import { STAFF_ROLES } from "@/constants/staffRoles";
+import { parsePastedData, convertToGridData, getExamplePasteText } from "@/utils/bulkShifts/pasteParser";
+import { toast } from "sonner";
+
+export default function Step2MultiRoleGrid({
+  formData,
+  setFormData,
+  onBack,
+  onNext
+}) {
+  const [showPasteArea, setShowPasteArea] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [parseResult, setParseResult] = useState(null);
+
+  // Generate date array from range
+  const dateArray = useMemo(() => {
+    if (!formData.dateRange.startDate || !formData.dateRange.endDate) return [];
+
+    const dates = [];
+    const start = new Date(formData.dateRange.startDate);
+    const end = new Date(formData.dateRange.endDate);
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      dates.push(new Date(d).toISOString().split('T')[0]);
+    }
+
+    return dates;
+  }, [formData.dateRange]);
+
+  // Initialize active roles from client rates
+  const initializeActiveRoles = () => {
+    if (!formData.ratesByRole || Object.keys(formData.ratesByRole).length === 0) {
+      // Default roles
+      return [
+        {
+          key: 'nurse_day',
+          label: 'Nurses Day',
+          role: 'nurse',
+          shiftType: 'day',
+          payRate: 18.50,
+          chargeRate: 24.50
+        },
+        {
+          key: 'nurse_night',
+          label: 'Nurses Night',
+          role: 'nurse',
+          shiftType: 'night',
+          payRate: 18.50,
+          chargeRate: 24.50
+        }
+      ];
+    }
+
+    // Create role columns from client rates
+    const roles = [];
+    Object.entries(formData.ratesByRole).forEach(([roleKey, rates]) => {
+      // Day shift
+      roles.push({
+        key: `${roleKey}_day`,
+        label: `${roleKey.replace(/_/g, ' ')} Day`,
+        role: roleKey,
+        shiftType: 'day',
+        payRate: rates.pay_rate,
+        chargeRate: rates.charge_rate
+      });
+      // Night shift
+      roles.push({
+        key: `${roleKey}_night`,
+        label: `${roleKey.replace(/_/g, ' ')} Night`,
+        role: roleKey,
+        shiftType: 'night',
+        payRate: rates.pay_rate,
+        chargeRate: rates.charge_rate
+      });
+    });
+
+    return roles;
+  };
+
+  // Initialize active roles if not set
+  if (!formData.activeRoles || formData.activeRoles.length === 0) {
+    setFormData(prev => ({
+      ...prev,
+      activeRoles: initializeActiveRoles()
+    }));
+  }
+
+  // Initialize grid data if empty
+  if (!formData.gridData || Object.keys(formData.gridData).length === 0) {
+    const initialGrid = {};
+    dateArray.forEach(date => {
+      initialGrid[date] = {};
+    });
+    setFormData(prev => ({ ...prev, gridData: initialGrid }));
+  }
+
+  // Handle quantity change
+  const handleQuantityChange = (date, roleKey, value) => {
+    const quantity = parseInt(value) || 0;
+
+    setFormData(prev => ({
+      ...prev,
+      gridData: {
+        ...prev.gridData,
+        [date]: {
+          ...prev.gridData[date],
+          [roleKey]: quantity > 0 ? quantity : undefined
+        }
+      }
+    }));
+  };
+
+  // Get quantity for a cell
+  const getQuantity = (date, roleKey) => {
+    return formData.gridData?.[date]?.[roleKey] || '';
+  };
+
+  // Calculate row totals
+  const getRowTotal = (date) => {
+    if (!formData.gridData?.[date]) return 0;
+    return Object.values(formData.gridData[date]).reduce((sum, qty) => sum + (qty || 0), 0);
+  };
+
+  // Calculate column totals
+  const getColumnTotal = (roleKey) => {
+    let total = 0;
+    dateArray.forEach(date => {
+      total += formData.gridData?.[date]?.[roleKey] || 0;
+    });
+    return total;
+  };
+
+  // Calculate grand total
+  const grandTotal = useMemo(() => {
+    let total = 0;
+    dateArray.forEach(date => {
+      if (formData.gridData?.[date]) {
+        Object.values(formData.gridData[date]).forEach(qty => {
+          total += qty || 0;
+        });
+      }
+    });
+    return total;
+  }, [formData.gridData, dateArray]);
+
+  // Clear all
+  const handleClearAll = () => {
+    if (window.confirm('Clear all quantities? This cannot be undone.')) {
+      const clearedGrid = {};
+      dateArray.forEach(date => {
+        clearedGrid[date] = {};
+      });
+      setFormData(prev => ({ ...prev, gridData: clearedGrid }));
+    }
+  };
+
+  // Fill column
+  const handleFillColumn = (roleKey) => {
+    const quantity = prompt('Enter quantity to fill all dates for this role:');
+    if (quantity && !isNaN(quantity)) {
+      const qty = parseInt(quantity);
+      setFormData(prev => {
+        const newGrid = { ...prev.gridData };
+        dateArray.forEach(date => {
+          newGrid[date] = {
+            ...newGrid[date],
+            [roleKey]: qty > 0 ? qty : undefined
+          };
+        });
+        return { ...prev, gridData: newGrid };
+      });
+    }
+  };
+
+  // Day of week helper
+  const getDayName = (dateStr) => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const date = new Date(dateStr + 'T00:00:00');
+    return days[date.getDay()];
+  };
+
+  // Format date
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-GB', { month: 'short' });
+    return `${day} ${month}`;
+  };
+
+  return (
+    <Card>
+      <CardHeader className="border-b bg-gray-50">
+        <CardTitle className="flex items-center gap-2">
+          <Grid3x3 className="w-5 h-5 text-cyan-600" />
+          Step 2: Enter Shift Quantities
+          {grandTotal > 0 && (
+            <Badge variant="default" className="ml-auto">
+              {grandTotal} shifts to create
+            </Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-6 space-y-6">
+        {/* Paste Area (Collapsible) */}
+        <div className="border border-gray-200 rounded-lg">
+          <button
+            type="button"
+            className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors rounded-t-lg"
+            onClick={() => setShowPasteArea(!showPasteArea)}
+          >
+            <span className="font-medium flex items-center gap-2">
+              <FileUp className="w-4 h-4" />
+              Quick Paste from Email
+            </span>
+            <span className="text-gray-500 text-sm">
+              {showPasteArea ? 'Hide' : 'Show'}
+            </span>
+          </button>
+
+          {showPasteArea && (
+            <div className="p-4 space-y-3">
+              <Label className="text-sm text-gray-600">
+                Paste tab or comma-separated data (Role, Day, Date, Shift, Quantity)
+              </Label>
+              <textarea
+                className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md font-mono text-sm"
+                placeholder="Nurses	Saturday	15/11/2025	Day	2&#10;Nurses	Saturday	15/11/2025	Night	2&#10;Healthcare Assistants	Saturday	15/11/2025	Day	3"
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    // TODO: Implement parse logic in Phase 2
+                    alert('Parse logic coming in Phase 2!');
+                  }}
+                >
+                  Parse & Fill Grid
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    // TODO: CSV template download in Phase 2
+                    alert('CSV template download coming in Phase 2!');
+                  }}
+                >
+                  <Download className="w-3 h-3 mr-1" />
+                  Download Template
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Grid */}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-semibold sticky left-0 bg-gray-100 z-10">
+                  Date
+                </th>
+                {formData.activeRoles?.map(role => (
+                  <th key={role.key} className="border border-gray-300 px-2 py-2 text-center text-xs min-w-[80px]">
+                    <div className="flex flex-col">
+                      <span className="font-semibold capitalize">
+                        {role.label.split(' ')[0]}
+                      </span>
+                      <span className="text-gray-600">
+                        {role.shiftType === 'day' ? '☀️ Day' : '🌙 Night'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleFillColumn(role.key)}
+                      className="mt-1 text-xs text-cyan-600 hover:underline"
+                    >
+                      Fill ↓
+                    </button>
+                  </th>
+                ))}
+                <th className="border border-gray-300 px-3 py-2 text-center text-sm font-semibold bg-cyan-50">
+                  Total
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {dateArray.map(date => {
+                const rowTotal = getRowTotal(date);
+                const isWeekend = new Date(date + 'T00:00:00').getDay() % 6 === 0;
+                return (
+                  <tr key={date} className={isWeekend ? 'bg-orange-50' : ''}>
+                    <td className="border border-gray-300 px-3 py-2 text-sm sticky left-0 bg-white z-10">
+                      <div className="flex flex-col">
+                        <span className="font-medium">{getDayName(date)}</span>
+                        <span className="text-gray-600 text-xs">{formatDate(date)}</span>
+                        {isWeekend && <span className="text-orange-600 text-xs">Weekend</span>}
+                      </div>
+                    </td>
+                    {formData.activeRoles?.map(role => {
+                      const qty = getQuantity(date, role.key);
+                      const hasValue = qty && qty > 0;
+                      return (
+                        <td key={role.key} className="border border-gray-300 px-1 py-1">
+                          <Input
+                            type="number"
+                            min="0"
+                            max="99"
+                            value={qty}
+                            onChange={(e) => handleQuantityChange(date, role.key, e.target.value)}
+                            className={`text-center h-10 ${hasValue ? 'bg-emerald-50 border-emerald-300 font-semibold' : ''}`}
+                            placeholder="0"
+                          />
+                        </td>
+                      );
+                    })}
+                    <td className="border border-gray-300 px-3 py-2 text-center font-bold text-cyan-600 bg-cyan-50">
+                      {rowTotal}
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr className="bg-cyan-100">
+                <td className="border border-gray-300 px-3 py-2 text-sm font-semibold sticky left-0 bg-cyan-100 z-10">
+                  TOTALS
+                </td>
+                {formData.activeRoles?.map(role => (
+                  <td key={role.key} className="border border-gray-300 px-3 py-2 text-center font-bold text-cyan-700">
+                    {getColumnTotal(role.key)}
+                  </td>
+                ))}
+                <td className="border border-gray-300 px-3 py-2 text-center font-bold text-lg text-cyan-700">
+                  {grandTotal}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-between items-center pt-4 border-t">
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleClearAll}
+            >
+              <Trash2 className="w-3 h-3 mr-1" />
+              Clear All
+            </Button>
+          </div>
+
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onBack}
+            >
+              ← Back
+            </Button>
+            <Button
+              onClick={onNext}
+              disabled={grandTotal === 0}
+              size="lg"
+            >
+              Preview {grandTotal} Shifts →
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

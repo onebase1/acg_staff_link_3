@@ -9,6 +9,10 @@ export const TEST_CONFIG = {
     password: 'Dominion#2025',
     agency_name: 'Dominion Healthcare Services Ltd'
   },
+  staff: {
+    email: process.env.TEST_STAFF_EMAIL || 'g.basera5+chadaira@gmail.com',
+    password: process.env.TEST_STAFF_PASSWORD || 'Broadband@123'
+  },
   supabase: {
     url: process.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co',
     key: process.env.VITE_SUPABASE_ANON_KEY || '',

@@ -15,6 +15,9 @@ import { User, Building2, CheckCircle, AlertCircle, Upload, AlertTriangle, FileT
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import MandatoryTrainingSection from "@/components/staff/MandatoryTrainingSection";
+import TrainingCertificateModal from "@/components/staff/TrainingCertificateModal";
+
 
 export default function ProfileSetup() {
   const navigate = useNavigate();
@@ -24,7 +27,9 @@ export default function ProfileSetup() {
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [linkedStaff, setLinkedStaff] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  
+  const [trainingModalOpen, setTrainingModalOpen] = useState(false);
+  const [activeTrainingContext, setActiveTrainingContext] = useState(null);
+
   // ✅ NEW: Extended form data for staff onboarding
   const [formData, setFormData] = useState({
     full_name: '',
@@ -50,7 +55,8 @@ export default function ProfileSetup() {
     occupational_health: {
       cleared_to_work: false,
       restrictions: ''
-    }
+    },
+    mandatory_training: {}
   });
 
   const { data: allStaff = [] } = useQuery({
@@ -59,7 +65,7 @@ export default function ProfileSetup() {
       const { data, error } = await supabase
         .from('staff')
         .select('*');
-      
+
       if (error) {
         console.error('❌ Error fetching staff:', error);
         return [];
@@ -75,7 +81,7 @@ export default function ProfileSetup() {
       const { data, error } = await supabase
         .from('agencies')
         .select('*');
-      
+
       if (error) {
         console.error('❌ Error fetching agencies:', error);
         return [];
@@ -89,12 +95,12 @@ export default function ProfileSetup() {
     queryKey: ['compliance', user?.id],
     queryFn: async () => {
       if (!linkedStaff?.id) return [];
-      
+
       const { data, error } = await supabase
         .from('compliance')
         .select('*')
         .eq('staff_id', linkedStaff.id);
-      
+
       if (error) {
         console.error('❌ Error fetching compliance:', error);
         return [];
@@ -105,14 +111,16 @@ export default function ProfileSetup() {
     refetchOnMount: 'always'
   });
 
-  const isPendingUser = user?.user_type === 'pending';
+  // ✅ FIXED: Only show "Awaiting Approval" for self-signup users WITHOUT staff record
+  // If user has linked staff record, they were invited by admin and are NOT pending
+  const isPendingUser = user?.user_type === 'pending' && !linkedStaff;
 
   useEffect(() => {
     const initSetup = async () => {
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const shouldLogout = urlParams.get('logout') === 'true';
-        
+
         if (shouldLogout) {
           console.log('🔓 [ProfileSetup] Logout parameter detected - clearing previous session');
           try {
@@ -145,37 +153,43 @@ export default function ProfileSetup() {
 
         console.log('✅ [ProfileSetup] Current user:', currentUser.email);
         setUser(currentUser);
-        
+
         const superAdminEmail = 'g.basera@yahoo.com';
         const isSuper = currentUser.email === superAdminEmail;
         setIsSuperAdmin(isSuper);
 
-        const matchingStaff = allStaff.find(s => 
+        const matchingStaff = allStaff.find(s =>
           s.user_id === currentUser.id ||
           s.email?.toLowerCase() === currentUser.email?.toLowerCase()
         );
-        
+
         if (matchingStaff) {
           console.log('✅ [ProfileSetup] Auto-linked to staff record:', matchingStaff.id);
           setLinkedStaff(matchingStaff);
-          
+
           // ✅ Pre-fill ALL staff data
+          const photoUrl = matchingStaff.profile_photo_url || currentUser.profile_photo_url || '';
+
           setFormData({
             full_name: `${matchingStaff.first_name} ${matchingStaff.last_name}`,
             email: currentUser.email || '',
             phone: matchingStaff.phone || currentUser.phone || '',
             user_type: 'staff_member',
             agency_id: matchingStaff.agency_id || '',
-            profile_photo_url: matchingStaff.profile_photo_url || currentUser.profile_photo_url || '',
+            profile_photo_url: photoUrl,
             date_of_birth: matchingStaff.date_of_birth || '',
             address: matchingStaff.address || { line1: '', line2: '', city: '', postcode: '' },
             emergency_contact: matchingStaff.emergency_contact || { name: '', phone: '', relationship: '' },
             references: matchingStaff.references || [],
             employment_history: matchingStaff.employment_history || [],
-            occupational_health: matchingStaff.occupational_health || { cleared_to_work: false, restrictions: '' }
+            occupational_health: matchingStaff.occupational_health || { cleared_to_work: false, restrictions: '' },
+            mandatory_training: matchingStaff.mandatory_training || {}
           });
         } else {
           console.warn('⚠️ [ProfileSetup] No staff record found for email:', currentUser.email);
+
+          const photoUrl = currentUser.profile_photo_url || '';
+
           setFormData(prev => ({
             ...prev,
             full_name: currentUser.full_name || '',
@@ -183,17 +197,17 @@ export default function ProfileSetup() {
             phone: currentUser.phone || '',
             user_type: currentUser.user_type === 'pending' ? 'staff_member' : (currentUser.user_type || 'agency_admin'),
             agency_id: currentUser.agency_id || '',
-            profile_photo_url: currentUser.profile_photo_url || ''
+            profile_photo_url: photoUrl
           }));
         }
 
-        if (!isSuper && profile.agency_id) {
+        if (!isSuper && currentUser.agency_id) {
           const { data: userAgency, error: agencyError } = await supabase
             .from('agencies')
             .select('*')
-            .eq('id', profile.agency_id)
+            .eq('id', currentUser.agency_id)
             .single();
-          
+
           if (!agencyError && userAgency) {
             setAgency(userAgency);
           }
@@ -207,13 +221,13 @@ export default function ProfileSetup() {
         if (currentUser.user_type === 'pending' || !currentUser.agency_id || !currentUser.user_type) {
           setNeedsOnboarding(true);
         }
-        
+
       } catch (error) {
         console.error("Error fetching user:", error);
         toast.error('Failed to load profile');
       }
     };
-    
+
     if (allStaff.length > 0 || agencies.length > 0) {
       initSetup();
     } else if (allStaff.length === 0 && agencies.length === 0) {
@@ -227,7 +241,7 @@ export default function ProfileSetup() {
       if (dataToUpdate.user_type === 'staff_member' && !dataToUpdate.profile_photo_url && !linkedStaff?.profile_photo_url) {
         throw new Error('Profile photo is mandatory for staff members.');
       }
-      
+
       const userUpdatePayload = {
         full_name: dataToUpdate.full_name,
         phone: dataToUpdate.phone,
@@ -240,12 +254,12 @@ export default function ProfileSetup() {
         .from('profiles')
         .update(userUpdatePayload)
         .eq('id', user.id);
-      
+
       if (updateError) {
         console.error('❌ Error updating profile:', updateError);
         throw updateError;
       }
-      
+
       // ✅ NEW: Update staff record with ALL onboarding data
       if (linkedStaff && linkedStaff.id) {
         const staffUpdatePayload = {
@@ -257,24 +271,25 @@ export default function ProfileSetup() {
           emergency_contact: dataToUpdate.emergency_contact,
           references: dataToUpdate.references,
           employment_history: dataToUpdate.employment_history,
-          occupational_health: dataToUpdate.occupational_health
+          occupational_health: dataToUpdate.occupational_health,
+          mandatory_training: dataToUpdate.mandatory_training
         };
-        
+
         if (dataToUpdate.profile_photo_url) {
           staffUpdatePayload.profile_photo_url = dataToUpdate.profile_photo_url;
           staffUpdatePayload.profile_photo_uploaded_date = new Date().toISOString().split('T')[0];
         }
-        
+
         const { error: staffUpdateError } = await supabase
           .from('staff')
           .update(staffUpdatePayload)
           .eq('id', linkedStaff.id);
-        
+
         if (staffUpdateError) {
           console.error('❌ Error updating staff:', staffUpdateError);
           throw staffUpdateError;
         }
-        
+
         // Send admin notification
         try {
           const { data: staffAgency, error: agencyError } = await supabase
@@ -282,7 +297,7 @@ export default function ProfileSetup() {
             .select('*')
             .eq('id', linkedStaff.agency_id)
             .single();
-          
+
           if (!agencyError && staffAgency?.contact_email) {
             const { error: emailError } = await supabase.functions.invoke('send-email', {
               body: {
@@ -296,12 +311,12 @@ export default function ProfileSetup() {
           console.error('Failed to send admin notification:', emailError);
         }
       }
-      
+
       return dataToUpdate;
     },
     onSuccess: () => {
       toast.success('✅ Profile updated successfully!');
-      
+
       setTimeout(() => {
         if (isSuperAdmin) {
           navigate(createPageUrl('Dashboard'));
@@ -310,7 +325,7 @@ export default function ProfileSetup() {
         } else {
           navigate(createPageUrl('Dashboard'));
         }
-        
+
         window.location.reload();
       }, 1500);
     },
@@ -335,24 +350,24 @@ export default function ProfileSetup() {
 
     setUploadingPhoto(true);
     try {
-      const fileName = `profile-photos/${Date.now()}-${file.name}`;
+      const fileName = `${Date.now()}-${file.name}`;
       const { data, error: uploadError } = await supabase.storage
-        .from('documents')
+        .from('profile-photos')
         .upload(fileName, file);
-      
+
       if (uploadError) throw uploadError;
-      
+
       const { data: { publicUrl } } = supabase.storage
-        .from('documents')
+        .from('profile-photos')
         .getPublicUrl(fileName);
-      
+
       const file_url = publicUrl;
-      
+
       setFormData({
         ...formData,
         profile_photo_url: file_url
       });
-      
+
       toast.success('✅ Photo uploaded successfully!');
     } catch (error) {
       toast.error(`❌ Upload failed: ${error.message}`);
@@ -411,37 +426,41 @@ export default function ProfileSetup() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
-    if (!isSuperAdmin && !formData.agency_id && !isPendingUser && !linkedStaff) {
+
+    // ✅ FIXED: Check both formData.agency_id AND user.agency_id (from database)
+    // This handles cases where profile was updated but form state hasn't refreshed
+    const hasAgency = formData.agency_id || user?.agency_id || linkedStaff?.agency_id;
+
+    if (!isSuperAdmin && !hasAgency && !isPendingUser) {
       toast.error('⚠️ Please select an agency');
       return;
     }
-    
+
     if (!formData.user_type && !isPendingUser && !linkedStaff) {
       toast.error('⚠️ Please select your role');
       return;
     }
-    
-    if (formData.user_type === 'staff_member' && !formData.profile_photo_url && !linkedStaff?.profile_photo_url) {
+
+    // ✅ FIXED: Check both formData.profile_photo_url AND user.profile_photo_url
+    const hasPhoto = formData.profile_photo_url || user?.profile_photo_url || linkedStaff?.profile_photo_url;
+
+    if (formData.user_type === 'staff_member' && !hasPhoto) {
       toast.error('⚠️ Profile photo is MANDATORY for staff members.');
       return;
     }
 
-    // ✅ Validate references for staff
-    if (formData.user_type === 'staff_member' && formData.references.length < 2) {
-      toast.error('⚠️ Staff members need at least 2 references');
-      return;
-    }
-    
+    // ✅ REMOVED: References are optional - compliance emails will chase
+    // Staff can save profile without references and complete them later
+
     updateMutation.mutate(formData);
   };
 
   const calculateProgress = () => {
-    if (!linkedStaff || user?.user_type !== 'staff_member') return 100;
-    
+    if (!linkedStaff || user?.user_type !== "staff_member") return 100;
+
     let completed = 0;
-    let total = 10;
-    
+    const total = 10;
+
     if (formData.profile_photo_url || linkedStaff.profile_photo_url) completed++;
     if (formData.references.length >= 2) completed++;
     if (formData.employment_history.length > 0) completed++;
@@ -449,21 +468,120 @@ export default function ProfileSetup() {
     if (formData.date_of_birth) completed++;
     if (formData.address.postcode) completed++;
     if (formData.emergency_contact.phone) completed++;
-    
-    const dbsCheck = compliance.find(c => c.document_type === 'dbs_check');
+
+    const dbsCheck = compliance.find((c) => c.document_type === "dbs_check");
     if (dbsCheck) completed++;
-    
-    const rightToWork = compliance.find(c => c.document_type === 'right_to_work');
+
+    const rightToWork = compliance.find((c) => c.document_type === "right_to_work");
     if (rightToWork) completed++;
-    
-    const trainingCount = compliance.filter(c => c.document_type === 'training_certificate').length;
-    if (trainingCount >= 3) completed++;
-    
+
+    const mandatoryTrainingValues = Object.values(formData.mandatory_training || {});
+    const validMandatoryTrainingCount = mandatoryTrainingValues.filter((t) => {
+      if (!t?.completed_date) return false;
+      if (!t.expiry_date) return true;
+      return new Date(t.expiry_date) > new Date();
+    }).length;
+
+    const complianceTrainingCount = compliance.filter(
+      (c) => c.document_type === "training_certificate"
+    ).length;
+
+    const trainingCount =
+      validMandatoryTrainingCount > 0 ? validMandatoryTrainingCount : complianceTrainingCount;
+
+    if (trainingCount >= 10) completed++;
+
     return Math.round((completed / total) * 100);
   };
 
   const progress = calculateProgress();
   const isFullyCompliant = progress === 100;
+
+  const handleOpenTrainingModal = (context = {}) => {
+    if (!linkedStaff?.id) {
+      toast.error(
+        "Please complete the basic profile first so we can link training to your staff record."
+      );
+      return;
+    }
+
+    const { mode = "core", key, label } = context;
+
+    setActiveTrainingContext({
+      mode,
+      key: key || null,
+      label: label || "",
+    });
+    setTrainingModalOpen(true);
+  };
+
+  const handleTrainingSaved = ({
+    mode,
+    trainingKey,
+    trainingLabel,
+    values,
+    complianceDoc,
+  }) => {
+    setFormData((prev) => {
+      const existingMandatory = prev.mandatory_training || {};
+      const safeMode = mode === "additional" ? "additional" : "core";
+
+      if (safeMode === "core" && trainingKey) {
+        const prevEntry = existingMandatory[trainingKey] || {};
+        const updatedEntry = {
+          ...prevEntry,
+          completed_date:
+            values.completed_date || prevEntry.completed_date || "",
+          expiry_date: values.expiry_date || prevEntry.expiry_date || "",
+          certificate_ref:
+            values.certificate_ref || prevEntry.certificate_ref || "",
+        };
+
+        const existingIds = Array.isArray(prevEntry.certificate_ids)
+          ? prevEntry.certificate_ids
+          : [];
+        if (complianceDoc?.id) {
+          updatedEntry.certificate_ids = Array.from(
+            new Set([...existingIds, complianceDoc.id])
+          );
+        }
+
+        return {
+          ...prev,
+          mandatory_training: {
+            ...existingMandatory,
+            [trainingKey]: updatedEntry,
+          },
+        };
+      }
+
+      const additionalList = Array.isArray(existingMandatory.additional)
+        ? existingMandatory.additional
+        : [];
+
+      const newItem = {
+        id: values.id || `local-${Date.now()}`,
+        name: values.name || trainingLabel || "Training / Qualification",
+        provider: values.provider || "",
+        completed_date: values.completed_date || "",
+        expiry_date: values.expiry_date || "",
+        certificate_ref: values.certificate_ref || "",
+        certificate_ids: complianceDoc?.id ? [complianceDoc.id] : [],
+      };
+
+      return {
+        ...prev,
+        mandatory_training: {
+          ...existingMandatory,
+          additional: [...additionalList, newItem],
+        },
+      };
+    });
+
+    toast.success("✅ Training details & certificate saved");
+    setTrainingModalOpen(false);
+    setActiveTrainingContext(null);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -519,8 +637,8 @@ export default function ProfileSetup() {
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 {agency.logo_url ? (
-                  <img 
-                    src={agency.logo_url} 
+                  <img
+                    src={agency.logo_url}
                     alt={agency.name}
                     className="w-12 h-12 rounded-lg object-contain bg-white p-1"
                   />
@@ -561,8 +679,8 @@ export default function ProfileSetup() {
               <div className="flex flex-col items-center gap-4">
                 {formData.profile_photo_url ? (
                   <div className="relative">
-                    <img 
-                      src={formData.profile_photo_url} 
+                    <img
+                      src={formData.profile_photo_url}
                       alt="Profile"
                       className="w-40 h-40 object-cover border-4 border-green-400 rounded-2xl"
                     />
@@ -640,21 +758,25 @@ export default function ProfileSetup() {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="date_of_birth">Date of Birth *</Label>
-                <Input
-                  id="date_of_birth"
-                  type="date"
-                  value={formData.date_of_birth}
-                  onChange={(e) => setFormData({...formData, date_of_birth: e.target.value})}
-                  className="h-12 text-base"
-                  required
-                />
-              </div>
+              {/* ✅ RBAC: Only show Date of Birth for staff members */}
+              {(user?.user_type === 'staff_member' || linkedStaff) && (
+                <div>
+                  <Label htmlFor="date_of_birth">Date of Birth *</Label>
+                  <Input
+                    id="date_of_birth"
+                    type="date"
+                    value={formData.date_of_birth}
+                    onChange={(e) => setFormData({...formData, date_of_birth: e.target.value})}
+                    className="h-12 text-base"
+                    required
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Address */}
+          {/* ✅ RBAC: Only show Address for staff members */}
+          {(user?.user_type === 'staff_member' || linkedStaff) && (
           <Card>
             <CardHeader className="bg-gray-50">
               <CardTitle className="text-lg">Address *</CardTitle>
@@ -707,8 +829,10 @@ export default function ProfileSetup() {
               </div>
             </CardContent>
           </Card>
+          )}
 
-          {/* Emergency Contact */}
+          {/* ✅ RBAC: Only show Emergency Contact for staff members */}
+          {(user?.user_type === 'staff_member' || linkedStaff) && (
           <Card>
             <CardHeader className="bg-gray-50">
               <CardTitle className="text-lg flex items-center gap-2">
@@ -754,17 +878,19 @@ export default function ProfileSetup() {
               </div>
             </CardContent>
           </Card>
+          )}
 
-          {/* References */}
+          {/* ✅ RBAC: Only show References for staff members */}
+          {(user?.user_type === 'staff_member' || linkedStaff) && (
           <Card>
             <CardHeader className="bg-gray-50">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <FileText className="w-5 h-5" />
-                  References * (Minimum 2)
+                  References (Optional - Recommended 2)
                 </CardTitle>
-                <Badge className={formData.references.length >= 2 ? 'bg-green-600' : 'bg-red-600'}>
-                  {formData.references.length}/2
+                <Badge className={formData.references.length >= 2 ? 'bg-green-600' : 'bg-yellow-600'}>
+                  {formData.references.length}
                 </Badge>
               </div>
             </CardHeader>
@@ -786,11 +912,10 @@ export default function ProfileSetup() {
                     </div>
 
                     <Input
-                      placeholder="Referee Name *"
+                      placeholder="Referee Name"
                       value={ref.referee_name}
                       onChange={(e) => updateReference(idx, 'referee_name', e.target.value)}
                       className="h-11 text-base"
-                      required
                     />
                     <Input
                       placeholder="Position/Job Title"
@@ -833,8 +958,10 @@ export default function ProfileSetup() {
               </Button>
             </CardContent>
           </Card>
+          )}
 
-          {/* Employment History */}
+          {/* ✅ RBAC: Only show Employment History for staff members */}
+          {(user?.user_type === 'staff_member' || linkedStaff) && (
           <Card>
             <CardHeader className="bg-gray-50">
               <div className="flex items-center justify-between">
@@ -920,51 +1047,78 @@ export default function ProfileSetup() {
               </Button>
             </CardContent>
           </Card>
+          )}
 
-          {/* Occupational Health */}
-          <Card>
-            <CardHeader className="bg-gray-50">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Heart className="w-5 h-5 text-red-600" />
-                Occupational Health *
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-                <Label htmlFor="cleared_to_work" className="font-semibold">
-                  Cleared to Work?
-                </Label>
-                <input
-                  type="checkbox"
-                  id="cleared_to_work"
-                  checked={formData.occupational_health.cleared_to_work}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    occupational_health: {...formData.occupational_health, cleared_to_work: e.target.checked}
-                  })}
-                  className="h-6 w-6 rounded border-gray-300"
-                />
-              </div>
+          {/* ✅ RBAC: Only show Occupational Health & Training for staff members */}
+          {(user?.user_type === "staff_member" || linkedStaff) && (
+            <>
+              <Card>
+                <CardHeader className="bg-gray-50">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Heart className="w-5 h-5 text-red-600" />
+                    Occupational Health *
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                    <Label htmlFor="cleared_to_work" className="font-semibold">
+                      Cleared to Work?
+                    </Label>
+                    <input
+                      type="checkbox"
+                      id="cleared_to_work"
+                      checked={formData.occupational_health.cleared_to_work}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          occupational_health: {
+                            ...formData.occupational_health,
+                            cleared_to_work: e.target.checked,
+                          },
+                        })
+                      }
+                      className="h-6 w-6 rounded border-gray-300"
+                    />
+                  </div>
 
-              <div>
-                <Label htmlFor="health_restrictions">Any Restrictions?</Label>
-                <Textarea
-                  id="health_restrictions"
-                  value={formData.occupational_health.restrictions}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    occupational_health: {...formData.occupational_health, restrictions: e.target.value}
-                  })}
-                  className="text-base"
-                  rows={2}
-                  placeholder="e.g., No heavy lifting, No night shifts"
-                />
-              </div>
-            </CardContent>
-          </Card>
+                  <div>
+                    <Label htmlFor="health_restrictions">Any Restrictions?</Label>
+                    <Textarea
+                      id="health_restrictions"
+                      value={formData.occupational_health.restrictions}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          occupational_health: {
+                            ...formData.occupational_health,
+                            restrictions: e.target.value,
+                          },
+                        })
+                      }
+                      className="text-base"
+                      rows={2}
+                      placeholder="e.g., No heavy lifting, No night shifts"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <MandatoryTrainingSection
+                training={formData.mandatory_training}
+                additionalTraining={formData.mandatory_training?.additional || []}
+                onOpenTrainingModal={handleOpenTrainingModal}
+                onChange={(updated) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    mandatory_training: updated,
+                  }))
+                }
+              />
+            </>
+          )}
 
           {/* Compliance Documents Link */}
-          {user?.user_type === 'staff_member' && (
+          {(user?.user_type === 'staff_member' || linkedStaff) && (
             <Card className="border-2 border-purple-300 bg-purple-50">
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
@@ -991,8 +1145,8 @@ export default function ProfileSetup() {
 
           {/* ✅ MOBILE-OPTIMIZED: Large save button */}
           <div className="sticky bottom-0 bg-white border-t-4 border-cyan-500 p-4 -mx-4 shadow-2xl">
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full h-14 text-lg bg-gradient-to-r from-cyan-500 to-blue-600"
               disabled={updateMutation.isPending || isPendingUser}
             >
@@ -1015,6 +1169,29 @@ export default function ProfileSetup() {
           </div>
         </form>
       </div>
+
+      {trainingModalOpen && activeTrainingContext && linkedStaff && (
+        <TrainingCertificateModal
+          open={trainingModalOpen}
+          mode={activeTrainingContext.mode}
+          trainingKey={activeTrainingContext.key}
+          trainingLabel={activeTrainingContext.label}
+          staffId={linkedStaff.id}
+          agencyId={linkedStaff.agency_id || agency?.id}
+          initialValues={
+            activeTrainingContext.mode === "core" && activeTrainingContext.key
+              ? formData.mandatory_training?.[activeTrainingContext.key]
+              : null
+          }
+          onClose={() => {
+            setTrainingModalOpen(false);
+            setActiveTrainingContext(null);
+          }}
+          onSaved={handleTrainingSaved}
+        />
+      )}
+
     </div>
+
   );
 }

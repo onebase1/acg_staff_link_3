@@ -6,13 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Mail, UserPlus, AlertCircle } from "lucide-react";
+import { STAFF_ROLES } from "@/constants/staffRoles";
 
 export default function InviteStaffModal({ isOpen, onClose, onInvite }) {
   const [formData, setFormData] = useState({
     email: '',
     first_name: '',
     last_name: '',
-    role: 'care_worker',
+    role: STAFF_ROLES[0].value, // Default to first role (nurse)
     phone: ''
   });
   const [sending, setSending] = useState(false);
@@ -27,7 +28,7 @@ export default function InviteStaffModal({ isOpen, onClose, onInvite }) {
         email: '',
         first_name: '',
         last_name: '',
-        role: 'care_worker',
+        role: STAFF_ROLES[0].value, // Reset to first role
         phone: ''
       });
       onClose();
@@ -115,11 +116,11 @@ export default function InviteStaffModal({ isOpen, onClose, onInvite }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="nurse">Registered Nurse</SelectItem>
-                <SelectItem value="care_worker">Care Worker</SelectItem>
-                <SelectItem value="hca">Healthcare Assistant</SelectItem>
-                <SelectItem value="senior_care_worker">Senior Care Worker</SelectItem>
-                <SelectItem value="specialist_nurse">Specialist Nurse</SelectItem>
+                {STAFF_ROLES.map(role => (
+                  <SelectItem key={role.value} value={role.value}>
+                    {role.icon} {role.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

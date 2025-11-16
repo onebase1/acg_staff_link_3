@@ -194,8 +194,17 @@ serve(async (req) => {
                     const agencyName = agency?.name || 'Your Agency';
                     const locationText = shift.work_location_within_site ? ` at ${shift.work_location_within_site}` : '';
 
-                    // ✅ FIX 3: Professional reminder without asking if they can attend
-                    const message = `🏥 SHIFT STARTING SOON [${agencyName}]: ${client.name}${locationText} in 2 HOURS (${shift.start_time}). Arrive 10 min early. Good luck! 👍`;
+                    // 🎯 GPS-OPTIMIZED: Different reminders for GPS vs non-GPS staff
+                    const hasGPSConsent = staff.gps_consent === true;
+
+                    let message;
+                    if (hasGPSConsent) {
+                        // GPS-enabled staff - remind to turn on GPS and clock in
+                        message = `🏥 SHIFT STARTING SOON [${agencyName}]: ${client.name}${locationText} in 2 HOURS (${shift.start_time}). 📍 REMEMBER: Turn on GPS & clock in via app when you arrive. Arrive 10 min early. Good luck! 👍`;
+                    } else {
+                        // Non-GPS staff - remind to bring paper timesheet
+                        message = `🏥 SHIFT STARTING SOON [${agencyName}]: ${client.name}${locationText} in 2 HOURS (${shift.start_time}). 📋 REMEMBER: Bring paper timesheet & get client signature. Arrive 10 min early. Good luck! 👍`;
+                    }
 
                     // SMS + WhatsApp (instant)
                     const [smsResult, whatsappResult] = await Promise.allSettled([

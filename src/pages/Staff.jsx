@@ -10,7 +10,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
   Plus, Search, Filter, User, Mail, Phone, Star,
-  Edit, Trash2, CheckCircle, XCircle, FileText, UserPlus, Shield, AlertTriangle, Upload, Download, MessageCircle
+  Edit, Trash2, CheckCircle, XCircle, FileText, UserPlus, Shield, AlertTriangle, Upload, Download, MessageCircle, RefreshCw
 } from "lucide-react";
 import StaffForm from "../components/staff/StaffForm";
 import InviteStaffModal from "../components/staff/InviteStaffModal";
@@ -213,19 +213,50 @@ export default function Staff() {
     }
   });
 
-  // ✅ FIXED: Delete mutation using direct Supabase
+  // ✅ FIXED: Soft delete mutation - sets status to 'inactive' instead of deleting
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
-      const { error } = await supabase
-        .from('staff')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
+      // First check if staff has related records
+      const [shiftsCheck, timesheetsCheck, bookingsCheck] = await Promise.all([
+        supabase.from('shifts').select('id', { count: 'exact', head: true }).eq('assigned_staff_id', id),
+        supabase.from('timesheets').select('id', { count: 'exact', head: true }).eq('staff_id', id),
+        supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('staff_id', id)
+      ]);
+
+      const totalRelatedRecords = (shiftsCheck.count || 0) + (timesheetsCheck.count || 0) + (bookingsCheck.count || 0);
+
+      if (totalRelatedRecords > 0) {
+        // Soft delete: Set status to inactive
+        const { error } = await supabase
+          .from('staff')
+          .update({ status: 'inactive' })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        return { softDelete: true, relatedRecords: totalRelatedRecords };
+      } else {
+        // Hard delete: No related records, safe to delete
+        const { error } = await supabase
+          .from('staff')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        return { softDelete: false };
+      }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries(['staff']);
-      toast.success('Staff member deleted');
+      if (result.softDelete) {
+        toast.success(`Staff member deactivated (${result.relatedRecords} related records preserved)`);
+      } else {
+        toast.success('Staff member deleted');
+      }
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete: ${error.message}`);
     }
   });
 
@@ -261,8 +292,8 @@ export default function Staff() {
         console.warn('⚠️ [Invitation] Agency name not available');
       }
 
-      // ✅ FIX 2: Add logout parameter to setup URL to prevent session conflicts
-      const setupUrl = `${window.location.origin}${createPageUrl('ProfileSetup')}?staff_id=${newStaff.id}&logout=true`;
+      // ✅ FIX: Point to signup page with email pre-filled
+      const setupUrl = `${window.location.origin}${createPageUrl('Login')}?view=sign-up&email=${encodeURIComponent(inviteData.email)}`;
 
       // Send invitation email
       const emailResult = await NotificationService.sendEmail({
@@ -281,30 +312,30 @@ export default function Staff() {
 
               <div style="background: white; border-left: 4px solid #06b6d4; padding: 20px; margin: 20px 0;">
                 <p style="margin: 10px 0;"><strong>Role:</strong> ${inviteData.role.replace('_', ' ')}</p>
+                <p style="margin: 10px 0;"><strong>Your Email:</strong> ${inviteData.email}</p>
                 <p style="margin: 10px 0;"><strong>Next Steps:</strong></p>
                 <ol style="margin: 10px 0; padding-left: 20px;">
+                  <li>Create your account using the email above</li>
                   <li>Complete your profile</li>
                   <li>Upload compliance documents</li>
-                  <li>Set your availability</li>
                   <li>Start accepting shifts</li>
                 </ol>
               </div>
 
               <div style="text-align: center; margin: 30px 0;">
                 <a href="${setupUrl}" style="background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">
-                  Complete Your Profile
+                  Create Your Account
                 </a>
               </div>
 
-              <!-- ✅ FIX 2: Clear instructions for shared device scenarios -->
-              <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px;">
-                <p style="margin: 0; color: #92400e; font-size: 14px; font-weight: 600;">📱 Important: Using a Shared Device?</p>
-                <p style="margin: 10px 0 0 0; color: #92400e; font-size: 13px; line-height: 1.6;">
-                  If someone else has logged into ACG StaffLink on this device before:<br>
-                  1️⃣ Click the link above<br>
-                  2️⃣ You'll be automatically logged out of any previous session<br>
-                  3️⃣ Click <strong>"Create your account"</strong> and use the email: <strong>${inviteData.email}</strong><br>
-                  4️⃣ Complete your profile setup
+              <!-- ✅ Clear instructions for signup -->
+              <div style="background: #e0f2fe; border-left: 4px solid #0284c7; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #0c4a6e; font-size: 14px; font-weight: 600;">📝 How to Sign Up:</p>
+                <p style="margin: 10px 0 0 0; color: #0c4a6e; font-size: 13px; line-height: 1.6;">
+                  1️⃣ Click "Create Your Account" above<br>
+                  2️⃣ Enter your email: <strong>${inviteData.email}</strong><br>
+                  3️⃣ Create a secure password<br>
+                  4️⃣ We'll recognize your invitation automatically!
                 </p>
               </div>
 
@@ -353,13 +384,103 @@ export default function Staff() {
     await inviteStaffMutation.mutateAsync(inviteData);
   };
 
+  // ✅ NEW: Resend invitation mutation
+  const resendInviteMutation = useMutation({
+    mutationFn: async (staffMember) => {
+      console.log('📧 [Resend Invite] Resending invitation to:', staffMember.email);
+
+      // Send invitation email via Edge Function
+      const { error: emailError } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: staffMember.email,
+          subject: `You're Invited to Join ${user?.agency_name || 'Our Agency'} on ACG StaffLink`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); padding: 30px; text-align: center;">
+                <h1 style="color: white; margin: 0;">Welcome to ACG StaffLink</h1>
+              </div>
+
+              <div style="padding: 30px; background: #f9fafb;">
+                <p style="font-size: 16px; color: #374151;">Hi ${staffMember.first_name},</p>
+
+                <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+                  You've been invited to join <strong>${user?.agency_name || 'our agency'}</strong> on ACG StaffLink - the UK's leading healthcare staffing platform.
+                </p>
+
+                <div style="background: white; border-left: 4px solid #06b6d4; padding: 20px; margin: 20px 0;">
+                  <p style="margin: 10px 0;"><strong>Role:</strong> ${staffMember.role.replace('_', ' ')}</p>
+                  <p style="margin: 10px 0;"><strong>Your Email:</strong> ${staffMember.email}</p>
+                  <p style="margin: 10px 0;"><strong>Next Steps:</strong></p>
+                  <ol style="margin: 10px 0; padding-left: 20px;">
+                    <li>Create your account using the email above</li>
+                    <li>Complete your profile</li>
+                    <li>Upload compliance documents</li>
+                    <li>Start accepting shifts</li>
+                  </ol>
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${window.location.origin}/login?view=sign-up&email=${encodeURIComponent(staffMember.email)}"
+                     style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                    Create Your Account
+                  </a>
+                </div>
+
+                <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
+                  This invitation expires in 7 days. If you have any questions, please contact your agency manager.
+                </p>
+              </div>
+
+              <div style="background: #1f2937; padding: 20px; text-align: center;">
+                <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                  © ${new Date().getFullYear()} ACG StaffLink. All rights reserved.
+                </p>
+              </div>
+            </div>
+          `
+        }
+      });
+
+      if (emailError) {
+        console.error('❌ [Resend Invite] Email error:', emailError);
+        throw new Error('Failed to send invitation email');
+      }
+
+      return staffMember;
+    },
+    onSuccess: (staffMember) => {
+      toast.success(
+        <div>
+          <p className="font-bold">✅ Invitation Resent!</p>
+          <p className="text-sm">Email sent to {staffMember.email}</p>
+        </div>,
+        { duration: 5000 }
+      );
+    },
+    onError: (error) => {
+      console.error('❌ [Resend Invite] Error:', error);
+      toast.error(`Failed to resend invitation: ${error.message}`);
+    }
+  });
+
+  const handleResendInvite = (staffMember) => {
+    resendInviteMutation.mutate(staffMember);
+  };
+
   const handleEdit = (staffMember) => {
     setEditingStaff(staffMember);
     setShowForm(true);
   };
 
   const handleDelete = (id) => {
-    if (confirm('Are you sure you want to delete this staff member?')) {
+    const confirmed = confirm(
+      '⚠️ Delete Staff Member?\n\n' +
+      'If this staff member has shifts, timesheets, or bookings, they will be DEACTIVATED instead of deleted.\n\n' +
+      'Staff with no related records will be permanently deleted.\n\n' +
+      'Continue?'
+    );
+
+    if (confirmed) {
       deleteMutation.mutate(id);
     }
   };
@@ -724,6 +845,22 @@ export default function Staff() {
                         Generate WhatsApp PIN
                       </Button>
                     )}
+                  </div>
+                )}
+
+                {/* ✅ NEW: Resend Invitation button for onboarding staff without user_id */}
+                {staffMember.status === 'onboarding' && !staffMember.user_id && (
+                  <div className="pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                      onClick={() => handleResendInvite(staffMember)}
+                      disabled={resendInviteMutation.isPending}
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${resendInviteMutation.isPending ? 'animate-spin' : ''}`} />
+                      {resendInviteMutation.isPending ? 'Sending...' : 'Resend Invitation'}
+                    </Button>
                   </div>
                 )}
 

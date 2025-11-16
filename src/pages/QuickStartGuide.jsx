@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   CheckCircle, Clock, Users, Building2, Calendar, FileText,
-  Zap, Shield, ChevronRight, PlayCircle, Target, Award
+  Zap, Shield, ChevronRight, PlayCircle, Target, Award, UserPlus
 } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import { Link } from "react-router-dom";
@@ -109,6 +109,21 @@ export default function QuickStartGuide() {
         { text: 'Send invoice to client', link: createPageUrl('Invoices') }
       ],
       why: 'Invoices auto-populate from approved timesheets. Sent via email with PDF.'
+    },
+    {
+      id: 'approve-uninvited-users',
+      title: 'Review Uninvited User Signups (Super Admin Only)',
+      time: '2 mins',
+      icon: UserPlus,
+      actions: [
+        { text: 'Go to Management → Admin Workflows', link: createPageUrl('AdminWorkflows') },
+        { text: 'Look for "New User Signup" workflows', link: createPageUrl('AdminWorkflows') },
+        { text: 'Click green "Approve" button', link: createPageUrl('AdminWorkflows') },
+        { text: 'Select agency and role (Admin/Staff/Client)', link: createPageUrl('AdminWorkflows') },
+        { text: 'Click "Approve User" to grant access', link: createPageUrl('AdminWorkflows') }
+      ],
+      why: 'Users who sign up without an invitation need manual approval and agency assignment before accessing the system.',
+      superAdminOnly: true
     }
   ];
 
@@ -204,6 +219,12 @@ export default function QuickStartGuide() {
                           <Clock className="w-3 h-3 mr-1" />
                           {step.time}
                         </Badge>
+                        {step.superAdminOnly && (
+                          <Badge className="bg-purple-100 text-purple-800">
+                            <Shield className="w-3 h-3 mr-1" />
+                            Super Admin Only
+                          </Badge>
+                        )}
                       </div>
                       <h3 className="text-xl font-bold text-gray-900">{step.title}</h3>
                     </div>

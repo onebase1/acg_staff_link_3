@@ -406,7 +406,7 @@ export default function InvoiceDetail() {
                         </td>
                       )}
                       <td className="py-3 px-2 text-center">
-                        {item.description?.includes('Night') || item.description?.includes('20:00') ? (
+                        {item.shift_type === 'night' ? (
                           <Badge variant="outline" className="bg-indigo-50 text-indigo-700 text-xs">Night</Badge>
                         ) : (
                           <Badge variant="outline" className="bg-amber-50 text-amber-700 text-xs">Day</Badge>

@@ -62,6 +62,7 @@ export default function OnboardClient() {
     require_location_specification: false,
     payment_terms: 'net_30',
     break_duration_minutes: 0,
+    shift_window_type: '8_to_8', // NEW: 7_to_7 or 8_to_8
     
     // Step 4: Rate Configuration
     rate_model: 'simple', // 'simple' or 'advanced'
@@ -352,6 +353,21 @@ export default function OnboardClient() {
       return;
     }
 
+    // Calculate enabled_roles based on configured rates
+    const enabledRoles = {};
+    if (formData.rate_model === 'simple') {
+      Object.keys(formData.simple_rates).forEach(role => {
+        const rate = formData.simple_rates[role];
+        enabledRoles[role] = (rate.charge_rate > 0 || rate.pay_rate > 0);
+      });
+    } else {
+      Object.keys(formData.advanced_rates).forEach(role => {
+        const roleRates = formData.advanced_rates[role];
+        const hasAnyRate = Object.values(roleRates).some(rt => rt.charge_rate > 0 || rt.pay_rate > 0);
+        enabledRoles[role] = hasAnyRate;
+      });
+    }
+
     const clientData = {
       agency_id: agencyId,
       name: formData.name,
@@ -362,6 +378,8 @@ export default function OnboardClient() {
       internal_locations: formData.internal_locations,
       payment_terms: formData.payment_terms,
       status: 'active',
+      shift_window_type: formData.shift_window_type || '8_to_8', // NEW
+      enabled_roles: enabledRoles, // NEW
       contract_terms: {
         contract_received: formData.contract_received,
         contract_received_date: new Date().toISOString().split('T')[0],
@@ -370,10 +388,10 @@ export default function OnboardClient() {
         contract_reference: formData.contract_reference,
         require_location_specification: formData.require_location_specification,
         break_duration_minutes: formData.break_duration_minutes,
-        
+
         // Legacy simple rates (backward compatible)
         rates_by_role: formData.rate_model === 'simple' ? formData.simple_rates : {},
-        
+
         // Advanced rate card
         advanced_rate_card: formData.rate_model === 'advanced' ? {
           enabled: true,
@@ -651,26 +669,30 @@ export default function OnboardClient() {
               </div>
 
               {/* ✅ NEW: Conditional Location Tracking */}
-              <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+              <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-lg">
                 <div className="flex items-start gap-3">
                   <input
                     type="checkbox"
                     id="requires_location_tracking"
                     checked={requiresLocationTracking}
                     onChange={(e) => {
-                      setRequiresLocationTracking(e.target.checked);
-                      if (!e.target.checked) {
-                        // Clear locations if unchecked
-                        setFormData({...formData, internal_locations: []});
-                      }
+                      const isChecked = e.target.checked;
+                      setRequiresLocationTracking(isChecked);
+                      setFormData({
+                        ...formData,
+                        require_location_specification: isChecked,
+                        internal_locations: isChecked ? formData.internal_locations : []
+                      });
                     }}
                     className="w-5 h-5 mt-1"
                   />
                   <Label htmlFor="requires_location_tracking" className="cursor-pointer flex-1">
-                    <strong>📍 Will staff work at different locations within this facility?</strong>
-                    <p className="text-xs text-blue-800 mt-1">
-                      Examples: Specific rooms (Room 14, Room 20), buildings (North Wing, South Block), or areas (Lounge, Dining Room). 
-                      <strong className="block mt-1">Only needed if client requires location details on timesheets/invoices.</strong>
+                    <strong>📍 Does this client require location/room specification on shifts?</strong>
+                    <p className="text-xs text-amber-800 mt-1">
+                      <strong>✅ 99% of care homes say YES.</strong> This ensures staff know exactly where to work (e.g., Room 14, Lounge, Dining Room).
+                    </p>
+                    <p className="text-xs text-amber-800 mt-1">
+                      ⚠️ If enabled, ALL shifts MUST specify a work location. This prevents invoice disputes.
                     </p>
                   </Label>
                 </div>
@@ -795,22 +817,6 @@ export default function OnboardClient() {
                 </select>
               </div>
 
-              <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded">
-                <input
-                  type="checkbox"
-                  id="require_location"
-                  checked={formData.require_location_specification}
-                  onChange={(e) => setFormData({...formData, require_location_specification: e.target.checked})}
-                  className="w-5 h-5"
-                />
-                <Label htmlFor="require_location" className="cursor-pointer flex-1">
-                  <strong>Require Location Specification</strong>
-                  <p className="text-xs text-blue-800 mt-1">
-                    If enabled, ALL shifts must specify exact room/unit. Prevents invoice disputes.
-                  </p>
-                </Label>
-              </div>
-
               <div>
                 <Label htmlFor="break_duration">Standard Break Duration (minutes)</Label>
                 <Input
@@ -821,6 +827,29 @@ export default function OnboardClient() {
                   placeholder="e.g., 30"
                   className="mt-1"
                 />
+              </div>
+
+              {/* NEW: Shift Window Configuration */}
+              <div className="p-4 bg-gradient-to-r from-cyan-50 to-blue-50 border border-cyan-200 rounded-lg">
+                <Label htmlFor="shift_window" className="text-base font-semibold mb-2 block">
+                  Shift Window Configuration
+                </Label>
+                <p className="text-sm text-gray-600 mb-3">
+                  Define the 12-hour shift windows for day and night shifts. 99% of care homes use 8-8 windows.
+                </p>
+                <select
+                  id="shift_window"
+                  value={formData.shift_window_type || '8_to_8'}
+                  onChange={(e) => setFormData({...formData, shift_window_type: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                >
+                  <option value="8_to_8">🕐 8-8 Window (08:00-20:00 / 20:00-08:00) - Standard</option>
+                  <option value="7_to_7">🕐 7-7 Window (07:00-19:00 / 19:00-07:00)</option>
+                </select>
+                <div className="mt-2 text-xs text-gray-500 space-y-1">
+                  <div>• Day Shift: {formData.shift_window_type === '7_to_7' ? '07:00 - 19:00' : '08:00 - 20:00'}</div>
+                  <div>• Night Shift: {formData.shift_window_type === '7_to_7' ? '19:00 - 07:00' : '20:00 - 08:00'}</div>
+                </div>
               </div>
             </div>
           )}

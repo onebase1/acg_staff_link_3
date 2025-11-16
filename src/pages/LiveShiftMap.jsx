@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapContainer, TileLayer, Marker, Popup, Circle } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
 import { 
   MapPin, Users, CheckCircle, Navigation, AlertTriangle, 
   RefreshCw, Calendar, Clock, Shield 
@@ -42,6 +42,46 @@ const staffClockedInIcon = L.divIcon({
   iconAnchor: [14, 28],
 });
 
+// Component to auto-fit map bounds to show all markers
+function MapBoundsUpdater({ mapData }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (mapData.length > 0) {
+      const bounds = [];
+
+      // Add all client locations to bounds
+      mapData.forEach(site => {
+        const coords = site.client.location_coordinates;
+        if (coords?.latitude && coords?.longitude) {
+          bounds.push([coords.latitude, coords.longitude]);
+        }
+
+        // Add approaching staff locations
+        site.approachingStaff.forEach(staff => {
+          if (staff.latitude && staff.longitude) {
+            bounds.push([staff.latitude, staff.longitude]);
+          }
+        });
+
+        // Add clocked-in staff locations
+        site.clockedInStaff.forEach(staff => {
+          if (staff.latitude && staff.longitude) {
+            bounds.push([staff.latitude, staff.longitude]);
+          }
+        });
+      });
+
+      if (bounds.length > 0) {
+        // Fit map to show all markers with padding
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+      }
+    }
+  }, [mapData, map]);
+
+  return null;
+}
+
 export default function LiveShiftMap() {
   const [currentAgency, setCurrentAgency] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -75,26 +115,24 @@ export default function LiveShiftMap() {
   console.log('🗓️ Querying shifts for date:', todayString);
   
   const { data: activeShifts = [], isLoading: shiftsLoading, refetch: refetchShifts } = useQuery({
-    queryKey: ['active-shifts', currentAgency, todayString],
+    queryKey: ['active-shifts', todayString], // ✅ Removed currentAgency - show ALL agencies
     queryFn: async () => {
-      let query = supabase
+      const query = supabase
         .from('shifts')
         .select('*')
         .eq('date', todayString)
-        .in('status', ['confirmed', 'in_progress']);
-      
-      if (currentAgency) {
-        query = query.eq('agency_id', currentAgency);
-      }
-      
+        .in('status', ['assigned', 'confirmed', 'in_progress']); // ✅ Added 'assigned' status
+
+      // ✅ REMOVED agency filter - Live Map should show ALL active shifts across all agencies
+
       const { data: shifts, error } = await query;
-      
+
       if (error) {
         console.error('❌ Error fetching active shifts:', error);
         return [];
       }
-      
-      console.log(`📍 Live Map - Found ${shifts?.length || 0} shift(s) for ${todayString}${currentAgency ? ` (agency: ${currentAgency})` : ' (all agencies)'}`);
+
+      console.log(`📍 Live Map - Found ${shifts?.length || 0} shift(s) for ${todayString} (all agencies)`);
       return shifts || [];
     },
     enabled: true,
@@ -217,7 +255,8 @@ export default function LiveShiftMap() {
   
   activeShifts.forEach(shift => {
     const client = clients.find(c => c.id === shift.client_id);
-    if (!client?.location_coordinates) return;
+    // ✅ Validate client has GPS coordinates with lat/lng
+    if (!client?.location_coordinates?.latitude || !client?.location_coordinates?.longitude) return;
     
     const clientId = client.id;
     if (!clientGroupedData[clientId]) {
@@ -274,27 +313,37 @@ export default function LiveShiftMap() {
     
     // Track approaching/clocked-in staff separately (with dedup check)
     if (shift.approaching_staff_location && !timesheet?.clock_in_location) {
-      clientGroupedData[clientId].approachingStaff.push({
-        ...shift.approaching_staff_location,
-        staffMember: assignedStaff,
-        shiftId: shift.id
-      });
-    }
-    
-    if (timesheet?.clock_in_location) {
-      // 🔒 Only add if not already in array (prevent duplicate markers)
-      const alreadyAdded = clientGroupedData[clientId].clockedInStaff.some(
-        s => s.staffMember?.id === assignedStaff?.id && s.timesheetId === timesheet.id
-      );
-      
-      if (!alreadyAdded) {
-        clientGroupedData[clientId].clockedInStaff.push({
-          ...timesheet.clock_in_location,
+      // ✅ Validate GPS coordinates exist before adding
+      if (shift.approaching_staff_location.latitude && shift.approaching_staff_location.longitude) {
+        clientGroupedData[clientId].approachingStaff.push({
+          ...shift.approaching_staff_location,
           staffMember: assignedStaff,
-          geofenceValidated: timesheet.geofence_validated,
-          distance: timesheet.geofence_distance_meters,
-          timesheetId: timesheet.id
+          shiftId: shift.id
         });
+      } else {
+        console.warn(`⚠️ Shift ${shift.id} has approaching_staff_location but missing lat/lng:`, shift.approaching_staff_location);
+      }
+    }
+
+    if (timesheet?.clock_in_location) {
+      // ✅ Validate GPS coordinates exist before adding
+      if (timesheet.clock_in_location.latitude && timesheet.clock_in_location.longitude) {
+        // 🔒 Only add if not already in array (prevent duplicate markers)
+        const alreadyAdded = clientGroupedData[clientId].clockedInStaff.some(
+          s => s.staffMember?.id === assignedStaff?.id && s.timesheetId === timesheet.id
+        );
+
+        if (!alreadyAdded) {
+          clientGroupedData[clientId].clockedInStaff.push({
+            ...timesheet.clock_in_location,
+            staffMember: assignedStaff,
+            geofenceValidated: timesheet.geofence_validated,
+            distance: timesheet.geofence_distance_meters,
+            timesheetId: timesheet.id
+          });
+        }
+      } else {
+        console.warn(`⚠️ Timesheet ${timesheet.id} has clock_in_location but missing lat/lng:`, timesheet.clock_in_location);
       }
     }
   });
@@ -310,8 +359,9 @@ export default function LiveShiftMap() {
     clientsWithGPS: clients.filter(c => c.location_coordinates?.latitude).length,
     clientsTotal: clients.length,
     approaching: activeShifts.filter(s => {
-      if (!s.approaching_staff_location) return false;
-      
+      // ✅ Check if approaching_staff_location exists AND has valid lat/lng
+      if (!s.approaching_staff_location?.latitude || !s.approaching_staff_location?.longitude) return false;
+
       // Check if staff has clocked in via booking chain
       let hasClockIn = false;
       if (s.booking_id) {
@@ -324,7 +374,7 @@ export default function LiveShiftMap() {
           hasClockIn = bookingTimesheets.some(t => t.clock_in_location);
         }
       }
-      
+
       return !hasClockIn;
     }).length
   };
@@ -341,9 +391,13 @@ export default function LiveShiftMap() {
         }))
     );
 
+  // ✅ Use Stockton-on-Tees (Dominion agency location) as default instead of London
+  // Coordinates for: 80-82 Norton Road, Stockton-On-Tees, England, TS18 2DE
+  const STOCKTON_COORDINATES = [54.5697, -1.3181];
+
   const defaultCenter = mapData.length > 0 && mapData[0].client.location_coordinates
     ? [mapData[0].client.location_coordinates.latitude, mapData[0].client.location_coordinates.longitude]
-    : [51.5074, -0.1278];
+    : STOCKTON_COORDINATES; // Use Stockton instead of London [51.5074, -0.1278]
 
   const handleRefresh = () => {
     refetchShifts();
@@ -446,7 +500,10 @@ export default function LiveShiftMap() {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              
+
+              {/* Auto-fit map to show all markers */}
+              <MapBoundsUpdater mapData={mapData} />
+
               {mapData.map((site, idx) => {
                 const coords = site.client.location_coordinates;
                 const geofenceRadius = site.client.geofence_radius_meters || 100;
@@ -494,7 +551,9 @@ export default function LiveShiftMap() {
                       </Popup>
                     </Marker>
 
-                    {site.approachingStaff.map((staff, staffIdx) => (
+                    {site.approachingStaff
+                      .filter(staff => staff.latitude && staff.longitude)
+                      .map((staff, staffIdx) => (
                       <Marker
                         key={`approaching-${staffIdx}`}
                         position={[staff.latitude, staff.longitude]}
@@ -519,7 +578,9 @@ export default function LiveShiftMap() {
                       </Marker>
                     ))}
 
-                    {site.clockedInStaff.map((staff, staffIdx) => (
+                    {site.clockedInStaff
+                      .filter(staff => staff.latitude && staff.longitude)
+                      .map((staff, staffIdx) => (
                       <Marker
                         key={`clocked-in-${staffIdx}`}
                         position={[staff.latitude, staff.longitude]}

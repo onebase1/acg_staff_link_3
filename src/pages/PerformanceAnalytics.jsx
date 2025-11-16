@@ -22,8 +22,10 @@ export default function PerformanceAnalytics() {
   const [timeRange, setTimeRange] = useState('month');
   const [selectedClient, setSelectedClient] = useState('all');
   const [currentAgency, setCurrentAgency] = useState(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false); // ✅ QUICK CONNECT: Super admin detection
+  const [selectedAgency, setSelectedAgency] = useState('all'); // ✅ QUICK CONNECT: Agency selector for drill-down
 
-  // RBAC Check
+  // ✅ QUICK CONNECT: Enhanced RBAC Check with Super Admin support
   useEffect(() => {
     const checkAccess = async () => {
       try {
@@ -47,16 +49,46 @@ export default function PerformanceAnalytics() {
         }
 
         setUser(profile);
-        
+
         // Block staff members
         if (profile.user_type === 'staff_member') {
           navigate(createPageUrl('StaffPortal'));
           return;
         }
-        
-        setCurrentAgency(profile.agency_id);
-        console.log('PerformanceAnalytics - Agency:', profile.agency_id);
-        
+
+        // ✅ QUICK CONNECT: Super Admin Detection
+        const superAdminEmail = 'g.basera@yahoo.com';
+        const isSuperAdminUser = profile.email === superAdminEmail;
+        setIsSuperAdmin(isSuperAdminUser);
+
+        // Check ViewSwitcher mode
+        const viewMode = localStorage.getItem('admin_view_mode');
+        let agencyIdToUse = profile.agency_id;
+
+        if (isSuperAdminUser && viewMode) {
+          try {
+            const viewConfig = JSON.parse(viewMode);
+            if (viewConfig.type === 'agency_admin' && viewConfig.entityId) {
+              console.log(`🔍 Super Admin viewing as agency: ${viewConfig.entityId}`);
+              agencyIdToUse = viewConfig.entityId;
+              setSelectedAgency(viewConfig.entityId); // Set to specific agency
+            } else if (viewConfig.type === 'super_admin') {
+              console.log(`🔍 Super Admin: Platform-wide view active.`);
+              agencyIdToUse = 'super_admin';
+              setSelectedAgency('all'); // Set to "All Agencies"
+            }
+          } catch (e) {
+            console.error("Error parsing admin_view_mode from localStorage", e);
+          }
+        } else if (isSuperAdminUser) {
+          // Super admin with no ViewSwitcher mode - default to platform-wide
+          agencyIdToUse = 'super_admin';
+          setSelectedAgency('all');
+        }
+
+        setCurrentAgency(agencyIdToUse);
+        console.log('PerformanceAnalytics - Agency:', agencyIdToUse, 'Super Admin:', isSuperAdminUser);
+
         setLoading(false);
       } catch (error) {
         console.error("Auth error:", error);
@@ -66,41 +98,67 @@ export default function PerformanceAnalytics() {
     checkAccess();
   }, [navigate]);
 
-  const { data: staff = [] } = useQuery({
-    queryKey: ['staff', currentAgency],
+  // ✅ QUICK CONNECT: Fetch all agencies for super admin dropdown
+  const { data: agencies = [] } = useQuery({
+    queryKey: ['all-agencies', isSuperAdmin],
     queryFn: async () => {
-      const query = supabase
+      if (!isSuperAdmin) return [];
+
+      const { data, error } = await supabase
+        .from('agencies')
+        .select('*')
+        .order('name');
+
+      if (error) {
+        console.error('❌ Error fetching agencies:', error);
+        return [];
+      }
+      return data || [];
+    },
+    enabled: isSuperAdmin && !loading,
+    staleTime: 60000
+  });
+
+  // ✅ QUICK CONNECT: Determine which agency to filter by
+  const effectiveAgencyId = selectedAgency === 'all' ? null : selectedAgency;
+
+  const { data: staff = [] } = useQuery({
+    queryKey: ['staff', effectiveAgencyId, selectedAgency],
+    queryFn: async () => {
+      let query = supabase
         .from('staff')
         .select('*');
-      
-      if (currentAgency) {
-        query.eq('agency_id', currentAgency);
+
+      // ✅ QUICK CONNECT: Only filter if not viewing all agencies
+      if (effectiveAgencyId && effectiveAgencyId !== 'super_admin') {
+        query = query.eq('agency_id', effectiveAgencyId);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching staff:', error);
         return [];
       }
-      console.log('PerformanceAnalytics - Staff:', data?.length || 0);
+      console.log('PerformanceAnalytics - Staff:', data?.length || 0, 'Agency:', effectiveAgencyId || 'ALL');
       return data || [];
     },
-    enabled: !loading && !!currentAgency,
+    enabled: !loading && (!!currentAgency || isSuperAdmin),
     refetchOnMount: 'always'
   });
 
   const { data: shifts = [] } = useQuery({
-    queryKey: ['shifts', currentAgency],
+    queryKey: ['shifts', effectiveAgencyId, selectedAgency],
     queryFn: async () => {
-      const query = supabase
+      let query = supabase
         .from('shifts')
         .select('*')
         .order('date', { ascending: false });
-      
-      if (currentAgency) {
-        query.eq('agency_id', currentAgency);
+
+      // ✅ QUICK CONNECT: Only filter if not viewing all agencies
+      if (effectiveAgencyId && effectiveAgencyId !== 'super_admin') {
+        query = query.eq('agency_id', effectiveAgencyId);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching shifts:', error);
@@ -108,22 +166,23 @@ export default function PerformanceAnalytics() {
       }
       return data || [];
     },
-    enabled: !loading && !!currentAgency,
+    enabled: !loading && (!!currentAgency || isSuperAdmin),
     refetchOnMount: 'always'
   });
 
   const { data: bookings = [] } = useQuery({
-    queryKey: ['bookings', currentAgency],
+    queryKey: ['bookings', effectiveAgencyId, selectedAgency],
     queryFn: async () => {
-      const query = supabase
+      let query = supabase
         .from('bookings')
         .select('*')
         .order('created_date', { ascending: false });
-      
-      if (currentAgency) {
-        query.eq('agency_id', currentAgency);
+
+      // ✅ QUICK CONNECT: Only filter if not viewing all agencies
+      if (effectiveAgencyId && effectiveAgencyId !== 'super_admin') {
+        query = query.eq('agency_id', effectiveAgencyId);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching bookings:', error);
@@ -131,21 +190,22 @@ export default function PerformanceAnalytics() {
       }
       return data || [];
     },
-    enabled: !loading && !!currentAgency,
+    enabled: !loading && (!!currentAgency || isSuperAdmin),
     refetchOnMount: 'always'
   });
 
   const { data: clients = [] } = useQuery({
-    queryKey: ['clients', currentAgency],
+    queryKey: ['clients', effectiveAgencyId, selectedAgency],
     queryFn: async () => {
-      const query = supabase
+      let query = supabase
         .from('clients')
         .select('*');
-      
-      if (currentAgency) {
-        query.eq('agency_id', currentAgency);
+
+      // ✅ QUICK CONNECT: Only filter if not viewing all agencies
+      if (effectiveAgencyId && effectiveAgencyId !== 'super_admin') {
+        query = query.eq('agency_id', effectiveAgencyId);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching clients:', error);
@@ -154,20 +214,28 @@ export default function PerformanceAnalytics() {
       return data || [];
     },
     initialData: [],
-    enabled: !loading && !!currentAgency
+    enabled: !loading && (!!currentAgency || isSuperAdmin)
   });
 
   const { data: timesheets = [] } = useQuery({
-    queryKey: ['timesheets', currentAgency],
+    queryKey: ['timesheets', effectiveAgencyId, selectedAgency],
     queryFn: async () => {
-      const { data: allTimesheets = [] } = await supabase.from('timesheets').select('*');
-      if (currentAgency) {
-        return allTimesheets.filter(t => t.agency_id === currentAgency);
+      let query = supabase.from('timesheets').select('*');
+
+      // ✅ QUICK CONNECT: Only filter if not viewing all agencies
+      if (effectiveAgencyId && effectiveAgencyId !== 'super_admin') {
+        query = query.eq('agency_id', effectiveAgencyId);
       }
-      return allTimesheets;
+
+      const { data, error } = await query;
+      if (error) {
+        console.error('❌ Error fetching timesheets:', error);
+        return [];
+      }
+      return data || [];
     },
     initialData: [],
-    enabled: !loading && !!currentAgency
+    enabled: !loading && (!!currentAgency || isSuperAdmin)
   });
 
   // If no real data exists, show message prompting to import test data
@@ -358,9 +426,35 @@ export default function PerformanceAnalytics() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Performance Analytics</h1>
-          <p className="text-gray-600 mt-1">Data-driven insights for strategic decision making</p>
+          <p className="text-gray-600 mt-1">
+            Data-driven insights for strategic decision making
+            {isSuperAdmin && selectedAgency === 'all' && (
+              <Badge className="ml-2 bg-purple-600 text-white">Platform-Wide View</Badge>
+            )}
+            {isSuperAdmin && selectedAgency !== 'all' && agencies.length > 0 && (
+              <Badge className="ml-2 bg-blue-600 text-white">
+                {agencies.find(a => a.id === selectedAgency)?.name || 'Agency View'}
+              </Badge>
+            )}
+          </p>
         </div>
         <div className="flex gap-3">
+          {/* ✅ QUICK CONNECT: Agency selector for super admin */}
+          {isSuperAdmin && (
+            <Select value={selectedAgency} onValueChange={setSelectedAgency}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Agencies</SelectItem>
+                {agencies.map(agency => (
+                  <SelectItem key={agency.id} value={agency.id}>
+                    {agency.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-36">
               <SelectValue />

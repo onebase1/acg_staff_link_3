@@ -316,6 +316,7 @@ export default function Clients() {
     setEditingClient(client);
     setEditFormData({
       name: client.name || '',
+      shift_window_type: client.shift_window_type || '8_to_8', // NEW
       contact_person: {
         name: client.contact_person?.name || '',
         email: client.contact_person?.email || '',
@@ -395,9 +396,19 @@ export default function Clients() {
       return;
     }
 
+    // Calculate enabled_roles based on configured rates
+    const enabledRoles = {};
+    Object.keys(editFormData.contract_terms.rates_by_role).forEach(role => {
+      const rate = editFormData.contract_terms.rates_by_role[role];
+      enabledRoles[role] = (rate.charge_rate > 0 || rate.pay_rate > 0);
+    });
+
     updateClientMutation.mutate({
       id: editingClient.id,
-      data: editFormData
+      data: {
+        ...editFormData,
+        enabled_roles: enabledRoles // NEW: Auto-calculate enabled roles
+      }
     });
   };
 
@@ -837,21 +848,16 @@ export default function Clients() {
 
       {/* GPS Setup Modal */}
       {showGPSSetup && selectedClient && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <ClientGPSSetup
-              client={selectedClient}
-              onComplete={handleCloseGPS}
-            />
-            <Button
-              variant="outline"
-              className="mt-4 w-full"
-              onClick={handleCloseGPS}
-            >
-              Close
-            </Button>
-          </div>
-        </div>
+        <Dialog open={showGPSSetup} onOpenChange={(open) => !open && handleCloseGPS()}>
+          <DialogContent className="max-w-3xl max-h-[95vh] overflow-y-auto p-0">
+            <div className="p-6">
+              <ClientGPSSetup
+                client={selectedClient}
+                onComplete={handleCloseGPS}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Add Client Modal */}
@@ -1334,6 +1340,35 @@ export default function Clients() {
                         }
                       })}
                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* 🆕 SHIFT WINDOW CONFIGURATION - NEW SECTION */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg border-b pb-2 flex items-center gap-2">
+                  🕐 Shift Window Configuration
+                </h3>
+                <Alert className="border-cyan-300 bg-cyan-50">
+                  <AlertCircle className="h-4 w-4 text-cyan-600" />
+                  <AlertDescription className="text-cyan-900 text-sm">
+                    <strong>💡 Important:</strong> Define the 12-hour shift windows for day and night shifts. 99% of care homes use 8-8 windows.
+                  </AlertDescription>
+                </Alert>
+                <div>
+                  <Label htmlFor="shift-window-type">Shift Window Type</Label>
+                  <select
+                    id="shift-window-type"
+                    value={editFormData.shift_window_type || '8_to_8'}
+                    onChange={(e) => setEditFormData({...editFormData, shift_window_type: e.target.value})}
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  >
+                    <option value="8_to_8">🕐 8-8 Window (08:00-20:00 / 20:00-08:00) - Standard</option>
+                    <option value="7_to_7">🕐 7-7 Window (07:00-19:00 / 19:00-07:00)</option>
+                  </select>
+                  <div className="mt-2 text-xs text-gray-500 space-y-1">
+                    <div>• Day Shift: {editFormData.shift_window_type === '7_to_7' ? '07:00 - 19:00' : '08:00 - 20:00'}</div>
+                    <div>• Night Shift: {editFormData.shift_window_type === '7_to_7' ? '19:00 - 07:00' : '20:00 - 08:00'}</div>
                   </div>
                 </div>
               </div>

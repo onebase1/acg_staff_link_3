@@ -5,11 +5,12 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ArrowLeft, Save, AlertCircle, CheckCircle, User, Mail, Phone, MapPin, Calendar, 
+import {
+  ArrowLeft, Save, AlertCircle, CheckCircle, User, Mail, Phone, MapPin, Calendar,
   Briefcase, Shield, Star, Upload, Loader2
 } from "lucide-react";
 import { toast } from "sonner";
+import { STAFF_ROLES } from "@/constants/staffRoles";
 
 // ✅ Phone normalization utilities (inline)
 function normalizePhoneNumber(phone) {
@@ -42,6 +43,26 @@ function formatPhoneForDisplay(phone) {
 }
 
 export default function StaffForm({ staff, onSubmit, onCancel }) {
+  // Normalize nested objects so editing works even when address or emergency_contact are null in the DB
+  const normalizedStaff = staff
+    ? {
+        ...staff,
+        address: {
+          line1: '',
+          line2: '',
+          city: '',
+          postcode: '',
+          ...(staff.address || {}),
+        },
+        emergency_contact: {
+          name: '',
+          relationship: '',
+          phone: '',
+          ...(staff.emergency_contact || {}),
+        },
+      }
+    : null;
+
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -55,22 +76,69 @@ export default function StaffForm({ staff, onSubmit, onCancel }) {
       line1: '',
       line2: '',
       city: '',
-      postcode: ''
+      postcode: '',
     },
     emergency_contact: {
       name: '',
       relationship: '',
-      phone: ''
+      phone: '',
     },
     hourly_rate: 0,
     employment_type: 'temporary',
     status: 'onboarding',
     profile_photo_url: '',
-    ...staff
+    ...(normalizedStaff || {}),
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY
+      );
+
+      const fileName = `${Date.now()}-${file.name}`;
+      const { data, error: uploadError } = await supabase.storage
+        .from('profile-photos')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-photos')
+        .getPublicUrl(fileName);
+
+      setFormData({
+        ...formData,
+        profile_photo_url: publicUrl
+      });
+
+      toast.success('✅ Photo uploaded successfully!');
+    } catch (error) {
+      toast.error(`❌ Upload failed: ${error.message}`);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const validateForm = () => {
     const errors = {};
@@ -189,6 +257,53 @@ export default function StaffForm({ staff, onSubmit, onCancel }) {
             </Alert>
           )}
 
+          {/* Profile Photo Upload */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Profile Photo
+            </h3>
+            <div className="flex flex-col items-center gap-4 p-6 bg-gray-50 rounded-lg">
+              {formData.profile_photo_url && !formData.profile_photo_url.includes('placeholder') ? (
+                <div className="relative">
+                  <img
+                    src={formData.profile_photo_url}
+                    alt="Profile"
+                    className="w-32 h-32 rounded-full object-cover border-4 border-blue-500"
+                  />
+                  <div className="absolute -bottom-2 -right-2 bg-green-500 text-white rounded-full p-2">
+                    <CheckCircle className="w-5 h-5" />
+                  </div>
+                </div>
+              ) : (
+                <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300">
+                  <div className="text-center">
+                    <User className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-xs text-gray-600 font-bold">No Photo</p>
+                  </div>
+                </div>
+              )}
+
+              <label className="w-full max-w-xs">
+                <Button type="button" disabled={uploadingPhoto} className="w-full h-12 text-base" asChild>
+                  <span>
+                    <Upload className="w-5 h-5 mr-2" />
+                    {uploadingPhoto ? 'Uploading...' : formData.profile_photo_url ? 'Change Photo' : 'Upload Photo'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      className="hidden"
+                    />
+                  </span>
+                </Button>
+              </label>
+              <p className="text-xs text-gray-600 text-center">
+                Clear, recent photo. JPG or PNG, max 5MB. Required for CQC profile.
+              </p>
+            </div>
+          </div>
+
           <div>
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <User className="w-5 h-5" />
@@ -283,12 +398,11 @@ export default function StaffForm({ staff, onSubmit, onCancel }) {
                   className={`w-full px-3 py-2 border rounded-md ${validationErrors.role ? 'border-red-500' : 'border-gray-300'}`}
                   disabled={isSubmitting}
                 >
-                  <option value="nurse">Nurse</option>
-                  <option value="care_worker">Care Worker</option>
-                  <option value="hca">HCA</option>
-                  <option value="senior_care_worker">Senior Care Worker</option>
-                  <option value="support_worker">Support Worker</option>
-                  <option value="specialist_nurse">Specialist Nurse</option>
+                  {STAFF_ROLES.map(role => (
+                    <option key={role.value} value={role.value}>
+                      {role.icon} {role.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 

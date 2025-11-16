@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { BUCKETS, createSignedUrl } from "@/api/supabaseStorage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ import { toast } from "sonner";
 
 /**
  * 📱 MOBILE-FIRST COMPLIANCE TRACKER
- * 
+ *
  * FIXES:
  * ✅ Update expiry dates without re-upload
  * ✅ Real-time visibility after upload
@@ -41,7 +42,7 @@ export default function ComplianceTracker() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
-  
+
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -64,10 +65,10 @@ export default function ComplianceTracker() {
       }
 
       setUser(profile);
-      
+
       const isStaffUser = profile.user_type === 'staff_member';
       setIsStaff(isStaffUser);
-      
+
       // Get agency
       if (profile.agency_id) {
         const { data: agencyData, error: agencyError } = await supabase
@@ -75,19 +76,19 @@ export default function ComplianceTracker() {
           .select('*')
           .eq('id', profile.agency_id)
           .single();
-        
+
         if (!agencyError && agencyData) {
           setAgency(agencyData);
         }
       }
-      
+
       if (isStaffUser) {
         const { data: staffData, error: staffError } = await supabase
           .from('staff')
           .select('*')
           .or(`user_id.eq.${profile.id},email.eq.${profile.email}`)
           .single();
-        
+
         if (!staffError && staffData) {
           setStaffRecord(staffData);
         }
@@ -100,15 +101,15 @@ export default function ComplianceTracker() {
     queryKey: ['compliance', isStaff ? staffRecord?.id : user?.agency_id],
     queryFn: async () => {
       let query = supabase.from('compliance').select('*').order('created_date', { ascending: false });
-      
+
       if (isStaff && staffRecord?.id) {
         query = query.eq('staff_id', staffRecord.id);
       } else if (user?.agency_id) {
         query = query.eq('agency_id', user.agency_id);
       }
-      
+
       const { data, error } = await query;
-      
+
       if (error) {
         console.error('❌ Error fetching compliance:', error);
         return [];
@@ -126,7 +127,7 @@ export default function ComplianceTracker() {
       const { data, error } = await supabase
         .from('staff')
         .select('*');
-      
+
       if (error) {
         console.error('❌ Error fetching staff:', error);
         return [];
@@ -159,7 +160,7 @@ export default function ComplianceTracker() {
         })
         .select()
         .single();
-      
+
       if (error) throw error;
       return created;
     },
@@ -191,7 +192,7 @@ export default function ComplianceTracker() {
         .from('compliance')
         .update(data)
         .eq('id', id);
-      
+
       if (error) throw error;
     },
     onSuccess: async () => {
@@ -212,7 +213,7 @@ export default function ComplianceTracker() {
         .from('compliance')
         .delete()
         .eq('id', id);
-      
+
       if (error) throw error;
     },
     onSuccess: async () => {
@@ -241,24 +242,20 @@ export default function ComplianceTracker() {
     }
 
     setUploadingDoc(true);
-    
+
     try {
       toast.info('📤 Uploading file...');
-      
-      // Upload to Supabase Storage
-      const fileName = `compliance/${Date.now()}-${file.name}`;
+
+      // Upload to Supabase Storage (private compliance-docs bucket)
+      const filePath = `compliance/${Date.now()}-${file.name}`;
       const { data: uploadedFile, error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(fileName, file);
+        .from(BUCKETS.COMPLIANCE_DOCS)
+        .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('documents')
-        .getPublicUrl(fileName);
-      
-      setUploadData({ ...uploadData, document_url: publicUrl });
+      // Store the storage path; viewing uses signed URLs
+      setUploadData({ ...uploadData, document_url: filePath });
       toast.success('✅ File uploaded! Complete the form below.');
     } catch (error) {
       toast.error(`❌ Upload failed: ${error.message}`);
@@ -269,7 +266,7 @@ export default function ComplianceTracker() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     if (!uploadData.document_url) {
       toast.error('⚠️ Please upload a document file first');
       return;
@@ -281,7 +278,7 @@ export default function ComplianceTracker() {
     }
 
     let finalStaffId = uploadData.staff_id;
-    
+
     if (isStaff && staffRecord?.id) {
       finalStaffId = staffRecord.id;
     } else if (!isStaff && !finalStaffId) {
@@ -321,24 +318,20 @@ export default function ComplianceTracker() {
     }
 
     setUploadingDoc(true);
-    
+
     try {
       toast.info('📤 Uploading new file...');
-      
-      // Upload to Supabase Storage
-      const fileName = `compliance/${Date.now()}-${file.name}`;
+
+      // Upload to Supabase Storage (private compliance-docs bucket)
+      const filePath = `compliance/${Date.now()}-${file.name}`;
       const { data: uploadedFile, error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(fileName, file);
+        .from(BUCKETS.COMPLIANCE_DOCS)
+        .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('documents')
-        .getPublicUrl(fileName);
-      
-      setEditingDoc({ ...editingDoc, document_url: publicUrl });
+      // Store the storage path; viewing uses signed URLs
+      setEditingDoc({ ...editingDoc, document_url: filePath });
       toast.success('✅ New file uploaded! Click "Save Changes" to confirm.');
     } catch (error) {
       toast.error(`❌ Upload failed: ${error.message}`);
@@ -349,7 +342,7 @@ export default function ComplianceTracker() {
 
   const handleUpdate = (e) => {
     e.preventDefault();
-    
+
     updateMutation.mutate({
       id: editingDoc.id,
       data: {
@@ -383,7 +376,7 @@ export default function ComplianceTracker() {
 
   const getExpiryBadge = (expiryDate) => {
     if (!expiryDate) return <Badge variant="secondary" className="text-xs">No Expiry</Badge>;
-    
+
     const days = getDaysUntilExpiry(expiryDate);
     if (days < 0) return <Badge className="bg-red-600 text-white text-xs"><XCircle className="w-3 h-3 mr-1" /> Expired</Badge>;
     if (days <= 7) return <Badge className="bg-red-500 text-white text-xs"><AlertTriangle className="w-3 h-3 mr-1" /> {days}d</Badge>;
@@ -403,15 +396,47 @@ export default function ComplianceTracker() {
     return <Badge className={info.className}><Icon className="w-3 h-3 mr-1" /> {info.text}</Badge>;
   };
 
+  const getComplianceStoragePath = (documentUrl) => {
+    if (!documentUrl) return "";
+    const marker = "/compliance-docs/";
+    const idx = documentUrl.indexOf(marker);
+    if (idx === -1) {
+      // Already a storage path (e.g. "compliance/...")
+      return documentUrl;
+    }
+    return documentUrl.substring(idx + marker.length);
+  };
+
+  const handleViewDocument = async (documentUrl, description = "document") => {
+    const path = getComplianceStoragePath(documentUrl);
+    if (!path) {
+      toast.error("Document path is missing");
+      return;
+    }
+
+    try {
+      const signedUrl = await createSignedUrl({
+        bucket: BUCKETS.COMPLIANCE_DOCS,
+        path,
+        expiresIn: 60 * 60, // 1 hour
+      });
+      window.open(signedUrl, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.error("❌ Error generating secure link:", error);
+      toast.error(`Unable to open ${description}. Please try again.`);
+    }
+  };
+
+
   const filteredCompliance = compliance.filter(doc => {
     const statusMatch = statusFilter === 'all' || doc.status === statusFilter;
     const typeMatch = typeFilter === 'all' || doc.document_type === typeFilter;
-    
+
     const searchLower = searchTerm.toLowerCase();
     const searchMatch = doc.document_name?.toLowerCase().includes(searchLower) ||
                        doc.document_type?.toLowerCase().includes(searchLower) ||
                        getStaffName(doc.staff_id).toLowerCase().includes(searchLower);
-    
+
     return statusMatch && typeMatch && searchMatch;
   });
 
@@ -429,7 +454,7 @@ export default function ComplianceTracker() {
   // Calculate compliance progress for staff
   const complianceProgress = isStaff && staffRecord ? (() => {
     const required = ['dbs_check', 'right_to_work', 'professional_registration'];
-    const completed = required.filter(type => 
+    const completed = required.filter(type =>
       compliance.some(d => d.document_type === type && d.status === 'verified')
     ).length;
     return Math.round((completed / required.length) * 100);
@@ -467,7 +492,7 @@ export default function ComplianceTracker() {
             </div>
           )}
         </div>
-        
+
         {isStaff && complianceProgress !== null && (
           <Progress value={complianceProgress} className="h-2 bg-cyan-400" />
         )}
@@ -507,7 +532,7 @@ export default function ComplianceTracker() {
 
       {/* Upload Button - Sticky on Mobile */}
       <div className="sticky top-16 z-10 bg-white py-3 -mx-4 px-4 sm:mx-0 sm:px-0 border-b sm:border-0 shadow-sm sm:shadow-none">
-        <Button 
+        <Button
           onClick={() => setShowUploadModal(true)}
           className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-blue-600 h-12 text-lg"
           size="lg"
@@ -561,7 +586,7 @@ export default function ComplianceTracker() {
         {filteredCompliance.length > 0 ? (
           filteredCompliance.map(doc => {
             const typeInfo = documentTypeInfo[doc.document_type] || documentTypeInfo.other;
-            
+
             return (
               <Card key={doc.id} className="border-2 hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
@@ -611,7 +636,7 @@ export default function ComplianceTracker() {
                         size="sm"
                         variant="outline"
                         className="flex-1 h-10"
-                        onClick={() => window.open(doc.document_url, '_blank')}
+                        onClick={() => handleViewDocument(doc.document_url, doc.document_name || "document")}
                       >
                         <Eye className="w-4 h-4 mr-2" />
                         View
@@ -695,7 +720,7 @@ export default function ComplianceTracker() {
                       variant="ghost"
                       size="sm"
                       className="mt-2"
-                      onClick={() => window.open(uploadData.document_url, '_blank')}
+                      onClick={() => handleViewDocument(uploadData.document_url, uploadData.document_name || "document")}
                     >
                       <Eye className="w-4 h-4 mr-2" />
                       Preview
@@ -731,8 +756,9 @@ export default function ComplianceTracker() {
                   </div>
 
                   <div>
-                    <Label>Document Name *</Label>
+                    <Label htmlFor="upload-document-name">Document Name *</Label>
                     <Input
+                      id="upload-document-name"
                       placeholder="e.g., DBS Certificate 2024"
                       value={uploadData.document_name}
                       onChange={(e) => setUploadData({ ...uploadData, document_name: e.target.value })}
@@ -764,8 +790,9 @@ export default function ComplianceTracker() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label>Issue Date</Label>
+                      <Label htmlFor="upload-issue-date">Issue Date</Label>
                       <Input
+                        id="upload-issue-date"
                         type="date"
                         value={uploadData.issue_date}
                         onChange={(e) => setUploadData({ ...uploadData, issue_date: e.target.value })}
@@ -773,8 +800,9 @@ export default function ComplianceTracker() {
                       />
                     </div>
                     <div>
-                      <Label>Expiry Date</Label>
+                      <Label htmlFor="upload-expiry-date">Expiry Date</Label>
                       <Input
+                        id="upload-expiry-date"
                         type="date"
                         value={uploadData.expiry_date}
                         onChange={(e) => setUploadData({ ...uploadData, expiry_date: e.target.value })}
@@ -796,15 +824,15 @@ export default function ComplianceTracker() {
 
                 {/* Actions - Large Buttons */}
                 <div className="flex gap-3 pt-4 border-t">
-                  <Button 
-                    type="button" 
+                  <Button
+                    type="button"
                     variant="outline"
                     onClick={() => setShowUploadModal(false)}
                     className="flex-1 h-12"
                   >
                     Cancel
                   </Button>
-                  <Button 
+                  <Button
                     type="submit"
                     disabled={uploadMutation.isPending || !uploadData.document_url || uploadingDoc}
                     className="flex-1 h-12 bg-gradient-to-r from-cyan-500 to-blue-600"
@@ -847,14 +875,14 @@ export default function ComplianceTracker() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => window.open(editingDoc.document_url, '_blank')}
+                        onClick={() => handleViewDocument(editingDoc.document_url, editingDoc.document_name || "document")}
                       >
                         <Eye className="w-4 h-4 mr-2" />
                         Preview Current
                       </Button>
                     </div>
                   )}
-                  
+
                   <div className="mt-3">
                     <Label className="text-sm font-medium text-gray-700 mb-2 block">
                       Replace with New File (Optional)
@@ -881,8 +909,9 @@ export default function ComplianceTracker() {
                 </div>
 
                 <div>
-                  <Label>Document Name *</Label>
+                  <Label htmlFor="edit-document-name">Document Name *</Label>
                   <Input
+                    id="edit-document-name"
                     value={editingDoc.document_name}
                     onChange={(e) => setEditingDoc({ ...editingDoc, document_name: e.target.value })}
                     className="h-12"
@@ -892,8 +921,9 @@ export default function ComplianceTracker() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>Issue Date</Label>
+                    <Label htmlFor="edit-issue-date">Issue Date</Label>
                     <Input
+                      id="edit-issue-date"
                       type="date"
                       value={editingDoc.issue_date || ''}
                       onChange={(e) => setEditingDoc({ ...editingDoc, issue_date: e.target.value })}
@@ -901,8 +931,9 @@ export default function ComplianceTracker() {
                     />
                   </div>
                   <div>
-                    <Label>Expiry Date</Label>
+                    <Label htmlFor="edit-expiry-date">Expiry Date</Label>
                     <Input
+                      id="edit-expiry-date"
                       type="date"
                       value={editingDoc.expiry_date || ''}
                       onChange={(e) => setEditingDoc({ ...editingDoc, expiry_date: e.target.value })}
@@ -959,8 +990,8 @@ export default function ComplianceTracker() {
                 </div>
 
                 <div className="flex gap-3 pt-4 border-t">
-                  <Button 
-                    type="button" 
+                  <Button
+                    type="button"
                     variant="outline"
                     onClick={() => {
                       setShowEditModal(false);
@@ -970,7 +1001,7 @@ export default function ComplianceTracker() {
                   >
                     Cancel
                   </Button>
-                  <Button 
+                  <Button
                     type="submit"
                     disabled={updateMutation.isPending || uploadingDoc}
                     className="flex-1 h-12 bg-gradient-to-r from-cyan-500 to-blue-600"

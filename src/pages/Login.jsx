@@ -1,15 +1,15 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabaseAuth } from "@/api/supabaseAuth";
-import { ensureUserProfile } from "@/api/profileService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, Info } from "lucide-react";
 import { toast } from "sonner";
 
 const VIEW = {
@@ -18,6 +18,9 @@ const VIEW = {
   FORGOT_PASSWORD: "forgot-password",
 };
 
+// ============================================================================
+// SIGN IN FORM (Unchanged - keep existing)
+// ============================================================================
 function SignInForm({ onSuccess }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,10 +33,9 @@ function SignInForm({ onSuccess }) {
     try {
       await supabaseAuth.signIn(email.trim(), password);
       if (!rememberDevice) {
-        // Align with enterprise-grade security: clear session persistence if user opts out.
         localStorage.removeItem("supabase.auth.token");
       }
-      toast.success("Welcome back 👋");
+      toast.success("Welcome back!");
       onSuccess();
     } catch (error) {
       toast.error(error.message || "Unable to sign in");
@@ -50,7 +52,7 @@ function SignInForm({ onSuccess }) {
           id="signin-email"
           type="email"
           autoComplete="email"
-          placeholder="you@guest-glow.com"
+          placeholder="you@example.com"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           required
@@ -95,77 +97,92 @@ function SignInForm({ onSuccess }) {
   );
 }
 
+// ============================================================================
+// SIGN UP FORM (Completely Simplified - 4 fields only!)
+// ============================================================================
 function SignUpForm({ onSuccess }) {
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const location = useLocation();
+  const urlParams = new URLSearchParams(location.search);
+  const prefilledEmail = urlParams.get('email') || ""; // Get email from invitation link
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState(prefilledEmail);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [accountType, setAccountType] = useState("agency_admin");
   const [acceptTerms, setAcceptTerms] = useState(false);
-  const [agencyName, setAgencyName] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const passwordPolicy = useMemo(
-    () => ({
-      min: 10,
-      pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/,
-    }),
-    []
-  );
+  const passwordPolicy = {
+    min: 10,
+    pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/,
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (!acceptTerms) {
-      toast.error("Please accept the Terms of Service and Data Processing Agreement.");
+      toast.error("Please accept the Terms of Service");
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match.");
+      toast.error("Passwords do not match");
       return;
     }
 
     if (password.length < passwordPolicy.min || !passwordPolicy.pattern.test(password)) {
       toast.error(
-        "Use at least 10 characters with upper, lower, number, and special characters for enterprise compliance."
+        "Password must be at least 10 characters with uppercase, lowercase, number, and special character"
       );
       return;
     }
 
     try {
       setLoading(true);
-      const metadata = {
-        full_name: fullName,
-        phone,
-        account_type: accountType,
-        agency_name: agencyName,
-      };
 
-      const { user, session } = await supabaseAuth.signUp(email.trim(), password, metadata);
+      // ✅ SIMPLE! Just create account with first/last name
+      // Database trigger handles EVERYTHING:
+      // - Check if email in staff/agencies/clients tables
+      // - Auto-assign correct user_type
+      // - Link to agency_id
+      // - Send notification if uninvited
+      const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
-      if (user) {
-        await ensureUserProfile({
-          userId: user.id,
-          email: user.email,
-          fullName,
-          phone,
-          userType: accountType,
-        });
+      const { user, session } = await supabaseAuth.signUp(
+        email.trim(),
+        password,
+        { full_name: fullName }
+      );
+
+      if (!user) {
+        toast.error("Failed to create account. Please try again.");
+        return;
       }
 
+      // Success! Database trigger has already:
+      // ✅ Set correct user_type (staff_member, agency_admin, or pending)
+      // ✅ Linked to agency if invited
+      // ✅ Created profile with correct permissions
+
       if (session) {
-        toast.success("Account created. Let’s complete your onboarding.");
+        // User was invited (instant access)
+        toast.success(`Welcome ${fullName}! Your account is ready.`);
         onSuccess();
       } else {
+        // Email confirmation required
         toast.success(
-          "Account request received. Check your inbox to verify your email and continue onboarding."
+          "Account created! Check your email to verify and continue."
         );
         onSuccess(VIEW.SIGN_IN);
       }
     } catch (error) {
-      toast.error(error.message || "Unable to create account right now.");
+      // Handle specific errors
+      if (error.message?.includes('already registered')) {
+        toast.error("An account with this email already exists. Please sign in instead.");
+      } else {
+        toast.error(error.message || "Unable to create account");
+      }
     } finally {
       setLoading(false);
     }
@@ -173,54 +190,60 @@ function SignUpForm({ onSuccess }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Info banner for invited users */}
+      {prefilledEmail && (
+        <Alert className="border-blue-200 bg-blue-50">
+          <Info className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-900 text-sm">
+            <strong>Welcome!</strong> We found your invitation. Just create a password to complete your account setup.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Name fields */}
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="signup-full-name">Full name</Label>
+        <div className="space-y-2">
+          <Label htmlFor="signup-first-name">First Name</Label>
           <Input
-            id="signup-full-name"
-            autoComplete="name"
-            placeholder="Alex Morgan"
-            value={fullName}
-            onChange={(event) => setFullName(event.target.value)}
+            id="signup-first-name"
+            autoComplete="given-name"
+            placeholder="John"
+            value={firstName}
+            onChange={(event) => setFirstName(event.target.value)}
             required
           />
         </div>
 
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="signup-email">Work email</Label>
+        <div className="space-y-2">
+          <Label htmlFor="signup-last-name">Last Name</Label>
           <Input
-            id="signup-email"
-            type="email"
-            autoComplete="email"
-            placeholder="operations@guest-glow.com"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            id="signup-last-name"
+            autoComplete="family-name"
+            placeholder="Smith"
+            value={lastName}
+            onChange={(event) => setLastName(event.target.value)}
             required
           />
         </div>
+      </div>
 
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="signup-agency">Organisation / Agency</Label>
-          <Input
-            id="signup-agency"
-            placeholder="Guest Glow Healthcare"
-            value={agencyName}
-            onChange={(event) => setAgencyName(event.target.value)}
-          />
-        </div>
+      {/* Email field */}
+      <div className="space-y-2">
+        <Label htmlFor="signup-email">Email Address</Label>
+        <Input
+          id="signup-email"
+          type="email"
+          autoComplete="email"
+          placeholder="your.email@example.com"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          disabled={!!prefilledEmail} // Lock email if from invitation link
+          required
+        />
+      </div>
 
-        <div className="space-y-2 md:col-span-1">
-          <Label htmlFor="signup-phone">Direct line</Label>
-          <Input
-            id="signup-phone"
-            type="tel"
-            autoComplete="tel"
-            placeholder="+44 20 1234 5678"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-          />
-        </div>
-
+      {/* Password fields */}
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="signup-password">Password</Label>
           <Input
@@ -235,7 +258,7 @@ function SignUpForm({ onSuccess }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="signup-confirm-password">Confirm password</Label>
+          <Label htmlFor="signup-confirm-password">Confirm Password</Label>
           <Input
             id="signup-confirm-password"
             type="password"
@@ -248,39 +271,17 @@ function SignUpForm({ onSuccess }) {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label className="text-sm font-medium text-muted-foreground">
-          Role / Access level
-        </Label>
-        <RadioGroup
-          value={accountType}
-          onValueChange={(value) => setAccountType(value)}
-          className="grid gap-3 md:grid-cols-3"
-        >
-          <label className="flex items-start gap-3 rounded-lg border bg-card p-3 text-sm shadow-sm hover:border-primary/60">
-            <RadioGroupItem value="agency_admin" id="role-admin" className="mt-0.5" />
-            <div>
-              <div className="font-medium">Agency Admin</div>
-              <p className="text-xs text-muted-foreground">Owns the tenant and manages teams.</p>
-            </div>
-          </label>
-          <label className="flex items-start gap-3 rounded-lg border bg-card p-3 text-sm shadow-sm hover:border-primary/60">
-            <RadioGroupItem value="staff_member" id="role-staff" className="mt-0.5" />
-            <div>
-              <div className="font-medium">Staff User</div>
-              <p className="text-xs text-muted-foreground">Access to shift portal & compliance.</p>
-            </div>
-          </label>
-          <label className="flex items-start gap-3 rounded-lg border bg-card p-3 text-sm shadow-sm hover:border-primary/60">
-            <RadioGroupItem value="client_user" id="role-client" className="mt-0.5" />
-            <div>
-              <div className="font-medium">Client User</div>
-              <p className="text-xs text-muted-foreground">Care home / client portal access.</p>
-            </div>
-          </label>
-        </RadioGroup>
+      {/* Password requirements */}
+      <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
+        <p className="font-medium mb-1">Password requirements:</p>
+        <ul className="list-disc list-inside space-y-0.5">
+          <li>At least 10 characters</li>
+          <li>One uppercase and one lowercase letter</li>
+          <li>One number and one special character</li>
+        </ul>
       </div>
 
+      {/* Terms checkbox */}
       <div className="flex items-start gap-2 rounded-md bg-muted/30 p-3 text-xs text-muted-foreground">
         <Checkbox
           id="terms"
@@ -294,18 +295,33 @@ function SignUpForm({ onSuccess }) {
           </a>{" "}
           and{" "}
           <a href="https://guest-glow.com/privacy" target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">
-            Data Processing Standards
-          </a>.
+            Privacy Policy
+          </a>
         </label>
       </div>
 
+      {/* Submit button */}
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? "Creating account..." : "Create enterprise account"}
+        {loading ? "Creating account..." : "Create Account"}
       </Button>
+
+      {/* Info for uninvited users */}
+      {!prefilledEmail && (
+        <Alert className="border-amber-200 bg-amber-50">
+          <AlertCircle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-900 text-sm">
+            <strong>Invitation-Only Platform</strong><br />
+            ACG StaffLink requires an invitation. If you don't have one, your account will be reviewed by our team (usually within 24 hours).
+          </AlertDescription>
+        </Alert>
+      )}
     </form>
   );
 }
 
+// ============================================================================
+// FORGOT PASSWORD FORM (Unchanged - keep existing)
+// ============================================================================
 function ForgotPasswordForm({ onSuccess }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -332,14 +348,14 @@ function ForgotPasswordForm({ onSuccess }) {
           id="forgot-email"
           type="email"
           autoComplete="email"
-          placeholder="operations@guest-glow.com"
+          placeholder="operations@example.com"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           required
         />
       </div>
       <p className="text-xs text-muted-foreground">
-        We’ll send a secure one-time link. The link is valid for 15 minutes and can only be used once.
+        We'll send a secure one-time link. The link is valid for 15 minutes and can only be used once.
       </p>
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Sending reset link..." : "Send reset link"}
@@ -348,9 +364,13 @@ function ForgotPasswordForm({ onSuccess }) {
   );
 }
 
+// ============================================================================
+// MAIN LOGIN PAGE
+// ============================================================================
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+
   const [view, setView] = useState(() => {
     const urlView = new URLSearchParams(location.search).get("view");
     if (urlView && Object.values(VIEW).includes(urlView)) {
@@ -384,6 +404,7 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">
       <div className="mx-auto flex min-h-screen max-w-7xl flex-col lg:flex-row">
+        {/* Left Panel - Marketing */}
         <aside className="relative flex w-full flex-col justify-between bg-gradient-to-br from-cyan-500 via-blue-600 to-slate-900 px-10 py-12 text-slate-50 lg:w-1/2">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.2),_transparent_55%)]" />
           <div className="relative z-10">
@@ -432,19 +453,20 @@ export default function Login() {
           </div>
         </aside>
 
+        {/* Right Panel - Forms */}
         <main className="flex w-full items-center justify-center bg-slate-50 px-6 py-12 text-slate-900 lg:w-1/2">
           <Card className="w-full max-w-lg border-slate-200 shadow-2xl">
             <CardHeader>
               <CardTitle className="text-2xl font-semibold">
                 {view === VIEW.SIGN_IN && "Sign in to ACG StaffLink"}
-                {view === VIEW.SIGN_UP && "Create your ACG StaffLink tenant"}
+                {view === VIEW.SIGN_UP && "Create your account"}
                 {view === VIEW.FORGOT_PASSWORD && "Reset your password"}
               </CardTitle>
               <CardDescription className="text-sm text-muted-foreground">
                 {view === VIEW.SIGN_IN &&
-                  "Secure access for super admins, agency teams, and staff portals."}
+                  "Secure access for admins, agencies, and staff portals."}
                 {view === VIEW.SIGN_UP &&
-                  "Provision a new workspace or request access to an existing agency."}
+                  "Join ACG StaffLink with an invitation or request access."}
                 {view === VIEW.FORGOT_PASSWORD &&
                   "We will send a single-use recovery link to your verified email."}
               </CardDescription>
@@ -513,4 +535,3 @@ export default function Login() {
     </div>
   );
 }
-

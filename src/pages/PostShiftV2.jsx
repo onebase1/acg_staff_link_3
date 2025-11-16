@@ -16,23 +16,40 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { NotificationService } from "../components/notifications/NotificationService";
 import { Badge } from "@/components/ui/badge";
+import { STAFF_ROLES } from "@/constants/staffRoles";
+import { determineShiftType } from "@/utils/shiftHelpers";
 
-// ✅ INLINE CONSTANTS - No external imports to avoid build issues
-const STAFF_ROLES = [
-  { value: 'nurse', label: 'Nurse', icon: '🩺' },
-  { value: 'healthcare_assistant', label: 'Healthcare Assistant', icon: '👨‍⚕️' },
-  { value: 'senior_care_worker', label: 'Senior Care Worker', icon: '⭐' },
-  { value: 'support_worker', label: 'Support Worker', icon: '🤝' },
-  { value: 'specialist_nurse', label: 'Specialist Nurse', icon: '💉' }
-];
+/**
+ * Generate shift templates based on client's shift patterns
+ * Returns only Day/Night options for the selected client (no clutter)
+ */
+const getClientShiftTemplates = (client) => {
+  if (!client) {
+    // Default templates when no client selected
+    return [
+      { id: 'day', name: 'Day Shift (08:00-20:00)', start: '08:00', end: '20:00', hours: 12 },
+      { id: 'night', name: 'Night Shift (20:00-08:00)', start: '20:00', end: '08:00', hours: 12 }
+    ];
+  }
 
-const SHIFT_TEMPLATES = [
-  { id: 'day_8am', name: 'Day Shift (08:00-20:00)', start: '08:00', end: '20:00', hours: 12 },
-  { id: 'night_8pm', name: 'Night Shift (20:00-08:00)', start: '20:00', end: '08:00', hours: 12 },
-  { id: 'day_7am', name: 'Early Day (07:00-19:00)', start: '07:00', end: '19:00', hours: 12 },
-  { id: 'night_7pm', name: 'Late Night (19:00-07:00)', start: '19:00', end: '07:00', hours: 12 },
-  { id: 'custom', name: 'Custom Time', start: '', end: '', hours: 0 }
-];
+  // Client-specific templates (only 2 options: Day and Night)
+  return [
+    {
+      id: 'day',
+      name: `Day Shift (${client.day_shift_start}-${client.day_shift_end})`,
+      start: client.day_shift_start || '08:00',
+      end: client.day_shift_end || '20:00',
+      hours: 12
+    },
+    {
+      id: 'night',
+      name: `Night Shift (${client.night_shift_start}-${client.night_shift_end})`,
+      start: client.night_shift_start || '20:00',
+      end: client.night_shift_end || '08:00',
+      hours: 12
+    }
+  ];
+};
 
 export default function PostShiftV2() {
   const navigate = useNavigate();
@@ -49,7 +66,7 @@ export default function PostShiftV2() {
     client_id: '',
     role_required: 'healthcare_assistant',
     date: '',
-    shift_template: 'day_8am',
+    shift_template: 'day', // Changed from 'day_8am' to 'day'
     start_time: '08:00',
     end_time: '20:00',
     duration_hours: 12,
@@ -112,7 +129,7 @@ export default function PostShiftV2() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clients')
-        .select('*')
+        .select('id, name, type, contract_terms, internal_locations, day_shift_start, day_shift_end, night_shift_start, night_shift_end')
         .eq('agency_id', currentAgency)
         .order('name', { ascending: true });
 
@@ -148,28 +165,38 @@ export default function PostShiftV2() {
   const selectedClient = clients.find(c => c.id === formData.client_id);
   const locationRequired = selectedClient?.contract_terms?.require_location_specification || false;
 
+  // Get shift templates for selected client (only Day/Night for that client)
+  const shiftTemplates = getClientShiftTemplates(selectedClient);
+
+  // When client changes, update shift times to match client's default day shift
   useEffect(() => {
     if (formData.client_id) {
       const client = clients.find(c => c.id === formData.client_id);
-      
+
       if (client) {
         const simpleRates = client.contract_terms?.rates_by_role?.[formData.role_required];
-        
-        if (simpleRates?.pay_rate && simpleRates?.charge_rate) {
-          setFormData(prev => ({
-            ...prev,
-            pay_rate: simpleRates.pay_rate,
-            charge_rate: simpleRates.charge_rate,
-            break_duration_minutes: client.contract_terms?.break_duration_minutes || 0
-          }));
-        }
+
+        // Get client's day shift as default
+        const dayShift = getClientShiftTemplates(client)[0]; // First template is always day shift
+
+        setFormData(prev => ({
+          ...prev,
+          pay_rate: simpleRates?.pay_rate || prev.pay_rate,
+          charge_rate: simpleRates?.charge_rate || prev.charge_rate,
+          break_duration_minutes: client.contract_terms?.break_duration_minutes || 0,
+          // Update shift times to match client's pattern
+          shift_template: 'day',
+          start_time: dayShift.start,
+          end_time: dayShift.end,
+          duration_hours: dayShift.hours
+        }));
       }
     }
   }, [formData.client_id, formData.role_required, clients]);
 
   const applyTemplate = (templateId) => {
-    const template = SHIFT_TEMPLATES.find(t => t.id === templateId);
-    if (template && template.id !== 'custom') {
+    const template = shiftTemplates.find(t => t.id === templateId);
+    if (template) {
       setFormData(prev => ({
         ...prev,
         shift_template: templateId,
@@ -177,38 +204,11 @@ export default function PostShiftV2() {
         end_time: template.end,
         duration_hours: template.hours
       }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        shift_template: 'custom'
-      }));
     }
   };
 
-  const calculateDuration = () => {
-    if (!formData.start_time || !formData.end_time) return;
-    
-    const [startH, startM] = formData.start_time.split(':').map(Number);
-    const [endH, endM] = formData.end_time.split(':').map(Number);
-    
-    let startMinutes = startH * 60 + startM;
-    let endMinutes = endH * 60 + endM;
-    
-    if (endMinutes <= startMinutes) {
-      endMinutes += 24 * 60;
-    }
-    
-    const totalMinutes = endMinutes - startMinutes;
-    const hours = totalMinutes / 60;
-    
-    setFormData(prev => ({ ...prev, duration_hours: Math.round(hours * 2) / 2 }));
-  };
-
-  useEffect(() => {
-    if (formData.shift_template === 'custom') {
-      calculateDuration();
-    }
-  }, [formData.start_time, formData.end_time, formData.shift_template]);
+  // Removed calculateDuration and custom template logic
+  // All shifts now use client-specific Day/Night templates only
 
   const updateClientMutation = useMutation({
     mutationFn: async ({ clientId, newLocations }) => {
@@ -267,11 +267,14 @@ export default function PostShiftV2() {
       
       // ✅ CRITICAL FIX: Extract date and times, remove shift_template (doesn't exist in DB)
       const { shift_template, date, start_time, end_time, ...restData } = shiftData;
-      
+
       // ✅ Combine date + time into ISO timestamps for database
       const startTimestamp = `${date}T${start_time}:00`;
       const endTimestamp = `${date}T${end_time}:00`;
-      
+
+      // ✅ Determine shift_type from start_time
+      const shift_type = determineShiftType(startTimestamp);
+
       const { data: newShift, error: shiftError } = await supabase
         .from('shifts')
         .insert({
@@ -279,6 +282,7 @@ export default function PostShiftV2() {
           date: date,                    // "2025-11-12"
           start_time: startTimestamp,    // "2025-11-12T08:00:00"
           end_time: endTimestamp,        // "2025-11-12T20:00:00"
+          shift_type: shift_type,        // "day" or "night"
           agency_id: agencyId,
           status: 'open',
           shift_journey_log: [{
@@ -393,8 +397,8 @@ export default function PostShiftV2() {
                 <Select
                   value={formData.shift_template}
                   onValueChange={(value) => {
-                    const template = SHIFT_TEMPLATES.find(t => t.id === value);
-                    if (template && template.id !== 'custom') {
+                    const template = shiftTemplates.find(t => t.id === value);
+                    if (template) {
                       setFormData(prev => ({
                         ...prev,
                         shift_template: value,
@@ -402,20 +406,22 @@ export default function PostShiftV2() {
                         end_time: template.end,
                         duration_hours: template.hours
                       }));
-                    } else {
-                      setFormData(prev => ({ ...prev, shift_template: 'custom' }));
                     }
                   }}
+                  disabled={!formData.client_id}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder={!formData.client_id ? "Select care home first..." : "Select shift template..."} />
                   </SelectTrigger>
                   <SelectContent>
-                    {SHIFT_TEMPLATES.map(t => (
+                    {shiftTemplates.map(t => (
                       <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {!formData.client_id && (
+                  <p className="text-xs text-gray-500 mt-1">Select a care home to see available shift times</p>
+                )}
               </div>
 
               <div>
@@ -453,25 +459,27 @@ export default function PostShiftV2() {
                 <Input
                   type="time"
                   value={formData.start_time}
-                  onChange={(e) => setFormData({...formData, start_time: e.target.value})}
-                  disabled={formData.shift_template !== 'custom'}
+                  readOnly
+                  className="bg-gray-50"
                 />
+                <p className="text-xs text-gray-500 mt-1">Set by shift template</p>
               </div>
               <div>
                 <Label>End Time *</Label>
                 <Input
                   type="time"
                   value={formData.end_time}
-                  onChange={(e) => setFormData({...formData, end_time: e.target.value})}
-                  disabled={formData.shift_template !== 'custom'}
+                  readOnly
+                  className="bg-gray-50"
                 />
+                <p className="text-xs text-gray-500 mt-1">Set by shift template</p>
               </div>
               <div>
                 <Label>Duration (hrs)</Label>
-                <Input 
-                  value={formData.duration_hours} 
-                  readOnly 
-                  className="bg-gray-50 font-semibold" 
+                <Input
+                  value={formData.duration_hours}
+                  readOnly
+                  className="bg-gray-50 font-semibold"
                 />
               </div>
             </div>

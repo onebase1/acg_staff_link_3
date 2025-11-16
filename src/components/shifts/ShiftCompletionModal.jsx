@@ -16,19 +16,41 @@ import { Clock, AlertTriangle, CheckCircle, Calendar, MapPin } from "lucide-reac
 import { toast } from "sonner";
 
 /**
+ * Format time from ISO timestamp to HH:MM
+ * Handles both ISO timestamps (2025-11-15T09:00:00+00:00) and plain times (09:00)
+ */
+const formatTime = (isoString) => {
+  if (!isoString) return 'N/A';
+  try {
+    // If it's already in HH:MM format, return as is
+    if (/^\d{2}:\d{2}$/.test(isoString)) return isoString;
+
+    // Extract time from ISO timestamp (e.g., "2025-11-15T09:00:00+00:00" -> "09:00")
+    const timePart = isoString.split('T')[1];
+    if (timePart) {
+      return timePart.substring(0, 5); // Get HH:MM
+    }
+    return isoString;
+  } catch (error) {
+    console.error('Time formatting error:', isoString, error);
+    return isoString;
+  }
+};
+
+/**
  * 📋 SHIFT COMPLETION MODAL
- * 
+ *
  * Purpose: Force admin to confirm ACTUAL start/end times before marking shift as completed
- * 
+ *
  * Use Cases:
  * - Staff arrived late → adjust actual_start_time
  * - Staff left early/late → adjust actual_end_time
  * - No GPS available → manual time confirmation required
- * 
+ *
  * Auto-populates with scheduled times, admin can override
  */
 
-export default function ShiftCompletionModal({ 
+export default function ShiftCompletionModal({
   isOpen, 
   onClose, 
   shift,
@@ -134,8 +156,8 @@ export default function ShiftCompletionModal({
                 Actual Start Time
               </Label>
               <div className="mb-2 p-2 bg-blue-50 rounded text-sm">
-                <span className="text-gray-600">Scheduled:</span> 
-                <span className="font-semibold ml-2">{shift.start_time}</span>
+                <span className="text-gray-600">Scheduled:</span>
+                <span className="font-semibold ml-2">{formatTime(shift.start_time)}</span>
               </div>
               <Input
                 type="time"
@@ -156,8 +178,8 @@ export default function ShiftCompletionModal({
                 Actual End Time
               </Label>
               <div className="mb-2 p-2 bg-blue-50 rounded text-sm">
-                <span className="text-gray-600">Scheduled:</span> 
-                <span className="font-semibold ml-2">{shift.end_time}</span>
+                <span className="text-gray-600">Scheduled:</span>
+                <span className="font-semibold ml-2">{formatTime(shift.end_time)}</span>
               </div>
               <Input
                 type="time"

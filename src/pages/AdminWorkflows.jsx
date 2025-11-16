@@ -8,14 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  AlertCircle, CheckCircle, Clock, User, FileText, 
-  XCircle, TrendingUp, Filter, Plus, Eye, Loader2, LayoutGrid, List
+import {
+  AlertCircle, CheckCircle, Clock, User, FileText,
+  XCircle, TrendingUp, Filter, Plus, Eye, Loader2, LayoutGrid, List, UserPlus
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import ApproveUserModal from "@/components/admin/ApproveUserModal";
 
 export default function AdminWorkflows() {
   const [statusFilter, setStatusFilter] = useState('pending');
@@ -25,21 +26,28 @@ export default function AdminWorkflows() {
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [shiftResolutionAction, setShiftResolutionAction] = useState('completed');
   const [viewMode, setViewMode] = useState('table'); // ✅ NEW: Default to table view
+  const [approveUserWorkflow, setApproveUserWorkflow] = useState(null); // ✅ NEW: For user approval modal
   
   const queryClient = useQueryClient();
 
   const { data: workflows = [] } = useQuery({
     queryKey: ['workflows'],
     queryFn: async () => {
+      // ✅ FIX: Fetch only pending/in_progress workflows to avoid hitting 1000-row limit
+      // Resolved/dismissed workflows can be viewed in a separate "History" page
       const { data, error } = await supabase
         .from('admin_workflows')
         .select('*')
-        .order('created_date', { ascending: false });
-      
+        .in('status', ['pending', 'in_progress'])
+        .order('created_date', { ascending: false })
+        .limit(2000); // Safety limit
+
       if (error) {
         console.error('❌ Error fetching workflows:', error);
         return [];
       }
+
+      console.log(`✅ [Admin Workflows] Fetched ${data?.length || 0} active workflows`);
       return data || [];
     },
     enabled: true,
@@ -252,6 +260,13 @@ export default function AdminWorkflows() {
     return types[type] || type;
   };
 
+  // ✅ NEW: Helper to detect pending user signup workflows
+  const isPendingUserSignup = (workflow) => {
+    return workflow?.related_entity?.entity_type === 'profile' &&
+           workflow?.title?.includes('New User Signup') &&
+           workflow?.status === 'pending';
+  };
+
   const getRelatedEntityLink = (workflow) => {
     if (!workflow.related_entity) return null;
     
@@ -270,10 +285,11 @@ export default function AdminWorkflows() {
     return links[entity_type] || createPageUrl(entity_type);
   };
 
-  // Count workflows by status
+  // Count workflows by status (only active workflows are fetched)
   const pendingCount = workflows.filter(w => w.status === 'pending').length;
   const inProgressCount = workflows.filter(w => w.status === 'in_progress').length;
-  const criticalCount = workflows.filter(w => w.priority === 'critical' && w.status !== 'resolved').length;
+  const criticalCount = workflows.filter(w => w.priority === 'critical').length;
+  const totalActiveCount = workflows.length; // Total active (pending + in_progress)
 
   return (
     <div className="space-y-6">
@@ -331,8 +347,9 @@ export default function AdminWorkflows() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Workflows</p>
-                <p className="text-3xl font-bold text-gray-900">{workflows.length}</p>
+                <p className="text-sm text-gray-600">Active Workflows</p>
+                <p className="text-3xl font-bold text-gray-900">{totalActiveCount}</p>
+                <p className="text-xs text-gray-500 mt-1">Pending + In Progress</p>
               </div>
               <FileText className="w-10 h-10 text-gray-500 opacity-20" />
             </div>
@@ -471,7 +488,20 @@ export default function AdminWorkflows() {
                         </td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
                           <div className="flex justify-end gap-1">
-                            {workflow.status === 'pending' && (
+                            {/* ✅ NEW: Approve User button for pending user signups */}
+                            {isPendingUserSignup(workflow) && (
+                              <Button
+                                size="sm"
+                                className="h-8 bg-green-600 hover:bg-green-700 text-white px-3"
+                                onClick={() => setApproveUserWorkflow(workflow)}
+                                disabled={updateWorkflowMutation.isPending}
+                                title="Approve User"
+                              >
+                                <UserPlus className="w-4 h-4 mr-1" />
+                                Approve
+                              </Button>
+                            )}
+                            {workflow.status === 'pending' && !isPendingUserSignup(workflow) && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -483,7 +513,7 @@ export default function AdminWorkflows() {
                                 <Clock className="w-4 h-4 text-blue-600" />
                               </Button>
                             )}
-                            {(workflow.status === 'pending' || workflow.status === 'in_progress') && (
+                            {(workflow.status === 'pending' || workflow.status === 'in_progress') && !isPendingUserSignup(workflow) && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -507,16 +537,18 @@ export default function AdminWorkflows() {
                                 </Button>
                               </Link>
                             )}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0"
-                              onClick={() => handleStatusChange(workflow.id, 'dismissed')}
-                              disabled={updateWorkflowMutation.isPending}
-                              title="Dismiss"
-                            >
-                              <XCircle className="w-4 h-4 text-gray-600" />
-                            </Button>
+                            {!isPendingUserSignup(workflow) && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={() => handleStatusChange(workflow.id, 'dismissed')}
+                                disabled={updateWorkflowMutation.isPending}
+                                title="Dismiss"
+                              >
+                                <XCircle className="w-4 h-4 text-gray-600" />
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -577,10 +609,23 @@ export default function AdminWorkflows() {
                     </div>
 
                     <div className="flex flex-col gap-2 min-w-[200px]">
-                      {workflow.status === 'pending' && (
+                      {/* ✅ NEW: Approve User button for pending user signups */}
+                      {isPendingUserSignup(workflow) && (
+                        <Button
+                          size="sm"
+                          onClick={() => setApproveUserWorkflow(workflow)}
+                          disabled={updateWorkflowMutation.isPending}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Approve User
+                        </Button>
+                      )}
+
+                      {workflow.status === 'pending' && !isPendingUserSignup(workflow) && (
                         <>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             onClick={() => handleStatusChange(workflow.id, 'in_progress')}
                             disabled={updateWorkflowMutation.isPending}
                             className="bg-blue-600 hover:bg-blue-700"
@@ -594,8 +639,8 @@ export default function AdminWorkflows() {
                               'Start Working'
                             )}
                           </Button>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             variant="outline"
                             onClick={() => setSelectedWorkflow(workflow)}
                             disabled={updateWorkflowMutation.isPending}
@@ -605,9 +650,9 @@ export default function AdminWorkflows() {
                         </>
                       )}
 
-                      {workflow.status === 'in_progress' && (
-                        <Button 
-                          size="sm" 
+                      {workflow.status === 'in_progress' && !isPendingUserSignup(workflow) && (
+                        <Button
+                          size="sm"
                           variant="outline"
                           onClick={() => setSelectedWorkflow(workflow)}
                           disabled={updateWorkflowMutation.isPending}
@@ -625,15 +670,17 @@ export default function AdminWorkflows() {
                         </Link>
                       )}
 
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleStatusChange(workflow.id, 'dismissed')}
-                        disabled={updateWorkflowMutation.isPending}
-                        className="text-gray-600"
-                      >
-                        Dismiss
-                      </Button>
+                      {!isPendingUserSignup(workflow) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleStatusChange(workflow.id, 'dismissed')}
+                          disabled={updateWorkflowMutation.isPending}
+                          className="text-gray-600"
+                        >
+                          Dismiss
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -733,6 +780,13 @@ export default function AdminWorkflows() {
           </Card>
         </div>
       )}
+
+      {/* ✅ NEW: Approve User Modal */}
+      <ApproveUserModal
+        workflow={approveUserWorkflow}
+        isOpen={!!approveUserWorkflow}
+        onClose={() => setApproveUserWorkflow(null)}
+      />
     </div>
   );
 }

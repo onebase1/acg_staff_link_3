@@ -17,7 +17,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * Returns detailed validation report BEFORE any data is imported
  */
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
   try {
     // Initialize Supabase client
     const supabase = createClient(
@@ -30,7 +39,7 @@ serve(async (req) => {
     if (!authHeader) {
         return new Response(
             JSON.stringify({ error: 'Unauthorized' }),
-            { status: 401, headers: { "Content-Type": "application/json" } }
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
     }
 
@@ -40,7 +49,7 @@ serve(async (req) => {
     if (authError || !user) {
         return new Response(
             JSON.stringify({ error: 'Unauthorized' }),
-            { status: 401, headers: { "Content-Type": "application/json" } }
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
     }
 
@@ -49,7 +58,7 @@ serve(async (req) => {
     if (!rows || !Array.isArray(rows) || rows.length === 0) {
       return new Response(
         JSON.stringify({ error: 'Missing required field: rows (array)' }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -727,7 +736,7 @@ serve(async (req) => {
           ? `All records are clean - ${validationResults.auto_converted_dates} UK dates auto-converted`
           : 'All records are clean - ready to import'
       }),
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error) {
@@ -737,7 +746,7 @@ serve(async (req) => {
         success: false,
         error: error.message
       }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

@@ -105,7 +105,7 @@ export default function StaffProfileSimulation() {
   }
 
   // Check photo age
-  const photoAge = staff.profile_photo_uploaded_date 
+  const photoAge = staff.profile_photo_uploaded_date
     ? differenceInYears(new Date(), new Date(staff.profile_photo_uploaded_date))
     : null;
   const photoNeedsUpdate = photoAge && photoAge >= 3;
@@ -115,60 +115,65 @@ export default function StaffProfileSimulation() {
   const passportDoc = complianceDocs.find(d => d.document_type === 'id_verification');
   const rightToWorkDoc = complianceDocs.find(d => d.document_type === 'right_to_work');
   const nmcDoc = complianceDocs.find(d => d.document_type === 'professional_registration');
-  
+
   // Mandatory training certificates (CQC Core Requirements)
   const mandatoryTraining = [
-    { 
-      name: 'Manual Handling & Moving People', 
+    {
+      name: 'Manual Handling & Moving People',
       data: staff.mandatory_training?.manual_handling,
       doc: complianceDocs.find(d => d.document_name?.includes('Manual Handling'))
     },
-    { 
-      name: 'Safeguarding Children', 
+    {
+      name: 'Safeguarding Children',
       data: staff.mandatory_training?.safeguarding_children,
       doc: complianceDocs.find(d => d.document_name?.includes('Safeguarding Children'))
     },
-    { 
-      name: 'Safeguarding of Vulnerable Adults', 
+    {
+      name: 'Safeguarding of Vulnerable Adults',
       data: staff.mandatory_training?.safeguarding_adults,
       doc: complianceDocs.find(d => d.document_name?.includes('Safeguarding') && d.document_name?.includes('Adult'))
     },
-    { 
-      name: 'Preventing Radicalisation (PREVENT)', 
+    {
+      name: 'Preventing Radicalisation (PREVENT)',
       data: staff.mandatory_training?.prevent,
       doc: complianceDocs.find(d => d.document_name?.includes('Radicalisation') || d.document_name?.includes('PREVENT'))
     },
-    { 
-      name: 'Fire Safety', 
+    {
+      name: 'Fire Safety',
       data: staff.mandatory_training?.fire_safety,
       doc: complianceDocs.find(d => d.document_name?.includes('Fire Safety'))
     },
-    { 
-      name: 'Food Hygiene', 
+    {
+      name: 'Food Hygiene',
       data: staff.mandatory_training?.food_hygiene,
       doc: complianceDocs.find(d => d.document_name?.includes('Food Hygiene'))
     },
-    { 
-      name: 'Health Safety & Welfare', 
+    {
+      name: 'Health Safety & Welfare',
       data: staff.mandatory_training?.health_safety,
       doc: complianceDocs.find(d => d.document_name?.includes('Health Safety'))
     },
-    { 
-      name: 'Infection Control', 
+    {
+      name: 'Infection Control',
       data: staff.mandatory_training?.infection_control,
       doc: complianceDocs.find(d => d.document_name?.includes('Infection Control'))
     },
-    { 
-      name: 'Person Centred Care & Consent', 
+    {
+      name: 'Person Centred Care & Consent',
       data: staff.mandatory_training?.person_centred_care,
       doc: complianceDocs.find(d => d.document_name?.includes('Person Centred'))
     },
-    { 
-      name: 'Dementia Awareness', 
+    {
+      name: 'Dementia Awareness',
       data: staff.mandatory_training?.dementia_awareness,
       doc: complianceDocs.find(d => d.document_name?.includes('Dementia'))
     },
   ];
+
+  const additionalTraining = Array.isArray(staff.mandatory_training?.additional)
+    ? staff.mandatory_training.additional
+    : [];
+
 
   // Role-specific requirements
   const isNurse = staff.role === 'nurse' || staff.role === 'specialist_nurse';
@@ -251,7 +256,7 @@ export default function StaffProfileSimulation() {
       .map(t => ({ name: t.name, days: differenceInDays(new Date(t.data.expiry_date), new Date()) }))
       .filter(t => t.days >= 0)
       .sort((a, b) => a.days - b.days);
-    
+
     const allExpiring = [...expiringDocs, ...expiringTraining].sort((a,b) => a.days - b.days);
 
     return allExpiring[0];
@@ -297,7 +302,7 @@ export default function StaffProfileSimulation() {
         <Alert className="print:hidden border-amber-300 bg-amber-50">
           <AlertTriangle className="h-5 w-5 text-amber-600" />
           <AlertDescription className="text-amber-900">
-            <strong>Action Required:</strong> Staff photo is {photoAge} years old and needs updating. 
+            <strong>Action Required:</strong> Staff photo is {photoAge} years old and needs updating.
             Photos must be updated every 3 years for CQC compliance.
           </AlertDescription>
         </Alert>
@@ -310,8 +315,8 @@ export default function StaffProfileSimulation() {
           <div className="text-center mb-8 pb-6 border-b-2">
             <div className="flex items-center justify-center gap-4 mb-4">
               {agency?.logo_url && (
-                <img 
-                  src={agency.logo_url} 
+                <img
+                  src={agency.logo_url}
                   alt={agency.name}
                   className="h-20 object-contain"
                 />
@@ -362,7 +367,7 @@ export default function StaffProfileSimulation() {
                     {staff.role.replace('_', ' ')}
                   </p>
                 </div>
-                
+
                 {isNurse && (
                   <>
                     <div className="p-3 border-b">
@@ -404,7 +409,7 @@ export default function StaffProfileSimulation() {
                   <p className="text-sm font-semibold text-gray-700">D.O.B:</p>
                   <p className="text-gray-900">{format(new Date(staff.date_of_birth), 'dd/MM/yyyy')}</p>
                 </div>
-                
+
                 <div className="p-3 border-b">
                   <p className="text-sm font-semibold text-gray-700">Date of Enhanced DBS Disclosure:</p>
                   <p className="text-gray-900">
@@ -426,7 +431,7 @@ export default function StaffProfileSimulation() {
                 <div className="p-3">
                   <p className="text-sm font-semibold text-gray-700">Proposed First Shift Date:</p>
                   <p className="text-gray-900">
-                    {staff.proposed_first_shift_date 
+                    {staff.proposed_first_shift_date
                       ? format(new Date(staff.proposed_first_shift_date), 'dd/MM/yyyy')
                       : '[To be confirmed]'}
                   </p>
@@ -438,8 +443,8 @@ export default function StaffProfileSimulation() {
                 {staff.profile_photo_url ? (
                   <div className="text-center">
                     <div className="w-48 h-48 border-4 border-gray-300 shadow-lg mx-auto overflow-hidden bg-white">
-                      <img 
-                        src={staff.profile_photo_url} 
+                      <img
+                        src={staff.profile_photo_url}
                         alt={`${staff.first_name} ${staff.last_name}`}
                         className="w-full h-full object-cover"
                         style={{
@@ -525,9 +530,9 @@ export default function StaffProfileSimulation() {
                   const completedDate = training.data?.completed_date;
                   const expiryDate = training.data?.expiry_date;
                   const certificateRef = training.data?.certificate_ref;
-                  
+
                   const isValid = completedDate && (!expiryDate || new Date(expiryDate) > new Date());
-                  const isExpiringSoon = expiryDate && 
+                  const isExpiringSoon = expiryDate &&
                     differenceInDays(new Date(expiryDate), new Date()) <= 30 &&
                     differenceInDays(new Date(expiryDate), new Date()) >= 0;
 
@@ -562,6 +567,50 @@ export default function StaffProfileSimulation() {
               </tbody>
             </table>
           </div>
+
+          {/* Other Training & Qualifications (Optional) */}
+          {additionalTraining.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold mb-2">Other Training &amp; Qualifications</h3>
+              <table className="w-full border">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border p-2 text-left">Training / Qualification</th>
+                    <th className="border p-2 text-center">Date Completed</th>
+                    <th className="border p-2 text-center">Expiry Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {additionalTraining.map((item, index) => (
+                    <tr
+                      key={item.id || `${item.name}-${index}`}
+                      className="hover:bg-gray-50"
+                    >
+                      <td className="border p-2 text-sm">
+                        {item.name}
+                        {item.certificate_ref && (
+                          <span className="text-xs text-gray-500 block mt-1">
+                            Ref: {item.certificate_ref}
+                          </span>
+                        )}
+                      </td>
+                      <td className="border p-2 text-center text-sm">
+                        {item.completed_date
+                          ? format(new Date(item.completed_date), "dd/MM/yyyy")
+                          : "-"}
+                      </td>
+                      <td className="border p-2 text-center text-sm">
+                        {item.expiry_date
+                          ? format(new Date(item.expiry_date), "dd/MM/yyyy")
+                          : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
 
           {/* Experience */}
           <div className="mb-8">

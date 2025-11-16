@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   BookOpen, CheckCircle, Clock, Users, FileText, TrendingUp,
   Calendar, Mail, MessageSquare, Shield, AlertTriangle, Zap,
-  ChevronRight, ChevronDown, DollarSign, Upload, Eye
+  ChevronRight, ChevronDown, DollarSign, Upload, Eye, MapPin
 } from "lucide-react";
 
 export default function AdminTrainingHub() {
@@ -32,6 +32,12 @@ export default function AdminTrainingHub() {
           title: 'User Roles & Permissions',
           duration: '8 min',
           description: 'Understand agency admin, manager, and staff roles'
+        },
+        {
+          title: 'Approving Uninvited User Signups (Super Admin)',
+          duration: '5 min',
+          description: 'Review and approve users who sign up without an invitation, assign them to agencies',
+          isNew: true
         },
         {
           title: 'Quick Actions Guide',
@@ -133,6 +139,50 @@ export default function AdminTrainingHub() {
       ]
     },
     {
+      id: 'gps-timesheets',
+      title: '📍 GPS Timesheet Management',
+      icon: MapPin,
+      color: 'text-emerald-600',
+      lessons: [
+        {
+          title: 'How GPS Timesheets Work',
+          duration: '10 min',
+          description: 'Understand GPS clock-in/out, geofence validation, and automatic timesheet creation',
+          isNew: true
+        },
+        {
+          title: 'Viewing GPS Evidence',
+          duration: '8 min',
+          description: 'Access GPS coordinates, timestamps, device info, and geofence validation data',
+          isNew: true
+        },
+        {
+          title: 'Handling GPS Failures',
+          duration: '12 min',
+          description: 'What to do when staff forgets to clock in/out, phone dies, or geofence fails',
+          isNew: true
+        },
+        {
+          title: 'GPS vs Paper Timesheets',
+          duration: '8 min',
+          description: 'When to use GPS auto-approval vs manual paper timesheet upload',
+          isNew: true
+        },
+        {
+          title: 'Overtime & 12-Hour Cap',
+          duration: '10 min',
+          description: 'How GPS timesheets handle overtime detection and hour capping',
+          isNew: true
+        },
+        {
+          title: 'GPS Dispute Resolution',
+          duration: '10 min',
+          description: 'Generate evidence PDFs with GPS data, verification chain, and device info',
+          isNew: true
+        }
+      ]
+    },
+    {
       id: 'invoicing',
       title: '💰 Invoicing & Payments',
       icon: DollarSign,
@@ -218,6 +268,293 @@ export default function AdminTrainingHub() {
       ]
     }
   ];
+
+  // 📍 GPS Timesheet Management - Complete Guide
+  const gpsTimesheetGuide = {
+    title: '📍 GPS Timesheet Management - Complete Guide',
+    icon: MapPin,
+    color: 'bg-gradient-to-r from-emerald-500 to-teal-600',
+    sections: [
+      {
+        title: '🎯 Overview',
+        content: `
+          <p class="mb-4">GPS timesheets eliminate manual timesheet uploads by automatically capturing clock-in/out times with location verification.</p>
+
+          <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+              <h4 class="font-bold text-green-900 mb-2">✅ GPS Staff (Automatic)</h4>
+              <p class="text-sm text-green-800">Staff clocks in/out via app → GPS validates location → Timesheet auto-created → Auto-approved → Shift auto-completed</p>
+              <p class="text-xs text-green-700 mt-2"><strong>Admin work: ZERO</strong></p>
+            </div>
+
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <h4 class="font-bold text-blue-900 mb-2">📋 Non-GPS Staff (Manual)</h4>
+              <p class="text-sm text-blue-800">Staff works shift → Uploads paper timesheet → Admin reviews → Admin approves → Shift completed</p>
+              <p class="text-xs text-blue-700 mt-2"><strong>Admin work: Review + approve</strong></p>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: '📱 How GPS Timesheets Work',
+        content: `
+          <div class="space-y-4">
+            <div class="flex items-start gap-3">
+              <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <span class="text-blue-600 font-bold">1</span>
+              </div>
+              <div>
+                <p class="font-semibold">Staff Grants GPS Consent</p>
+                <p class="text-sm text-gray-600">One-time consent in Staff Portal → Profile → GPS Consent</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                <span class="text-purple-600 font-bold">2</span>
+              </div>
+              <div>
+                <p class="font-semibold">Staff Arrives at Client Location</p>
+                <p class="text-sm text-gray-600">Staff opens Staff Portal → My Shifts → Clicks "Clock In"</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                <span class="text-green-600 font-bold">3</span>
+              </div>
+              <div>
+                <p class="font-semibold">GPS Geofence Validation</p>
+                <p class="text-sm text-gray-600">System checks if staff is within 100m of client location. If YES → Clock-in successful. If NO → Error message.</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                <span class="text-orange-600 font-bold">4</span>
+              </div>
+              <div>
+                <p class="font-semibold">Staff Works Shift</p>
+                <p class="text-sm text-gray-600">GPS only captured at clock-in/out. Not tracked continuously. Staff can turn off GPS during shift.</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <div class="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                <span class="text-yellow-600 font-bold">5</span>
+              </div>
+              <div>
+                <p class="font-semibold">Staff Clocks Out</p>
+                <p class="text-sm text-gray-600">Staff clicks "Clock Out" → GPS validates location again → Timesheet auto-created with actual times</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <div class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
+                <span class="text-pink-600 font-bold">6</span>
+              </div>
+              <div>
+                <p class="font-semibold">Auto-Approval & Completion</p>
+                <p class="text-sm text-gray-600">If GPS validated + hours within tolerance → Timesheet auto-approved → Shift auto-completed → Ready for invoicing</p>
+              </div>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: '📊 Viewing GPS Evidence',
+        content: `
+          <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
+            <h4 class="font-bold text-blue-900 mb-3">🔍 Where to Find GPS Data</h4>
+
+            <ol class="list-decimal pl-6 text-sm text-blue-800 space-y-2">
+              <li>Go to <strong>Timesheets</strong> page</li>
+              <li>Click on any GPS-verified timesheet</li>
+              <li>Look for <strong>GPS Verified</strong> badge</li>
+              <li>View GPS evidence:
+                <ul class="list-disc pl-6 mt-2">
+                  <li><strong>Clock-In Time:</strong> Exact timestamp (e.g., 08:07:23)</li>
+                  <li><strong>Clock-In Location:</strong> GPS coordinates (e.g., 51.5074° N, 0.1278° W)</li>
+                  <li><strong>Geofence Status:</strong> ✅ Verified (45m from client) or ❌ Failed</li>
+                  <li><strong>Clock-Out Time:</strong> Exact timestamp (e.g., 19:52:14)</li>
+                  <li><strong>Clock-Out Location:</strong> GPS coordinates</li>
+                  <li><strong>Actual Times:</strong> Rounded to 30-minute intervals (08:00 - 20:00)</li>
+                  <li><strong>Total Hours:</strong> Capped at scheduled duration (12 hours)</li>
+                  <li><strong>Overtime:</strong> Flagged if worked beyond scheduled hours</li>
+                </ul>
+              </li>
+            </ol>
+          </div>
+
+          <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+            <h4 class="font-bold text-green-900 mb-3">📄 Generate Evidence PDF</h4>
+            <p class="text-sm text-green-800 mb-2">For disputes, generate comprehensive evidence PDF:</p>
+            <ol class="list-decimal pl-6 text-sm text-green-800 space-y-2">
+              <li>Go to <strong>Dispute Resolution</strong> page</li>
+              <li>Find the shift in question</li>
+              <li>Click <strong>"Generate Evidence PDF"</strong></li>
+              <li>PDF includes:
+                <ul class="list-disc pl-6 mt-2">
+                  <li>GPS clock-in/out coordinates + timestamps</li>
+                  <li>Geofence validation status + distance</li>
+                  <li>Device info (browser, OS, IP address)</li>
+                  <li>Email verification chain</li>
+                  <li>Calculated times (raw hours, capped hours, overtime)</li>
+                  <li>Timesheet signatures</li>
+                </ul>
+              </li>
+            </ol>
+          </div>
+        `
+      },
+      {
+        title: '⚠️ Handling GPS Failures',
+        content: `
+          <div class="space-y-3">
+            <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+              <p class="font-bold text-yellow-900 mb-2">❌ "Staff Forgot to Clock In"</p>
+              <p class="text-sm text-yellow-800"><strong>What Happens:</strong> No GPS data captured at start of shift</p>
+              <p class="text-sm text-yellow-800 mt-2"><strong>Solution:</strong></p>
+              <ol class="list-decimal pl-6 text-sm text-yellow-800 mt-1">
+                <li>Staff contacts admin immediately</li>
+                <li>Admin goes to <strong>Timesheets</strong> page</li>
+                <li>Manually enter actual start time</li>
+                <li>Mark timesheet as <strong>"Incomplete - Forgot to clock in"</strong></li>
+                <li>Request paper timesheet as backup evidence</li>
+              </ol>
+            </div>
+
+            <div class="bg-red-50 p-3 rounded-lg border border-red-200">
+              <p class="font-bold text-red-900 mb-2">🔋 "Phone Battery Died During Shift"</p>
+              <p class="text-sm text-red-800"><strong>What Happens:</strong> Staff clocked in successfully, but phone died before clock-out</p>
+              <p class="text-sm text-red-800 mt-2"><strong>Solution:</strong></p>
+              <ol class="list-decimal pl-6 text-sm text-red-800 mt-1">
+                <li>Staff charges phone and clocks out as soon as possible</li>
+                <li>If too late, staff contacts admin with estimated end time</li>
+                <li>Admin manually completes timesheet with estimated time</li>
+                <li>Admin marks as <strong>"Incomplete - Phone died"</strong></li>
+                <li>Request paper timesheet as backup evidence</li>
+              </ol>
+            </div>
+
+            <div class="bg-orange-50 p-3 rounded-lg border border-orange-200">
+              <p class="font-bold text-orange-900 mb-2">📵 "Care Home Requires Phones Off"</p>
+              <p class="text-sm text-orange-800"><strong>What Happens:</strong> Care home policy prohibits phones on ward</p>
+              <p class="text-sm text-orange-800 mt-2"><strong>Solution:</strong></p>
+              <ol class="list-decimal pl-6 text-sm text-orange-800 mt-1">
+                <li>Staff clocks in at care home entrance (before entering ward)</li>
+                <li>Staff turns off phone and works shift</li>
+                <li>Staff clocks out at care home entrance (after leaving ward)</li>
+                <li>GPS validates location at entrance (still within 100m geofence)</li>
+                <li>Timesheet auto-created successfully ✅</li>
+              </ol>
+            </div>
+
+            <div class="bg-purple-50 p-3 rounded-lg border border-purple-200">
+              <p class="font-bold text-purple-900 mb-2">❌ "Geofence Validation Failed"</p>
+              <p class="text-sm text-purple-800"><strong>What Happens:</strong> Staff is more than 100m from client location</p>
+              <p class="text-sm text-purple-800 mt-2"><strong>Solution:</strong></p>
+              <ol class="list-decimal pl-6 text-sm text-purple-800 mt-1">
+                <li>Check if client address is correct in system</li>
+                <li>Check if staff is at correct location</li>
+                <li>If address wrong: Update client address, ask staff to clock in again</li>
+                <li>If GPS inaccurate: Allow manual override, request paper timesheet</li>
+              </ol>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: '⏱️ 12-Hour Cap & Overtime',
+        content: `
+          <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
+            <h4 class="font-bold text-blue-900 mb-3">🎯 How Hour Capping Works</h4>
+
+            <p class="text-sm text-blue-800 mb-3">GPS timesheets automatically cap total hours at the scheduled shift duration (typically 12 hours).</p>
+
+            <div class="bg-white p-3 rounded border border-blue-200 mb-3">
+              <p class="font-semibold text-blue-900 mb-2">Example Scenario:</p>
+              <ul class="list-disc pl-6 text-sm text-blue-800 space-y-1">
+                <li><strong>Scheduled:</strong> 08:00 - 20:00 (12 hours)</li>
+                <li><strong>Actual Clock-In:</strong> 07:52:14 → Rounded to 08:00</li>
+                <li><strong>Actual Clock-Out:</strong> 20:37:45 → Rounded to 20:30</li>
+                <li><strong>Raw Hours Worked:</strong> 12.5 hours</li>
+                <li><strong>Billable Hours (Capped):</strong> 12.0 hours</li>
+                <li><strong>Overtime Hours:</strong> 0.5 hours</li>
+                <li><strong>Overtime Flag:</strong> ⚠️ YES</li>
+              </ul>
+            </div>
+
+            <p class="text-sm text-blue-800"><strong>What Happens:</strong></p>
+            <ol class="list-decimal pl-6 text-sm text-blue-800 mt-2 space-y-1">
+              <li>Staff is paid for 12 hours (capped)</li>
+              <li>Client is charged for 12 hours (capped)</li>
+              <li>Overtime flagged for admin review</li>
+              <li>Admin can manually approve overtime if justified</li>
+            </ol>
+          </div>
+
+          <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+            <h4 class="font-bold text-yellow-900 mb-3">⚠️ Reviewing Overtime</h4>
+            <ol class="list-decimal pl-6 text-sm text-yellow-800 space-y-2">
+              <li>Go to <strong>Timesheets</strong> page</li>
+              <li>Filter by <strong>"Overtime Flag"</strong></li>
+              <li>Review each flagged timesheet:
+                <ul class="list-disc pl-6 mt-2">
+                  <li>Check raw hours vs capped hours</li>
+                  <li>Verify reason for overtime (late finish, early start)</li>
+                  <li>Contact client to confirm overtime was authorized</li>
+                </ul>
+              </li>
+              <li>If approved: Manually adjust billable hours to include overtime</li>
+              <li>If rejected: Keep capped hours, notify staff</li>
+            </ol>
+          </div>
+        `
+      },
+      {
+        title: '📋 GPS vs Paper Timesheets',
+        content: `
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="bg-green-50 p-4 rounded-lg border-2 border-green-300">
+              <h4 class="font-bold text-green-900 mb-3">✅ When to Use GPS</h4>
+              <ul class="list-disc pl-6 text-sm text-green-800 space-y-2">
+                <li><strong>Staff has smartphone</strong> with GPS</li>
+                <li><strong>Staff granted GPS consent</strong> in profile</li>
+                <li><strong>Client location has accurate address</strong> in system</li>
+                <li><strong>Care home allows phones</strong> at entrance</li>
+                <li><strong>Staff is tech-comfortable</strong> with app</li>
+              </ul>
+              <p class="text-xs text-green-700 mt-3"><strong>Result:</strong> 100% automation, zero admin work</p>
+            </div>
+
+            <div class="bg-blue-50 p-4 rounded-lg border-2 border-blue-300">
+              <h4 class="font-bold text-blue-900 mb-3">📋 When to Use Paper</h4>
+              <ul class="list-disc pl-6 text-sm text-blue-800 space-y-2">
+                <li><strong>Staff has no smartphone</strong> or basic phone</li>
+                <li><strong>Staff declined GPS consent</strong></li>
+                <li><strong>Client location address unknown</strong> or inaccurate</li>
+                <li><strong>Care home prohibits phones</strong> entirely</li>
+                <li><strong>Staff prefers traditional method</strong></li>
+              </ul>
+              <p class="text-xs text-blue-700 mt-3"><strong>Result:</strong> Manual upload + admin review required</p>
+            </div>
+          </div>
+
+          <div class="bg-purple-50 p-4 rounded-lg border border-purple-200 mt-4">
+            <h4 class="font-bold text-purple-900 mb-3">🔄 Hybrid Approach (Recommended)</h4>
+            <p class="text-sm text-purple-800 mb-2">Allow GPS users to optionally upload paper timesheet as backup evidence:</p>
+            <ul class="list-disc pl-6 text-sm text-purple-800 space-y-1">
+              <li>GPS timesheet auto-created and auto-approved</li>
+              <li>Staff can still upload signed paper timesheet if they have one</li>
+              <li>Both GPS data + paper timesheet available for disputes</li>
+              <li>Provides maximum evidence protection</li>
+            </ul>
+          </div>
+        `
+      }
+    ]
+  };
 
   // ✅ UPDATED: Care Home Email Integration Guide with correct webhook setup
   const careHomeEmailGuide = {
@@ -472,6 +809,144 @@ export default function AdminTrainingHub() {
     ]
   };
 
+  // ✅ NEW: Uninvited User Approval Guide (Super Admin Only)
+  const uninvitedUserGuide = {
+    title: '👤 Approving Uninvited User Signups (Super Admin)',
+    icon: Users,
+    color: 'bg-gradient-to-r from-green-500 to-blue-600',
+    sections: [
+      {
+        title: '🎯 Overview',
+        content: `
+          <p class="mb-4">When users sign up without an invitation, they are placed in a <strong>pending</strong> state and cannot access the system until approved by the super admin.</p>
+
+          <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <h4 class="font-bold text-blue-900 mb-2">1️⃣ User Signs Up</h4>
+              <p class="text-sm text-blue-800">User creates account → Profile created with status "pending" → Admin workflow created</p>
+            </div>
+
+            <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+              <h4 class="font-bold text-green-900 mb-2">2️⃣ Super Admin Approves</h4>
+              <p class="text-sm text-green-800">Review workflow → Select agency & role → User gains access to appropriate dashboard</p>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: '📋 Step-by-Step Approval Process',
+        content: `
+          <ol class="list-decimal pl-6 space-y-4">
+            <li>
+              <strong>Navigate to Admin Workflows:</strong>
+              <ul class="list-disc pl-6 mt-2 text-sm">
+                <li>Go to: <strong>Management → Admin Workflows</strong></li>
+                <li>Look for workflows titled: <strong>"New User Signup: [Name]"</strong></li>
+                <li>Status will be: <strong>pending</strong></li>
+              </ul>
+            </li>
+            <li>
+              <strong>Review User Details:</strong>
+              <ul class="list-disc pl-6 mt-2 text-sm">
+                <li>Workflow shows: Email, Name, Registration Date</li>
+                <li>User cannot access system until approved</li>
+                <li>User sees "Account Under Review" banner when logged in</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Click "Approve" Button:</strong>
+              <ul class="list-disc pl-6 mt-2 text-sm">
+                <li>Green button with UserPlus icon</li>
+                <li>Opens approval modal with user details</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Select Agency:</strong>
+              <ul class="list-disc pl-6 mt-2 text-sm">
+                <li>Dropdown shows all agencies in the system</li>
+                <li>Choose the agency this user should belong to</li>
+                <li>Required field</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Select Role:</strong>
+              <ul class="list-disc pl-6 mt-2 text-sm">
+                <li><strong>Agency Admin:</strong> Full admin access to their agency</li>
+                <li><strong>Staff Member:</strong> Access to Staff Portal, shifts, timesheets</li>
+                <li><strong>Client:</strong> Access to Client Portal, view assigned staff</li>
+                <li>Required field</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Add Notes (Optional):</strong>
+              <ul class="list-disc pl-6 mt-2 text-sm">
+                <li>Add any context about the approval</li>
+                <li>Notes saved in workflow resolution</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Click "Approve User":</strong>
+              <ul class="list-disc pl-6 mt-2 text-sm">
+                <li>Profile updated with selected agency and role</li>
+                <li>Workflow marked as resolved</li>
+                <li>Success toast shows confirmation</li>
+                <li>User can now log in and access appropriate dashboard</li>
+              </ul>
+            </li>
+          </ol>
+        `
+      },
+      {
+        title: '🎨 What User Sees',
+        content: `
+          <div class="space-y-3">
+            <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+              <p class="font-bold text-yellow-900 mb-2">⏳ Before Approval</p>
+              <ul class="list-disc pl-6 text-sm text-yellow-800">
+                <li>User can log in but sees "Account Under Review" banner</li>
+                <li>Profile setup page is accessible but submit button is disabled</li>
+                <li>No access to any dashboards or features</li>
+                <li>Message: "Your account is awaiting approval from an agency administrator"</li>
+              </ul>
+            </div>
+
+            <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+              <p class="font-bold text-green-900 mb-2">✅ After Approval</p>
+              <ul class="list-disc pl-6 text-sm text-green-800">
+                <li>User logs in and is redirected to appropriate dashboard</li>
+                <li><strong>Agency Admin:</strong> Admin Dashboard with full agency access</li>
+                <li><strong>Staff Member:</strong> Staff Portal with shifts, timesheets, compliance</li>
+                <li><strong>Client:</strong> Client Portal with shift requests, invoices</li>
+                <li>No "Account Under Review" banner</li>
+              </ul>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: '⚠️ Important Notes',
+        content: `
+          <div class="space-y-3">
+            <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+              <p class="font-bold text-blue-900 mb-2">🔒 Security</p>
+              <p class="text-sm text-blue-800">Only super admin (g.basera@yahoo.com) can approve uninvited users. This prevents unauthorized access to agency data.</p>
+            </div>
+
+            <div class="bg-purple-50 p-3 rounded-lg border border-purple-200">
+              <p class="font-bold text-purple-900 mb-2">📧 No Automatic Notifications</p>
+              <p class="text-sm text-purple-800">Users are NOT automatically notified when approved. They will discover access when they next log in.</p>
+            </div>
+
+            <div class="bg-green-50 p-3 rounded-lg border border-green-200">
+              <p class="font-bold text-green-900 mb-2">✅ Invited Users Skip This</p>
+              <p class="text-sm text-green-800">Users invited via "Invite Staff" or "Invite Client" are automatically linked to the agency and do NOT require approval.</p>
+            </div>
+          </div>
+        `
+      }
+    ]
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -502,6 +977,33 @@ export default function AdminTrainingHub() {
                 dangerouslySetInnerHTML={{ __html: section.content }}
               />
               {idx < careHomeEmailGuide.sections.length - 1 && (
+                <hr className="mt-8 border-gray-200" />
+              )}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* ✅ NEW: Uninvited User Approval Guide (Super Admin Only) */}
+      <Card className="border-2 border-green-400 shadow-lg">
+        <CardHeader className={`${uninvitedUserGuide.color} text-white`}>
+          <CardTitle className="flex items-center gap-3">
+            <uninvitedUserGuide.icon className="w-6 h-6" />
+            {uninvitedUserGuide.title}
+            <Badge className="bg-white text-green-600 ml-auto">SUPER ADMIN ONLY</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          {uninvitedUserGuide.sections.map((section, idx) => (
+            <div key={idx} className="mb-8 last:mb-0">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                {section.title}
+              </h3>
+              <div
+                className="text-gray-700 prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: section.content }}
+              />
+              {idx < uninvitedUserGuide.sections.length - 1 && (
                 <hr className="mt-8 border-gray-200" />
               )}
             </div>
