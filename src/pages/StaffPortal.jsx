@@ -852,7 +852,7 @@ export default function StaffPortal() {
               <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto">
                 <Button
                   onClick={() => navigate(createPageUrl('ProfileSetup'))}
-                  className="bg-orange-600 hover:bg-orange-700 whitespace-nowrap flex-1 sm:flex-none min-h-[48px] sm:min-h-0"
+                  className="bg-cyan-600 hover:bg-cyan-700 whitespace-nowrap flex-1 sm:flex-none min-h-[48px] sm:min-h-0"
                 >
                   Complete Profile
                 </Button>
@@ -941,8 +941,8 @@ export default function StaffPortal() {
       <Card className="border-2 border-purple-200">
         <CardHeader className="border-b bg-purple-50 p-3 sm:p-6">
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-purple-900 text-sm sm:text-base">
-              <Filter className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+            <CardTitle className="flex items-center gap-2 text-purple-900 text-base sm:text-lg">
+              <Filter className="w-5 h-5 flex-shrink-0" />
               <span className="truncate">Filter Shifts</span>
               {hasActiveFilters() && (
                 <Badge className="bg-purple-600 text-white text-xs">
@@ -1081,8 +1081,8 @@ export default function StaffPortal() {
       {assignedShifts.length > 0 && (
         <Card className="border-2 border-blue-300 bg-gradient-to-r from-blue-50 to-cyan-50">
           <CardHeader className="pb-3 p-3 sm:p-6">
-            <CardTitle className="flex items-center gap-2 text-blue-900 text-sm sm:text-base">
-              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 text-blue-600" />
+            <CardTitle className="flex items-center gap-2 text-blue-900 text-base sm:text-lg">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 text-blue-600" />
               <span className="truncate">Confirm Shifts ({assignedShifts.length})</span>
             </CardTitle>
             <p className="text-xs sm:text-sm text-blue-700 mt-1">
@@ -1136,7 +1136,7 @@ export default function StaffPortal() {
                   <Button
                     onClick={() => confirmShiftMutation.mutate(shift.id)}
                     disabled={isThisShiftConfirming}
-                    className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto sm:min-w-[140px] min-h-[48px] sm:min-h-0"
+                    className="bg-cyan-600 hover:bg-cyan-700 text-white w-full sm:w-auto sm:min-w-[140px] min-h-[48px] sm:min-h-0"
                   >
                     {isThisShiftConfirming ? (
                       <>
@@ -1161,8 +1161,8 @@ export default function StaffPortal() {
       {todayShifts.length > 0 && (
         <Card className="border-2 border-orange-300 bg-orange-50">
           <CardHeader className="pb-3 p-3 sm:p-6">
-            <CardTitle className="flex items-center gap-2 text-orange-900 text-sm sm:text-base">
-              <Clock className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+            <CardTitle className="flex items-center gap-2 text-orange-900 text-base sm:text-lg">
+              <Clock className="w-5 h-5 flex-shrink-0" />
               Today's Shifts ({todayShifts.length})
             </CardTitle>
           </CardHeader>
@@ -1180,8 +1180,8 @@ export default function StaffPortal() {
       <Card>
         <CardHeader className="pb-3 p-3 sm:p-6 flex flex-row items-center justify-between">
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-sm sm:text-base truncate">Confirmed Upcoming Shifts</CardTitle>
-            <p className="text-xs sm:text-sm text-gray-600 mt-1">Shifts you've confirmed attendance for</p>
+            <CardTitle className="text-base sm:text-lg truncate">Confirmed Upcoming Shifts</CardTitle>
+            <p className="text-sm text-gray-600 mt-1">Shifts you've confirmed attendance for</p>
           </div>
           <Badge className="bg-green-100 text-green-800 flex-shrink-0 ml-2">{confirmedShifts.length}</Badge>
         </CardHeader>
@@ -1395,7 +1395,7 @@ export default function StaffPortal() {
                     setShowShiftDetail(false);
                   }}
                   disabled={confirmingShifts.has(selectedShift.id)} // Use individual shift confirming state
-                  className="w-full bg-green-600 hover:bg-green-700 text-white h-12 text-lg"
+                  className="w-full bg-cyan-600 hover:bg-cyan-700 text-white h-12 text-lg"
                 >
                   {confirmingShifts.has(selectedShift.id) ? ( // Use individual shift confirming state
                     <>
@@ -1436,19 +1436,19 @@ export default function StaffPortal() {
                 <p className="text-green-700">• "How much am I earning?"</p>
               </div>
               {whatsappConnectUrl ? (
-                <a 
-                  href={whatsappConnectUrl} 
+                <a
+                  href={whatsappConnectUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <Button className="w-full bg-green-600 hover:bg-green-700 text-white h-12 text-base">
+                  <Button className="w-full bg-cyan-600 hover:bg-cyan-700 text-white h-12 text-base">
                     <MessageCircle className="w-5 h-5 mr-2" />
                     Connect WhatsApp Assistant
                   </Button>
                 </a>
               ) : (
                 <Button
-                  className="w-full bg-green-600 hover:bg-green-700 text-white h-12 text-base"
+                  className="w-full bg-cyan-600 hover:bg-cyan-700 text-white h-12 text-base"
                   onClick={() => window.open('mailto:support@guest-glow.com', '_blank')}
                 >
                   Request WhatsApp Assistant Access
