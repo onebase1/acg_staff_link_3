@@ -436,8 +436,8 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">
       <div className="mx-auto flex min-h-screen max-w-7xl flex-col lg:flex-row">
-        {/* Left Panel - Marketing */}
-        <aside className="relative flex w-full flex-col justify-between bg-gradient-to-br from-cyan-500 via-blue-600 to-slate-900 px-10 py-12 text-slate-50 lg:w-1/2">
+        {/* ✅ MOBILE FIX: Left Panel - HIDDEN ON MOBILE (Desktop Only) */}
+        <aside className="relative hidden lg:flex w-full flex-col justify-between bg-gradient-to-br from-cyan-500 via-blue-600 to-slate-900 px-10 py-12 text-slate-50 lg:w-1/2">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.2),_transparent_55%)]" />
           <div className="relative z-10">
             <div className="flex items-center gap-3 text-sm font-semibold uppercase tracking-widest text-white/90">
@@ -485,83 +485,95 @@ export default function Login() {
           </div>
         </aside>
 
-        {/* Right Panel - Forms */}
-        <main className="flex w-full items-center justify-center bg-slate-50 px-6 py-12 text-slate-900 lg:w-1/2">
-          <Card className="w-full max-w-lg border-slate-200 shadow-2xl">
-            <CardHeader>
-              <CardTitle className="text-2xl font-semibold">
-                {view === VIEW.SIGN_IN && "Sign in to ACG StaffLink"}
-                {view === VIEW.SIGN_UP && "Create your account"}
-                {view === VIEW.FORGOT_PASSWORD && "Reset your password"}
-              </CardTitle>
-              <CardDescription className="text-sm text-muted-foreground">
-                {view === VIEW.SIGN_IN &&
-                  "Secure access for admins, agencies, and staff portals."}
-                {view === VIEW.SIGN_UP &&
-                  "Join ACG StaffLink with an invitation or request access."}
-                {view === VIEW.FORGOT_PASSWORD &&
-                  "We will send a single-use recovery link to your verified email."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <Tabs value={view} onValueChange={onTabChange} className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value={VIEW.SIGN_IN}>Sign in</TabsTrigger>
-                  <TabsTrigger value={VIEW.SIGN_UP}>Sign up</TabsTrigger>
-                  <TabsTrigger value={VIEW.FORGOT_PASSWORD}>Forgot</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value={VIEW.SIGN_IN} className="pt-6">
-                  <SignInForm
-                    onSuccess={(nextView) => {
-                      if (nextView) {
-                        setView(nextView);
-                        return;
-                      }
-                      handleAuthSuccess();
-                    }}
-                  />
-                </TabsContent>
-
-                <TabsContent value={VIEW.SIGN_UP} className="pt-6">
-                  <SignUpForm
-                    onSuccess={(nextView) => {
-                      if (nextView) {
-                        setView(nextView);
-                        return;
-                      }
-                      handleAuthSuccess();
-                    }}
-                  />
-                </TabsContent>
-
-                <TabsContent value={VIEW.FORGOT_PASSWORD} className="pt-6">
-                  <ForgotPasswordForm
-                    onSuccess={(nextView) => {
-                      if (nextView) {
-                        setView(nextView);
-                        return;
-                      }
-                      setView(VIEW.SIGN_IN);
-                    }}
-                  />
-                </TabsContent>
-              </Tabs>
-
-              <Separator />
-
-              <div className="flex flex-col gap-2 text-xs text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  Platform uptime (rolling 90-day): 99.982%
+        {/* ✅ MOBILE FIX: Right Panel - FULL WIDTH ON MOBILE, centered form */}
+        <main className="flex w-full items-center justify-center bg-slate-50 px-4 py-8 text-slate-900 lg:w-1/2 lg:px-6 lg:py-12 min-h-screen">
+          {/* ✅ MOBILE: Show logo on mobile only */}
+          <div className="w-full max-w-lg">
+            <div className="lg:hidden mb-6 text-center">
+              <div className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-slate-700 mb-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white font-bold">
+                  ACG
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-blue-500" />
-                  ISO 27001-aligned controls · AES-256 encrypted storage · Supabase Row Level Security
-                </div>
+                <span>Agile Care Management</span>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+
+            <Card className="w-full border-slate-200 shadow-2xl">
+              <CardHeader>
+                <CardTitle className="text-xl lg:text-2xl font-semibold">
+                  {view === VIEW.SIGN_IN && "Sign in to ACG StaffLink"}
+                  {view === VIEW.SIGN_UP && "Create your account"}
+                  {view === VIEW.FORGOT_PASSWORD && "Reset your password"}
+                </CardTitle>
+                <CardDescription className="text-sm text-muted-foreground">
+                  {view === VIEW.SIGN_IN &&
+                    "Secure access for admins, agencies, and staff portals."}
+                  {view === VIEW.SIGN_UP &&
+                    "Join ACG StaffLink with an invitation or request access."}
+                  {view === VIEW.FORGOT_PASSWORD &&
+                    "We will send a single-use recovery link to your verified email."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Tabs value={view} onValueChange={onTabChange} className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value={VIEW.SIGN_IN} className="text-xs sm:text-sm">Sign in</TabsTrigger>
+                    <TabsTrigger value={VIEW.SIGN_UP} className="text-xs sm:text-sm">Sign up</TabsTrigger>
+                    <TabsTrigger value={VIEW.FORGOT_PASSWORD} className="text-xs sm:text-sm">Forgot</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value={VIEW.SIGN_IN} className="pt-6">
+                    <SignInForm
+                      onSuccess={(nextView) => {
+                        if (nextView) {
+                          setView(nextView);
+                          return;
+                        }
+                        handleAuthSuccess();
+                      }}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value={VIEW.SIGN_UP} className="pt-6">
+                    <SignUpForm
+                      onSuccess={(nextView) => {
+                        if (nextView) {
+                          setView(nextView);
+                          return;
+                        }
+                        handleAuthSuccess();
+                      }}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value={VIEW.FORGOT_PASSWORD} className="pt-6">
+                    <ForgotPasswordForm
+                      onSuccess={(nextView) => {
+                        if (nextView) {
+                          setView(nextView);
+                          return;
+                        }
+                        setView(VIEW.SIGN_IN);
+                      }}
+                    />
+                  </TabsContent>
+                </Tabs>
+
+                <Separator />
+
+                <div className="flex flex-col gap-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    <span className="text-xs">Platform uptime: 99.982%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-blue-500" />
+                    <span className="text-xs">ISO 27001 · AES-256 · RLS</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </main>
       </div>
     </div>

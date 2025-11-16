@@ -803,28 +803,28 @@ export default function StaffPortal() {
   }
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto pb-20">
-      {/* ✅ NEW: Onboarding Progress Alert (Only if not 100%) */}
+    <div className="space-y-4 max-w-7xl mx-auto pb-20 px-3 sm:px-4 md:px-6">
+      {/* ✅ MOBILE-FIRST: Onboarding Progress Alert (Only if not 100%) */}
       {!isFullyCompliant && (
         <Card className="border-2 border-orange-300 bg-gradient-to-r from-orange-50 to-amber-50">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+              <div className="flex-1 w-full">
                 <div className="flex items-center gap-3 mb-3">
-                  <AlertCircle className="w-6 h-6 text-orange-600" />
+                  <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600 flex-shrink-0" />
                   <div>
-                    <h3 className="font-bold text-orange-900 text-lg">
+                    <h3 className="font-bold text-orange-900 text-base sm:text-lg">
                       ⚠️ Profile {onboardingProgress.percentage}% Complete
                     </h3>
-                    <p className="text-sm text-orange-700">
+                    <p className="text-xs sm:text-sm text-orange-700">
                       Complete your profile to accept shifts
                     </p>
                   </div>
                 </div>
-                
+
                 <Progress value={onboardingProgress.percentage} className="h-2 mb-4" />
-                
-                {/* Missing Items */}
+
+                {/* ✅ MOBILE: Missing Items with touch-friendly targets */}
                 <div className="space-y-2">
                   {onboardingProgress.missing.map((item, idx) => (
                     <button
@@ -837,28 +837,29 @@ export default function StaffPortal() {
                           navigate('/compliancetracker');
                         }
                       }}
-                      className="w-full flex items-center justify-between p-2 bg-white rounded border border-orange-200 hover:bg-orange-50 hover:border-orange-400 transition-all cursor-pointer"
+                      className="w-full flex items-center justify-between p-3 sm:p-2 bg-white rounded border border-orange-200 hover:bg-orange-50 hover:border-orange-400 transition-all cursor-pointer min-h-[48px] sm:min-h-0"
                     >
-                      <span className="text-sm font-medium text-gray-900">{item.item}</span>
-                      <Badge className={item.priority === 'critical' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'}>
+                      <span className="text-xs sm:text-sm font-medium text-gray-900 text-left">{item.item}</span>
+                      <Badge className={`${item.priority === 'critical' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'} text-xs flex-shrink-0 ml-2`}>
                         {item.priority === 'critical' ? '🔴 Critical' : '🟡 Important'}
                       </Badge>
                     </button>
                   ))}
                 </div>
               </div>
-              
-              <div className="flex flex-col gap-2">
+
+              {/* ✅ MOBILE: Stack buttons on mobile, side-by-side on desktop */}
+              <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto">
                 <Button
                   onClick={() => navigate(createPageUrl('ProfileSetup'))}
-                  className="bg-orange-600 hover:bg-orange-700 whitespace-nowrap"
+                  className="bg-orange-600 hover:bg-orange-700 whitespace-nowrap flex-1 sm:flex-none min-h-[48px] sm:min-h-0"
                 >
                   Complete Profile
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => navigate(createPageUrl('ComplianceTracker'))}
-                  className="whitespace-nowrap"
+                  className="whitespace-nowrap flex-1 sm:flex-none min-h-[48px] sm:min-h-0"
                 >
                   Upload Docs
                 </Button>
@@ -868,43 +869,43 @@ export default function StaffPortal() {
         </Card>
       )}
 
-      {/* MOBILE-FIRST: Next Shift Hero Card */}
+      {/* ✅ MOBILE-FIRST: Next Shift Hero Card - Optimized for mobile */}
       {nextShift && (
         <Card className="bg-gradient-to-br from-cyan-500 via-blue-600 to-purple-600 text-white border-0 shadow-2xl">
-          <CardContent className="p-6">
+          <CardContent className="p-5 sm:p-6">
             <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-cyan-100 text-sm font-medium mb-1">YOUR NEXT SHIFT</p>
-                <h2 className="text-3xl font-bold mb-2">
+              <div className="flex-1">
+                <p className="text-cyan-100 text-xs sm:text-sm font-medium mb-1">YOUR NEXT SHIFT</p>
+                <h2 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">
                   {isToday(new Date(nextShift.date)) ? 'Today' : format(new Date(nextShift.date), 'EEEE')}
                 </h2>
-                <p className="text-xl opacity-90">{format(new Date(nextShift.date), 'MMM d')}</p>
+                <p className="text-lg sm:text-xl opacity-90">{format(new Date(nextShift.date), 'MMM d')}</p>
               </div>
-              <Badge className="bg-white text-blue-600 text-lg px-3 py-1">
+              <Badge className="bg-white text-blue-600 text-base sm:text-lg px-3 py-1 flex-shrink-0">
                 {formatTime12Hour(nextShift.start_time)}
               </Badge>
             </div>
-            
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 mb-4">
+
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 sm:p-4 mb-4">
               <div className="flex items-center gap-3 mb-3">
-                <MapPin className="w-5 h-5" />
-                <div>
-                  <p className="font-semibold text-lg">{getClientName(nextShift.client_id)}</p>
-                  <p className="text-sm opacity-90">{formatTodayShiftTime(nextShift)}</p>
+                <MapPin className="w-5 h-5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-base sm:text-lg truncate">{getClientName(nextShift.client_id)}</p>
+                  <p className="text-xs sm:text-sm opacity-90">{formatTodayShiftTime(nextShift)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5" />
-                <p className="font-bold text-lg">
+                <DollarSign className="w-5 h-5 flex-shrink-0" />
+                <p className="font-bold text-base sm:text-lg">
                   £{((nextShift.duration_hours || 0) * (nextShift.pay_rate || staffRecord.hourly_rate || 15)).toFixed(2)}
                 </p>
-                <span className="text-sm opacity-75">for this shift</span>
+                <span className="text-xs sm:text-sm opacity-75">for this shift</span>
               </div>
             </div>
 
             {isToday(new Date(nextShift.date)) && (
-              <Button 
-                className="w-full bg-white text-blue-600 hover:bg-gray-100 text-lg py-6 font-bold"
+              <Button
+                className="w-full bg-white text-blue-600 hover:bg-gray-100 text-base sm:text-lg py-5 sm:py-6 font-bold min-h-[56px]"
                 onClick={() => document.getElementById(`clock-in-${nextShift.id}`)?.scrollIntoView({ behavior: 'smooth' })}
               >
                 <Zap className="w-5 h-5 mr-2" />
@@ -915,42 +916,42 @@ export default function StaffPortal() {
         </Card>
       )}
 
-      {/* ✅ UPDATED: Show actual earnings */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* ✅ MOBILE-FIRST: Earnings Cards - Responsive grid */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <Card className="bg-green-50 border-green-200">
-          <CardContent className="p-5">
-            <p className="text-sm text-green-700 mb-1 font-medium">This Week</p>
-            <p className="text-3xl font-bold text-green-600">£{thisWeekEarnings.toFixed(2)}</p>
-            <p className="text-xs text-green-600 mt-1">{thisWeekShiftCount} shift{thisWeekShiftCount !== 1 ? 's' : ''}</p>
+          <CardContent className="p-3 sm:p-5">
+            <p className="text-xs sm:text-sm text-green-700 mb-1 font-medium">This Week</p>
+            <p className="text-xl sm:text-3xl font-bold text-green-600">£{thisWeekEarnings.toFixed(2)}</p>
+            <p className="text-[10px] sm:text-xs text-green-600 mt-1">{thisWeekShiftCount} shift{thisWeekShiftCount !== 1 ? 's' : ''}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-5">
-            <p className="text-sm text-blue-700 mb-1 font-medium">Total Earned</p>
-            <p className="text-3xl font-bold text-blue-600">£{totalEarningsAllTime.toFixed(2)}</p>
-            <p className="text-xs text-blue-600 mt-1">
+          <CardContent className="p-3 sm:p-5">
+            <p className="text-xs sm:text-sm text-blue-700 mb-1 font-medium">Total Earned</p>
+            <p className="text-xl sm:text-3xl font-bold text-blue-600">£{totalEarningsAllTime.toFixed(2)}</p>
+            <p className="text-[10px] sm:text-xs text-blue-600 mt-1">
               All Time
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* ✅ NEW: Advanced Shift Filters */}
+      {/* ✅ MOBILE-FIRST: Advanced Shift Filters - Collapsible on mobile */}
       <Card className="border-2 border-purple-200">
-        <CardHeader className="border-b bg-purple-50">
+        <CardHeader className="border-b bg-purple-50 p-3 sm:p-6">
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-purple-900">
-              <Filter className="w-5 h-5" />
-              Filter Your Shifts
+            <CardTitle className="flex items-center gap-2 text-purple-900 text-sm sm:text-base">
+              <Filter className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="truncate">Filter Shifts</span>
               {hasActiveFilters() && (
-                <Badge className="bg-purple-600 text-white ml-2">
+                <Badge className="bg-purple-600 text-white text-xs">
                   {
                     ((shiftFilters.dateRangeType !== 'all' && shiftFilters.dateRangeType !== 'custom') ? 1 : 0) +
                     ((shiftFilters.dateRangeType === 'custom' && (shiftFilters.customStartDate || shiftFilters.customEndDate)) ? 1 : 0) +
                     (shiftFilters.clientId !== 'all' ? 1 : 0) +
                     (shiftFilters.roleFilter !== 'all' ? 1 : 0)
-                  } active
+                  }
                 </Badge>
               )}
             </CardTitle>
@@ -958,23 +959,24 @@ export default function StaffPortal() {
               variant="ghost"
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
+              className="min-h-[44px] sm:min-h-0"
             >
               <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
             </Button>
           </div>
         </CardHeader>
-        
+
         {showFilters && (
-          <CardContent className="p-4 space-y-4">
-            <div className="grid md:grid-cols-3 gap-4">
+          <CardContent className="p-3 sm:p-4 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               {/* Date Range Filter */}
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Date Range</label>
-                <Select 
-                  value={shiftFilters.dateRangeType} 
+                <label className="text-xs sm:text-sm font-medium text-gray-700 mb-2 block">Date Range</label>
+                <Select
+                  value={shiftFilters.dateRangeType}
                   onValueChange={(value) => setShiftFilters({...shiftFilters, dateRangeType: value, customStartDate: '', customEndDate: ''})}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="min-h-[44px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -989,12 +991,12 @@ export default function StaffPortal() {
 
               {/* Client Filter */}
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Care Home</label>
-                <Select 
-                  value={shiftFilters.clientId} 
+                <label className="text-xs sm:text-sm font-medium text-gray-700 mb-2 block">Care Home</label>
+                <Select
+                  value={shiftFilters.clientId}
                   onValueChange={(value) => setShiftFilters({...shiftFilters, clientId: value})}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="min-h-[44px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1009,13 +1011,13 @@ export default function StaffPortal() {
               </div>
 
               {/* Role Filter */}
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Role</label>
-                <Select 
-                  value={shiftFilters.roleFilter} 
+              <div className="sm:col-span-2 md:col-span-1">
+                <label className="text-xs sm:text-sm font-medium text-gray-700 mb-2 block">Role</label>
+                <Select
+                  value={shiftFilters.roleFilter}
                   onValueChange={(value) => setShiftFilters({...shiftFilters, roleFilter: value})}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="min-h-[44px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1032,29 +1034,31 @@ export default function StaffPortal() {
 
             {/* Custom Date Range Inputs */}
             {shiftFilters.dateRangeType === 'custom' && (
-              <div className="grid md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Start Date</label>
+                  <label className="text-xs sm:text-sm font-medium text-gray-700 mb-2 block">Start Date</label>
                   <Input
                     type="date"
                     value={shiftFilters.customStartDate}
                     onChange={(e) => setShiftFilters({...shiftFilters, customStartDate: e.target.value})}
+                    className="min-h-[44px]"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">End Date</label>
+                  <label className="text-xs sm:text-sm font-medium text-gray-700 mb-2 block">End Date</label>
                   <Input
                     type="date"
                     value={shiftFilters.customEndDate}
                     onChange={(e) => setShiftFilters({...shiftFilters, customEndDate: e.target.value})}
+                    className="min-h-[44px]"
                   />
                 </div>
               </div>
             )}
 
             {/* Filter Actions */}
-            <div className="flex justify-between items-center pt-2 border-t">
-              <p className="text-sm text-gray-600">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pt-2 border-t">
+              <p className="text-xs sm:text-sm text-gray-600">
                 Showing <strong>{assignedShifts.length + confirmedShifts.length}</strong> shifts
               </p>
               {hasActiveFilters() && (
@@ -1062,7 +1066,7 @@ export default function StaffPortal() {
                   variant="outline"
                   size="sm"
                   onClick={clearFilters}
-                  className="gap-2"
+                  className="gap-2 min-h-[44px] sm:min-h-0 w-full sm:w-auto"
                 >
                   <XIcon className="w-4 h-4" />
                   Clear Filters
@@ -1073,50 +1077,49 @@ export default function StaffPortal() {
         )}
       </Card>
 
-      {/* ✅ NEW: Shifts Awaiting Confirmation - PROMINENT DISPLAY */}
-      {assignedShifts.length > 0 && ( // Using assignedShifts here, which is equivalent to 'awaitingConfirmation'
+      {/* ✅ MOBILE-FIRST: Shifts Awaiting Confirmation - Touch-friendly */}
+      {assignedShifts.length > 0 && (
         <Card className="border-2 border-blue-300 bg-gradient-to-r from-blue-50 to-cyan-50">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-blue-900">
-              <AlertCircle className="w-5 h-5 text-blue-600" />
-              Shifts Awaiting Your Confirmation ({assignedShifts.length})
+          <CardHeader className="pb-3 p-3 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-blue-900 text-sm sm:text-base">
+              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 text-blue-600" />
+              <span className="truncate">Confirm Shifts ({assignedShifts.length})</span>
             </CardTitle>
-            <p className="text-sm text-blue-700 mt-1">
+            <p className="text-xs sm:text-sm text-blue-700 mt-1">
               These shifts have been assigned to you. Please confirm your attendance!
             </p>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-3 p-3 sm:p-6">
             {assignedShifts.map(shift => {
-              // ✅ FIX: Check if THIS specific shift is confirming
               const isThisShiftConfirming = confirmingShifts.has(shift.id);
 
               return (
-              <div key={shift.id} className="p-4 bg-white rounded-lg border-2 border-blue-200">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Badge className="bg-blue-100 text-blue-800 text-lg px-3 py-1">
+              <div key={shift.id} className="p-3 sm:p-4 bg-white rounded-lg border-2 border-blue-200">
+                <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
+                  <div className="flex-1 w-full">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <Badge className="bg-blue-100 text-blue-800 text-sm sm:text-base px-2 sm:px-3 py-1">
                         {format(new Date(shift.date), 'EEE, MMM d')}
                       </Badge>
-                      <Badge variant="outline">
+                      <Badge variant="outline" className="text-xs sm:text-sm">
                         {formatTodayShiftTime(shift)}
                       </Badge>
                     </div>
-                    
-                    <p className="font-semibold text-gray-900 mb-1">
+
+                    <p className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">
                       {getClientName(shift.client_id)}
                       {shift.work_location_within_site && (
-                        <span className="ml-2 text-cyan-600">→ {shift.work_location_within_site}</span>
+                        <span className="block sm:inline sm:ml-2 text-cyan-600 text-xs sm:text-sm">→ {shift.work_location_within_site}</span>
                       )}
                     </p>
-                    
-                    <div className="flex items-center gap-3 text-sm text-gray-600">
+
+                    <div className="flex items-center gap-3 text-xs sm:text-sm text-gray-600">
                       <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
+                        <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>{shift.duration_hours}h</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <DollarSign className="w-4 h-4" />
+                        <DollarSign className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span className="font-semibold text-green-600">
                           £{((shift.duration_hours || 0) * (shift.pay_rate || staffRecord.hourly_rate || 15)).toFixed(2)}
                         </span>
@@ -1124,7 +1127,7 @@ export default function StaffPortal() {
                     </div>
 
                     {shift.notes && (
-                      <p className="text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded">
+                      <p className="text-xs sm:text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded">
                         {shift.notes}
                       </p>
                     )}
@@ -1132,10 +1135,10 @@ export default function StaffPortal() {
 
                   <Button
                     onClick={() => confirmShiftMutation.mutate(shift.id)}
-                    disabled={isThisShiftConfirming} // Use individual shift confirming state
-                    className="bg-green-600 hover:bg-green-700 text-white min-w-[140px]"
+                    disabled={isThisShiftConfirming}
+                    className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto sm:min-w-[140px] min-h-[48px] sm:min-h-0"
                   >
-                    {isThisShiftConfirming ? ( // Use individual shift confirming state
+                    {isThisShiftConfirming ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Confirming...
@@ -1154,16 +1157,16 @@ export default function StaffPortal() {
         </Card>
       )}
 
-      {/* Today's Shifts with Clock In (LARGE TOUCH TARGETS) */}
+      {/* ✅ MOBILE-FIRST: Today's Shifts with Clock In (LARGE TOUCH TARGETS) */}
       {todayShifts.length > 0 && (
         <Card className="border-2 border-orange-300 bg-orange-50">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-orange-900">
-              <Clock className="w-5 h-5" />
+          <CardHeader className="pb-3 p-3 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-orange-900 text-sm sm:text-base">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
               Today's Shifts ({todayShifts.length})
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-3 p-3 sm:p-6">
             {todayShifts.map(shift => (
               <div key={shift.id} id={`clock-in-${shift.id}`}>
                 <MobileClockIn shift={shift} staffId={staffRecord.id} />
@@ -1173,24 +1176,24 @@ export default function StaffPortal() {
         </Card>
       )}
 
-      {/* ✅ MODIFIED: Upcoming Shifts - Only show CONFIRMED shifts */}
+      {/* ✅ MOBILE-FIRST: Upcoming Shifts - Only show CONFIRMED shifts */}
       <Card>
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Confirmed Upcoming Shifts</CardTitle>
-            <p className="text-sm text-gray-600 mt-1">Shifts you've confirmed attendance for</p>
+        <CardHeader className="pb-3 p-3 sm:p-6 flex flex-row items-center justify-between">
+          <div className="flex-1 min-w-0">
+            <CardTitle className="text-sm sm:text-base truncate">Confirmed Upcoming Shifts</CardTitle>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1">Shifts you've confirmed attendance for</p>
           </div>
-          <Badge className="bg-green-100 text-green-800">{confirmedShifts.length}</Badge>
+          <Badge className="bg-green-100 text-green-800 flex-shrink-0 ml-2">{confirmedShifts.length}</Badge>
         </CardHeader>
         <CardContent className="p-0">
           {confirmedShifts.length === 0 ? (
-            <div className="p-12 text-center">
-              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-600">No confirmed upcoming shifts</p>
-              <p className="text-sm text-gray-500 mt-2">
-                {assignedShifts.length > 0 
-                  ? 'You have shifts awaiting confirmation above!' 
-                  : hasActiveFilters() 
+            <div className="p-8 sm:p-12 text-center">
+              <Calendar className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-sm sm:text-base text-gray-600">No confirmed upcoming shifts</p>
+              <p className="text-xs sm:text-sm text-gray-500 mt-2">
+                {assignedShifts.length > 0
+                  ? 'You have shifts awaiting confirmation above!'
+                  : hasActiveFilters()
                     ? 'Try adjusting your filters to find more shifts.'
                     : 'Check the marketplace for available shifts'}
               </p>
@@ -1198,54 +1201,54 @@ export default function StaffPortal() {
           ) : (
             <div className="divide-y">
               {confirmedShifts.slice(0, 5).map(shift => (
-                <div 
-                  key={shift.id} 
-                  className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                <div
+                  key={shift.id}
+                  className="p-3 sm:p-4 hover:bg-gray-50 active:bg-gray-100 transition-colors cursor-pointer min-h-[72px] sm:min-h-0"
                   onClick={() => handleShiftClick(shift)}
                 >
-                  <div className="flex items-center gap-4">
-                    {/* Date Badge */}
-                    <div className="text-center bg-green-100 rounded-lg p-3 min-w-[70px]">
-                      <p className="text-2xl font-bold text-green-600">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    {/* ✅ MOBILE: Smaller date badge on mobile */}
+                    <div className="text-center bg-green-100 rounded-lg p-2 sm:p-3 min-w-[56px] sm:min-w-[70px] flex-shrink-0">
+                      <p className="text-xl sm:text-2xl font-bold text-green-600">
                         {format(new Date(shift.date), 'd')}
                       </p>
-                      <p className="text-xs text-green-700 font-medium">
+                      <p className="text-[10px] sm:text-xs text-green-700 font-medium">
                         {format(new Date(shift.date), 'MMM')}
                       </p>
-                      <p className="text-xs text-green-600">
+                      <p className="text-[10px] sm:text-xs text-green-600">
                         {format(new Date(shift.date), 'EEE')}
                       </p>
                     </div>
 
-                    {/* Shift Info */}
-                    <div className="flex-1">
+                    {/* ✅ MOBILE: Shift Info - responsive text sizes */}
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <p className="font-bold text-gray-900">{getClientName(shift.client_id)}</p>
-                        <Badge className="bg-green-100 text-green-800 text-xs">
+                        <p className="font-bold text-gray-900 text-sm sm:text-base truncate">{getClientName(shift.client_id)}</p>
+                        <Badge className="bg-green-100 text-green-800 text-[10px] sm:text-xs flex-shrink-0">
                           ✓ Confirmed
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-3 text-sm text-gray-600">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600">
                         <div className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          <span>{formatTodayShiftTime(shift)}</span>
+                          <Clock className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="truncate">{formatTodayShiftTime(shift)}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <DollarSign className="w-4 h-4" />
+                          <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                           <span className="font-semibold text-green-600">
                             £{((shift.duration_hours || 0) * (shift.pay_rate || staffRecord.hourly_rate || 15)).toFixed(2)}
                           </span>
                         </div>
                         {shift.work_location_within_site && (
-                          <div className="flex items-center gap-1">
-                            <MapPin className="w-4 h-4" />
-                            <span className="text-cyan-600 font-medium text-xs">{shift.work_location_within_site}</span>
+                          <div className="flex items-center gap-1 w-full sm:w-auto">
+                            <MapPin className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                            <span className="text-cyan-600 font-medium text-[10px] sm:text-xs truncate">{shift.work_location_within_site}</span>
                           </div>
                         )}
                       </div>
                     </div>
 
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0" />
                   </div>
                 </div>
               ))}
