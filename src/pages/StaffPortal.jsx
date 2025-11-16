@@ -57,8 +57,7 @@ export default function StaffPortal() {
   // ✅ FIX 1: Track confirming state per shift (not global boolean)
   const [confirmingShifts, setConfirmingShifts] = useState(new Set());
 
-  // Note: WhatsApp integration would need to be implemented via Edge Function
-  const whatsappConnectUrl = null;
+
 
   // ✅ NEW: Persist filters to localStorage whenever they change
   useEffect(() => {
@@ -1415,52 +1414,6 @@ export default function StaffPortal() {
         </div>
       )}
 
-      {/* ✅ NEW: WhatsApp Assistant Card - PROMINENT PLACEMENT */}
-      <Card className="border-2 border-green-300 bg-gradient-to-br from-green-50 to-emerald-50">
-        <CardContent className="p-6">
-          <div className="flex items-start gap-4">
-            <div className="w-16 h-16 bg-green-600 rounded-2xl flex items-center justify-center flex-shrink-0">
-              <MessageCircle className="w-8 h-8 text-white" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-bold text-gray-900 mb-2">
-                💬 Chat with Your Assistant
-              </h3>
-              <p className="text-sm text-gray-700 mb-4">
-                Get instant answers about your shifts, earnings, and compliance via WhatsApp!
-              </p>
-              <div className="bg-white rounded-lg p-3 mb-4 text-xs space-y-1">
-                <p className="text-gray-600">Try asking:</p>
-                <p className="text-green-700">• "Show my shifts this week"</p>
-                <p className="text-green-700">• "Any available shifts tomorrow?"</p>
-                <p className="text-green-700">• "How much am I earning?"</p>
-              </div>
-              {whatsappConnectUrl ? (
-                <a
-                  href={whatsappConnectUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button className="w-full bg-cyan-600 hover:bg-cyan-700 text-white h-12 text-base">
-                    <MessageCircle className="w-5 h-5 mr-2" />
-                    Connect WhatsApp Assistant
-                  </Button>
-                </a>
-              ) : (
-                <Button
-                  className="w-full bg-cyan-600 hover:bg-cyan-700 text-white h-12 text-base"
-                  onClick={() => window.open('mailto:support@guest-glow.com', '_blank')}
-                >
-                  Request WhatsApp Assistant Access
-                </Button>
-              )}
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                🔒 Secure & Private - Your data is protected
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Quick Actions - LARGE BUTTONS */}
       <div className="grid grid-cols-2 gap-3">
