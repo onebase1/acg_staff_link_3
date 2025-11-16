@@ -381,16 +381,48 @@ export default function Login() {
 
   const next = new URLSearchParams(location.search).get("next");
 
-  const handleAuthSuccess = (overrideView) => {
+  const handleAuthSuccess = async (overrideView) => {
     if (overrideView) {
       setView(overrideView);
       return;
     }
 
+    // If there's a specific redirect, use it
     if (next) {
       navigate(next, { replace: true });
-    } else {
-      navigate("/Dashboard");
+      return;
+    }
+
+    // ✅ RBAC: Role-based redirect after login
+    try {
+      const currentUser = await supabaseAuth.me();
+
+      // Super admin detection
+      const isSuperAdmin = currentUser.email === 'g.basera@yahoo.com' || currentUser.role === 'admin';
+
+      // Pending user - needs to complete profile
+      if (currentUser.user_type === 'pending') {
+        navigate("/ProfileSetup", { replace: true });
+        return;
+      }
+
+      // Role-based navigation
+      if (isSuperAdmin) {
+        navigate("/QuickActions", { replace: true });
+      } else if (currentUser.user_type === 'staff_member') {
+        navigate("/StaffPortal", { replace: true });
+      } else if (currentUser.user_type === 'client_user') {
+        navigate("/ClientPortal", { replace: true });
+      } else if (currentUser.user_type === 'agency_admin' || currentUser.user_type === 'manager') {
+        navigate("/Dashboard", { replace: true });
+      } else {
+        // Default fallback
+        navigate("/Dashboard", { replace: true });
+      }
+    } catch (error) {
+      console.error("Error determining user role:", error);
+      // Fallback to Dashboard if role detection fails
+      navigate("/Dashboard", { replace: true });
     }
   };
 
