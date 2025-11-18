@@ -1,0 +1,174 @@
+{
+  "name": "Timesheet Reminders",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule - 10 AM Daily",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "shifts",
+        "filterType": "string",
+        "filterString": "date=lt.{{ $now.toFormat('yyyy-MM-dd') }}&status=in.(confirmed,assigned,in_progress)&timesheet_received=eq.false&assigned_staff_id=not.is.null",
+        "options": {
+          "select": "*,clients(name),staff:assigned_staff_id(first_name,last_name,phone,opt_out_shift_reminders)"
+        }
+      },
+      "id": "get-completed-shifts-no-timesheet",
+      "name": "Get Completed Shifts (No Timesheet)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "Vl1ZMO9tnqpJkJDe",
+          "name": "ACG-Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const shifts = $input.all();\n\n// Helper function to extract time from timestamp\nconst formatTime = (timestamp) => {\n  if (!timestamp) return 'TBC';\n  const timeStr = timestamp.toString();\n  if (timeStr.includes('T')) {\n    return timeStr.split('T')[1].substring(0, 5); // \"08:00\"\n  }\n  return timeStr.substring(11, 16); // \"08:00\"\n};\n\nreturn shifts\n  .filter(item => {\n    const shift = item.json;\n    \n    // ✅ FIX: Handle missing staff object (if join failed)\n    if (!shift.staff || !shift.staff.phone) {\n      console.log('Skipping shift - no staff data:', shift.id);\n      return false;\n    }\n    \n    // Skip if staff opted out of reminders (optional for timesheet reminders)\n    if (shift.staff.opt_out_shift_reminders === true) {\n      console.log('Skipping shift - staff opted out:', shift.staff.first_name);\n      return false;\n    }\n    \n    return true;\n  })\n  .map(item => {\n    const shift = item.json;\n    const shiftDate = new Date(shift.date);\n    const dateStr = shiftDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });\n    \n    // ✅ FIX: Extract time portion directly (no timezone conversion)\n    const startTime = formatTime(shift.start_time);\n    const endTime = formatTime(shift.end_time);\n    \n    return {\n      json: {\n        staff_name: shift.staff.first_name,\n        phone: shift.staff.phone,\n        shift_date: dateStr,\n        shift_time: `${startTime} - ${endTime}`,\n        client_name: shift.clients?.name || 'Unknown Client',\n        shift_id: shift.id,\n        staff_id: shift.assigned_staff_id\n      }\n    };\n  });"
+      },
+      "id": "format-timesheet-reminders",
+      "name": "Format Timesheet Reminders",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendTemplate",
+        "phoneNumberId": "683816761472557",
+        "recipientPhoneNumber": "={{ $json.phone }}",
+        "template": {
+          "name": "timesheetreminder",
+          "language": {
+            "code": "en_GB"
+          },
+          "components": [
+            {
+              "type": "body",
+              "parameters": [
+                { "type": "text", "text": "={{ $json.staff_name }}" },
+                { "type": "text", "text": "={{ $json.shift_date }}" },
+                { "type": "text", "text": "={{ $json.client_name }}" },
+                { "type": "text", "text": "https://agilecaremanagement.netlify.app/staff/timesheets" }
+              ]
+            }
+          ]
+        }
+      },
+      "id": "send-timesheet-reminder",
+      "name": "Send Timesheet Reminder",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "M8TtYksLuUl3SLo4",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "notifications",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldName": "staff_id", "fieldValue": "={{ $('Format Timesheet Reminders').item.json.staff_id }}" },
+            { "fieldName": "template_name", "fieldValue": "timesheetreminder" },
+            { "fieldName": "phone_number", "fieldValue": "={{ $('Format Timesheet Reminders').item.json.phone }}" },
+            { "fieldName": "status", "fieldValue": "sent" },
+            { "fieldName": "message_id", "fieldValue": "={{ $json.messages[0].id }}" },
+            { "fieldName": "metadata", "fieldValue": "={{ JSON.stringify($('Format Timesheet Reminders').item.json) }}" }
+          ]
+        }
+      },
+      "id": "log-timesheet-reminder",
+      "name": "Log Timesheet Reminder",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1120, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "Vl1ZMO9tnqpJkJDe",
+          "name": "ACG-Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "shifts",
+        "filterType": "manual",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('Format Timesheet Reminders').item.json.shift_id }}"
+            }
+          ]
+        },
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldName": "timesheet_reminder_sent", "fieldValue": "true" },
+            { "fieldName": "timesheet_reminder_sent_at", "fieldValue": "={{ $now.toISO() }}" }
+          ]
+        }
+      },
+      "id": "mark-reminder-sent",
+      "name": "Mark Reminder Sent",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "Vl1ZMO9tnqpJkJDe",
+          "name": "ACG-Supabase"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule - 10 AM Daily": {
+      "main": [[{ "node": "Get Completed Shifts (No Timesheet)", "type": "main", "index": 0 }]]
+    },
+    "Get Completed Shifts (No Timesheet)": {
+      "main": [[{ "node": "Format Timesheet Reminders", "type": "main", "index": 0 }]]
+    },
+    "Format Timesheet Reminders": {
+      "main": [[{ "node": "Send Timesheet Reminder", "type": "main", "index": 0 }]]
+    },
+    "Send Timesheet Reminder": {
+      "main": [[{ "node": "Log Timesheet Reminder", "type": "main", "index": 0 }]]
+    },
+    "Log Timesheet Reminder": {
+      "main": [[{ "node": "Mark Reminder Sent", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+

@@ -1,0 +1,198 @@
+{
+  "name": "ACG StaffLink - Daily Shift Reminders (6 PM)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 18 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger (6 PM Daily)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://rzzxxkppkiasuouuglaf.supabase.co/rest/v1/shifts",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "date",
+              "value": "={{ 'eq.' + $now.plus({days: 1}).toFormat('yyyy-MM-dd') }}"
+            },
+            {
+              "name": "status",
+              "value": "in.(confirmed,assigned)"
+            },
+            {
+              "name": "assigned_staff_id",
+              "value": "not.is.null"
+            },
+            {
+              "name": "select",
+              "value": "*,clients!client_id(name,address),staff!assigned_staff_id(first_name,last_name,phone,email,opt_out_shift_reminders)"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo"
+            }
+          ]
+        }
+      },
+      "id": "get-tomorrows-shifts",
+      "name": "Get Tomorrow's Shifts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "filter-opt-out",
+              "leftValue": "={{ $json.staff?.opt_out_shift_reminders }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "filter-shifts",
+      "name": "Filter Tomorrow's Confirmed Shifts",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const shift = item.json;\n  const staff = shift.staff;\n  const client = shift.clients;\n  \n  // Format date\n  const shiftDate = new Date(shift.date);\n  const formattedDate = shiftDate.toLocaleDateString('en-GB', { \n    weekday: 'short', \n    day: 'numeric', \n    month: 'short' \n  });\n  \n  // Format times\n  const startTime = shift.start_time.substring(0, 5); // HH:MM\n  const endTime = shift.end_time.substring(0, 5);\n  \n  // Calculate duration\n  const duration = shift.duration_hours || 12;\n  \n  // Calculate total earnings\n  const totalEarnings = (shift.pay_rate * duration).toFixed(2);\n  \n  return {\n    json: {\n      phone: staff.phone,\n      staff_name: staff.first_name,\n      shift_date: formattedDate,\n      start_time: startTime,\n      end_time: endTime,\n      client_name: client.name,\n      client_address: client.address,\n      total_earnings: totalEarnings\n    }\n  };\n});"
+      },
+      "id": "format-shift-reminders",
+      "name": "Format Shift Reminders",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendTemplate",
+        "phoneNumberId": "683816761472557",
+        "recipientPhoneNumber": "={{ $json.phone }}",
+        "template": {
+          "name": "hello_world",
+          "language": {
+            "code": "en_US"
+          },
+          "components": [
+            {
+              "type": "body",
+              "parameters": [
+                { "type": "text", "text": "={{ $json.staff_name }}" },
+                { "type": "text", "text": "={{ $json.shift_date }}" },
+                { "type": "text", "text": "={{ $json.start_time + ' - ' + $json.end_time }}" },
+                { "type": "text", "text": "={{ $json.client_name }}" },
+                { "type": "text", "text": "={{ $json.client_address }}" },
+                { "type": "text", "text": "={{ $json.total_earnings }}" }
+              ]
+            }
+          ]
+        }
+      },
+      "id": "send-whatsapp-reminder",
+      "name": "Send WhatsApp Reminder",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "M8TtYksLuUl3SLo4",
+          "name": "WhatsApp account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (6 PM Daily)": {
+      "main": [
+        [
+          {
+            "node": "Get Tomorrow's Shifts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Tomorrow's Shifts": {
+      "main": [
+        [
+          {
+            "node": "Filter Tomorrow's Confirmed Shifts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Tomorrow's Confirmed Shifts": {
+      "main": [
+        [
+          {
+            "node": "Format Shift Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Shift Reminders": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-11-18T00:00:00.000Z",
+  "versionId": "1"
+}
+

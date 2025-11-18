@@ -41,11 +41,11 @@ export const NotificationService = {
   /**
    * 🆕 QUEUE notification for batching (recommended for bulk operations)
    */
-  async queueNotification({ 
-    recipient_email, 
-    recipient_type, 
-    notification_type, 
-    item, 
+  async queueNotification({
+    recipient_email,
+    recipient_type,
+    notification_type,
+    item,
     agency_id,
     recipient_first_name
   }) {
@@ -58,10 +58,11 @@ export const NotificationService = {
         .eq('recipient_email', recipient_email)
         .eq('notification_type', notification_type)
         .eq('status', 'pending')
-        .order('created_at', { ascending: true })
+        .order('created_date', { ascending: true })
         .limit(1);
 
       if (queueError) {
+        console.error('❌ [Queue] Error checking existing queues:', queueError);
         throw queueError;
       }
 
@@ -79,24 +80,34 @@ export const NotificationService = {
           .eq('id', queue.id);
 
         if (updateError) {
+          console.error('❌ [Queue] Error updating queue:', updateError);
           throw updateError;
         }
 
         console.log(`✅ [Queue] Added to existing queue ${queue.id} (now ${updatedItems.length} items)`);
       } else {
+        // ✅ FIX: Include all required fields and use correct column names
+        const queueData = {
+          agency_id,
+          recipient_email,
+          recipient_type,  // ✅ FIX: Added missing NOT NULL field
+          recipient_first_name,
+          notification_type,
+          pending_items: [item],
+          item_count: 1,
+          status: 'pending',
+          scheduled_send_at: new Date().toISOString(),  // ✅ FIX: Changed from next_send_at
+          message: `${notification_type} notification`  // ✅ FIX: Added required message field
+        };
+
+        console.log('📝 [Queue] Inserting new queue entry:', queueData);
+
         const { error: insertError } = await supabase
           .from('notification_queue')
-          .insert({
-            agency_id,
-            recipient_email,
-            notification_type,
-            pending_items: [item],
-            item_count: 1,
-            status: 'pending',
-            next_send_at: new Date().toISOString()
-          });
+          .insert(queueData);
 
         if (insertError) {
+          console.error('❌ [Queue] Error inserting queue:', insertError);
           throw insertError;
         }
 
@@ -127,11 +138,27 @@ export const NotificationService = {
    * Send WhatsApp notification
    */
   async sendWhatsApp({ to, message }) {
+    console.log(`📱 [WhatsApp] Attempting to send to ${to}`);
+    console.log(`📱 [WhatsApp] Message: ${message.substring(0, 100)}...`);
+
     try {
-      const { data } = await invokeSendWhatsApp({ to, message });
+      console.log('📱 [WhatsApp] Calling invokeSendWhatsApp...');
+      const { data, error } = await invokeSendWhatsApp({ to, message });
+
+      if (error) {
+        console.error('❌ [WhatsApp] Edge Function returned error:', error);
+        return { success: false, error };
+      }
+
+      console.log('✅ [WhatsApp] Message sent successfully:', data);
       return { success: true, data };
     } catch (error) {
-      console.error('❌ [WhatsApp] Failed to send message:', error);
+      console.error('❌ [WhatsApp] Exception caught:', error);
+      console.error('❌ [WhatsApp] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       return { success: false, error };
     }
   },
@@ -142,12 +169,28 @@ export const NotificationService = {
    */
   async notifyShiftAssignment({ staff, shift, client, agency, useBatching = false }) {
     console.log(`📧 [NotificationService] Shift assignment to ${staff.email} - Multi-channel`);
-    
+    console.log(`📧 [NotificationService] Staff phone: ${staff.phone}`);
+    console.log(`📧 [NotificationService] useBatching: ${useBatching}`);
+
     const agencyName = agency?.name || 'Your Agency';
     const locationText = shift.work_location_within_site ? ` at ${shift.work_location_within_site}` : '';
-    
+
+    // ✅ Format shift times properly (extract HH:MM from timestamp)
+    const formatTime = (timestamp) => {
+      if (!timestamp) return 'TBC';
+      // Handle both ISO string and timestamp formats
+      const timeStr = timestamp.toString();
+      if (timeStr.includes('T')) {
+        return timeStr.split('T')[1].substring(0, 5); // "2025-11-18T08:00:00+00" → "08:00"
+      }
+      return timeStr.substring(11, 16); // "2025-11-18 08:00:00+00" → "08:00"
+    };
+
+    const startTime = formatTime(shift.start_time);
+    const endTime = formatTime(shift.end_time);
+
     // ✅ SMS + WhatsApp (INSTANT)
-    const instantMessage = `📅 NEW SHIFT [${agencyName}]: ${client.name}${locationText} on ${new Date(shift.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}, ${shift.start_time}-${shift.end_time}. £${shift.pay_rate}/hr = £${((shift.pay_rate || 0) * (shift.duration_hours || 0)).toFixed(2)}. Reply to confirm.`;
+    const instantMessage = `📅 NEW SHIFT [${agencyName}]: ${client.name}${locationText} on ${new Date(shift.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}, ${startTime}-${endTime}. £${shift.pay_rate}/hr = £${((shift.pay_rate || 0) * (shift.duration_hours || 0)).toFixed(2)}. Reply to confirm.`;
 
     const results = {
       email: { success: false },
@@ -157,13 +200,20 @@ export const NotificationService = {
 
     // Send SMS + WhatsApp in parallel
     if (staff.phone) {
+      console.log(`📱 [NotificationService] Staff has phone, sending SMS + WhatsApp...`);
+
       const [smsResult, whatsappResult] = await Promise.allSettled([
         this.sendSMS({ to: staff.phone, message: instantMessage }),
         this.sendWhatsApp({ to: staff.phone, message: instantMessage })
       ]);
 
+      console.log(`📱 [NotificationService] SMS result:`, smsResult);
+      console.log(`📱 [NotificationService] WhatsApp result:`, whatsappResult);
+
       results.sms = smsResult.status === 'fulfilled' ? smsResult.value : { success: false, error: smsResult.reason };
       results.whatsapp = whatsappResult.status === 'fulfilled' ? whatsappResult.value : { success: false, error: whatsappResult.reason };
+    } else {
+      console.warn(`⚠️ [NotificationService] Staff has no phone number, skipping SMS/WhatsApp`);
     }
 
     // Email (batched or immediate)

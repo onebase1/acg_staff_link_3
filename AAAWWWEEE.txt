@@ -1,0 +1,19 @@
+🐛 BUG: Shift creation fails silently - no error in UI, shift not in database
+Domain: Shift Management
+Related: Timesheet (reconciliation might break)
+
+WHAT'S HAPPENING:
+User clicks "Create Shift", UI shows success toast, but shift never appears.
+
+CONSOLE LOG:
+POST /api/shifts 500
+Error: Unique constraint violation on shifts(shift_date, staff_id)
+
+BUSINESS IMPACT:
+Staff don't show up for work. Client coverage missing.
+
+EXPECTED:
+Either create shift or show error to user.
+
+VALIDATION RULE:
+Check: Are we validating shift_date + staff_id uniqueness BEFORE sending to API?

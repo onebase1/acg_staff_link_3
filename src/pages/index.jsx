@@ -130,6 +130,8 @@ import NotificationMonitor from "./NotificationMonitor";
 
 import TestShiftReminders from "./TestShiftReminders";
 
+import TestWhatsAppN8N from "./TestWhatsAppN8N";
+
 import GeneratePayslips from "./GeneratePayslips";
 
 import TimesheetAnalytics from "./TimesheetAnalytics";
@@ -276,7 +278,9 @@ const PAGES = {
     NotificationMonitor: NotificationMonitor,
     
     TestShiftReminders: TestShiftReminders,
-    
+
+    TestWhatsAppN8N: TestWhatsAppN8N,
+
     GeneratePayslips: GeneratePayslips,
     
     TimesheetAnalytics: TimesheetAnalytics,
@@ -448,7 +452,9 @@ function PagesContent() {
                 <Route path="/NotificationMonitor" element={<NotificationMonitor />} />
                 
                 <Route path="/TestShiftReminders" element={<TestShiftReminders />} />
-                
+
+                <Route path="/TestWhatsAppN8N" element={<TestWhatsAppN8N />} />
+
                 <Route path="/GeneratePayslips" element={<GeneratePayslips />} />
                 
                 <Route path="/TimesheetAnalytics" element={<TimesheetAnalytics />} />

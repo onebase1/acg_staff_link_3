@@ -1,0 +1,15 @@
+🐛 BUG: [What's broken]
+Domain: [Shift / Staff / Timesheet / Booking / Financial / Auth / Notifications]
+Related domains: [Other domains affected]
+
+WHAT'S HAPPENING: [Symptom]
+
+CONSOLE LOG/ERROR: [Paste the error]
+
+BUSINESS IMPACT: [Why this matters - e.g., "nurse gets assigned care job she can't do"]
+
+EXPECTED BEHAVIOR: [What should happen instead]
+
+VALIDATION RULE (if applicable): [e.g., "Nurse role=care_only should NOT be assigned job_type=clinical"]
+
+Check: What validation is missing? What flow is broken?

@@ -23,13 +23,14 @@ serve(async (req) => {
 
         const now = new Date();
 
-        // Get all pending queues ready to send (scheduled_send_at <= now)
+        // ✅ FIX: Changed from notification_queues to notification_queue (singular)
         const { data: pendingQueues, error: queuesError } = await supabase
-            .from("notification_queues")
+            .from("notification_queue")
             .select("*")
             .eq("status", "pending");
 
         if (queuesError) {
+            console.error('❌ [Digest Engine] Error fetching queues:', queuesError);
             throw queuesError;
         }
 
@@ -254,8 +255,9 @@ serve(async (req) => {
                     throw new Error(emailResult?.error || emailError?.message || 'Email send failed');
                 }
 
+                // ✅ FIX: Changed from notification_queues to notification_queue (singular)
                 await supabase
-                    .from("notification_queues")
+                    .from("notification_queue")
                     .update({
                         status: 'sent',
                         sent_at: now.toISOString(),
@@ -270,8 +272,9 @@ serve(async (req) => {
             } catch (queueError) {
                 console.error(`❌ [Queue ${queue.id}] Error:`, queueError.message);
 
+                // ✅ FIX: Changed from notification_queues to notification_queue (singular)
                 await supabase
-                    .from("notification_queues")
+                    .from("notification_queue")
                     .update({
                         status: 'failed',
                         error_message: queueError.message

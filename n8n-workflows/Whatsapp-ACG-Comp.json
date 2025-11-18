@@ -1,0 +1,1116 @@
+{
+  "name": "Whatsapp-ACG-Comp",
+  "nodes": [
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "0a236099-525e-4748-a57d-8b8e2c63c48b",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "leftValue": "={{ $json.messages[0].type == \"text\" }}{{ $json.messages[0].text.body }}",
+                    "rightValue": ""
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "=Text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "24b7e8b8-6fce-4ddc-94b6-30b852891995",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "leftValue": "=test",
+                    "rightValue": ""
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Voice"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a0e51ee0-f5f9-4d8a-b31a-dcfec619d078",
+      "name": "Text Or Voice",
+      "type": "n8n-nodes-base.switch",
+      "position": [
+        -944,
+        240
+      ],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1440,
+        320
+      ],
+      "id": "36c1d837-f364-4137-89ae-763c0d65c2d7",
+      "name": "PoshCrownDemo",
+      "webhookId": "5f590777-bf99-41a8-891c-d821d81b480a",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "OJ641A137YJnJfNr",
+          "name": "WhatsApp OAuth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://instayfeedbacksystems.co.uk/functions/receiveWhatsAppFeedback",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"qr_code_id\": \"{{ $json.qr_code_id }}\",\n  \"overall_rating\": {{ $json.overall_rating }},\n  \"category\": \"{{ $json.category }}\",\n  \"feedback_text\": \"{{ $json.feedback_text }}\",\n  \"guest_name\": \"{{ $json.guest_name }}\",\n  \"room_number\": \"{{ $json.room_number }}\",\n  \"guest_email\": \"{{ $json.guest_email }}\",\n  \"tripadvisor_redirected\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        624,
+        560
+      ],
+      "id": "59a0be93-4abc-4d7c-9011-3a4577884981",
+      "name": "HTTP Request",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the staff data from Supabase\nconst staffData = $input.all()[0].json;\n\n// Check if staff was found\nif (!staffData ||(Array.isArray(staffData) && staffData.length === 0)) {\n  return {\n    error: true,\n    message: '⚠️ Phone number not found. Please contact your agency to register.'\n  };\n}\n\n// If it's an array, get the first item\nconst staff = Array.isArray(staffData) ? staffData[0] : staffData;\n\n// Get the message text from earlier\nconst messageText = $('Extract Message Data').item.json.message.text;\n\n// Return RICH staff context for AI\nreturn {\n  // Basic info\n  staff_id: staff.id,\n  first_name: staff.first_name,\n  last_name: staff.last_name,\n  full_name: `${staff.first_name} ${staff.last_name}`,\n  agency_id: staff.agency_id,\n  phone: staff.phone,\n  email: staff.email,\n  role: staff.role,\n  employment_type: staff.employment_type,\n  \n  // Performance data\n  rating: staff.rating || 'N/A',\n  total_shifts_completed: staff.total_shifts_completed || 0,\n  \n  // Availability\n  availability_days: staff.availability?.days || [],\n  preferences: staff.preferences || 'None specified',\n  \n  // Compliance\n  qps_expiry_status: staff.qps_expiry_status,\n  qps_expiry_date: staff.qps_expiry_date,\n  \n  // Message\n  message_text: messageText,\n  \n  error: false\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        -240
+      ],
+      "id": "4ee7cda1-4bf6-4c0d-bb8f-794ed2cfcfef",
+      "name": "Format Staff Data"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "590b803f-833c-4854-bde7-5241d25b2b32",
+              "name": "message.text",
+              "type": "string",
+              "value": "={{ $json.messages[0].text.body }}"
+            },
+            {
+              "id": "303e0b5d-3d37-48fc-bbd3-ce62dbe7ef78",
+              "name": "sessionId",
+              "type": "string",
+              "value": "=+{{ $json.messages[0].from }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1fd623c2-bfa7-47dc-b848-03095c1f10f1",
+      "name": "Extract Message Data",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -400,
+        80
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "246e7c24-6997-49a8-832e-8a94ed615be1",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -192,
+        80
+      ],
+      "id": "fab09c04-09fc-4e0b-93f5-5b97c92cdea0",
+      "name": "Check Valid Message"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "=staff",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "keyValue": "={{ $json.sessionId }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        256,
+        -240
+      ],
+      "id": "5abc32ff-d910-4b2d-8779-45a1f38b8218",
+      "name": "Get a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "Vl1ZMO9tnqpJkJDe",
+          "name": "ACG-Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5636df65-c53f-40a5-ad53-063db4235546",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        848,
+        64
+      ],
+      "id": "4da6ba0a-0347-4b63-ae55-30d352c618ee",
+      "name": "Check Staff Error"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "683816761472557",
+        "recipientPhoneNumber": "={{ $('PoshCrownDemo').item.json.messages[0].from }}",
+        "textBody": "there was an error",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        1424,
+        -192
+      ],
+      "id": "303eecae-5f62-4095-9da4-7ebd09ba9ce6",
+      "name": "Send message",
+      "webhookId": "f307b99d-4585-41b3-9824-5832d70bd6ba",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "M8TtYksLuUl3SLo4",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-5-nano",
+          "mode": "list",
+          "cachedResultName": "GPT-5-NANO"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an intent classifier for a healthcare staffing WhatsApp assistant.\n\nClassify the user's message into ONE OR MORE of these intents:\n\n1. greeting - User says hi, hello, hey, etc.\n2. check_schedule - User wants to see their upcoming confirmed shifts/bookings\n3. find_shifts - User wants to see available shifts to book\n4. book_shift - User wants to book a specific shift (must include shift ID)\n5. cancel_booking - User wants to cancel a booking\n6. check_compliance - User asks about DBS, certifications, documents\n7. calculate_pay - User asks about earnings, pay, money\n8. general_question - Any other question about policies, procedures, etc.\n\nSTAFF NAME: {{ $('Format Staff Data').item.json.first_name }}\nTODAY: {{ $now.toFormat('yyyy-MM-dd') }}\n\nUSER MESSAGE: {{ $('Extract Message Data').item.json.message }}\n\nReturn ONLY valid JSON with this exact structure:\n{\n  \"intents\": [\n    {\n      \"intent\": \"check_schedule\",\n      \"parameters\": {\n        \"date_from\": \"YYYY-MM-DD or null\",\n        \"date_to\": \"YYYY-MM-DD or null\",\n        \"shift_id\": \"extracted shift ID or null\",\n        \"booking_id\": \"extracted booking ID or null\"\n      },\n      \"confidence\": 0.95\n    }\n  ],\n  \"is_multi_intent\": false\n}\n\nRULES:\n- If message contains MULTIPLE distinct requests, set \"is_multi_intent\": true and list ALL intents\n- If message is a single request, set \"is_multi_intent\": false and return ONE intent\n- Order intents by importance/urgency\n\nEXAMPLES:\n\nSingle intent:\n\"What shifts do I have?\" → {\"intents\":[{\"intent\":\"check_schedule\",\"parameters\":{},\"confidence\":0.95}],\"is_multi_intent\":false}\n\nMulti-intent:\n\"Show me my shifts and how much will I earn?\" → {\"intents\":[{\"intent\":\"check_schedule\",\"parameters\":{},\"confidence\":0.9},{\"intent\":\"calculate_pay\",\"parameters\":{},\"confidence\":0.9}],\"is_multi_intent\":true}\n\n\"Book shift abc-123 and cancel my other booking\" → {\"intents\":[{\"intent\":\"book_shift\",\"parameters\":{\"shift_id\":\"abc-123\"},\"confidence\":0.95},{\"intent\":\"cancel_booking\",\"parameters\":{},\"confidence\":0.9}],\"is_multi_intent\":true}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1152,
+        80
+      ],
+      "id": "d4261708-6cac-4843-8302-86ce42be3efe",
+      "name": "Intent Route",
+      "credentials": {
+        "openAiApi": {
+          "id": "tFcIPTBu9oNfbJex",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the AI response\nconst aiResponse = $input.item.json.message.content;\n\n// Extract JSON from the response (remove markdown code blocks if present)\nlet jsonString = aiResponse.trim();\n\n// Remove ```json and ``` if present\nif (jsonString.startsWith('```json')) {\n  jsonString = jsonString.replace(/```json\\n?/g, '').replace(/```\\n?/g, '');\n} else if (jsonString.startsWith('```')) {\n  jsonString = jsonString.replace(/```\\n?/g, '');\n}\n\n// Parse the JSON\nconst intentData = JSON.parse(jsonString.trim());\n\n// Check if multi-intent\nif (intentData.is_multi_intent && intentData.intents.length > 1) {\n  // Multi-intent detected - return special handling flag\n  return {\n    is_multi_intent: true,\n    intents: intentData.intents,\n    primary_intent: intentData.intents[0].intent,\n    intent_count: intentData.intents.length\n  };\n} else {\n  // Single intent - return as before\n  const singleIntent = intentData.intents[0];\n  return {\n    is_multi_intent: false,\n    intent: singleIntent.intent,\n    parameters: singleIntent.parameters || {},\n    confidence: singleIntent.confidence || 0.0\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        80
+      ],
+      "id": "c0f8f28c-c0f8-4b8f-a0b5-cd64c9514dbe",
+      "name": "Parse Intent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const intents = $input.item.json.intents;\nconst staffName = $('Format Staff Data').item.json.first_name;\n\n// Build a friendly message listing the intents\nconst intentDescriptions = {\n  'check_schedule': '📅 Check your shift schedule',\n  'find_shifts': '🔍 Find available shifts',\n  'book_shift': '✅ Book a shift',\n  'cancel_booking': '❌ Cancel a booking',\n  'check_compliance': '📋 Check compliance status',\n  'calculate_pay': '💰 Calculate earnings',\n  'general_question': '❓ Answer a question',\n  'greeting': '👋 Say hello'\n};\n\nlet message = `Hi ${staffName}! I noticed you're asking about multiple things:\\n\\n`;\n\nintents.forEach((item, index) => {\n  const desc = intentDescriptions[item.intent] || item.intent;\n  message += `${index + 1}. ${desc}\\n`;\n});\n\nmessage += `\\nWhich would you like me to help with first? Just reply with the number (1, 2, etc.) or describe which one.`;\n\nreturn {\n  message: message,\n  intents: intents,\n  requires_clarification: true\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2848,
+        -1056
+      ],
+      "id": "c75cdd01-a5a5-43ee-90ca-ad69af3b5166",
+      "name": "Ask User to Prioritize"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5636df65-c53f-40a5-ad53-063db4235546",
+              "leftValue": "={{ $json.is_multi_intent }}",
+              "rightValue": "=true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1792,
+        80
+      ],
+      "id": "6b1e4b9f-cb3b-4a75-96e3-d40237156b1b",
+      "name": "Check Multi-Intent"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "greeting",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ee779e40-628c-4e51-ae07-fc3cf834717c"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Greeting"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a1c300bc-5014-4902-8027-c4d4af47b265",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "check_schedule",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Check Schedule"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a1b699ca-a964-4434-808d-2eb2d161e138",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "find_shifts",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Find Shifts"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "31f4bd5f-eaf1-4fec-aa85-de561c14cacb",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "book_shift",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Book Shift"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "de282264-77c3-49b3-be92-5e415e5bfba0",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "cancel_booking",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cancel Booking"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "fb799dd9-97b9-487f-a07a-0dc153f1efe5",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "check_compliance",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Check Compliance"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "6315b6cf-7a8e-41e6-bdfa-b72b740b8a8c",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "calculate_pay",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Calculate Pay"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "237e6d0f-6fac-4852-aebf-ab4b537bd1e7",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "general_question",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "General Question"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2192,
+        176
+      ],
+      "id": "3e12458f-3e3b-470b-a0c0-0f91c039d4d7",
+      "name": "Route by Intent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get staff data from previous node\nconst staff = $('Format Staff Data').first().json;\n\n// Create welcome message with menu\nconst message = `Hi ${staff.first_name}! 👋\n\nI can help you with:\n\n📅 *Check schedule* - See your upcoming shifts\n🔍 *Find shifts* - Browse available shifts\n📝 *Book shift* - Book an available shift\n❌ *Cancel booking* - Cancel a confirmed shift\n📋 *Check compliance* - View your compliance status\n💰 *Calculate pay* - See your earnings\n📸 *Upload timesheet* - Submit your timesheet\n\nJust ask me anything!`;\n\nreturn {\n  json: {\n    message: message,\n    staff_id: staff.staff_id,\n    phone: staff.phone\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2816,
+        -704
+      ],
+      "id": "5cf0be05-4064-4fca-a2e0-e2c977c4c50e",
+      "name": "Handle Greeting"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staffName = $('Format Staff Data').item.json.first_name;\nconst staffId = $('Format Staff Data').item.json.staff_id;\nconst params = $input.item.json.parameters || {};\n\nreturn {\n  message: `📅 ${staffName}, let me check your upcoming shifts...`,\n  intent_handled: 'check_schedule',\n  staff_id: staffId,\n  parameters: params,\n  next_action: 'query_bookings'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2816,
+        -528
+      ],
+      "id": "7690295a-9a78-4b48-a085-684beacc8776",
+      "name": "Handle Check Schedule"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staffName = $('Format Staff Data').item.json.first_name;\n\nreturn {\n  message: `🔍 ${staffName}, searching for available shifts...`,\n  intent_handled: 'find_shifts',\n  next_action: 'query_available_shifts'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2816,
+        -352
+      ],
+      "id": "1e392a07-2c0d-4d2e-88fd-f01d520b7fa7",
+      "name": "Handle Find Shifts"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staffName = $('Format Staff Data').item.json.first_name;\nconst shiftId = $input.item.json.parameters?.shift_id;\n\nreturn {\n  message: shiftId \n    ? `✅ ${staffName}, booking shift ${shiftId}...`\n    : `${staffName}, which shift would you like to book? Please provide the shift ID.`,\n  intent_handled: 'book_shift',\n  shift_id: shiftId,\n  next_action: shiftId ? 'create_booking' : 'ask_shift_id'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2816,
+        -176
+      ],
+      "id": "06effa92-47b8-47ba-bc11-dae3cfe600e1",
+      "name": "Handle Book Shift"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staffName = $('Format Staff Data').item.json.first_name;\n\nreturn {\n  message: `❌ ${staffName}, which booking would you like to cancel?`,\n  intent_handled: 'cancel_booking',\n  next_action: 'list_bookings_to_cancel'\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2800,
+        96
+      ],
+      "id": "49c74454-8b20-4ea1-8ba4-126d7c401042",
+      "name": "Handle Cancel Booking"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staffName = $('Format Staff Data').item.json.first_name;\nconst staffId = $('Format Staff Data').item.json.staff_id;\n\nreturn {\n  message: `📋 ${staffName}, checking your compliance status...`,\n  intent_handled: 'check_compliance',\n  staff_id: staffId,\n  next_action: 'query_compliance'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2832,
+        384
+      ],
+      "id": "613de9c5-9581-46ce-86a4-662b511f1a99",
+      "name": "Handle Check Compliance"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staffName = $('Format Staff Data').item.json.first_name;\n\nreturn {\n  message: `💰 ${staffName}, calculating your earnings...`,\n  intent_handled: 'calculate_pay',\n  next_action: 'calculate_earnings'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2832,
+        560
+      ],
+      "id": "5c3b3238-a1a3-4c71-b426-7e4dffa3430d",
+      "name": "Handle Calculate Pay"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staffName = $('Format Staff Data').item.json.first_name;\nconst question = $('Extract Message Data').item.json.message;\n\nreturn {\n  message: `❓ ${staffName}, let me help with that...\\n\\nYou asked: \"${question}\"`,\n  intent_handled: 'general_question',\n  original_question: question,\n  next_action: 'ai_response'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2832,
+        752
+      ],
+      "id": "65f3d8d0-865c-495d-8842-575cf2896589",
+      "name": "Handle Generate Question"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staffName = $('Format Staff Data').item.json.first_name;\nconst message = $('Extract Message Data').item.json.message;\n\nreturn {\n  message: `${staffName}, I'm not sure I understood that. Could you rephrase?\\n\\nI can help you with:\\n📅 Check schedule\\n🔍 Find shifts\\n✅ Book shifts\\n❌ Cancel bookings\\n💰 Calculate pay\\n📋 Check compliance`,\n  intent_handled: 'unknown',\n  original_message: message\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2832,
+        928
+      ],
+      "id": "0631c62a-3952-4de0-917f-506dbc1de2c7",
+      "name": "Handle Unknown Intent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.item.json;\nconst from = $('Extract Message Data').item.json.from;\n\nreturn {\n  to: from,\n  body: response.message,\n  intent_handled: response.intent_handled,\n  timestamp: new Date().toISOString()\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3344,
+        80
+      ],
+      "id": "bcf7d070-28f9-4746-beee-d5c7fec9f78c",
+      "name": "Format Final Response"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "683816761472557",
+        "recipientPhoneNumber": "={{ $('PoshCrownDemo').item.json.messages[0].from }}",
+        "textBody": "={{ $json.body }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        3616,
+        80
+      ],
+      "id": "cc889aa7-83ca-4b64-9372-6ea6ebae5ec6",
+      "name": "Send message2",
+      "webhookId": "48146057-6441-4346-ac05-2e6710af8a0a",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "M8TtYksLuUl3SLo4",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "shifts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "agency_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Format Staff Data').first().json.agency_id }}"
+            },
+            {
+              "keyName": "assigned_staff_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Format Staff Data').first().json.staff_id }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "confirmed"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "assigned"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "in_progress"
+            },
+            {
+              "keyName": "date",
+              "condition": "gte",
+              "keyValue": "={{ $now.toFormat('yyyy-MM-dd') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        3632,
+        -288
+      ],
+      "id": "d05c722d-f8f1-4825-9e36-36aa3c0a09b2",
+      "name": "Get Shifts",
+      "credentials": {
+        "supabaseApi": {
+          "id": "Vl1ZMO9tnqpJkJDe",
+          "name": "ACG-Supabase"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Text Or Voice": {
+      "main": [
+        [
+          {
+            "node": "Extract Message Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "PoshCrownDemo": {
+      "main": [
+        [
+          {
+            "node": "Text Or Voice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Staff Data": {
+      "main": [
+        [
+          {
+            "node": "Check Staff Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message Data": {
+      "main": [
+        [
+          {
+            "node": "Check Valid Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Valid Message": {
+      "main": [
+        [
+          {
+            "node": "Get a row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Get a row": {
+      "main": [
+        [
+          {
+            "node": "Format Staff Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Staff Error": {
+      "main": [
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Intent Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent Route": {
+      "main": [
+        [
+          {
+            "node": "Parse Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Intent": {
+      "main": [
+        [
+          {
+            "node": "Check Multi-Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Multi-Intent": {
+      "main": [
+        [
+          {
+            "node": "Ask User to Prioritize",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route by Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Intent": {
+      "main": [
+        [
+          {
+            "node": "Handle Greeting",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Check Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Find Shifts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Book Shift",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Cancel Booking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Check Compliance",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Calculate Pay",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Generate Question",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Unknown Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Greeting": {
+      "main": [
+        [
+          {
+            "node": "Format Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Check Schedule": {
+      "main": [
+        [
+          {
+            "node": "Format Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Find Shifts": {
+      "main": [
+        [
+          {
+            "node": "Format Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Book Shift": {
+      "main": [
+        [
+          {
+            "node": "Format Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Cancel Booking": {
+      "main": [
+        [
+          {
+            "node": "Format Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Check Compliance": {
+      "main": [
+        [
+          {
+            "node": "Format Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Calculate Pay": {
+      "main": [
+        [
+          {
+            "node": "Format Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Generate Question": {
+      "main": [
+        [
+          {
+            "node": "Format Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Unknown Intent": {
+      "main": [
+        [
+          {
+            "node": "Format Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Final Response": {
+      "main": [
+        [
+          {
+            "node": "Send message2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Shifts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "11b1cc9f-93ee-4137-86e3-983323500b40",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  },
+  "id": "9aJ1hNJXSrHcK8yo",
+  "tags": []
+}

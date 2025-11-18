@@ -79,6 +79,10 @@ function createShiftObject(date, roleConfig, client, formData, agencyId, user, i
   const end = new Date(endTimestamp);
   const durationHours = (end - start) / (1000 * 60 * 60);
 
+  // ✅ FIX: Round to 2 decimal places to avoid PostgreSQL type issues
+  // Database column is NUMERIC, need clean number not double precision
+  const durationHoursRounded = Math.round(durationHours * 100) / 100;
+
   return {
     // Temporary ID for preview (will be removed before insert)
     temp_id: `temp-${date}-${roleConfig.key}-${index}`,
@@ -91,7 +95,7 @@ function createShiftObject(date, roleConfig, client, formData, agencyId, user, i
     date: date,
     start_time: startTime, // ✅ FIXED: Send HH:MM only (e.g., "08:00")
     end_time: endTime,     // ✅ FIXED: Send HH:MM only (e.g., "20:00")
-    duration_hours: durationHours,
+    duration_hours: durationHoursRounded,
 
     // Rates
     pay_rate: roleConfig.payRate || 0,

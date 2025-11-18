@@ -36,7 +36,7 @@ export default function NotificationMonitor() {
       const { data, error } = await supabase
         .from('notification_queue')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_date', { ascending: false });
 
       if (error) {
         console.error('❌ Error fetching notification queue:', error);

@@ -1,0 +1,212 @@
+{
+  "name": "Shift Assignment Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shift-assigned",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - Shift Assigned",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "shift-assignment-webhook"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "shifts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.body.shift_id }}"
+            }
+          ]
+        }
+      },
+      "id": "get-shift-details",
+      "name": "Get Shift Details",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "Vl1ZMO9tnqpJkJDe",
+          "name": "ACG-Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "staff",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('Get Shift Details').item.json.assigned_staff_id }}"
+            }
+          ]
+        }
+      },
+      "id": "get-staff-details",
+      "name": "Get Staff Details",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "Vl1ZMO9tnqpJkJDe",
+          "name": "ACG-Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "clients",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('Get Shift Details').item.json.client_id }}"
+            }
+          ]
+        }
+      },
+      "id": "get-client-details",
+      "name": "Get Client Details",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "Vl1ZMO9tnqpJkJDe",
+          "name": "ACG-Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const shift = $('Get Shift Details').item.json;\nconst staff = $('Get Staff Details').item.json;\nconst client = $('Get Client Details').item.json;\n\n// Format date and time\nconst shiftDate = new Date(shift.date);\nconst dateStr = shiftDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });\n\n// ✅ FIX: Extract time portion directly from ISO string (no timezone conversion)\n// Database stores: \"2025-11-29T08:00:00+00:00\"\n// Extract: \"08:00\" (not converted to local time)\nconst startTime = shift.start_time.split('T')[1].substring(0, 5); // \"08:00\"\nconst endTime = shift.end_time.split('T')[1].substring(0, 5);     // \"20:00\"\n\n// Format address\nconst address = client.address;\nconst fullAddress = `${address.line1}${address.line2 ? ', ' + address.line2 : ''}, ${address.city}, ${address.postcode}`;\n\n// Calculate pay\nconst totalPay = (parseFloat(shift.duration_hours) * parseFloat(shift.pay_rate)).toFixed(2);\n\nreturn {\n  staff_name: staff.first_name,\n  phone: staff.phone,\n  shift_date: dateStr,\n  shift_time: `${startTime} - ${endTime}`,\n  client_name: client.name,\n  client_address: fullAddress,\n  role: shift.role_required.replace('_', ' ').toUpperCase(),\n  pay_amount: `£${totalPay}`,\n  shift_id: shift.id,\n  staff_id: staff.id\n};"
+      },
+      "id": "format-template-variables",
+      "name": "Format Template Variables",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendTemplate",
+        "phoneNumberId": "683816761472557",
+        "recipientPhoneNumber": "={{ $json.phone }}",
+        "template": {
+          "name": "shiftassignment",
+          "language": {
+            "code": "en_GB"
+          },
+          "components": [
+            {
+              "type": "body",
+              "parameters": [
+                { "type": "text", "text": "={{ $json.staff_name }}" },
+                { "type": "text", "text": "={{ $json.shift_date }}" },
+                { "type": "text", "text": "={{ $json.shift_time }}" },
+                { "type": "text", "text": "={{ $json.client_name }}" },
+                { "type": "text", "text": "={{ $json.client_address }}" },
+                { "type": "text", "text": "={{ $json.role }}" },
+                { "type": "text", "text": "={{ $json.pay_amount }}" },
+                { "type": "text", "text": "https://agilecaremanagement.netlify.app/staff" }
+              ]
+            }
+          ]
+        }
+      },
+      "id": "send-whatsapp-template",
+      "name": "Send WhatsApp Template",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "M8TtYksLuUl3SLo4",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "notifications",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldName": "staff_id", "fieldValue": "={{ $('Format Template Variables').item.json.staff_id }}" },
+            { "fieldName": "template_name", "fieldValue": "shiftassignment" },
+            { "fieldName": "phone_number", "fieldValue": "={{ $('Format Template Variables').item.json.phone }}" },
+            { "fieldName": "status", "fieldValue": "sent" },
+            { "fieldName": "message_id", "fieldValue": "={{ $json.messages[0].id }}" },
+            { "fieldName": "metadata", "fieldValue": "={{ JSON.stringify($('Format Template Variables').item.json) }}" }
+          ]
+        }
+      },
+      "id": "log-notification",
+      "name": "Log Notification",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1560, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "Vl1ZMO9tnqpJkJDe",
+          "name": "ACG-Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message_id\": $('Send WhatsApp Template').item.json.messages[0].id, \"notification_id\": $json.id } }}"
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1780, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook - Shift Assigned": {
+      "main": [[{ "node": "Get Shift Details", "type": "main", "index": 0 }]]
+    },
+    "Get Shift Details": {
+      "main": [[{ "node": "Get Staff Details", "type": "main", "index": 0 }, { "node": "Get Client Details", "type": "main", "index": 0 }]]
+    },
+    "Get Staff Details": {
+      "main": [[{ "node": "Format Template Variables", "type": "main", "index": 0 }]]
+    },
+    "Get Client Details": {
+      "main": [[{ "node": "Format Template Variables", "type": "main", "index": 0 }]]
+    },
+    "Format Template Variables": {
+      "main": [[{ "node": "Send WhatsApp Template", "type": "main", "index": 0 }]]
+    },
+    "Send WhatsApp Template": {
+      "main": [[{ "node": "Log Notification", "type": "main", "index": 0 }]]
+    },
+    "Log Notification": {
+      "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+

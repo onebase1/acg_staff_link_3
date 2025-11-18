@@ -1,0 +1,214 @@
+{
+  "name": "WhatsApp Timesheet Upload Integration",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-incoming",
+        "responseMode": "responseNode"
+      },
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "whatsapp-incoming-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.type }}",
+              "operation": "equals",
+              "value2": "image"
+            }
+          ]
+        }
+      },
+      "name": "Is Image Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://rzzxxkppkiasuouuglaf.supabase.co/functions/v1/whatsapp-timesheet-upload-handler",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "from",
+              "value": "={{ $json.from }}"
+            },
+            {
+              "name": "message_type",
+              "value": "image"
+            },
+            {
+              "name": "image_url",
+              "value": "={{ $json.message.image.url }}"
+            },
+            {
+              "name": "image_id",
+              "value": "={{ $json.message.image.id }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json.message.image.caption }}"
+            },
+            {
+              "name": "profileName",
+              "value": "={{ $json.profile.name }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Call Timesheet Upload Handler",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Authorization"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://rzzxxkppkiasuouuglaf.supabase.co/functions/v1/incoming-whatsapp-handler",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "from",
+              "value": "={{ $json.from }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message.text.body }}"
+            },
+            {
+              "name": "profileName",
+              "value": "={{ $json.profile.name }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Call Text Message Handler",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Authorization"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, message: 'Timesheet upload processed' } }}"
+      },
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, message: 'Text message processed' } }}"
+      },
+      "name": "Respond Text Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [850, 400]
+    }
+  ],
+  "connections": {
+    "WhatsApp Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is Image Message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Image Message?": {
+      "main": [
+        [
+          {
+            "node": "Call Timesheet Upload Handler",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call Text Message Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Timesheet Upload Handler": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Text Message Handler": {
+      "main": [
+        [
+          {
+            "node": "Respond Text Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-11-18T00:00:00.000Z",
+  "versionId": "1"
+}
+

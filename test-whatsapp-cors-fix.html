@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WhatsApp CORS Test</title>
+</head>
+<body>
+    <h1>🧪 WhatsApp CORS Fix Test</h1>
+    <button onclick="testWhatsApp()">Test WhatsApp (Logged In)</button>
+    <pre id="result"></pre>
+
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+        const supabase = createClient(
+            'https://rzzxxkppkiasuouuglaf.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1OTYwNDgsImV4cCI6MjA3NzE3MjA0OH0.eYyjJTxHeYSGJEmDhOEq-b1v473kg-OqHhAtC4BBHrY'
+        );
+
+        window.testWhatsApp = async function() {
+            const resultEl = document.getElementById('result');
+            resultEl.textContent = '⏳ Testing WhatsApp with CORS fix...';
+
+            try {
+                // Check if user is logged in
+                const { data: { session } } = await supabase.auth.getSession();
+                
+                if (!session) {
+                    resultEl.textContent = '❌ Not logged in! Please log in to ACG StaffLink first, then refresh this page.';
+                    return;
+                }
+
+                console.log('✅ User logged in:', session.user.email);
+
+                // Test WhatsApp
+                const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+                    body: {
+                        to: '+447557679989',
+                        message: '🎉 CORS FIXED! WhatsApp working from browser!'
+                    }
+                });
+
+                if (error) {
+                    resultEl.textContent = `❌ Error: ${JSON.stringify(error, null, 2)}`;
+                } else {
+                    resultEl.textContent = `✅ SUCCESS!\n\n${JSON.stringify(data, null, 2)}\n\nCheck your WhatsApp on +447557679989!`;
+                }
+            } catch (err) {
+                resultEl.textContent = `❌ Exception: ${err.message}\n\n${err.stack}`;
+            }
+        };
+
+        // Auto-check login status
+        (async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                document.getElementById('result').textContent = `✅ Logged in as: ${session.user.email}\n\nClick the button to test WhatsApp!`;
+            } else {
+                document.getElementById('result').textContent = '⚠️ Not logged in!\n\n1. Open ACG StaffLink in another tab\n2. Log in\n3. Come back here and refresh\n4. Then click the button';
+            }
+        })();
+    </script>
+</body>
+</html>
+

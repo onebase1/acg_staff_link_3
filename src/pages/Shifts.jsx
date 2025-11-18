@@ -507,6 +507,10 @@ export default function Shifts() {
       let emailResult = { success: false, queued: false };
       try {
         if (agency) {
+          console.log('📧 [Shifts] Calling NotificationService.notifyShiftAssignment...');
+          console.log('📧 [Shifts] Staff:', assignedStaff.first_name, assignedStaff.phone);
+          console.log('📧 [Shifts] Shift:', shift.id, shift.date);
+
           const staffResult = await NotificationService.notifyShiftAssignment({
             staff: assignedStaff,
             shift: shift,
@@ -515,13 +519,18 @@ export default function Shifts() {
             useBatching: true
           });
 
+          console.log('📧 [Shifts] NotificationService result:', staffResult);
+
           emailResult = {
             success: staffResult.success,
             queued: staffResult.queued || false
           };
+        } else {
+          console.warn('⚠️ [Shifts] No agency found, skipping notifications');
         }
       } catch (emailError) {
-        console.error('❌ Email notification error:', emailError);
+        console.error('❌ [Shifts] Notification error:', emailError);
+        console.error('❌ [Shifts] Error stack:', emailError.stack);
       }
 
       return {

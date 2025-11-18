@@ -48,7 +48,8 @@
       "Bash(/c/Users/gbase/superbasecli/supabase.exe db push:*)",
       "Bash(psql:*)",
       "Bash(git log:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

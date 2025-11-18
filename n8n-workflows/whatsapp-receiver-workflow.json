@@ -1,0 +1,106 @@
+{
+  "name": "ACG StaffLink - WhatsApp Receiver (Incoming Messages)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ]
+      },
+      "id": "whatsapp-trigger",
+      "name": "WhatsApp Trigger",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "acg-whatsapp-receiver",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "1",
+          "name": "WhatsApp Business Cloud API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/functions/v1/incoming-whatsapp-handler",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"{{ $json.entry[0].changes[0].value.messages[0].from }}\",\n  \"message\": \"{{ $json.entry[0].changes[0].value.messages[0].text.body }}\",\n  \"profileName\": \"{{ $json.entry[0].changes[0].value.contacts[0].profile.name }}\"\n}",
+        "options": {}
+      },
+      "id": "forward-to-supabase",
+      "name": "Forward to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "2",
+          "name": "Supabase Service Role Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.entry[0].changes[0].value.messages[0].type }}",
+              "value2": "text"
+            }
+          ]
+        }
+      },
+      "id": "filter-text-messages",
+      "name": "Filter Text Messages",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [350, 300]
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Filter Text Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Text Messages": {
+      "main": [
+        [
+          {
+            "node": "Forward to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-11-16T12:00:00.000Z",
+  "versionId": "1"
+}
+
