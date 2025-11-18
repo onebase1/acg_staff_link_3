@@ -174,10 +174,35 @@ export default function TimesheetDetail() {
       if (error) throw error;
       return updated;
     },
-    onSuccess: () => {
+    onSuccess: (updatedTimesheet) => {
       queryClient.invalidateQueries(['timesheet', timesheetId]);
       queryClient.invalidateQueries(['timesheets']);
       toast.success('Timesheet updated');
+
+      // 🚀 NOTIFY STAFF ON MANUAL APPROVAL
+      if (updatedTimesheet.status === 'approved' && staff?.email) {
+        const subject = `✅ Timesheet Approved: ${client?.name || 'Shift'} on ${updatedTimesheet.shift_date}`;
+        const body_html = `
+          <p>Hi ${staff.first_name},</p>
+          <p>Good news! Your timesheet for the shift at <strong>${client?.name || 'a client'}</strong> on <strong>${updatedTimesheet.shift_date}</strong> has been manually approved by an admin.</p>
+          <p>It will now be processed in the next payroll cycle.</p>
+          <p>Thank you for your hard work!</p>
+        `;
+
+        supabase.functions.invoke('send-email', {
+          body: {
+            to: staff.email,
+            subject,
+            html: body_html
+          }
+        }).then(response => {
+          if (response.error) {
+            console.error("Failed to send approval email:", response.error);
+          } else {
+            console.log("✅ Staff approval email sent successfully.");
+          }
+        });
+      }
     }
   });
 

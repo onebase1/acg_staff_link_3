@@ -74,8 +74,8 @@ async function createTestBookings() {
           status: bookingStatus,
           booking_date: shift.date,
           shift_date: shift.date,
-          start_time: shift.start_time,
-          end_time: shift.end_time,
+          start_time: shift.start_time, // ✅ TEXT (HH:MM) from shifts
+          end_time: shift.end_time,     // ✅ TEXT (HH:MM) from shifts
           confirmation_method: 'app',
           confirmed_by_staff_at: confirmedByStaffAt,
           notes: `Test booking for ${shift.status} shift`

@@ -1,0 +1,221 @@
+{
+  "name": "ACG StaffLink - WhatsApp Interactive Timesheet Receiver",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["messages"]
+      },
+      "id": "38246f5d-0cf4-49ed-957e-0189243d0dec",
+      "name": "WhatsApp Trigger",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "acg-interactive-timesheet-receiver",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "1",
+          "name": "WhatsApp Business Cloud API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "Image",
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "image-check",
+                    "operator": {
+                      "type": "object",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "leftValue": "={{ $json.messages[0].image }}",
+                    "rightValue": ""
+                  }
+                ]
+              },
+              "renameOutput": true
+            },
+            {
+              "outputKey": "Text",
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "text-check",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "leftValue": "={{ $json.messages[0].text.body }}",
+                    "rightValue": ""
+                  }
+                ]
+              },
+              "renameOutput": true
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "864be43a-e280-4c6d-bab4-878b88304807",
+      "name": "Check Message Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $('WhatsApp Trigger').item.json.messages[0].image.id }}"
+      },
+      "id": "117fd705-1f64-4bcc-88db-357df679fa3d",
+      "name": "Get Image URL",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [650, 200],
+      "webhookId": "280bd5de-32d7-4d8f-93d2-e91e3b0bc161",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "1",
+          "name": "WhatsApp Business Cloud API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/functions/v1/whatsapp-timesheet-upload-handler",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"{{ $('WhatsApp Trigger').item.json.messages[0].from }}\",\n  \"message_type\": \"image\",\n  \"image_url\": \"{{ $json.url }}\",\n  \"image_id\": \"{{ $('WhatsApp Trigger').item.json.messages[0].image.id }}\",\n  \"caption\": \"{{ $('WhatsApp Trigger').item.json.messages[0].image.caption || '' }}\",\n  \"profileName\": \"{{ $('WhatsApp Trigger').item.json.contacts[0].profile.name }}\"\n}",
+        "options": {}
+      },
+      "id": "4cc0b70b-3ecc-4415-af2f-e50d4f302786",
+      "name": "Route to Upload Handler",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "2",
+          "name": "Supabase Service Role Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/functions/v1/incoming-whatsapp-handler",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"{{ $('WhatsApp Trigger').item.json.messages[0].from }}\",\n  \"message\": \"{{ $('WhatsApp Trigger').item.json.messages[0].text.body }}\",\n  \"profileName\": \"{{ $('WhatsApp Trigger').item.json.contacts[0].profile.name }}\"\n}",
+        "options": {}
+      },
+      "id": "b8898138-f987-4ef7-a5c1-d6d6b9c815f0",
+      "name": "Route to Text Handler",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [650, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "2",
+          "name": "Supabase Service Role Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "textBody": "=Sorry, I can only process text messages and images. Please send a timesheet photo or a text message.",
+        "operation": "send",
+        "phoneNumberId": "={{ $env.WHATSAPP_PHONE_NUMBER_ID }}",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.messages[0].from }}",
+        "additionalFields": {}
+      },
+      "id": "20239933-418c-436f-b15b-c293043a0328",
+      "name": "Unsupported Message Type",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [650, 600],
+      "webhookId": "23834751-5066-48ba-8e19-549680df2b27",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "1",
+          "name": "WhatsApp Business Cloud API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [[{"node": "Check Message Type", "type": "main", "index": 0}]]
+    },
+    "Check Message Type": {
+      "main": [
+        [{"node": "Get Image URL", "type": "main", "index": 0}],
+        [{"node": "Route to Text Handler", "type": "main", "index": 0}],
+        [{"node": "Unsupported Message Type", "type": "main", "index": 0}]
+      ]
+    },
+    "Get Image URL": {
+      "main": [[{"node": "Route to Upload Handler", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "settings": {"executionOrder": "v1"},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-11-18T07:00:00.000Z",
+  "versionId": "2"
+}
+

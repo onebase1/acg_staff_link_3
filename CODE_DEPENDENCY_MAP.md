@@ -295,13 +295,14 @@ code_reference: src/components/, src/pages/, src/utils/, src/api/, supabase/func
 
 ## � DOMAIN 10: SUPABASE EDGE FUNCTIONS
 
-### **Communication Functions** (6)
+### **Communication Functions** (7)
 - `supabase/functions/send-email/` - Email via Resend API
 - `supabase/functions/send-sms/` - SMS via Twilio API
 - `supabase/functions/send-whatsapp/` - WhatsApp via n8n/Twilio
 - `supabase/functions/whatsapp-master-router/` - WhatsApp message routing + OpenAI
 - `supabase/functions/incoming-sms-handler/` - SMS webhook handler
 - `supabase/functions/email-automation-engine/` - Automated email workflows
+- `supabase/functions/ai-assistant/` - Generic AI assistant (shift extraction, descriptions, validation)
 
 ### **Invoice & Payment Functions** (3)
 - `supabase/functions/auto-invoice-generator/` - Generate invoices

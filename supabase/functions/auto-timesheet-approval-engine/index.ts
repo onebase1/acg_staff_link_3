@@ -176,11 +176,39 @@ serve(async (req) => {
       if (hoursDiff <= hoursThreshold) {
         validationResults.hours_acceptable = true;
       } else {
-        issues.push({
+        const issue = {
           type: 'hours_mismatch',
-          severity: hoursDiff > 2 ? 'high' : 'medium',
+          severity: hoursDiff > 1 ? 'high' : 'medium', // High severity if > 1 hour
           message: `Worked ${workedHours}h, scheduled ${scheduledHours}h (${hoursDiff > 0 ? '+' : ''}${hoursDiff.toFixed(1)}h difference)`
-        });
+        };
+        issues.push(issue);
+
+        // 🚨 CRITICAL ALERT: Notify admin immediately if overtime is significant
+        if (issue.severity === 'high') {
+          try {
+            const subject = `⚠️ Overtime Alert: ${staffMember?.first_name} submitted ${hoursDiff.toFixed(1)} extra hours`;
+            const body_html = `
+              <p><strong>High Priority Overtime Alert</strong></p>
+              <p>A timesheet has been submitted with significant overtime that requires your immediate attention.</p>
+              <ul>
+                <li><strong>Staff:</strong> ${staffMember?.first_name} ${staffMember?.last_name}</li>
+                <li><strong>Client:</strong> ${agency?.name || 'Unknown'}</li>
+                <li><strong>Shift Date:</strong> ${timesheet.shift_date}</li>
+                <li><strong>Scheduled Hours:</strong> ${scheduledHours}h</li>
+                <li><strong>Worked Hours:</strong> ${workedHours}h</li>
+                <li><strong>Overtime:</strong> ${hoursDiff.toFixed(2)}h</li>
+              </ul>
+              <p>This timesheet has been flagged for manual review. Please investigate before the next payroll cycle.</p>
+            `;
+            
+            supabase.functions.invoke('internal-admin-notifier', {
+              body: { subject, body_html, change_type: 'overtime_alert' }
+            }).catch(console.error);
+            console.log("✅ Admin alert for significant overtime sent.");
+          } catch (adminAlertError) {
+            console.error("❌ Failed to send admin overtime alert:", adminAlertError);
+          }
+        }
       }
     } else {
       // No shift reference or hours - flag as issue
@@ -295,6 +323,50 @@ serve(async (req) => {
 
     // === MANUAL REVIEW REQUIRED ===
     console.log('⚠️ [Auto-Approval] Failed criteria - flagging for manual review:', timesheet_id);
+
+    // Send "60-Second Approval" email to client
+    if (client?.contact_person?.email && shift) {
+        try {
+            const subject = `Action Required: Please Approve Timesheet for ${staffMember?.first_name}'s Shift`;
+            // TODO: Replace with the actual frontend URL
+            const approvalLink = `https://your-app-domain.com/approve/timesheet/${timesheet_id}`;
+            
+            const body_html = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="padding: 30px; text-align: center; background: #f3f4f6;">
+                        <h2 style="margin: 0; color: #1f2937;">Timesheet Ready for Approval</h2>
+                    </div>
+                    <div style="padding: 30px;">
+                        <p>Hi ${client.contact_person.name || 'Team'},</p>
+                        <p>${staffMember?.first_name || 'A staff member'} has completed their shift and the timesheet is now ready for your approval.</p>
+                        <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 20px; margin: 20px 0; border-radius: 5px;">
+                            <p><strong>Scheduled:</strong> ${shift.start_time} - ${shift.end_time} (${shift.duration_hours}h)</p>
+                            <p><strong>Actual (from GPS):</strong> ${timesheet.actual_start_time || 'N/A'} - ${timesheet.actual_end_time || 'N/A'} (${timesheet.total_hours}h)</p>
+                        </div>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${approvalLink}" style="background-color: #10b981; color: white; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                Approve Timesheet in 60 Seconds
+                            </a>
+                        </div>
+                        <p style="color: #6b7280; font-size: 12px; text-align: center;">
+                            Approving promptly helps ensure staff are paid on time.
+                        </p>
+                    </div>
+                </div>
+            `;
+
+            await supabase.functions.invoke('send-email', {
+                body: {
+                    to: client.contact_person.email,
+                    subject: subject,
+                    html: body_html,
+                },
+            });
+            console.log(`✅ [Auto-Approval] "60-Second Approval" email sent to ${client.name}.`);
+        } catch (emailError) {
+            console.error(`❌ [Auto-Approval] Failed to send approval email to ${client.name}:`, emailError);
+        }
+    }
 
     // Create AdminWorkflow for manual review
     const highSeverityIssues = issues.filter(i => i.severity === 'high' || i.severity === 'critical');

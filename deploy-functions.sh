@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Deploy all 44 functions to Supabase
+# Deploy all 45 functions to Supabase
 # Run: chmod +x deploy-functions.sh && ./deploy-functions.sh
 
 SUPABASE_CLI="/c/Users/gbase/superbasecli/supabase"
@@ -8,7 +8,7 @@ PROJECT_REF="rzzxxkppkiasuouuglaf"
 DEPLOYED=0
 FAILED=0
 
-# List of all 44 functions
+# List of all 45 functions
 FUNCTIONS=(
     "send-email"
     "send-sms"
@@ -16,6 +16,7 @@ FUNCTIONS=(
     "whatsapp-master-router"
     "incoming-sms-handler"
     "email-automation-engine"
+    "ai-assistant"
     "auto-invoice-generator"
     "send-invoice"
     "payment-reminder-engine"
@@ -56,13 +57,13 @@ FUNCTIONS=(
     "ping-test-2"
 )
 
-echo "🚀 Deploying all 44 functions to Supabase..."
+echo "🚀 Deploying all 45 functions to Supabase..."
 echo ""
 
 for i in "${!FUNCTIONS[@]}"; do
     func="${FUNCTIONS[$i]}"
     num=$((i + 1))
-    echo "[$num/44] Deploying: $func..."
+    echo "[$num/45] Deploying: $func..."
 
     if $SUPABASE_CLI functions deploy "$func" --project-ref "$PROJECT_REF" >/dev/null 2>&1; then
         echo "  ✅ $func deployed successfully"

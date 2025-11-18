@@ -56,6 +56,8 @@ import AgencySettings from "./AgencySettings";
 
 import BulkShiftCreation from "./BulkShiftCreation";
 
+import AIShiftPaste from "./AIShiftPaste";
+
 import Phase2Implementation from "./Phase2Implementation";
 
 import ShiftCalendar from "./ShiftCalendar";
@@ -87,6 +89,8 @@ import DisputeResolution from "./DisputeResolution";
 import OperationalCosts from "./OperationalCosts";
 
 import PostShiftV2 from "./PostShiftV2";
+
+import PostShiftV3 from "./PostShiftV3";
 
 import NaturalLanguageTests from "./NaturalLanguageTests";
 
@@ -204,7 +208,9 @@ const PAGES = {
     AgencySettings: AgencySettings,
     
     BulkShiftCreation: BulkShiftCreation,
-    
+
+    AIShiftPaste: AIShiftPaste,
+
     Phase2Implementation: Phase2Implementation,
     
     ShiftCalendar: ShiftCalendar,
@@ -236,7 +242,9 @@ const PAGES = {
     OperationalCosts: OperationalCosts,
     
     PostShiftV2: PostShiftV2,
-    
+
+    PostShiftV3: PostShiftV3,
+
     NaturalLanguageTests: NaturalLanguageTests,
     
     WhatsAppTimesheetGuide: WhatsAppTimesheetGuide,
@@ -378,7 +386,9 @@ function PagesContent() {
                 <Route path="/AgencySettings" element={<AgencySettings />} />
                 
                 <Route path="/BulkShiftCreation" element={<BulkShiftCreation />} />
-                
+
+                <Route path="/AIShiftPaste" element={<AIShiftPaste />} />
+
                 <Route path="/Phase2Implementation" element={<Phase2Implementation />} />
                 
                 <Route path="/ShiftCalendar" element={<ShiftCalendar />} />
@@ -410,7 +420,9 @@ function PagesContent() {
                 <Route path="/OperationalCosts" element={<OperationalCosts />} />
                 
                 <Route path="/PostShiftV2" element={<PostShiftV2 />} />
-                
+
+                <Route path="/PostShiftV3" element={<PostShiftV3 />} />
+
                 <Route path="/NaturalLanguageTests" element={<NaturalLanguageTests />} />
                 
                 <Route path="/WhatsAppTimesheetGuide" element={<WhatsAppTimesheetGuide />} />

@@ -316,9 +316,16 @@ export default function Shifts() {
 
   const updateShiftMutation = useMutation({
     mutationFn: async ({ id, data, staffReassigned, oldStaffId, newStaffId }) => {
-      const shiftToEdit = shifts.find(s => s.id === id);
+      // Get the original shift state before updating
+      const { data: originalShift, error: fetchError } = await supabase
+        .from('shifts')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-      if (shiftToEdit?.financial_locked) {
+      if (fetchError) throw new Error(`Failed to fetch original shift: ${fetchError.message}`);
+
+      if (originalShift?.financial_locked) {
         const financialFields = ['pay_rate', 'charge_rate', 'duration_hours', 'work_location_within_site'];
         const attemptingFinancialChange = Object.keys(data).some(
           field => financialFields.includes(field)
@@ -338,65 +345,99 @@ export default function Shifts() {
 
       if (error) throw error;
 
-      // ✅ AUDIT TRAIL: Send emails if staff was reassigned
-      if (staffReassigned && oldStaffId && newStaffId) {
-        const oldStaff = staff.find(s => s.id === oldStaffId);
-        const newStaff = staff.find(s => s.id === newStaffId);
-        const client = clients.find(c => c.id === shiftToEdit.client_id);
-        const agency = agencies.find(a => a.id === shiftToEdit.agency_id);
-
-        // 1. Email old staff (cancellation/reassignment notice)
-        if (oldStaff?.email) {
-          try {
-            await supabase.functions.invoke('critical-change-notifier', {
-              body: {
-                change_type: 'shift_reassigned',
-                affected_entity_type: 'shift',
-                affected_entity_id: id,
-                staff_email: oldStaff.email,
-                staff_name: `${oldStaff.first_name} ${oldStaff.last_name}`,
-                client_name: client?.name || 'Unknown Client',
-                shift_date: shiftToEdit.date,
-                shift_time: `${shiftToEdit.start_time} - ${shiftToEdit.end_time}`,
-                reason: 'Admin updated who actually worked this shift'
-              }
-            });
-            console.log(`✅ [Edit Shift] Reassignment email sent to old staff: ${oldStaff.email}`);
-          } catch (emailError) {
-            console.warn(`⚠️ [Edit Shift] Failed to email old staff:`, emailError);
-          }
-        }
-
-        // 2. Email new staff (confirmation notice)
-        if (newStaff?.email) {
-          try {
-            await NotificationService.notifyShiftConfirmedToStaff({
-              staff: newStaff,
-              shift: updated,
-              client: client,
-              agency: agency
-            });
-            console.log(`✅ [Edit Shift] Confirmation email sent to new staff: ${newStaff.email}`);
-          } catch (emailError) {
-            console.warn(`⚠️ [Edit Shift] Failed to email new staff:`, emailError);
-          }
-        }
-      }
-
-      return updated;
+      // Return both original and updated shift for comparison in onSuccess
+      return { updated, originalShift, staffReassigned, oldStaffId, newStaffId };
     },
-    onSuccess: async (updatedShift, { id, data, staffReassigned }) => {
+    onSuccess: async ({ updated, originalShift, staffReassigned, oldStaffId, newStaffId }) => {
       queryClient.invalidateQueries({ queryKey: ['shifts'], exact: false });
-
-      if (data.status || data.assigned_staff_id) {
+      
+      // Invalidate bookings if status or assignment changed
+      if (originalShift.status !== updated.status || originalShift.assigned_staff_id !== updated.assigned_staff_id) {
         queryClient.invalidateQueries({ queryKey: ['bookings'], exact: false });
       }
 
-      if (staffReassigned) {
-        toast.success('✅ Shift updated! Emails sent to both staff members for audit trail.');
-      } else {
-        toast.success('Shift updated');
+      toast.success('Shift updated successfully!');
+
+      // --- Notification Logic ---
+      const staffMember = staff.find(s => s.id === originalShift.assigned_staff_id);
+      const client = clients.find(c => c.id === originalShift.client_id);
+
+      // 1. Handle staff reassignment
+      if (staffReassigned && oldStaffId && newStaffId) {
+        const oldStaff = staff.find(s => s.id === oldStaffId);
+        const newStaff = staff.find(s => s.id === newStaffId);
+        
+        if (oldStaff?.email) {
+          supabase.functions.invoke('critical-change-notifier', {
+            body: {
+              change_type: 'shift_reassigned',
+              staff_email: oldStaff.email,
+              staff_name: `${oldStaff.first_name} ${oldStaff.last_name}`,
+              client_name: client?.name || 'Unknown Client',
+              shift_date: originalShift.date,
+              shift_time: `${originalShift.start_time} - ${originalShift.end_time}`,
+              reason: 'Admin updated who actually worked this shift'
+            }
+          }).catch(console.error);
+        }
+        if (newStaff?.email) {
+          NotificationService.notifyShiftConfirmedToStaff({ staff: newStaff, shift: updated, client, agency: agencies.find(a => a.id === updated.agency_id) }).catch(console.error);
+        }
+        toast.info('Reassignment emails sent to staff.');
       }
+
+      // 2. Handle modification of a confirmed shift
+      else if (originalShift.status === 'confirmed' && staffMember?.email) {
+        const changes = [];
+        if (originalShift.date !== updated.date) {
+          changes.push({ field: 'Date', old: originalShift.date, new: updated.date });
+        }
+        if (originalShift.start_time !== updated.start_time || originalShift.end_time !== updated.end_time) {
+          changes.push({ field: 'Time', old: `${originalShift.start_time} - ${originalShift.end_time}`, new: `${updated.start_time} - ${updated.end_time}` });
+        }
+        if (originalShift.work_location_within_site !== updated.work_location_within_site) {
+          changes.push({ field: 'Location', old: originalShift.work_location_within_site || 'N/A', new: updated.work_location_within_site || 'N/A' });
+        }
+
+        if (changes.length > 0) {
+          const old_value = changes.map(c => `${c.field}: ${c.old}`).join('<br>');
+          const new_value = changes.map(c => `${c.field}: ${c.new}`).join('<br>');
+
+          supabase.functions.invoke('critical-change-notifier', {
+            body: {
+              change_type: 'confirmed_shift_modified',
+              staff_email: staffMember.email,
+              staff_name: `${staffMember.first_name} ${staffMember.last_name}`,
+              client_name: client?.name || 'Unknown Client',
+              shift_date: originalShift.date,
+              old_value,
+              new_value
+            }
+          }).catch(console.error);
+          
+          toast.warning(`Sent shift update notification to ${staffMember.first_name}.`);
+        }
+      }
+
+      // 3. Handle shift cancellation
+      if (updated.status === 'cancelled' && originalShift.status !== 'cancelled') {
+        const reason = updated.cancellation_reason || 'No reason provided';
+        toast.info(`Shift cancelled. Notifying parties...`);
+
+        supabase.functions.invoke('critical-change-notifier', {
+          body: {
+            change_type: 'shift_cancelled',
+            staff_email: staffMember?.email,
+            staff_name: staffMember ? `${staffMember.first_name} ${staffMember.last_name}` : 'Staff',
+            client_email: client?.contact_person?.email,
+            client_name: client?.name || 'Unknown Client',
+            shift_date: originalShift.date,
+            shift_time: `${originalShift.start_time} - ${originalShift.end_time}`,
+            reason: reason
+          }
+        }).catch(console.error);
+      }
+
       setEditingShift(null);
     },
     onError: (error) => {
@@ -432,6 +473,15 @@ export default function Shifts() {
       const client = clients.find(c => c.id === shift.client_id);
       const agency = agencies.find(a => a.id === shift.agency_id);
 
+      // ✅ BUSINESS RULE: Block assignment if shift starts within 24 hours (must use marketplace)
+      const shiftDateTime = new Date(`${shift.date}T${shift.start_time}`);
+      const now = new Date();
+      const hoursUntilShift = (shiftDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      if (hoursUntilShift < 24 && hoursUntilShift > 0) {
+        throw new Error(`⚠️ Cannot assign staff to shifts starting within 24 hours. Please add this shift to the marketplace instead (${Math.round(hoursUntilShift)} hours until shift starts).`);
+      }
+
       if (shift.assigned_staff_id && shift.assigned_staff_id !== staffId) {
         const existingStaff = staff.find(s => s.id === shift.assigned_staff_id);
         const existingStaffName = existingStaff ? `${existingStaff.first_name} ${existingStaff.last_name}` : 'another staff member';
@@ -446,6 +496,10 @@ export default function Shifts() {
         .update({
           status: newStatus,
           assigned_staff_id: staffId,
+          ...(bypassConfirmation && {
+            staff_confirmed_at: new Date().toISOString(),
+            staff_confirmation_method: 'admin_bypass'
+          }),
           shift_journey_log: [
             ...(shift.shift_journey_log || []),
             {
@@ -473,8 +527,8 @@ export default function Shifts() {
           status: bypassConfirmation ? 'confirmed' : 'pending',
           booking_date: new Date().toISOString(),
           shift_date: shift.date,
-          start_time: shift.start_time,
-          end_time: shift.end_time,
+          start_time: shift.start_time, // ✅ Now TEXT (HH:MM) from shifts table
+          end_time: shift.end_time,     // ✅ Now TEXT (HH:MM) from shifts table
           confirmation_method: bypassConfirmation ? 'admin_bypass' : 'app',
           ...(bypassConfirmation && { confirmed_by_staff_at: new Date().toISOString() })
         })
@@ -1850,7 +1904,7 @@ export default function Shifts() {
                           )}
                         </>
                       )}
-                      {shift.status === 'assigned' && (
+                      {shift.status === 'assigned' && new Date(shift.date) >= new Date(new Date().toISOString().split('T')[0]) && (
                         <div className="text-center py-2 bg-blue-50 rounded text-blue-700 text-sm font-medium">
                           ⏳ Awaiting Confirmation
                         </div>

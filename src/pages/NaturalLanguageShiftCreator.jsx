@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MessageSquare, Sparkles, Send, CheckCircle, AlertTriangle, Calendar, Clock, MapPin, Briefcase, DollarSign } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, MessageSquare, Sparkles, Send, CheckCircle, AlertTriangle, Calendar, Clock, MapPin, Briefcase, DollarSign, Trash2, Edit2, Info } from "lucide-react";
 import { toast } from "sonner";
 import { InvokeLLM } from "@/api/integrations";
 
@@ -18,6 +19,7 @@ export default function NaturalLanguageShiftCreator() {
   const [conversationHistory, setConversationHistory] = useState([]);
   const [extractedShifts, setExtractedShifts] = useState([]); // ✅ Changed to array for multiple shifts
   const [isProcessing, setIsProcessing] = useState(false);
+  const [validationWarnings, setValidationWarnings] = useState([]);
 
   const { data: clients = [] } = useQuery({
     queryKey: ['clients'],
@@ -240,10 +242,14 @@ Otherwise, respond conversationally to gather missing info.`;
             });
           }
 
+          // ✅ NEW: Validate shifts and show warnings
+          const warnings = validateShifts(processedShifts);
+          setValidationWarnings(warnings);
+
           setExtractedShifts(processedShifts);
           setConversationHistory([...updatedHistory, {
             role: 'assistant',
-            content: `Perfect! I've extracted ${processedShifts.length} shift${processedShifts.length > 1 ? 's' : ''}. Review below and confirm to create.`
+            content: `Perfect! I've extracted ${processedShifts.length} shift${processedShifts.length > 1 ? 's' : ''}. ${warnings.length > 0 ? `Found ${warnings.length} item(s) to review.` : 'Everything looks good!'} Review below and confirm to create.`
           }]);
           setIsProcessing(false);
           return;
@@ -261,11 +267,26 @@ Otherwise, respond conversationally to gather missing info.`;
 
     } catch (error) {
       console.error('AI Error:', error);
+
+      // ✅ IMPROVED: Better error messages based on error type
+      let errorMessage = 'Sorry, I encountered an error. Please try again.';
+
+      if (error.message?.includes('timeout')) {
+        errorMessage = '⏱️ Request timed out. The AI is taking longer than usual. Please try again with a simpler request.';
+      } else if (error.message?.includes('rate limit')) {
+        errorMessage = '⚠️ High demand right now. Please wait a moment and try again.';
+      } else if (error.message?.includes('network')) {
+        errorMessage = '📡 Connection issue detected. Please check your internet and try again.';
+      } else if (error.message?.includes('Unauthorized')) {
+        errorMessage = '🔒 Session expired. Please refresh the page and try again.';
+      }
+
       setConversationHistory([...updatedHistory, {
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again or use the manual shift creation form.'
+        content: errorMessage
       }]);
       setIsProcessing(false);
+      toast.error(errorMessage);
     }
   };
 
@@ -278,6 +299,91 @@ Otherwise, respond conversationally to gather missing info.`;
     if (urgency === 'urgent') return 'bg-orange-100 text-orange-800 border-orange-300';
     if (urgency === 'critical') return 'bg-red-100 text-red-800 border-red-300';
     return 'bg-gray-100 text-gray-800 border-gray-300';
+  };
+
+  // ✅ NEW: Validate extracted shifts and generate warnings
+  const validateShifts = (shifts) => {
+    const warnings = [];
+    const today = new Date().toISOString().split('T')[0];
+
+    shifts.forEach((shift, idx) => {
+      // Check for missing location
+      if (!shift.work_location_within_site) {
+        const client = clients.find(c => c.id === shift.client_id);
+        if (client?.contract_terms?.require_location_specification) {
+          warnings.push({
+            shiftIndex: idx,
+            type: 'error',
+            message: `Shift ${idx + 1}: ${client.name} requires specific work location`
+          });
+        } else {
+          warnings.push({
+            shiftIndex: idx,
+            type: 'warning',
+            message: `Shift ${idx + 1}: No location specified`
+          });
+        }
+      }
+
+      // Check for zero rates
+      if (shift.pay_rate === 0 || shift.charge_rate === 0) {
+        warnings.push({
+          shiftIndex: idx,
+          type: 'warning',
+          message: `Shift ${idx + 1}: Rates are £0 - check client contract configuration`
+        });
+      }
+
+      // Check for past dates
+      if (shift.date < today) {
+        warnings.push({
+          shiftIndex: idx,
+          type: 'error',
+          message: `Shift ${idx + 1}: Date is in the past (${shift.date})`
+        });
+      }
+
+      // Check for overnight shifts
+      if (shift.end_time < shift.start_time) {
+        warnings.push({
+          shiftIndex: idx,
+          type: 'info',
+          message: `Shift ${idx + 1}: Overnight shift detected (ends next day)`
+        });
+      }
+
+      // Check for weekend shifts
+      const shiftDate = new Date(shift.date);
+      const dayOfWeek = shiftDate.getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        warnings.push({
+          shiftIndex: idx,
+          type: 'info',
+          message: `Shift ${idx + 1}: Weekend shift - verify premium rates apply`
+        });
+      }
+    });
+
+    return warnings;
+  };
+
+  // ✅ NEW: Example prompts for quick start
+  const examplePrompts = [
+    "Need 3 HCA for Divine Care tomorrow 8am-8pm, Room 14, 15, and 20",
+    "Urgent night shift tonight at St Mary's, nurse required",
+    "Day shifts Monday through Friday next week, care worker",
+    "2 senior care workers for weekend, 12-hour shifts"
+  ];
+
+  const handleExampleClick = (example) => {
+    setUserInput(example);
+  };
+
+  const handleDeleteShift = (index) => {
+    const updated = extractedShifts.filter((_, idx) => idx !== index);
+    setExtractedShifts(updated);
+    setValidationWarnings(validateShifts(updated));
+    toast.success(`Shift ${index + 1} removed`);
   };
 
   return (
@@ -302,10 +408,28 @@ Otherwise, respond conversationally to gather missing info.`;
         </CardHeader>
         <CardContent className="flex-1 p-6 space-y-4 overflow-y-auto max-h-[500px]">
           {conversationHistory.length === 0 && (
-            <div className="text-center text-gray-500 py-12">
+            <div className="text-center text-gray-500 py-8">
               <Sparkles className="w-12 h-12 text-purple-500 mx-auto mb-4" />
-              <p className="text-lg mb-2">👋 Hi! I'm your AI shift assistant.</p>
-              <p className="text-sm">Try saying: <strong>"Need 3 HCA for Divine Care tomorrow 8am-8pm, Room 14, 15, and 20"</strong></p>
+              <p className="text-lg mb-4 font-semibold text-gray-700">👋 Hi! I'm your AI shift assistant.</p>
+              <p className="text-sm mb-4 text-gray-600">Click an example below or describe your shift needs:</p>
+
+              {/* ✅ NEW: Clickable Example Prompts */}
+              <div className="grid gap-2 max-w-2xl mx-auto">
+                {examplePrompts.map((example, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleExampleClick(example)}
+                    className="text-left px-4 py-3 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors group"
+                  >
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm text-gray-700 group-hover:text-purple-900">
+                        "{example}"
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -339,9 +463,36 @@ Otherwise, respond conversationally to gather missing info.`;
             <CardTitle className="text-green-900 flex items-center gap-2">
               <CheckCircle className="w-5 h-5" />
               {extractedShifts.length} Shift{extractedShifts.length > 1 ? 's' : ''} Ready to Create
+              {validationWarnings.length > 0 && (
+                <Badge className="ml-2 bg-amber-100 text-amber-800 border-amber-300">
+                  {validationWarnings.filter(w => w.type === 'error').length > 0 ? '⚠️' : 'ℹ️'} {validationWarnings.length} item{validationWarnings.length > 1 ? 's' : ''} to review
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
+            {/* ✅ NEW: Validation Warnings */}
+            {validationWarnings.length > 0 && (
+              <Alert className={`mb-4 ${validationWarnings.some(w => w.type === 'error') ? 'border-red-300 bg-red-50' : 'border-amber-300 bg-amber-50'}`}>
+                <AlertTriangle className={`h-4 w-4 ${validationWarnings.some(w => w.type === 'error') ? 'text-red-600' : 'text-amber-600'}`} />
+                <AlertDescription className="text-sm">
+                  <div className="font-semibold mb-2">
+                    {validationWarnings.some(w => w.type === 'error') ? '⚠️ Issues Found:' : 'ℹ️ Items to Review:'}
+                  </div>
+                  <ul className="space-y-1 ml-4">
+                    {validationWarnings.map((warning, idx) => (
+                      <li key={idx} className={`text-xs ${
+                        warning.type === 'error' ? 'text-red-800' :
+                        warning.type === 'warning' ? 'text-amber-800' :
+                        'text-blue-800'
+                      }`}>
+                        {warning.message}
+                      </li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
             {/* Table View */}
             <div className="overflow-x-auto mb-6">
               <table className="w-full border-collapse">
@@ -355,6 +506,7 @@ Otherwise, respond conversationally to gather missing info.`;
                     <th className="text-left p-3 text-sm font-semibold text-gray-700">Role</th>
                     <th className="text-left p-3 text-sm font-semibold text-gray-700">Urgency</th>
                     <th className="text-left p-3 text-sm font-semibold text-gray-700">Rates</th>
+                    <th className="text-center p-3 text-sm font-semibold text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -419,6 +571,17 @@ Otherwise, respond conversationally to gather missing info.`;
                           </div>
                         </div>
                       </td>
+                      <td className="p-3 text-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteShift(idx)}
+                          className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600"
+                          title="Delete this shift"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -447,15 +610,23 @@ Otherwise, respond conversationally to gather missing info.`;
 
             {/* Action Buttons */}
             <div className="flex gap-3">
-              <Button 
+              <Button
                 onClick={handleConfirmCreate}
-                disabled={createMultipleShiftsMutation.isPending}
-                className="flex-1 bg-green-600 hover:bg-green-700 h-12 text-base"
+                disabled={
+                  createMultipleShiftsMutation.isPending ||
+                  validationWarnings.some(w => w.type === 'error')
+                }
+                className="flex-1 bg-green-600 hover:bg-green-700 h-12 text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {createMultipleShiftsMutation.isPending ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                     Creating {extractedShifts.length} Shift{extractedShifts.length > 1 ? 's' : ''}...
+                  </>
+                ) : validationWarnings.some(w => w.type === 'error') ? (
+                  <>
+                    <AlertTriangle className="w-5 h-5 mr-2" />
+                    Fix Errors Before Creating
                   </>
                 ) : (
                   <>

@@ -64,17 +64,17 @@ serve(async (req) => {
         const notifications = [];
 
         // SHIFT CANCELLATION
-        if (change_type === 'shift_cancelled' && staff_email) {
-            const html = `
+        if (change_type === 'shift_cancelled') {
+            const email_body = (recipient_name) => `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
                         <h1 style="margin: 0; font-size: 24px;">⚠️ Shift Cancellation Notice</h1>
                     </div>
                     <div style="background: #fff; padding: 30px; border: 2px solid #fee2e2; border-top: none; border-radius: 0 0 10px 10px;">
-                        <p style="font-size: 16px; color: #1f2937;">Dear ${staff_name},</p>
+                        <p style="font-size: 16px; color: #1f2937;">Dear ${recipient_name},</p>
 
                         <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0;">
-                            <p style="margin: 0; color: #991b1b; font-weight: bold;">Your shift has been CANCELLED</p>
+                            <p style="margin: 0; color: #991b1b; font-weight: bold;">The following shift has been CANCELLED</p>
                             <p style="margin: 10px 0 0 0; color: #7f1d1d;">
                                 <strong>Client:</strong> ${client_name}<br/>
                                 <strong>Date:</strong> ${shift_date}<br/>
@@ -83,26 +83,33 @@ serve(async (req) => {
                             </p>
                         </div>
 
-                        <div style="background: #fffbeb; border: 1px solid #fbbf24; padding: 15px; margin: 20px 0; border-radius: 5px;">
-                            <p style="margin: 0; color: #92400e; font-size: 14px;">
-                                <strong>⚠️ IMPORTANT:</strong> If you did NOT request this cancellation, please contact the agency immediately.
-                            </p>
-                        </div>
-
                         <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
-                            Changed by: ${user.user_metadata?.full_name || user.email} (${user.email})<br/>
+                            Changed by: ${user.user_metadata?.full_name || user.email}<br/>
                             Timestamp: ${new Date().toISOString()}
                         </p>
                     </div>
                 </div>
             `;
 
-            notifications.push({
-                from: `ACG StaffLink <noreply@${RESEND_FROM_DOMAIN}>`,
-                to: [staff_email],
-                subject: `⚠️ SHIFT CANCELLED - ${client_name} on ${shift_date}`,
-                html: html
-            });
+            // Notify Staff
+            if (staff_email) {
+                notifications.push({
+                    from: `ACG StaffLink <noreply@${RESEND_FROM_DOMAIN}>`,
+                    to: [staff_email],
+                    subject: `SHIFT CANCELLED - ${client_name} on ${shift_date}`,
+                    html: email_body(staff_name || 'Staff Member')
+                });
+            }
+
+            // Notify Client
+            if (client_email) {
+                notifications.push({
+                    from: `ACG StaffLink <noreply@${RESEND_FROM_DOMAIN}>`,
+                    to: [client_email],
+                    subject: `Shift Cancellation for ${shift_date}`,
+                    html: email_body(client_name || 'Team')
+                });
+            }
         }
 
         // BANK DETAILS CHANGED
@@ -182,6 +189,51 @@ serve(async (req) => {
                 from: `ACG StaffLink <noreply@${RESEND_FROM_DOMAIN}>`,
                 to: [staff_email],
                 subject: `💰 Pay Rate Adjusted - ${client_name} on ${shift_date}`,
+                html: html
+            });
+        }
+
+        // CONFIRMED SHIFT MODIFIED
+        if (change_type === 'confirmed_shift_modified' && staff_email) {
+            const html = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
+                        <h1 style="margin: 0; font-size: 24px;">⚠️ IMPORTANT: Your Confirmed Shift Was Changed</h1>
+                    </div>
+                    <div style="background: #fff; padding: 30px; border: 2px solid #fed7aa; border-top: none; border-radius: 0 0 10px 10px;">
+                        <p style="font-size: 16px; color: #1f2937;">Dear ${staff_name},</p>
+                        <p style="font-size: 16px; color: #1f2937;">An administrator has updated a shift that you already confirmed. Please review the changes carefully.</p>
+
+                        <div style="background: #fff7ed; border-left: 4px solid #f97316; padding: 15px; margin: 20px 0;">
+                            <p style="margin: 0; color: #9a3412; font-weight: bold;">Shift Details Updated</p>
+                            <p style="margin: 10px 0 0 0; color: #7c2d12;">
+                                <strong>Client:</strong> ${client_name}<br/>
+                                <strong>Date:</strong> ${shift_date}<br/>
+                            </p>
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #fed7aa;">
+                                <p><strong>Old:</strong> ${old_value}</p>
+                                <p><strong>New:</strong> ${new_value}</p>
+                            </div>
+                        </div>
+
+                        <div style="background: #fef2f2; border: 1px solid #fca5a5; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                            <p style="margin: 0; color: #991b1b; font-size: 14px;">
+                                <strong>ACTION REQUIRED:</strong> If these changes are incorrect or you can no longer work this shift, please contact the agency immediately.
+                            </p>
+                        </div>
+
+                        <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
+                            Changed by: ${user.user_metadata?.full_name || user.email}<br/>
+                            Timestamp: ${new Date().toISOString()}
+                        </p>
+                    </div>
+                </div>
+            `;
+
+            notifications.push({
+                from: `ACG StaffLink <noreply@${RESEND_FROM_DOMAIN}>`,
+                to: [staff_email],
+                subject: `⚠️ Shift Update for ${client_name} on ${shift_date}`,
                 html: html
             });
         }

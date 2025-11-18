@@ -27,7 +27,7 @@ serve(async (req) => {
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
         );
 
-        // Authentication check
+        // Authentication check - allow service role key OR user token
         const authHeader = req.headers.get('Authorization');
         if (!authHeader) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -37,14 +37,24 @@ serve(async (req) => {
         }
 
         const token = authHeader.replace('Bearer ', '');
-        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-        if (authError || !user) {
-            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-                status: 401,
-                headers: { ...corsHeaders, "Content-Type": "application/json" }
-            });
+        // ✅ FIX: Allow service role key (for cron jobs) OR valid user token
+        const isServiceRole = token === SERVICE_ROLE_KEY;
+
+        if (!isServiceRole) {
+            // Only validate user token if not service role
+            const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+            if (authError || !user) {
+                return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                    status: 401,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            }
         }
+
+        console.log(`🔐 Auth: ${isServiceRole ? 'Service Role (Cron)' : 'User Token'}`);
 
         const { to, subject, html, from_name } = await req.json();
 

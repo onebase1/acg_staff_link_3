@@ -49,7 +49,12 @@
       "Bash(psql:*)",
       "Bash(git log:*)",
       "Bash(npm run dev:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(./supabase.exe secrets list:*)",
+      "Bash(/c/Users/gbase/superbasecli/supabase.exe functions list:*)",
+      "Bash(./supabase.exe functions download:*)",
+      "Bash(./supabase.exe secrets get:*)",
+      "Bash(./supabase.exe secrets set:*)"
     ],
     "deny": [],
     "ask": []

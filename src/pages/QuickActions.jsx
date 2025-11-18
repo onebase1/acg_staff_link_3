@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { 
+import {
   Plus, Calendar, Users, Building2, FileText, Clock, Upload,
   Zap, MessageSquare, BarChart3, Shield, DollarSign, CheckSquare,
-  TrendingUp, Settings, UserPlus, MapPin, AlertTriangle
+  TrendingUp, Settings, UserPlus, MapPin, AlertTriangle, Sparkles
 } from "lucide-react";
 
 export default function QuickActions() {
@@ -245,8 +245,15 @@ export default function QuickActions() {
                   </Button>
                 </Link>
 
-                <Link to={createPageUrl('NaturalLanguageShiftCreator')}>
+                <Link to={createPageUrl('AIShiftPaste')}>
                   <Button variant="outline" className="w-full h-24 flex flex-col gap-2 hover:bg-purple-50">
+                    <Sparkles className="w-6 h-6 text-purple-600" />
+                    <span className="text-sm font-medium">AI Shift Paste</span>
+                  </Button>
+                </Link>
+
+                <Link to={createPageUrl('NaturalLanguageShiftCreator')}>
+                  <Button variant="outline" className="w-full h-24 flex flex-col gap-2 hover:bg-indigo-50">
                     <MessageSquare className="w-6 h-6 text-purple-600" />
                     <span className="text-sm font-medium">Generate Shift (AI)</span>
                   </Button>

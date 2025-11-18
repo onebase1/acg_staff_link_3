@@ -24,6 +24,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import InviteClientModal from "../components/clients/InviteClientModal";
+import { STAFF_ROLES } from "@/constants/staffRoles";
 
 
 export default function Clients() {
@@ -37,6 +38,15 @@ export default function Clients() {
 
   const [editingClient, setEditingClient] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  // ✅ Initialize rates_by_role with STANDARD keys from STAFF_ROLES constant
+  const getInitialRatesByRole = () => {
+    const rates = {};
+    STAFF_ROLES.forEach(role => {
+      rates[role.value] = { pay_rate: 0, charge_rate: 0 };
+    });
+    return rates;
+  };
+
   const [editFormData, setEditFormData] = useState({
     name: '',
     contact_person: { name: '', email: '', phone: '', role: '' },
@@ -50,16 +60,11 @@ export default function Clients() {
     contract_terms: {
       require_location_specification: false,
       break_duration_minutes: 0,
-      contract_received: false, // New field
-      contract_start_date: null, // New field
-      rates_by_role: {
-        nurse: { pay_rate: 0, charge_rate: 0 },
-        care_worker: { pay_rate: 0, charge_rate: 0 },
-        hca: { pay_rate: 0, charge_rate: 0 },
-        senior_care_worker: { pay_rate: 0, charge_rate: 0 }
-      }
+      contract_received: false,
+      contract_start_date: null,
+      rates_by_role: getInitialRatesByRole() // ✅ Uses standard keys dynamically
     },
-    notes: '' // New field
+    notes: ''
   });
 
   const [newLocation, setNewLocation] = useState('');
@@ -314,9 +319,40 @@ export default function Clients() {
 
   const handleEditClick = (client) => {
     setEditingClient(client);
+
+    // ✅ Load rates from database, checking both standard and deprecated keys
+    const loadRatesFromClient = () => {
+      const rates = {};
+      const dbRates = client.contract_terms?.rates_by_role || {};
+
+      STAFF_ROLES.forEach(role => {
+        // Try primary key first
+        let rateData = dbRates[role.value];
+
+        // If not found, check aliases (handles deprecated keys)
+        if (!rateData && role.aliases) {
+          for (const alias of role.aliases) {
+            if (dbRates[alias]) {
+              rateData = dbRates[alias];
+              console.log(`ℹ️ [Clients.jsx] Loaded ${role.value} from deprecated key: ${alias}`);
+              break;
+            }
+          }
+        }
+
+        // Set rate or default to 0
+        rates[role.value] = {
+          pay_rate: rateData?.pay_rate || 0,
+          charge_rate: rateData?.charge_rate || 0
+        };
+      });
+
+      return rates;
+    };
+
     setEditFormData({
       name: client.name || '',
-      shift_window_type: client.shift_window_type || '8_to_8', // NEW
+      shift_window_type: client.shift_window_type || '8_to_8',
       contact_person: {
         name: client.contact_person?.name || '',
         email: client.contact_person?.email || '',
@@ -338,28 +374,11 @@ export default function Clients() {
       contract_terms: {
         require_location_specification: client.contract_terms?.require_location_specification || false,
         break_duration_minutes: client.contract_terms?.break_duration_minutes || 0,
-        contract_received: client.contract_terms?.contract_received || false, // New field
-        contract_start_date: client.contract_terms?.contract_start_date || null, // New field
-        rates_by_role: {
-          nurse: {
-            pay_rate: client.contract_terms?.rates_by_role?.nurse?.pay_rate || 0,
-            charge_rate: client.contract_terms?.rates_by_role?.nurse?.charge_rate || 0
-          },
-          care_worker: {
-            pay_rate: client.contract_terms?.rates_by_role?.care_worker?.pay_rate || 0,
-            charge_rate: client.contract_terms?.rates_by_role?.care_worker?.charge_rate || 0
-          },
-          hca: {
-            pay_rate: client.contract_terms?.rates_by_role?.hca?.pay_rate || 0,
-            charge_rate: client.contract_terms?.rates_by_role?.hca?.charge_rate || 0
-          },
-          senior_care_worker: {
-            pay_rate: client.contract_terms?.rates_by_role?.senior_care_worker?.pay_rate || 0,
-            charge_rate: client.contract_terms?.rates_by_role?.senior_care_worker?.charge_rate || 0
-          }
-        }
+        contract_received: client.contract_terms?.contract_received || false,
+        contract_start_date: client.contract_terms?.contract_start_date || null,
+        rates_by_role: loadRatesFromClient() // ✅ Loads with alias support
       },
-      notes: client.notes || '' // New field
+      notes: client.notes || ''
     });
   };
 
@@ -1387,257 +1406,83 @@ export default function Clients() {
                 </Alert>
 
                 <div className="space-y-4">
-                  {/* Nurse Rates */}
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                      🩺 Nurse
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="nurse-pay">Staff Pay Rate (£/hr)</Label>
-                        <Input
-                          id="nurse-pay"
-                          type="number"
-                          step="0.01"
-                          placeholder="e.g., 18.50"
-                          value={editFormData.contract_terms.rates_by_role.nurse.pay_rate || ''}
-                          onChange={(e) => setEditFormData({
-                            ...editFormData,
-                            contract_terms: {
-                              ...editFormData.contract_terms,
-                              rates_by_role: {
-                                ...editFormData.contract_terms.rates_by_role,
-                                nurse: {
-                                  ...editFormData.contract_terms.rates_by_role.nurse,
-                                  pay_rate: parseFloat(e.target.value) || 0
-                                }
-                              }
-                            }
-                          })}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="nurse-charge">Client Charge Rate (£/hr)</Label>
-                        <Input
-                          id="nurse-charge"
-                          type="number"
-                          step="0.01"
-                          placeholder="e.g., 24.00"
-                          value={editFormData.contract_terms.rates_by_role.nurse.charge_rate || ''}
-                          onChange={(e) => setEditFormData({
-                            ...editFormData,
-                            contract_terms: {
-                              ...editFormData.contract_terms,
-                              rates_by_role: {
-                                ...editFormData.contract_terms.rates_by_role,
-                                nurse: {
-                                  ...editFormData.contract_terms.rates_by_role.nurse,
-                                  charge_rate: parseFloat(e.target.value) || 0
-                                }
-                              }
-                            }
-                          })}
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    {editFormData.contract_terms.rates_by_role.nurse.charge_rate > 0 && editFormData.contract_terms.rates_by_role.nurse.pay_rate > 0 && (
-                      <p className="text-xs text-blue-700 mt-2">
-                        💰 Margin: £{(editFormData.contract_terms.rates_by_role.nurse.charge_rate - editFormData.contract_terms.rates_by_role.nurse.pay_rate).toFixed(2)}/hr 
-                        ({((editFormData.contract_terms.rates_by_role.nurse.charge_rate - editFormData.contract_terms.rates_by_role.nurse.pay_rate) / editFormData.contract_terms.rates_by_role.nurse.charge_rate * 100).toFixed(1)}%)
-                      </p>
-                    )}
-                  </div>
+                  {/* ✅ DYNAMIC ROLE SECTIONS - Uses STAFF_ROLES constant */}
+                  {STAFF_ROLES.map((role, index) => {
+                    const bgColors = ['bg-blue-50 border-blue-200', 'bg-purple-50 border-purple-200', 'bg-teal-50 border-teal-200', 'bg-amber-50 border-amber-200', 'bg-pink-50 border-pink-200'];
+                    const textColors = ['text-blue-900', 'text-purple-900', 'text-teal-900', 'text-amber-900', 'text-pink-900'];
+                    const marginColors = ['text-blue-700', 'text-purple-700', 'text-teal-700', 'text-amber-700', 'text-pink-700'];
 
-                  {/* Care Worker Rates */}
-                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                    <h4 className="font-semibold text-purple-900 mb-3 flex items-center gap-2">
-                      👥 Care Worker
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="cw-pay">Staff Pay Rate (£/hr)</Label>
-                        <Input
-                          id="cw-pay"
-                          type="number"
-                          step="0.01"
-                          placeholder="e.g., 14.75"
-                          value={editFormData.contract_terms.rates_by_role.care_worker.pay_rate || ''}
-                          onChange={(e) => setEditFormData({
-                            ...editFormData,
-                            contract_terms: {
-                              ...editFormData.contract_terms,
-                              rates_by_role: {
-                                ...editFormData.contract_terms.rates_by_role,
-                                care_worker: {
-                                  ...editFormData.contract_terms.rates_by_role.care_worker,
-                                  pay_rate: parseFloat(e.target.value) || 0
-                                }
-                              }
-                            }
-                          })}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="cw-charge">Client Charge Rate (£/hr)</Label>
-                        <Input
-                          id="cw-charge"
-                          type="number"
-                          step="0.01"
-                          placeholder="e.g., 19.18"
-                          value={editFormData.contract_terms.rates_by_role.care_worker.charge_rate || ''}
-                          onChange={(e) => setEditFormData({
-                            ...editFormData,
-                            contract_terms: {
-                              ...editFormData.contract_terms,
-                              rates_by_role: {
-                                ...editFormData.contract_terms.rates_by_role,
-                                care_worker: {
-                                  ...editFormData.contract_terms.rates_by_role.care_worker,
-                                  charge_rate: parseFloat(e.target.value) || 0
-                                }
-                              }
-                            }
-                          })}
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    {editFormData.contract_terms.rates_by_role.care_worker.charge_rate > 0 && editFormData.contract_terms.rates_by_role.care_worker.pay_rate > 0 && (
-                      <p className="text-xs text-purple-700 mt-2">
-                        💰 Margin: £{(editFormData.contract_terms.rates_by_role.care_worker.charge_rate - editFormData.contract_terms.rates_by_role.care_worker.pay_rate).toFixed(2)}/hr 
-                        ({((editFormData.contract_terms.rates_by_role.care_worker.charge_rate - editFormData.contract_terms.rates_by_role.care_worker.pay_rate) / editFormData.contract_terms.rates_by_role.care_worker.charge_rate * 100).toFixed(1)}%)
-                      </p>
-                    )}
-                  </div>
+                    const bgColor = bgColors[index % bgColors.length];
+                    const textColor = textColors[index % textColors.length];
+                    const marginColor = marginColors[index % marginColors.length];
 
-                  {/* HCA Rates */}
-                  <div className="p-4 bg-teal-50 border border-teal-200 rounded-lg">
-                    <h4 className="font-semibold text-teal-900 mb-3 flex items-center gap-2">
-                      🏥 HCA (Healthcare Assistant)
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="hca-pay">Staff Pay Rate (£/hr)</Label>
-                        <Input
-                          id="hca-pay"
-                          type="number"
-                          step="0.01"
-                          placeholder="e.g., 15.50"
-                          value={editFormData.contract_terms.rates_by_role.hca.pay_rate || ''}
-                          onChange={(e) => setEditFormData({
-                            ...editFormData,
-                            contract_terms: {
-                              ...editFormData.contract_terms,
-                              rates_by_role: {
-                                ...editFormData.contract_terms.rates_by_role,
-                                hca: {
-                                  ...editFormData.contract_terms.rates_by_role.hca,
-                                  pay_rate: parseFloat(e.target.value) || 0
-                                }
-                              }
-                            }
-                          })}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="hca-charge">Client Charge Rate (£/hr)</Label>
-                        <Input
-                          id="hca-charge"
-                          type="number"
-                          step="0.01"
-                          placeholder="e.g., 20.15"
-                          value={editFormData.contract_terms.rates_by_role.hca.charge_rate || ''}
-                          onChange={(e) => setEditFormData({
-                            ...editFormData,
-                            contract_terms: {
-                              ...editFormData.contract_terms,
-                              rates_by_role: {
-                                ...editFormData.contract_terms.rates_by_role,
-                                hca: {
-                                  ...editFormData.contract_terms.rates_by_role.hca,
-                                  charge_rate: parseFloat(e.target.value) || 0
-                                }
-                              }
-                            }
-                          })}
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    {editFormData.contract_terms.rates_by_role.hca.charge_rate > 0 && editFormData.contract_terms.rates_by_role.hca.pay_rate > 0 && (
-                      <p className="text-xs text-teal-700 mt-2">
-                        💰 Margin: £{(editFormData.contract_terms.rates_by_role.hca.charge_rate - editFormData.contract_terms.rates_by_role.hca.pay_rate).toFixed(2)}/hr 
-                        ({((editFormData.contract_terms.rates_by_role.hca.charge_rate - editFormData.contract_terms.rates_by_role.hca.pay_rate) / editFormData.contract_terms.rates_by_role.hca.charge_rate * 100).toFixed(1)}%)
-                      </p>
-                    )}
-                  </div>
+                    const roleRates = editFormData.contract_terms.rates_by_role[role.value] || { pay_rate: 0, charge_rate: 0 };
 
-                  {/* Senior Care Worker Rates */}
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                    <h4 className="font-semibold text-amber-900 mb-3 flex items-center gap-2">
-                      ⭐ Senior Care Worker
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="scw-pay">Staff Pay Rate (£/hr)</Label>
-                        <Input
-                          id="scw-pay"
-                          type="number"
-                          step="0.01"
-                          placeholder="e.g., 16.50"
-                          value={editFormData.contract_terms.rates_by_role.senior_care_worker.pay_rate || ''}
-                          onChange={(e) => setEditFormData({
-                            ...editFormData,
-                            contract_terms: {
-                              ...editFormData.contract_terms,
-                              rates_by_role: {
-                                ...editFormData.contract_terms.rates_by_role,
-                                senior_care_worker: {
-                                  ...editFormData.contract_terms.rates_by_role.senior_care_worker,
-                                  pay_rate: parseFloat(e.target.value) || 0
+                    return (
+                      <div key={role.value} className={`p-4 ${bgColor} border rounded-lg`}>
+                        <h4 className={`font-semibold ${textColor} mb-3 flex items-center gap-2`}>
+                          {role.icon} {role.label}
+                        </h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor={`${role.value}-pay`}>Staff Pay Rate (£/hr)</Label>
+                            <Input
+                              id={`${role.value}-pay`}
+                              type="number"
+                              step="0.01"
+                              placeholder="Enter amount here"
+                              value={roleRates.pay_rate || ''}
+                              onChange={(e) => setEditFormData({
+                                ...editFormData,
+                                contract_terms: {
+                                  ...editFormData.contract_terms,
+                                  rates_by_role: {
+                                    ...editFormData.contract_terms.rates_by_role,
+                                    [role.value]: {
+                                      ...roleRates,
+                                      pay_rate: parseFloat(e.target.value) || 0
+                                    }
+                                  }
                                 }
-                              }
-                            }
-                          })}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="scw-charge">Client Charge Rate (£/hr)</Label>
-                        <Input
-                          id="scw-charge"
-                          type="number"
-                          step="0.01"
-                          placeholder="e.g., 21.45"
-                          value={editFormData.contract_terms.rates_by_role.senior_care_worker.charge_rate || ''}
-                          onChange={(e) => setEditFormData({
-                            ...editFormData,
-                            contract_terms: {
-                              ...editFormData.contract_terms,
-                              rates_by_role: {
-                                ...editFormData.contract_terms.rates_by_role,
-                                senior_care_worker: {
-                                  ...editFormData.contract_terms.rates_by_role.senior_care_worker,
-                                  charge_rate: parseFloat(e.target.value) || 0
+                              })}
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`${role.value}-charge`}>Client Charge Rate (£/hr)</Label>
+                            <Input
+                              id={`${role.value}-charge`}
+                              type="number"
+                              step="0.01"
+                              placeholder="Enter amount here"
+                              value={roleRates.charge_rate || ''}
+                              onChange={(e) => setEditFormData({
+                                ...editFormData,
+                                contract_terms: {
+                                  ...editFormData.contract_terms,
+                                  rates_by_role: {
+                                    ...editFormData.contract_terms.rates_by_role,
+                                    [role.value]: {
+                                      ...roleRates,
+                                      charge_rate: parseFloat(e.target.value) || 0
+                                    }
+                                  }
                                 }
-                              }
-                            }
-                          })}
-                          className="mt-1"
-                        />
+                              })}
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+                        {roleRates.charge_rate > 0 && roleRates.pay_rate > 0 && (
+                          <p className={`text-xs ${marginColor} mt-2`}>
+                            💰 Margin: £{(roleRates.charge_rate - roleRates.pay_rate).toFixed(2)}/hr
+                            ({((roleRates.charge_rate - roleRates.pay_rate) / roleRates.charge_rate * 100).toFixed(1)}%)
+                          </p>
+                        )}
                       </div>
-                    </div>
-                    {editFormData.contract_terms.rates_by_role.senior_care_worker.charge_rate > 0 && editFormData.contract_terms.rates_by_role.senior_care_worker.pay_rate > 0 && (
-                      <p className="text-xs text-amber-700 mt-2">
-                        💰 Margin: £{(editFormData.contract_terms.rates_by_role.senior_care_worker.charge_rate - editFormData.contract_terms.rates_by_role.senior_care_worker.pay_rate).toFixed(2)}/hr 
-                        ({((editFormData.contract_terms.rates_by_role.senior_care_worker.charge_rate - editFormData.contract_terms.rates_by_role.senior_care_worker.pay_rate) / editFormData.contract_terms.rates_by_role.senior_care_worker.charge_rate * 100).toFixed(1)}%)
-                      </p>
-                    )}
-                  </div>
+                    );
+                  })}
+                  {/* ✅ END DYNAMIC ROLE SECTIONS */}
                 </div>
 
                 <Alert className="border-gray-300 bg-gray-50">

@@ -88,8 +88,8 @@ async function applyMigration() {
           status: 'pending',
           booking_date: new Date().toISOString().split('T')[0],
           shift_date: testShift.date,
-          start_time: testShift.start_time,
-          end_time: testShift.end_time
+          start_time: testShift.start_time, // ✅ TEXT (HH:MM) from shifts
+          end_time: testShift.end_time      // ✅ TEXT (HH:MM) from shifts
         })
         .select()
         .single();

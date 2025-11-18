@@ -1,0 +1,61 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - complementary [ref=e5]:
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - generic [ref=e9]: ACG
+          - text: Agile Care Management
+        - heading "Enterprise-grade workforce orchestration for multi-tenant care teams." [level=1] [ref=e10]
+        - paragraph [ref=e11]: Unified staffing, compliance, finance, and communications—powered by Supabase and AI-driven automations. Seamless SSO-ready architecture aligned with NHS DSPT and ISO 27001 best practices.
+      - generic [ref=e12]:
+        - generic [ref=e13]:
+          - heading "Operational command hub" [level=3] [ref=e14]
+          - paragraph [ref=e15]: Real-time shift orchestration, anomaly detection, and automated timesheet pipelines.
+        - generic [ref=e16]:
+          - heading "Financial guardrails" [level=3] [ref=e17]
+          - paragraph [ref=e18]: Automated invoice generation, dispute management, BI-grade reporting, and audited change logs.
+        - generic [ref=e19]:
+          - heading "Compliance by design" [level=3] [ref=e20]
+          - paragraph [ref=e21]: Enforced RBAC, full audit trails, secure file storage, and policy-driven onboarding workflows.
+      - generic [ref=e22]:
+        - text: Need a bespoke deployment or SSO handshake?
+        - link "enterprise@guest-glow.com" [ref=e23] [cursor=pointer]:
+          - /url: mailto:enterprise@guest-glow.com
+    - main [ref=e24]:
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - heading "Sign in to ACG StaffLink" [level=3] [ref=e28]
+          - generic [ref=e29]: Secure access for admins, agencies, and staff portals.
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - tablist [ref=e32]:
+              - tab "Sign in" [selected] [ref=e33] [cursor=pointer]
+              - tab "Sign up" [ref=e34] [cursor=pointer]
+              - tab "Forgot" [ref=e35] [cursor=pointer]
+            - tabpanel "Sign in" [ref=e36]:
+              - generic [ref=e37]:
+                - generic [ref=e38]:
+                  - text: Work email
+                  - textbox "Work email" [ref=e39]:
+                    - /placeholder: you@example.com
+                - generic [ref=e40]:
+                  - text: Password
+                  - textbox "Password" [ref=e41]:
+                    - /placeholder: ••••••••
+                - generic [ref=e42]:
+                  - generic [ref=e43]:
+                    - checkbox "Remember this device" [checked] [ref=e44] [cursor=pointer]:
+                      - generic:
+                        - img
+                    - checkbox [checked]
+                    - text: Remember this device
+                  - button "Forgot password?" [ref=e45] [cursor=pointer]
+                - button "Sign in" [ref=e46] [cursor=pointer]
+          - generic [ref=e47]:
+            - generic [ref=e50]: "Platform uptime: 99.982%"
+            - generic [ref=e53]: ISO 27001 · AES-256 · RLS
+  - region "Notifications alt+T"
+```

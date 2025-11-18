@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
 import { 
   MapPin, Users, CheckCircle, Navigation, AlertTriangle, 
-  RefreshCw, Calendar, Clock, Shield 
+  RefreshCw, Calendar, Clock, Shield, Info, X
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Fix leaflet marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -84,7 +85,7 @@ function MapBoundsUpdater({ mapData }) {
 
 export default function LiveShiftMap() {
   const [currentAgency, setCurrentAgency] = useState(null);
-  const [showNotifications, setShowNotifications] = useState(false);
+  const [showHelp, setShowHelp] = useState(true);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -417,6 +418,28 @@ export default function LiveShiftMap() {
         </Button>
       </div>
 
+      {showHelp && (
+        <Alert className="border-blue-300 bg-blue-50">
+          <Info className="h-5 w-5 text-blue-600" />
+          <div className="flex justify-between items-start">
+            <div>
+              <AlertTitle className="text-blue-900 font-semibold">How This Map Works</AlertTitle>
+              <AlertDescription className="text-blue-800 text-sm mt-2">
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>The map automatically refreshes every 30 seconds.</li>
+                  <li><strong className="font-semibold">En Route</strong> status appears when staff manually share their location before arriving.</li>
+                  <li><strong className="font-semibold">Clocked In</strong> status appears after staff manually clock in at the site.</li>
+                  <li>There is no automatic clock-in; the geofence only validates their location.</li>
+                </ul>
+              </AlertDescription>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => setShowHelp(false)} className="h-8 w-8 -mt-1 -mr-2">
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </Alert>
+      )}
+
       <div className="grid md:grid-cols-6 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
@@ -429,7 +452,7 @@ export default function LiveShiftMap() {
           <CardContent className="p-4 text-center">
             <Navigation className="w-6 h-6 text-orange-500 mx-auto mb-2" />
             <p className="text-2xl font-bold text-orange-600">{stats.approaching}</p>
-            <p className="text-sm text-gray-600">Approaching</p>
+            <p className="text-sm text-gray-600">En Route</p>
           </CardContent>
         </Card>
         <Card>
@@ -562,7 +585,7 @@ export default function LiveShiftMap() {
                         <Popup>
                           <div className="p-2">
                             <h4 className="font-bold text-orange-900">
-                              🟠 Approaching
+                              🟠 En Route
                             </h4>
                             <p className="text-sm">
                               {staff.staffMember?.first_name} {staff.staffMember?.last_name}
@@ -571,7 +594,7 @@ export default function LiveShiftMap() {
                               {Math.round(staff.distance_from_site)}m from site
                             </p>
                             <p className="text-xs text-gray-500">
-                              Accuracy: ±{Math.round(staff.accuracy)}m
+                              Manual update: {new Date(staff.recorded_at).toLocaleTimeString()}
                             </p>
                           </div>
                         </Popup>
@@ -632,8 +655,8 @@ export default function LiveShiftMap() {
                 <Users className="w-4 h-4 text-white" />
               </div>
               <div>
-                <p className="font-semibold text-sm">Approaching</p>
-                <p className="text-xs text-gray-600">Staff on the way</p>
+                <p className="font-semibold text-sm">En Route</p>
+                <p className="text-xs text-gray-600">Staff shared location</p>
               </div>
             </div>
             <div className="flex items-center gap-3">

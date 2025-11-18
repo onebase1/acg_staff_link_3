@@ -13,9 +13,15 @@ export const Core = {
     return { signedUrl: url };
   },
   InvokeLLM: async (params) => {
-    // TODO: Implement LLM integration via Supabase Edge Function
-    console.warn('⚠️ [Migration] InvokeLLM not yet migrated to Supabase Edge Functions');
-    return invokeEdgeFunction('invoke-llm', params);
+    // ✅ Migrated to ai-assistant edge function
+    return invokeEdgeFunction('ai-assistant', {
+      mode: params.mode || 'conversational',
+      prompt: params.prompt,
+      response_json_schema: params.response_json_schema || false,
+      temperature: params.temperature || 0.7,
+      max_tokens: params.max_tokens || 1000,
+      model: params.model || 'gpt-4o-mini'
+    });
   },
   SendEmail: async (params) => {
     // TODO: Implement email via Supabase Edge Function

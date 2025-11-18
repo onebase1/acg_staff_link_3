@@ -522,8 +522,8 @@ export default function Dashboard() {
           status: 'pending',
           booking_date: new Date().toISOString(),
           shift_date: shift.date,
-          start_time: shift.start_time,
-          end_time: shift.end_time,
+          start_time: shift.start_time, // ✅ TEXT (HH:MM) from shifts
+          end_time: shift.end_time,     // ✅ TEXT (HH:MM) from shifts
           confirmation_method: 'app'
         });
       

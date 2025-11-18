@@ -390,8 +390,8 @@ export default function StaffPortal() {
             status: 'confirmed',
             booking_date: new Date().toISOString(),
             shift_date: shift.date,
-            start_time: shift.start_time,
-            end_time: shift.end_time,
+            start_time: shift.start_time, // ✅ TEXT (HH:MM) from shifts
+            end_time: shift.end_time,     // ✅ TEXT (HH:MM) from shifts
             confirmation_method: 'app',
             confirmed_by_staff_at: new Date().toISOString(),
             created_date: new Date().toISOString()
@@ -443,7 +443,7 @@ export default function StaffPortal() {
       // ✅ FIX: Add this shift to confirming set
       setConfirmingShifts(prev => new Set([...prev, shiftId]));
     },
-    onSuccess: (shiftId) => {
+    onSuccess: (data, shiftId) => {
       // ✅ FIX: Remove this shift from confirming set
       setConfirmingShifts(prev => {
         const newSet = new Set(prev);
@@ -464,6 +464,34 @@ export default function StaffPortal() {
         description: `You've confirmed attendance for ${shiftDateFormatted}. See you there!`,
         duration: 5000
       });
+
+      // 🚀 NOTIFY ADMIN
+      if (confirmedShift && staffRecord) {
+        const clientName = getClientName(confirmedShift.client_id);
+        const subject = `✅ Staff Confirmed: ${staffRecord.first_name} ${staffRecord.last_name} for ${clientName}`;
+        const body_html = `
+          <p><strong>${staffRecord.first_name} ${staffRecord.last_name}</strong> has confirmed their attendance for a shift.</p>
+          <ul>
+            <li><strong>Client:</strong> ${clientName}</li>
+            <li><strong>Shift Date:</strong> ${confirmedShift.date}</li>
+            <li><strong>Shift Time:</strong> ${confirmedShift.start_time} - ${confirmedShift.end_time}</li>
+            <li><strong>Role:</strong> ${confirmedShift.role_required}</li>
+          </ul>
+          <p>No action is required. This is an automated confirmation.</p>
+        `;
+        
+        supabase.functions.invoke('internal-admin-notifier', {
+          body: { subject, body_html, change_type: 'staff_shift_confirmation' }
+        }).catch(error => console.error("Failed to send admin notification:", error));
+
+        // 🚀 NOTIFY CLIENT
+        supabase.functions.invoke('shift-verification-chain', {
+          body: {
+            shift_id: confirmedShift.id,
+            trigger_point: 'staff_confirmed_shift'
+          }
+        }).catch(error => console.error("Failed to send client confirmation notification:", error));
+      }
     },
     onError: (error, shiftId) => {
       // ✅ FIX: Remove this shift from confirming set on error
@@ -620,10 +648,10 @@ export default function StaffPortal() {
     const shiftDate = new Date(s.date);
     const today = new Date();
     // Only show today's shifts that are either assigned (awaiting clock-in) or confirmed
-    return shiftDate.toDateString() === today.toDateString() && (s.status === 'assigned' || s.status === 'confirmed');
+    return shiftDate.toDateString() === today.toDateString() && (s.status === 'assigned' || s.status === 'confirmed' || s.status === 'in_progress');
   });
 
-  const nextShift = upcomingShifts.filter(s => s.status === 'confirmed' || s.status === 'assigned')[0]; // Next relevant shift for display in hero
+  const nextShift = upcomingShifts.filter(s => s.status === 'confirmed' || s.status === 'assigned' || s.status === 'in_progress')[0]; // Next relevant shift for display in hero
 
   // ✅ FIX 2: Calculate actual earnings from CONFIRMED shifts
   const today = new Date();
@@ -1166,11 +1194,26 @@ export default function StaffPortal() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 p-3 sm:p-6">
-            {todayShifts.map(shift => (
-              <div key={shift.id} id={`clock-in-${shift.id}`}>
-                <MobileClockIn shift={shift} staffId={staffRecord.id} />
-              </div>
-            ))}
+            {todayShifts.map(shift => {
+              const booking = myBookings.find(b => b.shift_id === shift.id);
+              const timesheet = booking ? myTimesheets.find(t => t.booking_id === booking.id) : null;
+
+              return (
+                <div key={shift.id} id={`clock-in-${shift.id}`}>
+                  <MobileClockIn 
+                    shift={shift} 
+                    staffId={staffRecord.id}
+                    existingTimesheet={timesheet}
+                    onClockInComplete={() => {
+                      toast.info("Refreshing shift status...");
+                      queryClient.invalidateQueries({ queryKey: ['my-shifts'] });
+                      queryClient.invalidateQueries({ queryKey: ['my-timesheets'] });
+                      queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
+                    }}
+                  />
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
       )}

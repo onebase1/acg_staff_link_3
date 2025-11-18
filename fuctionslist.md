@@ -1,0 +1,53 @@
+                     ID                  │               NAME                │               SLUG                │ STATUS │ VERSION │  UPDATED AT (UTC)
+  ───────────────────────────────────────┼───────────────────────────────────┼───────────────────────────────────┼────────┼─────────┼──────────────────────
+    36ae09d5-7264-4d14-81f3-5442c8fc1d95 │ auto-invoice-generator            │ auto-invoice-generator            │ ACTIVE │      10 │ 2025-11-11 13:11:27
+    e5b3ac34-6151-458c-81a4-f7c8ab465186 │ send-invoice                      │ send-invoice                      │ ACTIVE │      10 │ 2025-11-11 09:16:21
+    36731ba8-2e13-4765-8666-e8efe70f6e82 │ auto-timesheet-creator            │ auto-timesheet-creator            │ ACTIVE │      12 │ 2025-11-15 23:44:34
+    2e9c4dbb-2ece-41c4-9f8f-914609e60c80 │ intelligent-timesheet-validator   │ intelligent-timesheet-validator   │ ACTIVE │      11 │ 2025-11-16 00:20:02
+    208ec5ef-9077-4d31-bb17-50e7f3d2397f │ geofence-validator                │ geofence-validator                │ ACTIVE │      10 │ 2025-11-11 13:11:34
+    3add3ad8-ff8f-4ad4-9189-54c2d324ff2c │ shift-verification-chain          │ shift-verification-chain          │ ACTIVE │      10 │ 2025-11-11 13:11:36
+    3501e5b2-6329-47dc-a475-c36b65845db7 │ post-shift-timesheet-reminder     │ post-shift-timesheet-reminder     │ ACTIVE │      12 │ 2025-11-16 01:33:16
+    a32ef29e-2df9-497e-bd54-70fbfdf2d164 │ scheduled-timesheet-processor     │ scheduled-timesheet-processor     │ ACTIVE │      10 │ 2025-11-11 13:11:41
+    af247a40-58f1-480a-8fc8-02b230d6eaef │ notification-digest-engine        │ notification-digest-engine        │ ACTIVE │      11 │ 2025-11-16 11:12:34
+    1dae273f-7780-4d32-bb2c-66b4b88e1082 │ send-email                        │ send-email                        │ ACTIVE │      15 │ 2025-11-18 14:44:49
+    b49c8f4c-7703-43dd-bf27-8c2e038c90d9 │ send-sms                          │ send-sms                          │ ACTIVE │      12 │ 2025-11-17 03:13:02
+    e707d121-d8c1-4690-9c28-22fa3f163e71 │ send-whatsapp                     │ send-whatsapp                     │ ACTIVE │      13 │ 2025-11-16 13:03:30
+    87035f7a-9bb6-4c94-9e61-b2dd23a3a5e1 │ send-agency-admin-invite          │ send-agency-admin-invite          │ ACTIVE │       9 │ 2025-11-10 22:46:51
+    4087c531-bb40-48ef-8dec-b4a2a4af8a34 │ ping-test-1                       │ ping-test-1                       │ ACTIVE │       7 │ 2025-11-10 22:46:53
+    e780f963-e738-44ce-8110-06355830e15f │ whatsapp-master-router            │ whatsapp-master-router            │ ACTIVE │       9 │ 2025-11-14 08:52:02
+    c73450d8-dc56-4a8b-9a12-942d3beb0f1c │ incoming-sms-handler              │ incoming-sms-handler              │ ACTIVE │       6 │ 2025-11-10 22:45:23
+    0c16b8c4-d738-43df-a50e-283c0cf94fcc │ email-automation-engine           │ email-automation-engine           │ ACTIVE │       7 │ 2025-11-11 20:43:48
+    67134805-7de7-4fcb-af62-27ed7adf0558 │ payment-reminder-engine           │ payment-reminder-engine           │ ACTIVE │       6 │ 2025-11-10 22:45:34
+    d6ffe0c6-b4c3-4f99-99ba-7d5241fbebc4 │ extract-timesheet-data            │ extract-timesheet-data            │ ACTIVE │       6 │ 2025-11-10 22:45:42
+    bb2de76c-52d5-49a2-8a53-e846b85ab871 │ whatsapp-timesheet-handler        │ whatsapp-timesheet-handler        │ ACTIVE │       6 │ 2025-11-10 22:45:49
+    ccc2a4f7-473a-478d-81da-209e5fc64bc1 │ auto-timesheet-approval-engine    │ auto-timesheet-approval-engine    │ ACTIVE │       6 │ 2025-11-10 22:45:51
+    4186e279-7a5d-4b97-85e9-6ea046b3df42 │ auto-approval-engine              │ auto-approval-engine              │ ACTIVE │       6 │ 2025-11-10 22:45:53
+    f147a5fa-b35f-4696-9e60-db4d139b9dd0 │ shift-status-automation           │ shift-status-automation           │ ACTIVE │      15 │ 2025-11-18 11:44:35
+    01dfdbbb-3fe7-41a4-8edd-4dae6d94a039 │ urgent-shift-escalation           │ urgent-shift-escalation           │ ACTIVE │       6 │ 2025-11-10 22:45:57
+    0442b266-022a-44df-a77f-083f8cb55d90 │ shift-reminder-engine             │ shift-reminder-engine             │ ACTIVE │       7 │ 2025-11-16 01:08:53
+    8fa7c482-fab5-44e1-8955-021b34e07da4 │ ai-shift-matcher                  │ ai-shift-matcher                  │ ACTIVE │       6 │ 2025-11-10 22:46:02
+    1d12fd6b-431e-4ad3-a712-c743436130ef │ validate-shift-eligibility        │ validate-shift-eligibility        │ ACTIVE │       6 │ 2025-11-10 22:46:05
+    096f0b5d-12a5-4b13-bf54-53c127c81616 │ daily-shift-closure-engine        │ daily-shift-closure-engine        │ ACTIVE │       6 │ 2025-11-10 22:46:10
+    4da3662e-4f00-4792-ad14-3404d54a35c1 │ no-show-detection-engine          │ no-show-detection-engine          │ ACTIVE │       6 │ 2025-11-10 22:46:12
+    4c517d3f-8795-4eef-83d8-cb5fdaaa72cc │ care-home-inbound-email           │ care-home-inbound-email           │ ACTIVE │       6 │ 2025-11-10 22:46:17
+    1daedcba-3f9f-4729-8158-078e43d0d77a │ generateShiftDescription          │ generateShiftDescription          │ ACTIVE │       7 │ 2025-11-11 09:16:24
+    8e9610d6-fba0-4d58-9809-e2cacf65650b │ compliance-monitor                │ compliance-monitor                │ ACTIVE │       7 │ 2025-11-11 21:23:28
+    679e68f3-3db3-46b1-9d8d-f8807194393a │ financial-data-validator          │ financial-data-validator          │ ACTIVE │       6 │ 2025-11-10 22:46:26
+    d39296a4-4a3f-4bd7-92e7-198ef0941e38 │ validate-bulk-import              │ validate-bulk-import              │ ACTIVE │       7 │ 2025-11-13 17:22:36
+    2084f357-e484-4a78-b6aa-2cb2fb166c18 │ extractDocumentDates              │ extractDocumentDates              │ ACTIVE │       7 │ 2025-11-11 09:16:26
+    2855c71c-8549-499e-809f-55ec38d5723e │ smart-escalation-engine           │ smart-escalation-engine           │ ACTIVE │       6 │ 2025-11-10 22:46:32
+    7f53a131-c975-47d3-93e7-0612dbab27ce │ client-communication-automation   │ client-communication-automation   │ ACTIVE │       6 │ 2025-11-10 22:46:34
+    a8bd8694-10e5-498f-8a59-525325ae2d82 │ staff-daily-digest-engine         │ staff-daily-digest-engine         │ ACTIVE │       6 │ 2025-11-10 22:46:36
+    6a6494c4-258e-4846-a913-3b1a60ba1770 │ critical-change-notifier          │ critical-change-notifier          │ ACTIVE │       8 │ 2025-11-16 04:52:41
+    67275d11-3375-4547-8d7e-32ffb2926fb2 │ enhanced-whatsapp-offers          │ enhanced-whatsapp-offers          │ ACTIVE │       6 │ 2025-11-10 22:46:43
+    c7097a4e-4c3e-42c2-bd29-7f4ae667dda1 │ welcome-agency                    │ welcome-agency                    │ ACTIVE │       6 │ 2025-11-10 22:46:45
+    5389c7d8-879a-4724-ae67-e76192caecf2 │ new-user-signup-handler           │ new-user-signup-handler           │ ACTIVE │       6 │ 2025-11-10 22:46:47
+    02b376e3-8f59-47a1-a4ca-1af183b10e88 │ incomplete-profile-reminder       │ incomplete-profile-reminder       │ ACTIVE │       6 │ 2025-11-10 22:46:49
+    242b9916-5076-409a-9b98-4cef66f0c2e3 │ ping-test-2                       │ ping-test-2                       │ ACTIVE │       6 │ 2025-11-10 22:46:55
+    64bebaa9-70e1-42d6-947c-765f515daf61 │ incoming-whatsapp-handler         │ incoming-whatsapp-handler         │ ACTIVE │       4 │ 2025-11-18 06:16:06
+    24f5f81a-b3e0-4427-b39e-da7a8b32b76f │ whatsapp-timesheet-interactive    │ whatsapp-timesheet-interactive    │ ACTIVE │       3 │ 2025-11-18 06:15:15
+    5516f7d9-542b-4a6c-a212-cc3b71f381f2 │ whatsapp-timesheet-upload-handler │ whatsapp-timesheet-upload-handler │ ACTIVE │       3 │ 2025-11-18 06:15:50
+    a7cbe588-3f47-475b-892a-b4711a5a64a2 │ ai-assistant                      │ ai-assistant                      │ ACTIVE │       1 │ 2025-11-18 18:19:40
+
+A new version of Supabase CLI is available: v2.58.5 (currently installed v2.15.5)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

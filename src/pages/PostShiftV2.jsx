@@ -20,30 +20,93 @@ import { STAFF_ROLES } from "@/constants/staffRoles";
 import { determineShiftType } from "@/utils/shiftHelpers";
 
 /**
+ * Get available roles for a client (only roles with charge_rate > 0)
+ * Prevents billing errors by blocking shifts for roles without agreed rates
+ * ✅ FIXED: STAFF_ROLES is an array, not an object
+ */
+const getAvailableRoles = (client) => {
+  if (!client || !client.contract_terms?.rates_by_role) {
+    console.log('❌ [getAvailableRoles] No client or rates_by_role:', {
+      hasClient: !!client,
+      hasContractTerms: !!client?.contract_terms,
+      hasRatesByRole: !!client?.contract_terms?.rates_by_role
+    });
+    return [];
+  }
+
+  const ratesByRole = client.contract_terms.rates_by_role;
+  const availableRoles = [];
+
+  console.log('🔍 [getAvailableRoles] Client rates:', {
+    clientName: client.name,
+    ratesByRole,
+    totalStaffRoles: STAFF_ROLES.length
+  });
+
+  // ✅ STAFF_ROLES is an array, iterate correctly
+  STAFF_ROLES.forEach((roleData) => {
+    // Try primary key first
+    let rates = ratesByRole[roleData.value];
+    let matchedKey = roleData.value;
+
+    // ✅ If not found, check aliases (handles deprecated keys like 'care_worker', 'hca')
+    if (!rates && roleData.aliases) {
+      for (const alias of roleData.aliases) {
+        if (ratesByRole[alias]) {
+          rates = ratesByRole[alias];
+          matchedKey = alias;
+          console.log(`  ℹ️ [getAvailableRoles] Found ${roleData.value} via alias: ${alias}`);
+          break;
+        }
+      }
+    }
+
+    console.log(`  → Checking ${roleData.value}:`, {
+      hasRates: !!rates,
+      matchedKey: matchedKey,
+      chargeRate: rates?.charge_rate,
+      payRate: rates?.pay_rate,
+      willInclude: rates && rates.charge_rate > 0
+    });
+
+    // Only include if charge_rate > 0 (means client has agreed rate for this role)
+    if (rates && rates.charge_rate > 0) {
+      availableRoles.push({
+        value: roleData.value,  // Use standard key, not alias
+        label: roleData.label,
+        icon: roleData.icon,
+        pay_rate: rates.pay_rate,
+        charge_rate: rates.charge_rate
+      });
+    }
+  });
+
+  console.log('✅ [getAvailableRoles] Available roles:', availableRoles.length, availableRoles.map(r => r.value));
+
+  return availableRoles;
+};
+
+/**
  * Generate shift templates based on client's shift patterns
  * Returns only Day/Night options for the selected client (no clutter)
  */
 const getClientShiftTemplates = (client) => {
   if (!client) {
-    // Default templates when no client selected
-    return [
-      { id: 'day', name: 'Day Shift (08:00-20:00)', start: '08:00', end: '20:00', hours: 12 },
-      { id: 'night', name: 'Night Shift (20:00-08:00)', start: '20:00', end: '08:00', hours: 12 }
-    ];
+    return [];
   }
 
   // Client-specific templates (only 2 options: Day and Night)
   return [
     {
       id: 'day',
-      name: `Day Shift (${client.day_shift_start}-${client.day_shift_end})`,
+      name: `Day (${client.day_shift_start || '08:00'}-${client.day_shift_end || '20:00'})`,
       start: client.day_shift_start || '08:00',
       end: client.day_shift_end || '20:00',
       hours: 12
     },
     {
       id: 'night',
-      name: `Night Shift (${client.night_shift_start}-${client.night_shift_end})`,
+      name: `Night (${client.night_shift_start || '20:00'}-${client.night_shift_end || '08:00'})`,
       start: client.night_shift_start || '20:00',
       end: client.night_shift_end || '08:00',
       hours: 12
@@ -58,21 +121,18 @@ export default function PostShiftV2() {
   const [loading, setLoading] = useState(true);
   const [currentAgency, setCurrentAgency] = useState(null);
 
-  const [showAddLocationModal, setShowAddLocationModal] = useState(false);
-  const [newLocationName, setNewLocationName] = useState('');
-  // const [shouldBroadcast, setShouldBroadcast] = useState(false); // REMOVED: Broadcast logic moved
-
+  // ✅ REMOVED: Add location modal (locations managed in /clients only)
   const [formData, setFormData] = useState({
     client_id: '',
-    role_required: 'healthcare_assistant',
+    role_required: '',
     date: '',
-    shift_template: 'day', // Changed from 'day_8am' to 'day'
+    shift_template: '',
     start_time: '08:00',
     end_time: '20:00',
     duration_hours: 12,
     work_location_within_site: '',
-    pay_rate: 14.75,
-    charge_rate: 19.18,
+    pay_rate: 0,
+    charge_rate: 0,
     break_duration_minutes: 0,
     urgency: 'normal',
     notes: ''
@@ -165,34 +225,66 @@ export default function PostShiftV2() {
   const selectedClient = clients.find(c => c.id === formData.client_id);
   const locationRequired = selectedClient?.contract_terms?.require_location_specification || false;
 
-  // Get shift templates for selected client (only Day/Night for that client)
+  // Get available roles and shift templates for selected client
+  const availableRoles = getAvailableRoles(selectedClient);
   const shiftTemplates = getClientShiftTemplates(selectedClient);
 
-  // When client changes, update shift times to match client's default day shift
+  // ✅ When client changes, reset dependent fields and populate with client defaults
   useEffect(() => {
     if (formData.client_id) {
       const client = clients.find(c => c.id === formData.client_id);
 
       if (client) {
-        const simpleRates = client.contract_terms?.rates_by_role?.[formData.role_required];
+        const availableRolesForClient = getAvailableRoles(client);
+        const templates = getClientShiftTemplates(client);
 
-        // Get client's day shift as default
-        const dayShift = getClientShiftTemplates(client)[0]; // First template is always day shift
+        // Get first available role (or empty if none)
+        const firstRole = availableRolesForClient[0];
+        const dayShift = templates[0]; // First template is always day shift
 
         setFormData(prev => ({
           ...prev,
-          pay_rate: simpleRates?.pay_rate || prev.pay_rate,
-          charge_rate: simpleRates?.charge_rate || prev.charge_rate,
+          // Reset role and template when client changes
+          role_required: firstRole?.value || '',
+          shift_template: dayShift ? 'day' : '',
+          // Set rates from first available role
+          pay_rate: firstRole?.pay_rate || 0,
+          charge_rate: firstRole?.charge_rate || 0,
           break_duration_minutes: client.contract_terms?.break_duration_minutes || 0,
-          // Update shift times to match client's pattern
-          shift_template: 'day',
-          start_time: dayShift.start,
-          end_time: dayShift.end,
-          duration_hours: dayShift.hours
+          // Update shift times to match client's day shift pattern
+          start_time: dayShift?.start || '08:00',
+          end_time: dayShift?.end || '20:00',
+          duration_hours: dayShift?.hours || 12
         }));
       }
+    } else {
+      // Reset when no client selected
+      setFormData(prev => ({
+        ...prev,
+        role_required: '',
+        shift_template: '',
+        pay_rate: 0,
+        charge_rate: 0
+      }));
     }
-  }, [formData.client_id, formData.role_required, clients]);
+  }, [formData.client_id, clients]);
+
+  // ✅ When role changes, update rates
+  useEffect(() => {
+    if (formData.client_id && formData.role_required) {
+      const client = clients.find(c => c.id === formData.client_id);
+      if (client) {
+        const rates = client.contract_terms?.rates_by_role?.[formData.role_required];
+        if (rates) {
+          setFormData(prev => ({
+            ...prev,
+            pay_rate: rates.pay_rate || 0,
+            charge_rate: rates.charge_rate || 0
+          }));
+        }
+      }
+    }
+  }, [formData.role_required, formData.client_id, clients]);
 
   const applyTemplate = (templateId) => {
     const template = shiftTemplates.find(t => t.id === templateId);
@@ -210,49 +302,7 @@ export default function PostShiftV2() {
   // Removed calculateDuration and custom template logic
   // All shifts now use client-specific Day/Night templates only
 
-  const updateClientMutation = useMutation({
-    mutationFn: async ({ clientId, newLocations }) => {
-      const { error } = await supabase
-        .from('clients')
-        .update({
-          internal_locations: newLocations
-        })
-        .eq('id', clientId);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['clients']);
-      toast.success('✅ Location added');
-      setShowAddLocationModal(false);
-      setNewLocationName('');
-    }
-  });
-
-  const handleAddLocation = () => {
-    if (!newLocationName.trim() || !formData.client_id) {
-      toast.error('Please enter a location name');
-      return;
-    }
-
-    const client = clients.find(c => c.id === formData.client_id);
-    const existingLocations = client?.internal_locations || [];
-
-    if (existingLocations.includes(newLocationName.trim())) {
-      toast.error('This location already exists');
-      return;
-    }
-
-    updateClientMutation.mutate({
-      clientId: formData.client_id,
-      newLocations: [...existingLocations, newLocationName.trim()]
-    });
-
-    setFormData(prev => ({
-      ...prev,
-      work_location_within_site: newLocationName.trim()
-    }));
-  };
+  // ✅ REMOVED: updateClientMutation - locations managed in /clients only
 
   const createShiftMutation = useMutation({
     mutationFn: async (shiftData) => {
@@ -369,13 +419,24 @@ export default function PostShiftV2() {
   };
 
   const isPastShift = formData.date && formData.start_time && (new Date(`${formData.date}T${formData.start_time}`) < new Date());
-  const isFormValid = formData.client_id && formData.date && (!locationRequired || formData.work_location_within_site?.trim());
+
+  // ✅ FIXED: Complete validation - check ALL required fields
+  const isFormValid =
+    formData.client_id &&
+    formData.date &&
+    formData.role_required &&
+    formData.shift_template &&
+    formData.start_time &&
+    formData.end_time &&
+    (!locationRequired || formData.work_location_within_site?.trim());
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
     </div>;
   }
+
+  // ✅ REMOVED: Duplicate V3 code - this is V2, uses formData not selectedClientId
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -390,6 +451,61 @@ export default function PostShiftV2() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* ✅ STEP 1: Care Home Selection (FIRST) */}
+        <Card>
+          <CardHeader className="border-b bg-gray-50">
+            <CardTitle className="text-lg">Care Home & Location</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
+            <div>
+              <Label>Care Home *</Label>
+              <Select
+                value={formData.client_id}
+                onValueChange={(value) => setFormData({...formData, client_id: value})}
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Select care home..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map(client => (
+                    <SelectItem key={client.id} value={client.id}>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-gray-500" />
+                        {client.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Location (if required by client) - ✅ REMOVED "Add Location" option */}
+            {locationRequired && (
+              <div>
+                <Label>Work Location *</Label>
+                <Select
+                  value={formData.work_location_within_site}
+                  onValueChange={(value) => setFormData({...formData, work_location_within_site: value})}
+                  disabled={!formData.client_id}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectedClient?.internal_locations?.map(loc => (
+                      <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Manage locations in the Clients page
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ✅ STEP 2: Shift Schedule & Role (Disabled until care home selected) */}
         <Card>
           <CardHeader className="border-b bg-gray-50">
             <CardTitle className="text-lg">Shift Schedule & Role</CardTitle>
@@ -400,21 +516,10 @@ export default function PostShiftV2() {
                 <Label>Shift Template *</Label>
                 <Select
                   value={formData.shift_template}
-                  onValueChange={(value) => {
-                    const template = shiftTemplates.find(t => t.id === value);
-                    if (template) {
-                      setFormData(prev => ({
-                        ...prev,
-                        shift_template: value,
-                        start_time: template.start,
-                        end_time: template.end,
-                        duration_hours: template.hours
-                      }));
-                    }
-                  }}
+                  onValueChange={(value) => applyTemplate(value)}
                   disabled={!formData.client_id}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={!formData.client_id ? 'bg-gray-50' : ''}>
                     <SelectValue placeholder={!formData.client_id ? "Select care home first..." : "Select shift template..."} />
                   </SelectTrigger>
                   <SelectContent>
@@ -433,18 +538,28 @@ export default function PostShiftV2() {
                 <Select
                   value={formData.role_required}
                   onValueChange={(value) => setFormData({...formData, role_required: value})}
+                  disabled={!formData.client_id || availableRoles.length === 0}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger className={!formData.client_id ? 'bg-gray-50' : ''}>
+                    <SelectValue placeholder={!formData.client_id ? "Select care home first..." : availableRoles.length === 0 ? "No roles configured" : "Select role..."} />
                   </SelectTrigger>
                   <SelectContent>
-                    {STAFF_ROLES.map(role => (
+                    {availableRoles.map(role => (
                       <SelectItem key={role.value} value={role.value}>
-                        {role.icon} {role.label}
+                        <div className="flex items-center gap-2">
+                          <span>{role.icon}</span>
+                          <span>{role.label}</span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {!formData.client_id && (
+                  <p className="text-xs text-gray-500 mt-1">Only roles with agreed rates will appear</p>
+                )}
+                {formData.client_id && availableRoles.length === 0 && (
+                  <p className="text-xs text-red-600 mt-1">⚠️ No roles configured for this client. Please add contract rates first.</p>
+                )}
               </div>
             </div>
 
@@ -490,117 +605,35 @@ export default function PostShiftV2() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="border-b bg-gray-50">
-            <CardTitle className="text-lg">Care Home & Location</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            <div>
-              <Label>Care Home *</Label>
-              <Select
-                value={formData.client_id}
-                onValueChange={(value) => setFormData({...formData, client_id: value, work_location_within_site: ''})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select care home..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {formData.client_id && selectedClient?.internal_locations?.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label>
-                    Work Location {locationRequired && <span className="text-red-600">*</span>}
-                  </Label>
-                  <Button
-                    type="button"
-                    variant="link"
-                    size="sm"
-                    onClick={() => setShowAddLocationModal(true)}
-                    className="h-auto p-0"
-                  >
-                    + Add Location
-                  </Button>
-                </div>
-
-                <Select
-                  value={formData.work_location_within_site}
-                  onValueChange={(value) => setFormData({...formData, work_location_within_site: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select room/unit..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedClient.internal_locations.map((loc, idx) => (
-                      <SelectItem key={idx} value={loc}>
-                        📍 {loc}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* ✅ REMOVED: Duplicate Care Home card - now at top of form */}
 
         <Card>
           <CardHeader className="border-b bg-gray-50">
             <CardTitle className="text-lg">Shift Priority</CardTitle>
           </CardHeader>
           <CardContent className="p-6 space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <Label>Urgency Level</Label>
-                <div className="flex gap-2 mt-2">
-                  <Button
-                    type="button"
-                    variant={formData.urgency === 'normal' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setFormData({...formData, urgency: 'normal'})}
-                    className="flex-1"
-                  >
-                    Normal
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={formData.urgency === 'urgent' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setFormData({...formData, urgency: 'urgent'})}
-                    className="flex-1 bg-orange-500 hover:bg-orange-600"
-                  >
-                    🔥 Urgent
-                  </Button>
-                </div>
+            <div>
+              <Label>Urgency Level</Label>
+              <div className="flex gap-3 mt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setFormData({...formData, urgency: 'normal'})}
+                  className={`flex-1 h-12 ${formData.urgency === 'normal' ? 'bg-gray-900 text-white hover:bg-gray-800' : 'hover:bg-gray-50'}`}
+                >
+                  Normal
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setFormData({...formData, urgency: 'urgent'})}
+                  className={`flex-1 h-12 ${formData.urgency === 'urgent' ? 'bg-orange-500 text-white hover:bg-orange-600' : 'hover:bg-orange-50'}`}
+                >
+                  🔥 Urgent
+                </Button>
               </div>
-
-              {formData.urgency === 'urgent' && !isPastShift && (
-                <div className="p-4 bg-orange-50 border-2 border-orange-200 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <Info className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-semibold text-orange-900 mb-1">
-                        Urgent Shift - Next Steps
-                      </p>
-                      <p className="text-xs text-orange-800">
-                        After creating this shift, go to the Shifts page to:
-                      </p>
-                      <ul className="text-xs text-orange-800 mt-2 space-y-1">
-                        <li>• Assign staff directly (saves SMS costs)</li>
-                        <li>• OR broadcast alert via SMS to all eligible staff</li>
-                        <li>• OR add to marketplace for staff to accept</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             <div>
@@ -630,30 +663,7 @@ export default function PostShiftV2() {
         </div>
       </form>
 
-      <Dialog open={showAddLocationModal} onOpenChange={setShowAddLocationModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Location</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <Label>Location Name</Label>
-            <Input
-              value={newLocationName}
-              onChange={(e) => setNewLocationName(e.target.value)}
-              placeholder="e.g., Room 14"
-              className="mt-2"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddLocationModal(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddLocation}>
-              Add
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* ✅ REMOVED: Add Location modal - locations managed in /clients only */}
     </div>
   );
 }

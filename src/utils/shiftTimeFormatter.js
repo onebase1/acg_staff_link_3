@@ -12,18 +12,46 @@
 import { format, parse } from 'date-fns';
 
 /**
+ * Parse time string (HH:MM or HH:MM:SS) to hour and minute
+ * @param {string} timeStr - Time string like "08:00" or "20:00:00"
+ * @returns {{hours: number, minutes: number}} Parsed time
+ */
+function parseTimeString(timeStr) {
+  if (!timeStr) return { hours: 0, minutes: 0 };
+
+  // Handle HH:MM or HH:MM:SS format
+  const parts = timeStr.split(':');
+  const hours = parseInt(parts[0], 10) || 0;
+  const minutes = parseInt(parts[1], 10) || 0;
+
+  return { hours, minutes };
+}
+
+/**
  * Determine if a shift is a day or night shift based on start time
- * @param {string} startTime - ISO timestamp or time string
+ * @param {string} startTime - Time string (HH:MM or HH:MM:SS) or ISO timestamp
  * @returns {'Day' | 'Night'}
  */
 export function getShiftType(startTime) {
   if (!startTime) return 'Day';
-  
+
   try {
-    // Extract hour from timestamp
-    const date = new Date(startTime);
-    const hour = date.getHours();
-    
+    let hour;
+
+    // Check if it's HH:MM or HH:MM:SS format (TEXT from database)
+    if (typeof startTime === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(startTime)) {
+      const { hours } = parseTimeString(startTime);
+      hour = hours;
+    } else {
+      // Try parsing as ISO timestamp (fallback for old data)
+      const date = new Date(startTime);
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid time format:', startTime);
+        return 'Day';
+      }
+      hour = date.getHours();
+    }
+
     // Night shift: 8pm (20:00) to 8am (08:00)
     // Day shift: 8am (08:00) to 8pm (20:00)
     return (hour >= 20 || hour < 8) ? 'Night' : 'Day';
@@ -34,29 +62,43 @@ export function getShiftType(startTime) {
 }
 
 /**
- * Format time from ISO timestamp to 12-hour format (e.g., "8am", "8pm")
- * @param {string} timestamp - ISO timestamp
+ * Format time from HH:MM or ISO timestamp to 12-hour format (e.g., "8am", "8pm")
+ * @param {string} timeStr - Time string (HH:MM or HH:MM:SS) or ISO timestamp
  * @returns {string} Formatted time like "8am" or "2:30pm"
  */
-export function formatTime12Hour(timestamp) {
-  if (!timestamp) return '';
-  
+export function formatTime12Hour(timeStr) {
+  if (!timeStr) return '';
+
   try {
-    const date = new Date(timestamp);
-    const hours = date.getHours();
-    const minutes = date.getMinutes();
-    
+    let hours, minutes;
+
+    // Check if it's HH:MM or HH:MM:SS format (TEXT from database)
+    if (typeof timeStr === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(timeStr)) {
+      const parsed = parseTimeString(timeStr);
+      hours = parsed.hours;
+      minutes = parsed.minutes;
+    } else {
+      // Try parsing as ISO timestamp (fallback for old data)
+      const date = new Date(timeStr);
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid time format:', timeStr);
+        return '';
+      }
+      hours = date.getHours();
+      minutes = date.getMinutes();
+    }
+
     // Convert to 12-hour format
     const hour12 = hours % 12 || 12;
     const ampm = hours >= 12 ? 'pm' : 'am';
-    
+
     // Only show minutes if not on the hour
     if (minutes === 0) {
       return `${hour12}${ampm}`;
     }
     return `${hour12}:${minutes.toString().padStart(2, '0')}${ampm}`;
   } catch (error) {
-    console.error('Error formatting time:', timestamp, error);
+    console.error('Error formatting time:', timeStr, error);
     return '';
   }
 }

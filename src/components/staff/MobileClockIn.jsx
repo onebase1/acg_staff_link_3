@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatTodayShiftTime } from "../../utils/shiftTimeFormatter";
+import { invokeFunction } from "@/lib/supabaseFunctions";
 
-export default function MobileClockIn({ shift, onClockInComplete }) {
+export default function MobileClockIn({ shift, onClockInComplete, existingTimesheet: initialTimesheet }) {
   const [loading, setLoading] = useState(false);
   const [gpsStatus, setGpsStatus] = useState('idle');
   const [location, setLocation] = useState(null);
@@ -20,7 +21,7 @@ export default function MobileClockIn({ shift, onClockInComplete }) {
   const [validationResult, setValidationResult] = useState(null);
   const [staff, setStaff] = useState(null);
   const [client, setClient] = useState(null);
-  const [existingTimesheet, setExistingTimesheet] = useState(null);
+  const [existingTimesheet, setExistingTimesheet] = useState(initialTimesheet);
   const [existingBooking, setExistingBooking] = useState(null);
   
   // 🔒 ANTI-DUPLICATE PROTECTION
@@ -30,6 +31,10 @@ export default function MobileClockIn({ shift, onClockInComplete }) {
 
   // New state as per outline, assuming it's for an internal loading specific to location within handleClockIn
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+
+  useEffect(() => {
+    setExistingTimesheet(initialTimesheet);
+  }, [initialTimesheet]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -74,41 +79,8 @@ export default function MobileClockIn({ shift, onClockInComplete }) {
             setClient(clientRecord);
           }
         }
-
-        if (staffRecord?.id) {
-          const { data: bookingRows, error: bookingError } = await supabase
-            .from('bookings')
-            .select('*')
-            .eq('shift_id', shift.id)
-            .eq('staff_id', staffRecord.id);
-
-          if (bookingError) {
-            throw bookingError;
-          }
-
-          const existingBooking = bookingRows?.[0];
-          if (existingBooking) {
-            setExistingBooking(existingBooking);
-            console.log('🔍 Existing booking found:', existingBooking.id);
-
-            const { data: timesheetRows, error: timesheetError } = await supabase
-              .from('timesheets')
-              .select('*')
-              .eq('booking_id', existingBooking.id);
-
-            if (timesheetError) {
-              throw timesheetError;
-            }
-
-            const existing = timesheetRows?.[0];
-            if (existing) {
-              setExistingTimesheet(existing);
-              console.log('🔒 Existing timesheet detected:', existing.id);
-            }
-          }
-        }
       } catch (error) {
-        console.error("Error fetching clock-in data:", error);
+        console.error("Error fetching non-timesheet data:", error);
         toast.error(error.message || 'Failed to load shift details for clock-in');
       }
     };
@@ -138,477 +110,230 @@ export default function MobileClockIn({ shift, onClockInComplete }) {
     }
   };
 
-  const captureLocation = () => {
-    setGpsStatus('loading');
-    setGpsError(null);
-
-    if (!navigator.geolocation) {
-      setGpsStatus('error');
-      setGpsError('GPS not supported on this device');
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const locationData = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-          timestamp: new Date().toISOString()
-        };
-
-        setLocation(locationData);
-        setGpsStatus('success');
-        
-        validateGeofence(locationData);
-      },
-      (error) => {
-        setGpsStatus('error');
-        
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            setGpsError('Location permission denied. Please enable location access in your browser settings.');
-            break;
-          case error.POSITION_UNAVAILABLE:
-            setGpsError('Location unavailable. Please ensure GPS is enabled on your device.');
-            break;
-          case error.TIMEOUT:
-            setGpsError('Location request timed out. Please try again.');
-            break;
-          default:
-            setGpsError('Unknown GPS error. Please try again.');
-        }
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+  const getCurrentLocation = () => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject('GPS not supported on this device');
+        return;
       }
-    );
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const locationData = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            timestamp: new Date().toISOString()
+          };
+          resolve(locationData);
+        },
+        (error) => {
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              reject('Location permission denied. Please enable location access in your browser settings.');
+              break;
+            case error.POSITION_UNAVAILABLE:
+              reject('Location unavailable. Please ensure GPS is enabled on your device.');
+              break;
+            case error.TIMEOUT:
+              reject('Location request timed out. Please try again.');
+              break;
+            default:
+              reject('An unknown GPS error occurred. Please try again.');
+          }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    });
   };
 
-  const validateGeofence = async (locationData) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('geofence-validator', {
-        body: {
-          staff_location: locationData,
-          client_id: shift.client_id
-        }
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      setValidationResult(data);
-
-      if (!data.validated) {
-        toast.warning(`⚠️ ${data.message}`);
-
-        await supabase
-          .from('shifts')
-          .update({ approaching_staff_location: null })
-          .eq('id', shift.id);
-      } else {
-        toast.success(`✅ ${data.message}`);
-
-        await supabase
-          .from('shifts')
-          .update({
-            approaching_staff_location: {
-              staff_id: staff.id,
-              latitude: locationData.latitude,
-              longitude: locationData.longitude,
-              distance_from_site: data.distance_meters,
-              geofence_validated: true,
-              recorded_at: new Date().toISOString()
-            }
-          })
-          .eq('id', shift.id);
-      }
-    } catch (error) {
-      console.error('Geofence validation error:', error);
-      toast.error('Failed to validate location');
-    }
-  };
-
-  // 🔒 ENHANCED CLOCK IN WITH DUPLICATE PREVENTION
   const handleClockIn = async () => {
-    // 🔒 PROTECTION 1: Debounce - Prevent clicks within 2 seconds
+    // Debounce and check for existing process
     const nowTimestamp = Date.now();
-    if (nowTimestamp - lastClickTimeRef.current < 2000) {
-      console.warn('⚠️ Clock-in debounced - too soon after last click');
-      return;
-    }
+    if (nowTimestamp - lastClickTimeRef.current < 2000) return;
     lastClickTimeRef.current = nowTimestamp;
-
-    // 🔒 PROTECTION 2: Check if already clocking in
     if (isClockingIn) {
-      console.warn('⚠️ Already processing clock-in request');
       toast.warning('Clock-in already in progress...');
       return;
     }
 
-    // ✅ FIX & NEW: Time-based clock-in validation
-    const shiftDateTime = new Date(`${shift.date}T${shift.start_time}:00`); // Ensure proper ISO format for Date object
-    const now = new Date(); // Use a Date object for comparisons
-    const fifteenMinsBeforeShift = new Date(shiftDateTime.getTime() - 15 * 60 * 1000); // Earliest allowed clock-in
-
-    // Check if it's too early to clock in (more than 15 minutes before shift start)
-    if (now < fifteenMinsBeforeShift) {
-      const minutesUntilAllowedClockIn = Math.round((fifteenMinsBeforeShift.getTime() - now.getTime()) / (1000 * 60));
-      const hoursUntilAllowedClockIn = Math.floor(minutesUntilAllowedClockIn / 60);
-      const remainingMinutes = minutesUntilAllowedClockIn % 60;
-      
-      let timeMessage = '';
-      if (hoursUntilAllowedClockIn > 0) {
-        timeMessage = `${hoursUntilAllowedClockIn}h ${remainingMinutes}m`;
-      } else if (minutesUntilAllowedClockIn > 0) {
-        timeMessage = `${minutesUntilAllowedClockIn} minutes`;
-      } else {
-        timeMessage = 'less than a minute';
-      }
-      
-      toast.error(
-        `⏰ Too early to clock in`,
-        {
-          description: `You can clock in from ${fifteenMinsBeforeShift.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Please wait ${timeMessage}.`,
-          duration: 5000
-        }
-      );
-      return;
-    }
-
-    // 🔒 PROTECTION 3: Validate prerequisites
-    if (!location) {
-      toast.error('Please capture your location first');
-      return;
-    }
-
-    if (validationResult && !validationResult.validated) {
-      toast.error('❌ Cannot clock in: You are outside the geofence radius. Please move closer to the site.');
-      return;
-    }
-
-    // 🔒 PROTECTION 4: Generate unique request ID
-    const requestId = `clock-in-${shift.id}-${staff.id}-${Date.now()}`;
-    clockInAttemptRef.current = requestId;
-
     setIsClockingIn(true);
     setLoading(true);
-    setIsLoadingLocation(true); // As per outline, set new loading state
+    setGpsError(null);
+    setValidationResult(null);
 
     try {
-      console.log(`🔐 [Clock-In] Starting with request ID: ${requestId}`);
+      // 1. Get Current Location
+      const capturedLocation = await getCurrentLocation();
+      setLocation(capturedLocation);
 
-      // 🔒 PROTECTION 5: Double-check for existing timesheet RIGHT before creation
+      // 2. Validate Geofence
+      if (!shift?.client_id) {
+        throw new Error("Client data not loaded. Please refresh.");
+      }
+
+      // --- 🐞 DIAGNOSTIC LOGGING ---
+      console.log("--- 🐞 Invoking geofence-validator ---");
+      console.log("Payload to be sent:");
+      console.log("1. staff_location:", JSON.stringify(capturedLocation, null, 2));
+      console.log("2. client_id:", shift.client_id);
+      console.log("------------------------------------");
+      // --- END LOGGING ---
+
+      const { data: validation, error: validationError } = await invokeFunction('geofence-validator', {
+        body: {
+          staff_location: capturedLocation,
+          client_id: shift.client_id
+        }
+      });
+      if (validationError) throw validationError;
+      setValidationResult(validation);
+      if (!validation.validated) {
+        toast.error(`Clock-in failed: ${validation.message}`);
+        throw new Error(validation.message);
+      }
+
+      // 3. Proceed with Clock-in Logic (simplified from original)
+      const requestId = `clock-in-${shift.id}-${staff.id}-${Date.now()}`;
+      clockInAttemptRef.current = requestId;
+
+      // Double-check for existing timesheet
       const { data: existingTimesheets, error: existingTimesheetError } = await supabase
         .from('timesheets')
-        .select('*')
+        .select('id, clock_in_time')
         .eq('shift_id', shift.id)
         .eq('staff_id', staff.id);
-
-      if (existingTimesheetError) {
-        throw existingTimesheetError;
+      if (existingTimesheetError) throw existingTimesheetError;
+      if (existingTimesheets && existingTimesheets.length > 0 && existingTimesheets[0].clock_in_time) {
+        toast.error('You have already clocked in for this shift!');
+        setExistingTimesheet(existingTimesheets[0]);
+        return;
       }
-
-      if (existingTimesheets && existingTimesheets.length > 0) {
-        const existing = existingTimesheets[0];
-        if (existing.clock_in_time) {
-          console.warn(`⚠️ [Clock-In] Duplicate blocked - timesheet ${existing.id} already exists`);
-          toast.error('❌ You have already clocked in for this shift!');
-          setExistingTimesheet(existing);
-          return;
-        }
-      }
-
+      
       // Get or create booking
       let booking = existingBooking;
-      
       if (!booking) {
-        const { data: bookings, error: bookingError } = await supabase
-          .from('bookings')
-          .select('*')
-          .eq('shift_id', shift.id)
-          .eq('staff_id', staff.id);
-        
-        if (bookings && bookings.length > 0) {
-          booking = bookings[0];
-          console.log(`✅ [Clock-In] Found existing booking: ${booking.id}`);
-          setExistingBooking(booking);
-        } else {
           const { data: newBooking, error: newBookingError } = await supabase
             .from('bookings')
             .insert({
-              agency_id: shift.agency_id,
-              shift_id: shift.id,
-              staff_id: staff.id,
-              client_id: shift.client_id,
-              status: 'confirmed',
-              booking_date: new Date().toISOString(),
-              shift_date: shift.date,
-              start_time: shift.start_time,
-              end_time: shift.end_time,
-              confirmation_method: 'app'
+              agency_id: shift.agency_id, shift_id: shift.id, staff_id: staff.id,
+              client_id: shift.client_id, status: 'confirmed', booking_date: new Date().toISOString(),
+              shift_date: shift.date, start_time: shift.start_time, end_time: shift.end_time,
+              confirmation_method: 'app_clock_in'
             })
-            .select()
-            .single();
-          if (newBooking) {
-            booking = newBooking;
-            console.log(`✅ [Clock-In] Created new booking: ${booking.id}`);
-            setExistingBooking(booking);
-          } else {
-            throw new Error(`Failed to create new booking: ${newBookingError?.message}`);
-          }
-        }
+            .select().single();
+          if (newBookingError) throw new Error(`Failed to create booking: ${newBookingError.message}`);
+          booking = newBooking;
+          setExistingBooking(booking);
       }
 
-      // 🔒 PROTECTION 6: Final check - ensure no timesheet exists for this booking
-      const { data: bookingTimesheets, error: bookingTimesheetError } = await supabase
-        .from('timesheets')
-        .select('*')
-        .eq('booking_id', booking.id);
-
-      if (bookingTimesheetError) {
-        throw bookingTimesheetError;
-      }
-
-      if (bookingTimesheets && bookingTimesheets.length > 0 && bookingTimesheets[0].clock_in_time) {
-        console.warn(`⚠️ [Clock-In] Duplicate blocked - booking ${booking.id} already has timesheet`);
-        toast.error('❌ Timesheet already exists for this booking!');
-        setExistingTimesheet(bookingTimesheets[0]);
-        return;
-      }
-
-      // 🔒 CREATE TIMESHEET (only if all checks passed)
+      // Create Timesheet
       const { data: timesheet, error: timesheetError } = await supabase
         .from('timesheets')
         .insert({
-          agency_id: shift.agency_id,
-          booking_id: booking.id,
-          staff_id: staff.id,
-          client_id: shift.client_id,
-          shift_date: shift.date,
-          clock_in_time: new Date().toISOString(),
-          clock_in_location: location,
-          pay_rate: shift.pay_rate,
-          charge_rate: shift.charge_rate,
-          status: 'draft'
+          agency_id: shift.agency_id, booking_id: booking.id, staff_id: staff.id,
+          client_id: shift.client_id, shift_date: shift.date, clock_in_time: new Date().toISOString(),
+          clock_in_location: capturedLocation, pay_rate: shift.pay_rate, charge_rate: shift.charge_rate,
+          status: 'draft', geofence_validated: validation.validated, geofence_distance_meters: validation.distance_meters
         })
-        .select()
-        .single();
-
+        .select().single();
       if (timesheetError) throw timesheetError;
-      console.log(`✅ [Clock-In] Timesheet created: ${timesheet.id}`);
-
-      // Validate geofence on the timesheet
-      await supabase.functions.invoke('geofence-validator', {
-        body: {
-          staff_location: location,
-          client_id: shift.client_id,
-          timesheet_id: timesheet.id
-        }
-      });
 
       // Update shift status
-      await supabase
-        .from('shifts')
-        .update({
-          status: 'in_progress',
-          shift_started_at: new Date().toISOString()
-        })
-        .eq('id', shift.id);
+      await supabase.from('shifts').update({ status: 'in_progress', shift_started_at: new Date().toISOString() }).eq('id', shift.id);
 
-      // 🔥 GAME CHANGER: Notify care home that staff has clocked in
-      try {
-        const { error: verificationError } = await supabase.functions.invoke('shift-verification-chain', {
-          body: {
-            shift_id: shift.id,
-            trigger_point: 'staff_clocked_in',
-            additional_data: {
-              clock_in_time: new Date().toLocaleTimeString(),
-              geofence_validated: validationResult?.validated || false,
-              distance_meters: validationResult?.distance_meters || null
-            }
+      // Trigger notifications
+      invokeFunction('shift-verification-chain', {
+        body: {
+          shift_id: shift.id, trigger_point: 'staff_clocked_in',
+          additional_data: {
+            clock_in_time: new Date().toLocaleTimeString(),
+            geofence_validated: validation.validated,
+            distance_meters: validation.distance_meters
           }
-        });
-        if (verificationError) {
-          throw verificationError;
         }
-        console.log('✅ Clock-in notification sent to care home');
-      } catch (emailError) {
-        console.error('⚠️ Verification email failed:', emailError);
-      }
-
-      // ✅ NEW: Send SMS to care home/client about staff arrival
-      try {
-        const { data: clientData, error: clientError } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('id', shift.client_id)
-          .single();
-        if (clientError) {
-          throw clientError;
-        }
-
-        if (clientData && clientData.contact_person?.phone) {
-          const smsMessage = `✅ STAFF ARRIVED: ${staff.first_name} ${staff.last_name} clocked in at ${clientData.name}${shift.work_location_within_site ? ` (${shift.work_location_within_site})` : ''} at ${new Date().toLocaleTimeString()}. Shift: ${shift.start_time}-${shift.end_time}.`;
-          
-          const { error: smsErrorInvoke } = await supabase.functions.invoke('send-sms', {
-            body: {
-              to: clientData.contact_person.phone,
-              message: smsMessage
-            }
-          });
-          if (smsErrorInvoke) {
-            throw smsErrorInvoke;
-          }
-          
-          console.log('✅ SMS arrival notification sent to care home');
-        }
-      } catch (smsError) {
-        console.error('⚠️ SMS notification failed:', smsError);
-        // Don't block clock-in if SMS fails
-      }
+      }).catch(console.error);
 
       toast.success('✅ Clocked in successfully!');
-      
       setExistingTimesheet(timesheet);
-      
       if (onClockInComplete) {
         onClockInComplete(timesheet);
       }
 
     } catch (error) {
       console.error('❌ [Clock-In] Error:', error);
-      
-      // Check if error is due to duplicate entry
-      if (error.message && error.message.includes('duplicate')) {
-        toast.error('❌ Duplicate clock-in prevented');
-      } else {
-        toast.error(`Failed to clock in: ${error.message}`);
-      }
+      setGpsError(error.message);
+      toast.error(`Clock-in failed: ${error.message}`);
     } finally {
       setIsClockingIn(false);
       setLoading(false);
-      setIsLoadingLocation(false); // Reset new loading state
       clockInAttemptRef.current = null;
     }
   };
 
-  // 🔒 ENHANCED CLOCK OUT WITH DUPLICATE PREVENTION
   const handleClockOut = async () => {
-    if (!location) {
-      toast.error('Please capture your location first');
+    // GUARDRAIL 1: Confirmation Dialog
+    if (!window.confirm('Are you sure you want to clock out now?')) {
       return;
     }
 
-    // 🔒 Prevent duplicate clock-out
-    if (isClockingIn) { // Re-using isClockingIn for clock-out progress for simplicity
+    // GUARDRAIL 2: Minimum Shift Duration (15 mins)
+    const clockInTime = new Date(existingTimesheet.clock_in_time);
+    const now = new Date();
+    const minutesSinceClockIn = (now.getTime() - clockInTime.getTime()) / (1000 * 60);
+
+    if (minutesSinceClockIn < 15) {
+      toast.error('Minimum shift duration not met', {
+        description: 'You can only clock out after at least 15 minutes have passed since clock-in.',
+      });
+      return;
+    }
+
+    // Prevent duplicate requests
+    if (isClockingIn) {
       console.warn('⚠️ Already processing clock-out request');
       return;
     }
-
-    // 🔒 Check if already clocked out
     if (existingTimesheet.clock_out_time) {
       toast.error('❌ You have already clocked out of this shift!');
       return;
     }
 
-    setIsClockingIn(true); // Re-using isClockingIn for clock-out progress
+    setIsClockingIn(true);
     setLoading(true);
+    setGpsError(null);
 
     try {
+      // 1. Get Current Location
+      const capturedLocation = await getCurrentLocation();
+
+      // 2. Proceed with Clock-out Logic
       const clockOutTime = new Date().toISOString();
-      const clockInTime = new Date(existingTimesheet.clock_in_time);
-      const totalHours = (new Date(clockOutTime).getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
-
+      const totalHours = (new Date(clockOutTime).getTime() - new Date(existingTimesheet.clock_in_time).getTime()) / (1000 * 60 * 60);
       const totalHoursRounded = parseFloat(totalHours.toFixed(2));
-
-      // 🎯 GPS AUTOMATION: Auto-populate actual times from GPS clock-in/out
-      // Round to 30-minute intervals for timesheet display
-      const roundToHalfHour = (isoTimestamp) => {
-        const date = new Date(isoTimestamp);
-        const hours = date.getHours();
-        const minutes = date.getMinutes();
-        const roundedMinutes = minutes < 15 ? 0 : minutes < 45 ? 30 : 0;
-        const roundedHours = minutes >= 45 ? hours + 1 : hours;
-        return `${String(roundedHours).padStart(2, '0')}:${String(roundedMinutes).padStart(2, '0')}`;
-      };
-
-      const actualStartTime = roundToHalfHour(existingTimesheet.clock_in_time);
-      const actualEndTime = roundToHalfHour(clockOutTime);
-
-      console.log(`🎯 [GPS Auto-Times] Clock-in: ${existingTimesheet.clock_in_time} → Actual: ${actualStartTime}`);
-      console.log(`🎯 [GPS Auto-Times] Clock-out: ${clockOutTime} → Actual: ${actualEndTime}`);
-
-      // 🎯 12-HOUR CAP: Cap total hours at scheduled shift duration
-      // Flag overtime for manual review
-      const scheduledHours = shift.duration_hours || 12;
-      let cappedHours = totalHoursRounded;
-      let overtimeHours = 0;
-      let overtimeFlag = false;
-
-      if (totalHoursRounded > scheduledHours) {
-        overtimeHours = parseFloat((totalHoursRounded - scheduledHours).toFixed(2));
-        cappedHours = scheduledHours;
-        overtimeFlag = true;
-        console.log(`⚠️ [Overtime Detected] Worked: ${totalHoursRounded}hrs, Scheduled: ${scheduledHours}hrs, Overtime: ${overtimeHours}hrs`);
-        toast.warning(`⚠️ Overtime detected: ${overtimeHours} hours over scheduled shift. Flagged for admin review.`);
-      }
 
       const { error: timesheetUpdateError } = await supabase
         .from('timesheets')
         .update({
           clock_out_time: clockOutTime,
-          clock_out_location: location,
-          total_hours: cappedHours, // Use capped hours
-          actual_start_time: actualStartTime,
-          actual_end_time: actualEndTime,
-          staff_pay_amount: parseFloat((cappedHours * (shift.pay_rate || 0)).toFixed(2)),
-          client_charge_amount: parseFloat((cappedHours * (shift.charge_rate || 0)).toFixed(2)),
+          clock_out_location: capturedLocation,
+          total_hours: totalHoursRounded,
           status: 'submitted',
-          // Store overtime info for admin review
-          overtime_hours: overtimeFlag ? overtimeHours : null,
-          overtime_flag: overtimeFlag,
-          raw_total_hours: totalHoursRounded // Store uncapped hours for reference
         })
         .eq('id', existingTimesheet.id);
+      if (timesheetUpdateError) throw timesheetUpdateError;
 
-      if (timesheetUpdateError) {
-        throw timesheetUpdateError;
-      }
-
-      const { error: shiftUpdateError } = await supabase
-        .from('shifts')
-        .update({
-          status: 'completed',
-          shift_ended_at: clockOutTime
-        })
-        .eq('id', shift.id);
-
-      if (shiftUpdateError) {
-        throw shiftUpdateError;
-      }
+      await supabase.from('shifts').update({ status: 'completed', shift_ended_at: clockOutTime }).eq('id', shift.id);
 
       // Call intelligent validator
       try {
-        const { data: validatorData, error: validatorError } = await supabase.functions.invoke('intelligent-timesheet-validator', {
-          body: {
-            timesheet_id: existingTimesheet.id
-          }
+        const { data: validatorData } = await invokeFunction('intelligent-timesheet-validator', {
+          body: { timesheet_id: existingTimesheet.id }
         });
-
-        if (validatorError) {
-          throw validatorError;
-        }
-
         if (validatorData?.auto_approved) {
           toast.success('✅ Clocked out successfully! Timesheet auto-approved.');
-        } else if (validatorData?.requires_review) {
-          toast.warning('⚠️ Clocked out successfully. Timesheet flagged for review.');
         } else {
-          toast.success('✅ Clocked out successfully!');
+          toast.success('✅ Clocked out successfully! Submitted for approval.');
         }
       } catch (validationError) {
         console.error('Validation error:', validationError);
@@ -619,6 +344,7 @@ export default function MobileClockIn({ shift, onClockInComplete }) {
 
     } catch (error) {
       console.error('Clock out error:', error);
+      setGpsError(error.message);
       toast.error(`Failed to clock out: ${error.message}`);
     } finally {
       setIsClockingIn(false);
@@ -656,62 +382,29 @@ export default function MobileClockIn({ shift, onClockInComplete }) {
 
           {/* GPS Capture for Clock Out */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-2">
-                <Navigation className={`w-5 h-5 ${gpsStatus === 'success' ? 'text-green-600' : 'text-gray-400'}`} />
-                <span className="font-medium text-gray-900">GPS Location</span>
-              </div>
-              {gpsStatus === 'idle' && (
-                <Button onClick={captureLocation} size="sm">
-                  Capture Location
-                </Button>
-              )}
-              {gpsStatus === 'loading' && (
-                <div className="flex items-center gap-2 text-blue-600">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Locating...</span>
-                </div>
-              )}
-              {gpsStatus === 'success' && (
-                <Badge className="bg-green-100 text-green-800">
-                  <CheckCircle className="w-3 h-3 mr-1" />
-                  Captured
-                </Badge>
-              )}
-            </div>
-
-            {location && validationResult && (
-              <Alert className={validationResult.validated ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'}>
-                {validationResult.validated ? (
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                ) : (
-                  <XCircle className="h-5 w-5 text-red-600" />
-                )}
-                <AlertDescription className={validationResult.validated ? 'text-green-900' : 'text-red-900'}>
-                  <strong>{validationResult.message}</strong>
+            {gpsError && (
+              <Alert className="border-red-300 bg-red-50">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <AlertDescription className="text-red-900">
+                  {gpsError}
                 </AlertDescription>
               </Alert>
             )}
 
             <Button 
               onClick={handleClockOut}
-              disabled={!canClockOut || loading || isClockingIn}
-              className={`w-full py-6 text-lg ${canClockOut && !isClockingIn ? 'bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700' : 'bg-gray-400 cursor-not-allowed'}`}
+              disabled={loading || isClockingIn}
+              className={`w-full py-6 text-lg bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700 disabled:bg-gray-400`}
             >
               {loading || isClockingIn ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   Clocking Out...
                 </>
-              ) : canClockOut ? (
+              ) : (
                 <>
                   <Clock className="w-5 h-5 mr-2" />
                   Clock Out Now
-                </>
-              ) : (
-                <>
-                  <XCircle className="w-5 h-5 mr-2" />
-                  Clock Out Disabled
                 </>
               )}
             </Button>
@@ -748,7 +441,7 @@ export default function MobileClockIn({ shift, onClockInComplete }) {
   }
 
   // 🔵 DEFAULT: CLOCK IN FLOW
-  const canClockIn = location && validationResult && validationResult.validated && !isClockingIn && !isLoadingLocation;
+  const canClockIn = location && location.latitude && location.longitude && validationResult && validationResult.validated && !isClockingIn && !isLoadingLocation;
 
   return (
     <Card className="max-w-md mx-auto">
@@ -803,35 +496,6 @@ export default function MobileClockIn({ shift, onClockInComplete }) {
         {/* GPS Status */}
         {!needsConsent && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-2">
-                <Navigation className={`w-5 h-5 ${gpsStatus === 'success' ? 'text-green-600' : 'text-gray-400'}`} />
-                <span className="font-medium text-gray-900">GPS Location</span>
-              </div>
-              {gpsStatus === 'idle' && (
-                <Button onClick={captureLocation} size="sm">
-                  Capture Location
-                </Button>
-              )}
-              {gpsStatus === 'loading' && (
-                <div className="flex items-center gap-2 text-blue-600">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Locating...</span>
-                </div>
-              )}
-              {gpsStatus === 'success' && (
-                <Badge className="bg-green-100 text-green-800">
-                  <CheckCircle className="w-3 h-3 mr-1" />
-                  Captured
-                </Badge>
-              )}
-              {gpsStatus === 'error' && (
-                <Button onClick={captureLocation} size="sm" variant="outline" className="text-red-600">
-                  Retry
-                </Button>
-              )}
-            </div>
-
             {gpsError && (
               <Alert className="border-red-300 bg-red-50">
                 <AlertTriangle className="h-5 w-5 text-red-600" />
@@ -841,88 +505,49 @@ export default function MobileClockIn({ shift, onClockInComplete }) {
               </Alert>
             )}
 
-            {location && (
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-2">
-                <div className="flex items-center gap-2 text-green-900">
-                  <MapPin className="w-4 h-4" />
-                  <span className="font-semibold">Location Captured</span>
-                </div>
-                <div className="text-sm text-green-800 space-y-1">
-                  <p>Latitude: {location.latitude.toFixed(6)}</p>
-                  <p>Longitude: {location.longitude.toFixed(6)}</p>
-                  <p>Accuracy: ±{Math.round(location.accuracy)}m</p>
-                </div>
-              </div>
-            )}
-
-            {validationResult && (
-              <Alert className={validationResult.validated ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'}>
-                {validationResult.validated ? (
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                ) : (
-                  <XCircle className="h-5 w-5 text-red-600" />
-                )}
-                <AlertDescription className={validationResult.validated ? 'text-green-900' : 'text-red-900'}>
+            {validationResult && !validationResult.validated && (
+              <Alert className='border-red-300 bg-red-50'>
+                <XCircle className="h-5 w-5 text-red-600" />
+                <AlertDescription className='text-red-900'>
                   <strong>{validationResult.message}</strong>
-                  <div className="text-sm mt-2 space-y-1">
-                    <p>Distance: {validationResult.distance_meters}m from {validationResult.client_name}</p>
-                    <p>Geofence: {validationResult.geofence_radius_meters}m radius</p>
-                    {validationResult.gps_accuracy && (
-                      <p>GPS Accuracy: ±{Math.round(validationResult.gps_accuracy)}m</p>
-                    )}
-                  </div>
-                  {!validationResult.validated && (
-                    <p className="text-xs mt-3 font-bold text-red-800">
-                      ❌ Clock-in BLOCKED: You must be within {validationResult.geofence_radius_meters}m of the site to clock in.
-                    </p>
-                  )}
+                  <p className="text-xs mt-2">
+                    Please move closer to the site and try again. You must be within {validationResult.geofence_radius_meters}m to clock in.
+                  </p>
                 </AlertDescription>
               </Alert>
             )}
 
-            {/* 🔒 ANTI-DUPLICATE WARNING / General Clock-in Progress */}
             {(isClockingIn || isLoadingLocation) && (
               <Alert className="border-blue-300 bg-blue-50">
                 <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
                 <AlertDescription className="text-blue-900">
                   <strong>Processing your clock-in...</strong>
-                  <p className="text-sm mt-1">Please wait, do not click again.</p>
+                  <p className="text-sm mt-1">Getting location and validating... Please wait.</p>
                 </AlertDescription>
               </Alert>
             )}
 
             <Button 
               onClick={handleClockIn}
-              disabled={!canClockIn || loading || isClockingIn || isLoadingLocation}
-              className={`w-full py-6 text-lg ${canClockIn ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700' : 'bg-gray-400 cursor-not-allowed'}`}
+              disabled={loading || isClockingIn || isLoadingLocation}
+              className={`w-full py-6 text-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed`}
             >
               {loading || isClockingIn || isLoadingLocation ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   Clocking In...
                 </>
-              ) : canClockIn ? (
+              ) : (
                 <>
                   <Clock className="w-5 h-5 mr-2" />
                   Clock In Now
                 </>
-              ) : (
-                <>
-                  <XCircle className="w-5 h-5 mr-2" />
-                  Clock In Disabled
-                </>
               )}
             </Button>
 
-            {!canClockIn && location && !isClockingIn && !isLoadingLocation && (
-              <p className="text-xs text-center text-red-600 font-semibold">
-                Move closer to the site to enable clock-in
-              </p>
-            )}
-
             <div className="text-xs text-gray-500 text-center">
               <Shield className="w-3 h-3 inline mr-1" />
-              Your location is only captured at clock-in/out. We don't track you continuously.
+              Your location is captured once at the moment you clock in/out.
             </div>
           </div>
         )}

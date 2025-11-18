@@ -1,0 +1,45 @@
+{
+  "name": "WhatsApp Diagnostic - See Raw Data",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["messages"]
+      },
+      "id": "diagnostic-trigger",
+      "name": "WhatsApp Trigger",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "whatsapp-diagnostic",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "1",
+          "name": "WhatsApp Business Cloud API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log the entire input to see structure\nconsole.log('=== FULL INPUT ===');\nconsole.log(JSON.stringify($input.all(), null, 2));\n\n// Return the input as-is\nreturn $input.all();"
+      },
+      "id": "log-raw-data",
+      "name": "Log Raw Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [[{"node": "Log Raw Data", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "settings": {"executionOrder": "v1"},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-11-18T08:00:00.000Z",
+  "versionId": "1"
+}
+

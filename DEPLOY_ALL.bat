@@ -14,15 +14,15 @@ set SUPABASE_CLI=C:\Users\gbase\superbasecli\supabase.exe
 set PROJECT_REF=rzzxxkppkiasuouuglaf
 set DEPLOYED=0
 set FAILED=0
-set TOTAL=44
+set TOTAL=45
 
 echo.
 echo ========================================
-echo 🚀 DEPLOYING ALL 44 SUPABASE FUNCTIONS
+echo 🚀 DEPLOYING ALL 45 SUPABASE FUNCTIONS
 echo ========================================
 echo.
 
-REM Communication Functions (6)
+REM Communication Functions (7)
 echo.
 echo 📧 [1/6] Communication Functions...
 call :deploy_function "send-email"
@@ -31,6 +31,7 @@ call :deploy_function "send-whatsapp"
 call :deploy_function "whatsapp-master-router"
 call :deploy_function "incoming-sms-handler"
 call :deploy_function "email-automation-engine"
+call :deploy_function "ai-assistant"
 
 REM Invoice & Payment Functions (3)
 echo.
