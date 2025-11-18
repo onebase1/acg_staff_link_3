@@ -265,8 +265,9 @@ export default function PostShiftV2() {
         role: shiftData.role_required
       });
 
-      // ✅ CRITICAL FIX: Extract date and times, remove shift_template (doesn't exist in DB)
-      const { shift_template, date, start_time, end_time, ...restData } = shiftData;
+      // ✅ CRITICAL FIX: Extract date and times, remove fields that cause issues
+      // Remove: shift_template (doesn't exist in DB), duration_hours (causes ROUND() errors)
+      const { shift_template, date, start_time, end_time, duration_hours, ...restData } = shiftData;
 
       // ✅ FIX: Database expects HH:MM format (TEXT), NOT full timestamps
       // start_time and end_time are already in HH:MM format from formData

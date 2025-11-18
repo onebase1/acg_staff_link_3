@@ -195,7 +195,8 @@ export function calculateFinancialSummary(shifts) {
  */
 export function prepareShiftsForInsert(shifts) {
   return shifts.map(shift => {
-    const { temp_id, ...shiftData } = shift;
+    // Remove temp fields AND duration_hours (causes PostgreSQL ROUND() type errors)
+    const { temp_id, duration_hours, ...shiftData } = shift;
     return shiftData;
   });
 }
