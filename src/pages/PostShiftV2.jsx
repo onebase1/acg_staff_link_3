@@ -264,13 +264,16 @@ export default function PostShiftV2() {
         client_id: shiftData.client_id,
         role: shiftData.role_required
       });
-      
+
       // ✅ CRITICAL FIX: Extract date and times, remove shift_template (doesn't exist in DB)
       const { shift_template, date, start_time, end_time, ...restData } = shiftData;
 
-      // ✅ Combine date + time into ISO timestamps for database
+      // ✅ FIX: Database expects HH:MM format (TEXT), NOT full timestamps
+      // start_time and end_time are already in HH:MM format from formData
+      // Just use them directly
+
+      // Build full timestamp temporarily for shift_type determination only
       const startTimestamp = `${date}T${start_time}:00`;
-      const endTimestamp = `${date}T${end_time}:00`;
 
       // ✅ Determine shift_type from start_time
       const shift_type = determineShiftType(startTimestamp);
@@ -280,8 +283,8 @@ export default function PostShiftV2() {
         .insert({
           ...restData,
           date: date,                    // "2025-11-12"
-          start_time: startTimestamp,    // "2025-11-12T08:00:00"
-          end_time: endTimestamp,        // "2025-11-12T20:00:00"
+          start_time: start_time,        // ✅ FIXED: Send HH:MM only (e.g., "08:00")
+          end_time: end_time,            // ✅ FIXED: Send HH:MM only (e.g., "20:00")
           shift_type: shift_type,        // "day" or "night"
           agency_id: agencyId,
           status: 'open',

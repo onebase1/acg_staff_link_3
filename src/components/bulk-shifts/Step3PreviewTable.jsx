@@ -8,6 +8,19 @@ import { ChevronDown, ChevronRight, Trash2, CheckCircle, AlertCircle, AlertTrian
 import { groupShiftsByDate, calculateFinancialSummary } from "@/utils/bulkShifts/shiftGenerator";
 import EditShiftModal from "./EditShiftModal";
 
+/**
+ * Helper: Extract time from shift time field (handles both TEXT "HH:MM" and old TIMESTAMP format)
+ * @param {string} timeValue - Either "HH:MM" or "YYYY-MM-DDTHH:MM:SS"
+ * @returns {string} - Time in HH:MM format
+ */
+function extractTime(timeValue) {
+  if (!timeValue) return '00:00';
+  // If already in HH:MM format (no 'T'), return as-is
+  if (!timeValue.includes('T')) return timeValue;
+  // Otherwise, extract from timestamp format
+  return timeValue.split('T')[1]?.substring(0, 5) || '00:00';
+}
+
 export default function Step3PreviewTable({
   shifts,
   validation,
@@ -289,7 +302,7 @@ export default function Step3PreviewTable({
                                 </span>
                               </div>
                               <div className="text-sm text-gray-600">
-                                {roleGroup.shifts[0]?.start_time.split('T')[1].substring(0, 5)} - {roleGroup.shifts[0]?.end_time.split('T')[1].substring(0, 5)}
+                                {extractTime(roleGroup.shifts[0]?.start_time)} - {extractTime(roleGroup.shifts[0]?.end_time)}
                               </div>
                             </button>
 
@@ -305,7 +318,7 @@ export default function Step3PreviewTable({
                                       <div>
                                         <span className="text-gray-500">Time:</span>{' '}
                                         <span className="font-medium">
-                                          {shift.start_time.split('T')[1].substring(0, 5)} - {shift.end_time.split('T')[1].substring(0, 5)}
+                                          {extractTime(shift.start_time)} - {extractTime(shift.end_time)}
                                         </span>
                                       </div>
                                       <div>

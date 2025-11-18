@@ -22,6 +22,20 @@ import { Calendar, Clock, Pencil } from "lucide-react";
 import { STAFF_ROLES } from "@/constants/staffRoles";
 import { toast } from "sonner";
 
+/**
+ * Helper: Extract time from shift time field (handles both TEXT "HH:MM" and old TIMESTAMP format)
+ * @param {string} timeValue - Either "HH:MM" or "YYYY-MM-DDTHH:MM:SS"
+ * @param {string} fallback - Default value if extraction fails
+ * @returns {string} - Time in HH:MM format
+ */
+function extractTime(timeValue, fallback = '00:00') {
+  if (!timeValue) return fallback;
+  // If already in HH:MM format (no 'T'), return as-is
+  if (!timeValue.includes('T')) return timeValue;
+  // Otherwise, extract from timestamp format
+  return timeValue.split('T')[1]?.substring(0, 5) || fallback;
+}
+
 export default function EditShiftModal({ shift, isOpen, onClose, onSave }) {
   const [formData, setFormData] = useState({
     role: '',
@@ -38,9 +52,9 @@ export default function EditShiftModal({ shift, isOpen, onClose, onSave }) {
   // Initialize form when shift changes
   useEffect(() => {
     if (shift) {
-      // Extract time from datetime strings
-      const startTime = shift.start_time?.split('T')[1]?.substring(0, 5) || '08:00';
-      const endTime = shift.end_time?.split('T')[1]?.substring(0, 5) || '20:00';
+      // Extract time from datetime strings (handles both TEXT HH:MM and old TIMESTAMP format)
+      const startTime = extractTime(shift.start_time, '08:00');
+      const endTime = extractTime(shift.end_time, '20:00');
       const shiftDate = shift.date || shift.start_time?.split('T')[0] || '';
 
       setFormData({

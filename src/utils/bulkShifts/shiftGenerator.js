@@ -59,7 +59,12 @@ function createShiftObject(date, roleConfig, client, formData, agencyId, user, i
     end: roleConfig.shiftType === 'day' ? '20:00' : '08:00'
   };
 
-  // Generate ISO timestamps
+  // ✅ FIX: Database expects HH:MM format (TEXT), NOT full timestamps
+  // Just use the time values directly from shiftTimes
+  const startTime = shiftTimes.start; // e.g., "08:00"
+  const endTime = shiftTimes.end;     // e.g., "20:00"
+
+  // Calculate duration (need full timestamps temporarily for calculation only)
   const startTimestamp = `${date}T${shiftTimes.start}:00`;
   let endTimestamp = `${date}T${shiftTimes.end}:00`;
 
@@ -70,7 +75,6 @@ function createShiftObject(date, roleConfig, client, formData, agencyId, user, i
     endTimestamp = `${endDate.toISOString().split('T')[0]}T${shiftTimes.end}:00`;
   }
 
-  // Calculate duration
   const start = new Date(startTimestamp);
   const end = new Date(endTimestamp);
   const durationHours = (end - start) / (1000 * 60 * 60);
@@ -85,8 +89,8 @@ function createShiftObject(date, roleConfig, client, formData, agencyId, user, i
     role_required: roleConfig.role,
     shift_type: roleConfig.shiftType, // ✅ NEW: Explicit shift_type from role config
     date: date,
-    start_time: startTimestamp,
-    end_time: endTimestamp,
+    start_time: startTime, // ✅ FIXED: Send HH:MM only (e.g., "08:00")
+    end_time: endTime,     // ✅ FIXED: Send HH:MM only (e.g., "20:00")
     duration_hours: durationHours,
 
     // Rates
