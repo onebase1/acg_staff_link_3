@@ -925,24 +925,87 @@ export default function StaffPortal() {
                   <p className="text-xs sm:text-sm opacity-90">{formatTodayShiftTime(nextShift)}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5 flex-shrink-0" />
-                <p className="font-bold text-base sm:text-lg">
-                  £{((nextShift.duration_hours || 0) * (nextShift.pay_rate || staffRecord.hourly_rate || 15)).toFixed(2)}
-                </p>
-                <span className="text-xs sm:text-sm opacity-75">for this shift</span>
-              </div>
+
+              {/* 💰 Earnings Display - Only show if NOT in progress */}
+              {(() => {
+                const nextShiftTimesheet = myTimesheets.find(t => t.shift_id === nextShift.id);
+                const isInProgress = nextShiftTimesheet?.clock_in_time && !nextShiftTimesheet?.clock_out_time;
+                const isCompleted = nextShiftTimesheet?.clock_out_time;
+
+                if (isCompleted) {
+                  // Show actual earnings after clock-out
+                  return (
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-5 h-5 flex-shrink-0" />
+                      <p className="font-bold text-base sm:text-lg">
+                        £{((nextShiftTimesheet.total_hours || 0) * (nextShift.pay_rate || staffRecord.hourly_rate || 15)).toFixed(2)}
+                      </p>
+                      <span className="text-xs sm:text-sm opacity-75">earned ({nextShiftTimesheet.total_hours}h)</span>
+                    </div>
+                  );
+                } else if (isInProgress) {
+                  // Hide earnings during shift - can't promise payment yet
+                  return (
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-5 h-5 flex-shrink-0 animate-pulse" />
+                      <p className="font-semibold text-base sm:text-lg">
+                        Shift in progress...
+                      </p>
+                    </div>
+                  );
+                } else {
+                  // Show scheduled earnings before clock-in
+                  return (
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-5 h-5 flex-shrink-0" />
+                      <p className="font-bold text-base sm:text-lg">
+                        £{((nextShift.duration_hours || 0) * (nextShift.pay_rate || staffRecord.hourly_rate || 15)).toFixed(2)}
+                      </p>
+                      <span className="text-xs sm:text-sm opacity-75">for this shift</span>
+                    </div>
+                  );
+                }
+              })()}
             </div>
 
-            {isToday(new Date(nextShift.date)) && (
-              <Button
-                className="w-full bg-white text-blue-600 hover:bg-gray-100 text-base sm:text-lg py-5 sm:py-6 font-bold min-h-[56px]"
-                onClick={() => document.getElementById(`clock-in-${nextShift.id}`)?.scrollIntoView({ behavior: 'smooth' })}
-              >
-                <Zap className="w-5 h-5 mr-2" />
-                CLOCK IN NOW
-              </Button>
-            )}
+            {/* 🔵 Action Button - Changes based on shift state */}
+            {isToday(new Date(nextShift.date)) && (() => {
+              const nextShiftTimesheet = myTimesheets.find(t => t.shift_id === nextShift.id);
+              const isInProgress = nextShiftTimesheet?.clock_in_time && !nextShiftTimesheet?.clock_out_time;
+              const isCompleted = nextShiftTimesheet?.clock_out_time;
+
+              if (isCompleted) {
+                // Shift complete - show gray disabled button
+                return (
+                  <div className="w-full bg-white/30 text-white text-center py-5 sm:py-6 rounded-lg font-bold text-base sm:text-lg">
+                    <CheckCircle className="w-5 h-5 inline mr-2" />
+                    ✅ SHIFT COMPLETE
+                  </div>
+                );
+              } else if (isInProgress) {
+                // In progress - show green button to scroll to clock-out
+                return (
+                  <Button
+                    className="w-full bg-green-600 text-white hover:bg-green-700 text-base sm:text-lg py-5 sm:py-6 font-bold min-h-[56px]"
+                    onClick={() => document.getElementById(`clock-in-${nextShift.id}`)?.scrollIntoView({ behavior: 'smooth' })}
+                  >
+                    <Clock className="w-5 h-5 mr-2 animate-pulse" />
+                    SHIFT IN PROGRESS - CLOCK OUT
+                  </Button>
+                );
+              } else {
+                // Not started - show blue clock-in button
+                return (
+                  <Button
+                    className="w-full bg-white text-blue-600 hover:bg-gray-100 text-base sm:text-lg py-5 sm:py-6 font-bold min-h-[56px]"
+                    onClick={() => document.getElementById(`clock-in-${nextShift.id}`)?.scrollIntoView({ behavior: 'smooth' })}
+                  >
+                    <Zap className="w-5 h-5 mr-2" />
+                    CLOCK IN NOW
+                  </Button>
+                );
+              }
+            })()}
           </CardContent>
         </Card>
       )}

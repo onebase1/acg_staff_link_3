@@ -196,6 +196,25 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
     });
   };
 
+  // 🗺️ Generate Mapbox Static Map Image URL from GPS coordinates
+  const generateMapImageUrl = (latitude, longitude) => {
+    const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
+    if (!mapboxToken) {
+      console.warn('⚠️ Mapbox token not configured - skipping map image generation');
+      return null;
+    }
+
+    const zoom = 16; // Street-level zoom
+    const width = 600;
+    const height = 400;
+    const markerColor = 'ff0000'; // Red marker
+    const markerSize = 'l'; // Large marker
+
+    // Mapbox Static Images API
+    // Format: /styles/v1/{username}/{style_id}/static/{overlay}/{lon},{lat},{zoom}/{width}x{height}{@2x}
+    return `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-${markerSize}+${markerColor}(${longitude},${latitude})/${longitude},${latitude},${zoom}/${width}x${height}@2x?access_token=${mapboxToken}`;
+  };
+
   const handleClockIn = async () => {
     // Debounce and check for existing process
     const nowTimestamp = Date.now();
@@ -282,12 +301,16 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
 
         timesheet = existingTimesheets[0];
 
+        // 🗺️ Generate map image URL from GPS coordinates
+        const mapImageUrl = generateMapImageUrl(capturedLocation.latitude, capturedLocation.longitude);
+
         // Update existing timesheet with clock-in data
         const { error: updateError } = await supabase
           .from('timesheets')
           .update({
             clock_in_time: new Date().toISOString(),
             clock_in_location: capturedLocation,
+            clock_in_photo: mapImageUrl, // 🗺️ Save map image URL
             geofence_validated: validation.validated,
             geofence_distance_meters: validation.distance_meters,
             status: 'draft' // Ensure status is draft (may have been created as 'pending')
@@ -466,11 +489,15 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
       const totalHours = (new Date(clockOutTime).getTime() - new Date(existingTimesheet.clock_in_time).getTime()) / (1000 * 60 * 60);
       const totalHoursRounded = parseFloat(totalHours.toFixed(2));
 
+      // 🗺️ Generate map image URL from GPS coordinates
+      const mapImageUrl = generateMapImageUrl(capturedLocation.latitude, capturedLocation.longitude);
+
       const { error: timesheetUpdateError } = await supabase
         .from('timesheets')
         .update({
           clock_out_time: clockOutTime,
           clock_out_location: capturedLocation,
+          clock_out_photo: mapImageUrl, // 🗺️ Save map image URL
           clock_out_geofence_validated: clockOutGeofenceValidated,
           clock_out_geofence_distance_meters: clockOutGeofenceDistance,
           total_hours: totalHoursRounded,
