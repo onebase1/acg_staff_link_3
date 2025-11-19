@@ -80,7 +80,7 @@ export default function Shifts() {
 
   const [editingCell, setEditingCell] = useState(null);
   const [cellEditValue, setCellEditValue] = useState('');
-  const [adminBypassMode, setAdminBypassMode] = useState(false);
+  const [adminBypassMode, setAdminBypassMode] = useState(true); // Default to enabled - admin must untick for normal flow
 
   const [completingShift, setCompletingShift] = useState(null);
   
@@ -473,20 +473,22 @@ export default function Shifts() {
       const client = clients.find(c => c.id === shift.client_id);
       const agency = agencies.find(a => a.id === shift.agency_id);
 
-      // ✅ BUSINESS RULE: Block assignment if shift starts within 24 hours (must use marketplace)
-      const shiftDateTime = new Date(`${shift.date}T${shift.start_time}`);
-      const now = new Date();
-      const hoursUntilShift = (shiftDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-      if (hoursUntilShift < 24 && hoursUntilShift > 0) {
-        throw new Error(`⚠️ Cannot assign staff to shifts starting within 24 hours. Please add this shift to the marketplace instead (${Math.round(hoursUntilShift)} hours until shift starts).`);
-      }
-
+      // Check if already assigned to someone else
       if (shift.assigned_staff_id && shift.assigned_staff_id !== staffId) {
         const existingStaff = staff.find(s => s.id === shift.assigned_staff_id);
         const existingStaffName = existingStaff ? `${existingStaff.first_name} ${existingStaff.last_name}` : 'another staff member';
 
         throw new Error(`⚠️ This shift is already assigned to ${existingStaffName}. Please refresh the page to see current assignments.`);
+      }
+
+      // ✅ BUSINESS RULE: Block assignment if shift starts within 24 hours (UNLESS bypass is enabled)
+      const shiftDateTime = new Date(`${shift.date}T${shift.start_time}`);
+      const now = new Date();
+      const hoursUntilShift = (shiftDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      // Only enforce 24-hour rule when bypass is NOT enabled
+      if (!bypassConfirmation && hoursUntilShift < 24 && hoursUntilShift > 0) {
+        throw new Error(`⚠️ Cannot assign staff to shifts starting within 24 hours. Please add this shift to the marketplace instead, or enable "Admin Bypass" to confirm immediately (${Math.round(hoursUntilShift)} hours until shift starts).`);
       }
 
       const newStatus = bypassConfirmation ? 'confirmed' : 'assigned';

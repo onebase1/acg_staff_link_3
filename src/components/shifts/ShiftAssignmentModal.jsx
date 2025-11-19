@@ -15,6 +15,7 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
   const [currentAgency, setCurrentAgency] = useState(null);
   const [isLoadingAgency, setIsLoadingAgency] = useState(true);
   const [validationErrors, setValidationErrors] = useState({});
+  const [bypassMode, setBypassMode] = useState(true); // Default to enabled - admin must untick for normal flow
 
   const queryClient = useQueryClient();
 
@@ -183,10 +184,10 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
   };
 
   const assignMutation = useMutation({
-    mutationFn: async ({ shiftId, staffId }) => {
+    mutationFn: async ({ shiftId, staffId, bypassConfirmation = false }) => {
       // VALIDATION GATE
       const validation = validateStaffAvailability(staffId);
-      
+
       if (!validation.valid) {
         if (validation.reason === 'overlap') {
           throw new Error(`Staff already assigned to ${validation.overlaps.length} overlapping shift(s) on ${shift.date}`);
@@ -195,11 +196,38 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
         }
       }
 
+      // Check 24-hour rule (unless bypass is enabled)
+      const shiftDateTime = new Date(`${shift.date}T${shift.start_time}`);
+      const now = new Date();
+      const hoursUntilShift = (shiftDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      if (!bypassConfirmation && hoursUntilShift < 24 && hoursUntilShift > 0) {
+        throw new Error(`⚠️ Cannot assign staff to shifts starting within 24 hours. Please enable "Admin Bypass" to confirm immediately (${Math.round(hoursUntilShift)} hours until shift starts).`);
+      }
+
+      const newStatus = bypassConfirmation ? 'confirmed' : 'assigned';
+
       const { data: updatedShift, error: shiftError } = await supabase
         .from('shifts')
         .update({
           assigned_staff_id: staffId,
-          status: 'assigned'
+          status: newStatus,
+          ...(bypassConfirmation && {
+            staff_confirmed_at: new Date().toISOString(),
+            staff_confirmation_method: 'admin_bypass'
+          }),
+          shift_journey_log: [
+            ...(shift.shift_journey_log || []),
+            {
+              state: newStatus,
+              timestamp: new Date().toISOString(),
+              staff_id: staffId,
+              method: bypassConfirmation ? 'admin_confirmed' : 'admin_assigned',
+              notes: bypassConfirmation
+                ? 'Admin confirmed shift on behalf of staff (bypass mode)'
+                : 'Staff assigned - awaiting confirmation'
+            }
+          ]
         })
         .eq('id', shiftId)
         .select()
@@ -216,12 +244,13 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
           shift_id: shiftId,
           staff_id: staffId,
           client_id: shift.client_id,
-          status: 'confirmed',
+          status: bypassConfirmation ? 'confirmed' : 'pending',
           booking_date: new Date().toISOString(),
           shift_date: shift.date,
           start_time: shift.start_time,
           end_time: shift.end_time,
-          confirmation_method: 'app'
+          confirmation_method: bypassConfirmation ? 'admin_bypass' : 'app',
+          ...(bypassConfirmation && { confirmed_by_staff_at: new Date().toISOString() })
         });
 
       if (bookingError) {
@@ -255,7 +284,7 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
 
       return updatedShift;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries(['shifts']);
       queryClient.invalidateQueries(['bookings']);
       queryClient.invalidateQueries(['staff']);
@@ -266,8 +295,12 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
       queryClient.invalidateQueries(['workflows']);
       queryClient.invalidateQueries(['staff-for-assignment']);
       queryClient.invalidateQueries(['all-shifts-validation']);
-      
-      toast.success('✅ Staff assigned & notification sent to care home!');
+
+      const message = variables.bypassConfirmation
+        ? '✅ Staff assigned & confirmed (admin bypass)!'
+        : '✅ Staff assigned & notification sent to care home!';
+
+      toast.success(message);
       onClose();
     },
     onError: (error) => {
@@ -287,7 +320,11 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
       return;
     }
 
-    assignMutation.mutate({ shiftId: shift.id, staffId });
+    assignMutation.mutate({
+      shiftId: shift.id,
+      staffId,
+      bypassConfirmation: bypassMode
+    });
   };
 
   const filteredStaff = staff.filter(s =>
@@ -315,6 +352,37 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
         </CardHeader>
 
         <CardContent className="p-6">
+          {/* Admin Bypass Checkbox */}
+          <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="bypass-mode"
+                checked={bypassMode}
+                onChange={(e) => setBypassMode(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+              />
+              <div className="flex-1">
+                <label htmlFor="bypass-mode" className="font-semibold text-blue-900 cursor-pointer">
+                  ⚡ Admin Bypass: Mark as "Confirmed" Immediately
+                </label>
+                <p className="text-sm text-blue-700 mt-1">
+                  {bypassMode ? (
+                    <>
+                      <strong>Enabled:</strong> Shift will be marked as "confirmed" (no staff confirmation needed).
+                      Use when you've spoken to staff by phone and they've verbally agreed.
+                    </>
+                  ) : (
+                    <>
+                      <strong>Disabled:</strong> Shift will be marked as "assigned" - staff must confirm via portal/SMS.
+                      Recommended for accountability.
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="mb-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
