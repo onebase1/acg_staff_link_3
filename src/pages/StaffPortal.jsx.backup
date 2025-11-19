@@ -422,13 +422,9 @@ export default function StaffPortal() {
 
           if (timesheetError) {
             console.error('❌ [Timesheet Creation] Failed:', timesheetError);
-          } else if (timesheetResponse?.success) {
-            timesheetId = timesheetResponse.timesheet_id;
-            if (timesheetResponse.duplicate) {
-              console.log('ℹ️ [Timesheet Creation] Timesheet already exists (ID: ' + timesheetId + '), skipping creation');
-            } else {
-              console.log('✅ [Timesheet Creation] Success! Timesheet ID:', timesheetId);
-            }
+          } else if (timesheetResponse?.data?.success) {
+            timesheetId = timesheetResponse.data.timesheet_id;
+            console.log('✅ [Timesheet Creation] Success! Timesheet ID:', timesheetId);
           } else {
             console.warn('⚠️ [Timesheet Creation] Unexpected response:', timesheetResponse);
           }

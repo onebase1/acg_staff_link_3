@@ -23,11 +23,14 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
   const [client, setClient] = useState(null);
   const [existingTimesheet, setExistingTimesheet] = useState(initialTimesheet);
   const [existingBooking, setExistingBooking] = useState(null);
-  
+
   // 🔒 ANTI-DUPLICATE PROTECTION
   const [isClockingIn, setIsClockingIn] = useState(false);
   const clockInAttemptRef = useRef(null);
   const lastClickTimeRef = useRef(0);
+
+  // ✨ IMPROVEMENT 3: Visual Feedback
+  const [validationStep, setValidationStep] = useState('');
 
   // New state as per outline, assuming it's for an internal loading specific to location within handleClockIn
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
@@ -113,12 +116,26 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
   const getCurrentLocation = () => {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        reject('GPS not supported on this device');
+        reject(new Error('GPS not supported on this device'));
         return;
       }
 
+      setGpsStatus('acquiring');
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          const accuracy = position.coords.accuracy;
+
+          // ✨ IMPROVEMENT 2: GPS Accuracy Threshold
+          if (accuracy > 50) {
+            setGpsStatus('low_accuracy');
+            reject(new Error(
+              `GPS accuracy too low (${Math.round(accuracy)}m). Please wait for better signal or move to an open area.`
+            ));
+            return;
+          }
+
+          setGpsStatus('acquired');
           const locationData = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
@@ -128,19 +145,22 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
           resolve(locationData);
         },
         (error) => {
+          setGpsStatus('error');
+          let errorMessage = 'Unable to get your location';
           switch (error.code) {
             case error.PERMISSION_DENIED:
-              reject('Location permission denied. Please enable location access in your browser settings.');
+              errorMessage = 'Location permission denied. Please enable location access in your browser settings.';
               break;
             case error.POSITION_UNAVAILABLE:
-              reject('Location unavailable. Please ensure GPS is enabled on your device.');
+              errorMessage = 'Location unavailable. Please ensure GPS is enabled on your device.';
               break;
             case error.TIMEOUT:
-              reject('Location request timed out. Please try again.');
+              errorMessage = 'Location request timed out. Please try again.';
               break;
             default:
-              reject('An unknown GPS error occurred. Please try again.');
+              errorMessage = 'An unknown GPS error occurred. Please try again.';
           }
+          reject(new Error(errorMessage));
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
@@ -163,7 +183,8 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
     setValidationResult(null);
 
     try {
-      // 1. Get Current Location
+      // ✨ IMPROVEMENT 3: Visual Feedback - Step 1
+      setValidationStep('Acquiring GPS location...');
       const capturedLocation = await getCurrentLocation();
       setLocation(capturedLocation);
 
@@ -172,13 +193,8 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
         throw new Error("Client data not loaded. Please refresh.");
       }
 
-      // --- 🐞 DIAGNOSTIC LOGGING ---
-      console.log("--- 🐞 Invoking geofence-validator ---");
-      console.log("Payload to be sent:");
-      console.log("1. staff_location:", JSON.stringify(capturedLocation, null, 2));
-      console.log("2. client_id:", shift.client_id);
-      console.log("------------------------------------");
-      // --- END LOGGING ---
+      // ✨ IMPROVEMENT 3: Visual Feedback - Step 2
+      setValidationStep('Validating geofence...');
 
       const { data: validation, error: validationError } = await invokeFunction('geofence-validator', {
         body: {
@@ -209,7 +225,10 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
         setExistingTimesheet(existingTimesheets[0]);
         return;
       }
-      
+
+      // ✨ IMPROVEMENT 3: Visual Feedback - Step 3
+      setValidationStep('Creating timesheet...');
+
       // Get or create booking
       let booking = existingBooking;
       if (!booking) {
@@ -254,6 +273,7 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
         }
       }).catch(console.error);
 
+      setValidationStep('');
       toast.success('✅ Clocked in successfully!');
       setExistingTimesheet(timesheet);
       if (onClockInComplete) {
@@ -265,6 +285,7 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
       setGpsError(error.message);
       toast.error(`Clock-in failed: ${error.message}`);
     } finally {
+      setValidationStep('');
       setIsClockingIn(false);
       setLoading(false);
       clockInAttemptRef.current = null;
@@ -305,9 +326,39 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
 
     try {
       // 1. Get Current Location
+      setValidationStep('Acquiring GPS location...');
       const capturedLocation = await getCurrentLocation();
 
+      // ✨ IMPROVEMENT 1: Clock-Out GPS Validation
+      let clockOutGeofenceValidated = null;
+      let clockOutGeofenceDistance = null;
+
+      try {
+        setValidationStep('Validating clock-out location...');
+        const { data: clockOutValidation } = await invokeFunction('geofence-validator', {
+          body: {
+            staff_location: capturedLocation,
+            client_id: shift.client_id
+          }
+        });
+
+        if (clockOutValidation) {
+          clockOutGeofenceValidated = clockOutValidation.validated;
+          clockOutGeofenceDistance = clockOutValidation.distance_meters;
+
+          if (!clockOutValidation.validated) {
+            toast.warning(`⚠️ Clock-out location: ${clockOutValidation.message}`, {
+              description: 'Timesheet flagged for admin review'
+            });
+          }
+        }
+      } catch (validationError) {
+        console.error('Clock-out validation error:', validationError);
+        // Continue with clock-out even if validation fails
+      }
+
       // 2. Proceed with Clock-out Logic
+      setValidationStep('Recording clock-out...');
       const clockOutTime = new Date().toISOString();
       const totalHours = (new Date(clockOutTime).getTime() - new Date(existingTimesheet.clock_in_time).getTime()) / (1000 * 60 * 60);
       const totalHoursRounded = parseFloat(totalHours.toFixed(2));
@@ -317,6 +368,8 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
         .update({
           clock_out_time: clockOutTime,
           clock_out_location: capturedLocation,
+          clock_out_geofence_validated: clockOutGeofenceValidated,
+          clock_out_geofence_distance_meters: clockOutGeofenceDistance,
           total_hours: totalHoursRounded,
           status: 'submitted',
         })
@@ -340,6 +393,7 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
         toast.success('✅ Clocked out successfully!');
       }
 
+      setValidationStep('');
       setExistingTimesheet({ ...existingTimesheet, clock_out_time: clockOutTime, total_hours: totalHoursRounded });
 
     } catch (error) {
@@ -347,7 +401,46 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
       setGpsError(error.message);
       toast.error(`Failed to clock out: ${error.message}`);
     } finally {
+      setValidationStep('');
       setIsClockingIn(false);
+      setLoading(false);
+    }
+  };
+
+  // ✨ IMPROVEMENT 4: Geofence Preview Button
+  const handleCheckLocation = async () => {
+    setLoading(true);
+    setGpsError(null);
+
+    try {
+      setValidationStep('Checking your location...');
+      const capturedLocation = await getCurrentLocation();
+      setLocation(capturedLocation);
+
+      setValidationStep('Validating geofence...');
+      const { data: validation } = await invokeFunction('geofence-validator', {
+        body: {
+          staff_location: capturedLocation,
+          client_id: shift.client_id
+        }
+      });
+
+      setValidationResult(validation);
+
+      if (validation.validated) {
+        toast.success(`✅ ${validation.message}`, {
+          description: 'You can clock in now'
+        });
+      } else {
+        toast.error(`❌ ${validation.message}`, {
+          description: 'Move closer to the client location'
+        });
+      }
+    } catch (error) {
+      setGpsError(error.message);
+      toast.error(`Location check failed: ${error.message}`);
+    } finally {
+      setValidationStep('');
       setLoading(false);
     }
   };
@@ -505,6 +598,17 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
               </Alert>
             )}
 
+            {/* ✨ IMPROVEMENT 2: Low GPS Accuracy Warning */}
+            {gpsStatus === 'low_accuracy' && (
+              <Alert className="border-yellow-300 bg-yellow-50">
+                <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                <AlertDescription className="text-yellow-900">
+                  <strong>GPS accuracy too low</strong>
+                  <p className="text-sm mt-1">Please wait for better signal or move to an open area.</p>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {validationResult && !validationResult.validated && (
               <Alert className='border-red-300 bg-red-50'>
                 <XCircle className="h-5 w-5 text-red-600" />
@@ -517,7 +621,27 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
               </Alert>
             )}
 
-            {(isClockingIn || isLoadingLocation) && (
+            {validationResult && validationResult.validated && (
+              <Alert className='border-green-300 bg-green-50'>
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <AlertDescription className='text-green-900'>
+                  <strong>{validationResult.message}</strong>
+                  <p className="text-xs mt-2">You're within range - ready to clock in!</p>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* ✨ IMPROVEMENT 3: Visual Feedback During Validation */}
+            {validationStep && (
+              <Alert className="border-blue-300 bg-blue-50">
+                <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                <AlertDescription className="text-blue-900">
+                  <strong>{validationStep}</strong>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {(isClockingIn || isLoadingLocation) && !validationStep && (
               <Alert className="border-blue-300 bg-blue-50">
                 <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
                 <AlertDescription className="text-blue-900">
@@ -526,6 +650,17 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
                 </AlertDescription>
               </Alert>
             )}
+
+            {/* ✨ IMPROVEMENT 4: Check Location Button */}
+            <Button
+              onClick={handleCheckLocation}
+              variant="outline"
+              className="w-full mb-2"
+              disabled={loading || isClockingIn}
+            >
+              <Navigation className="w-4 h-4 mr-2" />
+              Check My Location
+            </Button>
 
             <Button 
               onClick={handleClockIn}

@@ -7,6 +7,7 @@ import * as FinancialIntegrity from './implementations/financial-integrity';
 import * as Communication from './implementations/communication';
 import * as DataAnalytics from './implementations/data-analytics';
 import * as Integrations from './implementations/integrations';
+import * as AIShiftCreator from './implementations/ai-shift-creator';
 
 /**
  * Central registry mapping test IDs to implementation functions
@@ -67,7 +68,13 @@ export const testRegistry: TestRegistry = {
   'int-002': Integrations.testResendAPIHealth,
   'int-003': Integrations.testTwilioAPIHealth,
   'int-004': Integrations.testBase44FileStorage,
-  'int-005': Integrations.testResendWebhookConfig
+  'int-005': Integrations.testResendWebhookConfig,
+
+  // AI Shift Creator Pipeline (ai-001 through ai-004)
+  'ai-001': AIShiftCreator.testAIShiftExtraction,
+  'ai-002': AIShiftCreator.testAIShiftCreationInDatabase,
+  'ai-003': AIShiftCreator.testAIShiftCreationWithValidation,
+  'ai-004': AIShiftCreator.testAIBulkMultiDayShiftCreation
 };
 
 /**

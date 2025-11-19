@@ -74,6 +74,7 @@ const navigationStructure = [
     items: [
       { title: "Analytics Dashboard", url: createPageUrl("AdminDashboard"), icon: BarChart3, adminOnly: true },
       { title: "Admin Workflows", url: createPageUrl("AdminWorkflows"), icon: Workflow, adminOnly: true },
+      { title: "GPS Accuracy Monitor", url: createPageUrl("GPSAccuracyMonitoring"), icon: MapPin, adminOnly: true },
       { title: "Bulk Data Import", url: createPageUrl("BulkDataImport"), icon: Upload, adminOnly: true },
       { title: "WhatsApp Bot Setup", url: createPageUrl("WhatsAppSetup"), icon: MessageCircle, adminOnly: true },
     ]

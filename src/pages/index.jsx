@@ -146,6 +146,8 @@ import ShiftJourneyDiagram from "./ShiftJourneyDiagram";
 
 import SuperAdminAgencyOnboarding from "./SuperAdminAgencyOnboarding";
 
+import GPSAccuracyMonitoring from "./GPSAccuracyMonitoring";
+
 import Login from "./Login";
 import ResetPassword from "./ResetPassword";
 
@@ -298,9 +300,11 @@ const PAGES = {
     ShiftJourneyDiagram: ShiftJourneyDiagram,
     
     SuperAdminAgencyOnboarding: SuperAdminAgencyOnboarding,
-    
+
+    GPSAccuracyMonitoring: GPSAccuracyMonitoring,
+
     ResetPassword: ResetPassword,
-    
+
 }
 
 function _getCurrentPage(url) {
@@ -476,7 +480,9 @@ function PagesContent() {
                 <Route path="/ShiftJourneyDiagram" element={<ShiftJourneyDiagram />} />
                 
                 <Route path="/SuperAdminAgencyOnboarding" element={<SuperAdminAgencyOnboarding />} />
-                
+
+                <Route path="/GPSAccuracyMonitoring" element={<GPSAccuracyMonitoring />} />
+
             </Routes>
         </Layout>
     );

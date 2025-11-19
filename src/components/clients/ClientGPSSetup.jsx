@@ -329,9 +329,34 @@ export default function ClientGPSSetup({ client, onComplete }) {
                 Staff must be within <strong>{radius}m</strong> to clock in
               </span>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Recommended: 50-150m (accounts for GPS accuracy). Max 500m.
-            </p>
+
+            {/* ✨ IMPROVEMENT 5: Geofence Radius Guidance */}
+            <div className="text-sm text-gray-600 space-y-2 mt-3">
+              <p className="font-medium">Recommended values:</p>
+              <ul className="list-disc list-inside space-y-1 text-xs">
+                <li><strong>50-100m:</strong> Small care homes, residential properties</li>
+                <li><strong>100-200m:</strong> Medium facilities, hospitals</li>
+                <li><strong>200-500m:</strong> Large campuses, multi-building sites</li>
+              </ul>
+
+              {radius < 50 && (
+                <Alert className="border-yellow-300 bg-yellow-50 mt-2">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription className="text-yellow-900 text-xs">
+                    <strong>Warning:</strong> Radius below 50m may cause false rejections due to GPS accuracy variations (typically 10-30m).
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {radius > 300 && (
+                <Alert className="border-yellow-300 bg-yellow-50 mt-2">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription className="text-yellow-900 text-xs">
+                    <strong>Note:</strong> Large radius ({radius}m) reduces location verification effectiveness. Staff could clock in from quite far away.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
           </div>
 
           <Alert className="border-blue-300 bg-blue-50">

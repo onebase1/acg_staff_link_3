@@ -21,7 +21,8 @@
     "test:pipeline:financial": "tsx tests/pipeline/cli.ts --pipeline='Financial Integrity Pipeline'",
     "test:pipeline:communication": "tsx tests/pipeline/cli.ts --pipeline='Communication Pipeline'",
     "test:pipeline:analytics": "tsx tests/pipeline/cli.ts --pipeline='Data & Analytics Pipeline'",
-    "test:pipeline:integrations": "tsx tests/pipeline/cli.ts --pipeline='External Integrations Pipeline'"
+    "test:pipeline:integrations": "tsx tests/pipeline/cli.ts --pipeline='External Integrations Pipeline'",
+    "test:ai-shift": "tsx tests/run-ai-shift-tests.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.2",

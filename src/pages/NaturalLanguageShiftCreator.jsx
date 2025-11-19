@@ -194,8 +194,12 @@ When you have ALL required information, respond with JSON array:
 Otherwise, respond conversationally to gather missing info.`;
 
       const response = await InvokeLLM({
+        mode: 'extract_shifts',
         prompt: `${systemPrompt}\n\nConversation history:\n${updatedHistory.map(m => `${m.role}: ${m.content}`).join('\n')}\n\nRespond naturally or with JSON if complete.`,
-        add_context_from_internet: false
+        response_json_schema: false, // We'll parse JSON manually since we want conversational OR JSON
+        temperature: 0.7,
+        max_tokens: 2000,
+        model: 'gpt-4o-mini'
       });
 
       let aiResponse = response?.data ?? response;
