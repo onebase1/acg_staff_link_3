@@ -524,7 +524,13 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
       }
 
       setValidationStep('');
-      setExistingTimesheet({ ...existingTimesheet, clock_out_time: clockOutTime, total_hours: totalHoursRounded });
+      const updatedTimesheet = { ...existingTimesheet, clock_out_time: clockOutTime, total_hours: totalHoursRounded };
+      setExistingTimesheet(updatedTimesheet);
+
+      // 🔄 TRIGGER PARENT REFRESH: Update UI to show shift as completed
+      if (onClockInComplete) {
+        onClockInComplete(updatedTimesheet);
+      }
 
     } catch (error) {
       console.error('Clock out error:', error);
