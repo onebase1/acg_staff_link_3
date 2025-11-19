@@ -148,7 +148,13 @@ serve(async (req) => {
             try {
                 const shiftDate = new Date(shift.date);
                 const startDateTime = new Date(`${shift.date}T${shift.start_time}`);
-                const endDateTime = new Date(`${shift.date}T${shift.end_time}`);
+                let endDateTime = new Date(`${shift.date}T${shift.end_time}`);
+
+                // ✅ FIX: Handle overnight shifts (end_time < start_time means shift ends next day)
+                if (shift.end_time < shift.start_time) {
+                    endDateTime.setDate(endDateTime.getDate() + 1);
+                    console.log(`🌙 [Shift Automation] Overnight shift detected ${shift.id.substring(0, 8)} - end time adjusted to next day`);
+                }
 
                 // AUTOMATION 1: Shift should start (confirmed → in_progress)
                 if (shift.status === 'confirmed' && now >= startDateTime && now < endDateTime) {
