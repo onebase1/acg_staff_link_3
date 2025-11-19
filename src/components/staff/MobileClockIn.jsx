@@ -256,25 +256,63 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
       const requestId = `clock-in-${shift.id}-${staff.id}-${Date.now()}`;
       clockInAttemptRef.current = requestId;
 
-      // Double-check for existing timesheet
+      // 🛡️ PRODUCTION FIX: Check for existing timesheet (created when shift was confirmed)
       const { data: existingTimesheets, error: existingTimesheetError } = await supabase
         .from('timesheets')
-        .select('id, clock_in_time')
+        .select('id, clock_in_time, booking_id')
         .eq('shift_id', shift.id)
         .eq('staff_id', staff.id);
+
       if (existingTimesheetError) throw existingTimesheetError;
+
+      // If already clocked in, prevent duplicate
       if (existingTimesheets && existingTimesheets.length > 0 && existingTimesheets[0].clock_in_time) {
         toast.error('You have already clocked in for this shift!');
         setExistingTimesheet(existingTimesheets[0]);
         return;
       }
 
-      // ✨ IMPROVEMENT 3: Visual Feedback - Step 3
-      setValidationStep('Creating timesheet...');
-
-      // Get or create booking
+      let timesheet;
       let booking = existingBooking;
-      if (!booking) {
+
+      // 🎯 INDUSTRY STANDARD: Update existing timesheet (created at confirmation) with clock-in data
+      if (existingTimesheets && existingTimesheets.length > 0) {
+        console.log('✅ [Clock-In] Timesheet exists - updating with clock-in data');
+        setValidationStep('Recording clock-in...');
+
+        timesheet = existingTimesheets[0];
+
+        // Update existing timesheet with clock-in data
+        const { error: updateError } = await supabase
+          .from('timesheets')
+          .update({
+            clock_in_time: new Date().toISOString(),
+            clock_in_location: capturedLocation,
+            geofence_validated: validation.validated,
+            geofence_distance_meters: validation.distance_meters,
+            status: 'draft' // Ensure status is draft (may have been created as 'pending')
+          })
+          .eq('id', timesheet.id);
+
+        if (updateError) throw new Error(`Failed to update timesheet: ${updateError.message}`);
+
+        // Get booking from existing timesheet
+        if (timesheet.booking_id) {
+          const { data: existingBookingData } = await supabase
+            .from('bookings')
+            .select('*')
+            .eq('id', timesheet.booking_id)
+            .single();
+          booking = existingBookingData;
+        }
+      }
+      // 🆕 FALLBACK: Create new timesheet (only if shift was never confirmed - edge case)
+      else {
+        console.log('⚠️ [Clock-In] No timesheet exists - creating new one (shift may not have been confirmed)');
+        setValidationStep('Creating timesheet...');
+
+        // Get or create booking
+        if (!booking) {
           const { data: newBooking, error: newBookingError } = await supabase
             .from('bookings')
             .insert({
@@ -287,19 +325,21 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
           if (newBookingError) throw new Error(`Failed to create booking: ${newBookingError.message}`);
           booking = newBooking;
           setExistingBooking(booking);
-      }
+        }
 
-      // Create Timesheet
-      const { data: timesheet, error: timesheetError } = await supabase
-        .from('timesheets')
-        .insert({
-          agency_id: shift.agency_id, booking_id: booking.id, staff_id: staff.id,
-          client_id: shift.client_id, shift_date: shift.date, clock_in_time: new Date().toISOString(),
-          clock_in_location: capturedLocation, pay_rate: shift.pay_rate, charge_rate: shift.charge_rate,
-          status: 'draft', geofence_validated: validation.validated, geofence_distance_meters: validation.distance_meters
-        })
-        .select().single();
-      if (timesheetError) throw timesheetError;
+        // Create new timesheet
+        const { data: newTimesheet, error: timesheetError } = await supabase
+          .from('timesheets')
+          .insert({
+            agency_id: shift.agency_id, booking_id: booking.id, staff_id: staff.id,
+            client_id: shift.client_id, shift_date: shift.date, clock_in_time: new Date().toISOString(),
+            clock_in_location: capturedLocation, pay_rate: shift.pay_rate, charge_rate: shift.charge_rate,
+            status: 'draft', geofence_validated: validation.validated, geofence_distance_meters: validation.distance_meters
+          })
+          .select().single();
+        if (timesheetError) throw new Error(`Failed to create timesheet: ${timesheetError.message}`);
+        timesheet = newTimesheet;
+      }
 
       // Update shift status
       await supabase.from('shifts').update({ status: 'in_progress', shift_started_at: new Date().toISOString() }).eq('id', shift.id);
