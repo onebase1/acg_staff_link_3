@@ -306,7 +306,8 @@ export default function LiveShiftMap() {
       shift,
       assignedStaff,
       timesheet,
-      hasGPS: !!timesheet?.clock_in_location,
+      // 🛡️ FIX: Check for actual GPS data, not just empty objects
+      hasGPS: !!(timesheet?.clock_in_location?.latitude && timesheet?.clock_in_location?.longitude),
       geofenceValidated: timesheet?.geofence_validated,
       distance: timesheet?.geofence_distance_meters,
       approaching: shift.approaching_staff_location
@@ -354,7 +355,8 @@ export default function LiveShiftMap() {
   // 🔒 CALCULATE STATS WITH DEDUPLICATION
   const stats = {
     totalShifts: activeShifts.length,
-    shiftsWithGPS: [...new Set(timesheets.filter(t => t.clock_in_location).map(t => t.booking_id))].length,
+    // 🛡️ FIX: Check for actual GPS data, not just empty objects
+    shiftsWithGPS: [...new Set(timesheets.filter(t => t.clock_in_location?.latitude && t.clock_in_location?.longitude).map(t => t.booking_id))].length,
     geofencePassed: [...new Set(timesheets.filter(t => t.geofence_validated === true).map(t => t.booking_id))].length,
     geofenceFailed: [...new Set(timesheets.filter(t => t.geofence_validated === false).map(t => t.booking_id))].length,
     clientsWithGPS: clients.filter(c => c.location_coordinates?.latitude).length,
@@ -367,12 +369,14 @@ export default function LiveShiftMap() {
       let hasClockIn = false;
       if (s.booking_id) {
         const shiftTimesheets = timesheets.filter(t => t.booking_id === s.booking_id);
-        hasClockIn = shiftTimesheets.some(t => t.clock_in_location);
+        // 🛡️ FIX: Check for actual GPS data, not just empty objects
+        hasClockIn = shiftTimesheets.some(t => t.clock_in_location?.latitude && t.clock_in_location?.longitude);
       } else {
         const booking = bookings.find(b => b.shift_id === s.id);
         if (booking) {
           const bookingTimesheets = timesheets.filter(t => t.booking_id === booking.id);
-          hasClockIn = bookingTimesheets.some(t => t.clock_in_location);
+          // 🛡️ FIX: Check for actual GPS data, not just empty objects
+          hasClockIn = bookingTimesheets.some(t => t.clock_in_location?.latitude && t.clock_in_location?.longitude);
         }
       }
 
