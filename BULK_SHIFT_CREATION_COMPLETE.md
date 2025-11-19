@@ -109,9 +109,9 @@ The feature is accessible from:
 ## ⚠️ **KNOWN LIMITATIONS**
 
 ### **1. Marketplace Visibility**
-- **Current:** All shifts created with `marketplace_visible=false`
-- **Impact:** Shifts not visible to staff until manually published
-- **Next Step:** Add admin action to publish shifts to marketplace
+- **Current:** All shifts created with `marketplace_visible=false` ✅ FIXED (2025-11-19)
+- **Impact:** Shifts not visible to staff until admin manually toggles marketplace switch
+- **Admin Control:** Toggle switch available in Shifts page for each open shift
 
 ### **2. Financial Data Visibility**
 - **Current:** Pay/charge rates visible during creation

@@ -105,7 +105,7 @@ function createShiftObject(date, roleConfig, client, formData, agencyId, user, i
 
     // Status
     status: 'open',
-    marketplace_visible: true, // ✅ CHANGED: Auto-publish to marketplace
+    marketplace_visible: false, // ✅ FIXED: Manual approval required (admin toggles in UI)
 
     // Journey log
     shift_journey_log: [{

@@ -632,6 +632,8 @@ export default function Shifts() {
 
   const toggleMarketplaceMutation = useMutation({
     mutationFn: async ({ shiftId, visible }) => {
+      console.log(`📊 [Marketplace Toggle] Shift ${shiftId.substring(0, 8)} - Admin manually setting marketplace_visible: ${visible}`);
+
       const { error } = await supabase
         .from('shifts')
         .update({
@@ -639,7 +641,7 @@ export default function Shifts() {
           marketplace_added_at: visible ? new Date().toISOString() : null
         })
         .eq('id', shiftId);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1667,7 +1669,7 @@ export default function Shifts() {
                                      variant="ghost"
                                      className="h-8 w-8 p-0"
                                      onClick={() => setAssigningShift(shift)}
-                                     title="Assign Staff"
+                                     title="Confirm Staff"
                                    >
                                      <UserPlus className="w-4 h-4 text-green-600" />
                                    </Button>
@@ -1873,7 +1875,7 @@ export default function Shifts() {
                             className="bg-gradient-to-r from-cyan-500 to-blue-600"
                           >
                             <UserPlus className="w-4 h-4 mr-2" />
-                            Assign Staff
+                            Confirm Staff
                           </Button>
                           {(shift.urgency === 'urgent' || shift.urgency === 'critical') && (
                             <Button
@@ -1958,35 +1960,35 @@ export default function Shifts() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <CardHeader className="border-b sticky top-0 bg-white z-10">
-              <CardTitle>Assign Staff to Shift</CardTitle>
+              <CardTitle>Confirm Staff for Shift</CardTitle>
               <p className="text-sm text-gray-600 mt-1">
                 {format(new Date(assigningShift.date), 'EEEE, MMMM d, yyyy')} • {assigningShift.start_time} - {assigningShift.end_time}
               </p>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+              <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-lg">
                 <div className="flex items-start gap-3">
                   <input
                     type="checkbox"
                     id="admin-bypass"
-                    checked={adminBypassMode}
-                    onChange={(e) => setAdminBypassMode(e.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                    checked={!adminBypassMode}
+                    onChange={(e) => setAdminBypassMode(!e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
                   />
                   <div className="flex-1">
-                    <label htmlFor="admin-bypass" className="font-semibold text-blue-900 cursor-pointer">
-                      ⚡ Admin Bypass: Mark as "Confirmed" Immediately
+                    <label htmlFor="admin-bypass" className="font-semibold text-amber-900 cursor-pointer">
+                      📋 Assign Only (staff must confirm)
                     </label>
-                    <p className="text-sm text-blue-700 mt-1">
-                      {adminBypassMode ? (
+                    <p className="text-sm text-amber-700 mt-1">
+                      {!adminBypassMode ? (
                         <>
-                          <strong>Enabled:</strong> Shift will be marked as "confirmed" (no staff confirmation needed).
-                          Use when you've spoken to staff by phone and they've verbally agreed.
+                          <strong>Checked:</strong> Shift will be marked as "assigned" - staff must confirm via portal/SMS.
+                          Recommended for accountability and formal confirmation.
                         </>
                       ) : (
                         <>
-                          <strong>Disabled:</strong> Shift will be marked as "assigned" - staff must confirm via portal/SMS.
-                          Recommended for accountability.
+                          <strong>Unchecked (default):</strong> Shift will be marked as "confirmed" immediately (no staff confirmation needed).
+                          Use when you've spoken to staff by phone and they've verbally agreed.
                         </>
                       )}
                     </p>

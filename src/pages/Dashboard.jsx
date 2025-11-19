@@ -490,28 +490,38 @@ export default function Dashboard() {
 
   // ✅ FIXED: Mutations using direct Supabase
   const assignStaffMutation = useMutation({
-    mutationFn: async ({ shiftId, staffId }) => {
+    mutationFn: async ({ shiftId, staffId, bypassConfirmation = true }) => {
       const shift = shifts.find(s => s.id === shiftId);
       const assignedStaff = staff.find(s => s.id === staffId);
       const client = clients.find(c => c.id === shift.client_id);
-      
+
+      const newStatus = bypassConfirmation ? 'confirmed' : 'assigned';
+
       await supabase
         .from('shifts')
         .update({
-          status: 'assigned',
+          status: newStatus,
           assigned_staff_id: staffId,
+          ...(bypassConfirmation && {
+            staff_confirmed_at: new Date().toISOString(),
+            staff_confirmation_method: 'admin_bypass'
+          }),
           shift_journey_log: [
             ...(shift.shift_journey_log || []),
             {
-              state: 'assigned',
+              state: newStatus,
               timestamp: new Date().toISOString(),
               user_id: user?.id,
-              staff_id: staffId
+              staff_id: staffId,
+              method: bypassConfirmation ? 'admin_confirmed' : 'admin_assigned',
+              notes: bypassConfirmation
+                ? 'Admin confirmed shift on behalf of staff'
+                : 'Staff assigned - awaiting confirmation'
             }
           ]
         })
         .eq('id', shiftId);
-      
+
       await supabase
         .from('bookings')
         .insert({
@@ -519,36 +529,55 @@ export default function Dashboard() {
           shift_id: shiftId,
           staff_id: staffId,
           client_id: shift.client_id,
-          status: 'pending',
+          status: bypassConfirmation ? 'confirmed' : 'pending',
           booking_date: new Date().toISOString(),
           shift_date: shift.date,
           start_time: shift.start_time, // ✅ TEXT (HH:MM) from shifts
           end_time: shift.end_time,     // ✅ TEXT (HH:MM) from shifts
-          confirmation_method: 'app'
+          confirmation_method: 'app',
+          ...(bypassConfirmation && {
+            confirmed_by_staff_at: new Date().toISOString()
+          })
         });
-      
-      const emailResult = await NotificationService.notifyShiftAssignment({
-        staff: assignedStaff,
-        shift: shift,
-        client: client
-      });
-      
-      return { emailResult, staffName: `${assignedStaff.first_name} ${assignedStaff.last_name}` };
+
+      // Send appropriate notification based on bypass mode
+      const emailResult = bypassConfirmation
+        ? await NotificationService.notifyShiftConfirmedToStaff({
+            staff: assignedStaff,
+            shift: shift,
+            client: client,
+            agency: currentAgency
+          })
+        : await NotificationService.notifyShiftAssignment({
+            staff: assignedStaff,
+            shift: shift,
+            client: client
+          });
+
+      return {
+        emailResult,
+        staffName: `${assignedStaff.first_name} ${assignedStaff.last_name}`,
+        bypassConfirmation
+      };
     },
-    onSuccess: ({ emailResult, staffName }) => {
+    onSuccess: ({ emailResult, staffName, bypassConfirmation }) => {
       queryClient.invalidateQueries(['shifts']);
       queryClient.invalidateQueries(['bookings']);
       queryClient.invalidateQueries(['staff']);
       queryClient.invalidateQueries(['workflows']);
       queryClient.invalidateQueries(['my-shifts']);
       queryClient.invalidateQueries(['client-shifts']);
-      
+
       setAssigningShift(null);
-      
+
+      const message = bypassConfirmation
+        ? `✅ ${staffName} confirmed! Shift confirmed immediately.`
+        : `✅ ${staffName} assigned! Awaiting staff confirmation.`;
+
       if (emailResult.success) {
-        toast.success(`✅ ${staffName} assigned! Confirmation email sent.`);
+        toast.success(message);
       } else {
-        toast.warning(`✅ ${staffName} assigned, but email failed to send.`);
+        toast.warning(`${message} (Email notification failed)`);
       }
     },
     onError: (error) => {
@@ -1230,7 +1259,11 @@ export default function Dashboard() {
       {assigningShift && (
         <ShiftAssignmentModal
           shift={assigningShift}
-          onAssign={(staffId) => assignStaffMutation.mutate({ shiftId: assigningShift.id, staffId })}
+          onAssign={(staffId, bypassMode) => assignStaffMutation.mutate({
+            shiftId: assigningShift.id,
+            staffId,
+            bypassConfirmation: bypassMode
+          })}
           onClose={() => setAssigningShift(null)}
         />
       )}

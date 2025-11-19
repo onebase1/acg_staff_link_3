@@ -15,7 +15,7 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
   const [currentAgency, setCurrentAgency] = useState(null);
   const [isLoadingAgency, setIsLoadingAgency] = useState(true);
   const [validationErrors, setValidationErrors] = useState({});
-  const [bypassMode, setBypassMode] = useState(true); // Default to enabled - admin must untick for normal flow
+  const [bypassMode, setBypassMode] = useState(false); // ✅ FIXED: Default to disabled - admin confirms by default (staff already agreed verbally)
 
   const queryClient = useQueryClient();
 
@@ -257,28 +257,109 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
         throw bookingError;
       }
 
-      // FIX: Graceful email failure handling - don't crash assignment if email fails
+      // ✅ FIX: Send DIFFERENT notifications based on bypass mode
       try {
-        console.log('📧 [ShiftAssignment] Calling shiftVerificationChain...');
-        const { data: emailData } = await supabase.functions.invoke('shift-verification-chain', {
-          body: {
-            shift_id: shiftId,
-            trigger_point: 'staff_assigned'
+        if (bypassConfirmation) {
+          // 🔵 CONFIRM MODE: Staff already agreed verbally - send CONFIRMATION emails
+          console.log('📧 [ShiftAssignment] CONFIRM MODE: Sending confirmation notifications...');
+
+          // Get staff, client, agency data for notifications
+          const { data: staffData } = await supabase
+            .from('staff')
+            .select('*')
+            .eq('id', staffId)
+            .single();
+
+          const { data: clientData } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('id', shift.client_id)
+            .single();
+
+          const { data: agencyData } = await supabase
+            .from('agencies')
+            .select('*')
+            .eq('id', shift.agency_id)
+            .single();
+
+          if (staffData && clientData) {
+            // Send confirmation to STAFF (shift confirmed!)
+            const { default: NotificationService } = await import('@/components/notifications/NotificationService');
+            await NotificationService.notifyShiftConfirmedToStaff({
+              staff: staffData,
+              shift: updatedShift,
+              client: clientData,
+              agency: agencyData
+            });
+
+            // Send confirmation to CLIENT (staff confirmed!)
+            await NotificationService.notifyShiftConfirmedToClient({
+              staff: staffData,
+              shift: updatedShift,
+              client: clientData,
+              useBatching: true
+            });
+
+            console.log('✅ [ShiftAssignment] Confirmation emails sent to staff & client');
           }
-        });
-        
-        console.log('✅ [ShiftAssignment] Verification email response:', emailData);
-        
-        if (emailData?.success) {
-          console.log(`✅ [ShiftAssignment] Care home notified: ${emailData.email_sent_to}`);
-        } else if (emailData?.skipped) {
-          console.warn(`⚠️ [ShiftAssignment] Email skipped: ${emailData.reason}`);
         } else {
-          console.warn('⚠️ [ShiftAssignment] Email notification failed:', emailData?.error);
+          // 🟡 ASSIGN MODE: Staff needs to confirm - send ASSIGNMENT email to STAFF
+          console.log('📧 [ShiftAssignment] ASSIGN MODE: Sending assignment notification to staff...');
+
+          // Get staff, client, agency data for notifications
+          const { data: staffData } = await supabase
+            .from('staff')
+            .select('*')
+            .eq('id', staffId)
+            .single();
+
+          const { data: clientData } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('id', shift.client_id)
+            .single();
+
+          const { data: agencyData } = await supabase
+            .from('agencies')
+            .select('*')
+            .eq('id', shift.agency_id)
+            .single();
+
+          if (staffData && clientData) {
+            // Send ASSIGNMENT notification to STAFF (asking them to confirm)
+            const { default: NotificationService } = await import('@/components/notifications/NotificationService');
+            await NotificationService.notifyShiftAssignment({
+              staff: staffData,
+              shift: updatedShift,
+              client: clientData,
+              agency: agencyData,
+              useBatching: true
+            });
+
+            console.log('✅ [ShiftAssignment] Assignment email sent to staff');
+          }
+
+          // Also notify CLIENT (care home) that staff has been assigned
+          const { data: emailData } = await supabase.functions.invoke('shift-verification-chain', {
+            body: {
+              shift_id: shiftId,
+              trigger_point: 'staff_assigned'
+            }
+          });
+
+          console.log('✅ [ShiftAssignment] Care home notification response:', emailData);
+
+          if (emailData?.success) {
+            console.log(`✅ [ShiftAssignment] Care home notified: ${emailData.email_sent_to}`);
+          } else if (emailData?.skipped) {
+            console.warn(`⚠️ [ShiftAssignment] Email skipped: ${emailData.reason}`);
+          } else {
+            console.warn('⚠️ [ShiftAssignment] Email notification failed:', emailData?.error);
+          }
         }
       } catch (emailError) {
         // DON'T FAIL THE ASSIGNMENT - just log the error
-        console.error('⚠️ [ShiftAssignment] Verification email failed (non-critical):', emailError.message);
+        console.error('⚠️ [ShiftAssignment] Notification failed (non-critical):', emailError.message);
         // User will still see success toast, but email failure is logged
       }
 
@@ -340,7 +421,7 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
         <CardHeader className="border-b bg-gradient-to-r from-cyan-50 to-blue-50">
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle>Assign Staff to Shift</CardTitle>
+              <CardTitle>Confirm Staff for Shift</CardTitle>
               <p className="text-sm text-gray-600 mt-1">
                 {shift.role_required?.replace('_', ' ')} • {shift.date} • {shift.start_time}-{shift.end_time}
               </p>
@@ -352,30 +433,30 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
         </CardHeader>
 
         <CardContent className="p-6">
-          {/* Admin Bypass Checkbox */}
-          <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+          {/* Assign Only Checkbox */}
+          <div className="mb-4 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg">
             <div className="flex items-start gap-3">
               <input
                 type="checkbox"
                 id="bypass-mode"
-                checked={bypassMode}
-                onChange={(e) => setBypassMode(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                checked={!bypassMode}
+                onChange={(e) => setBypassMode(!e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
               />
               <div className="flex-1">
-                <label htmlFor="bypass-mode" className="font-semibold text-blue-900 cursor-pointer">
-                  ⚡ Admin Bypass: Mark as "Confirmed" Immediately
+                <label htmlFor="bypass-mode" className="font-semibold text-amber-900 cursor-pointer">
+                  📋 Assign Only (staff must confirm)
                 </label>
-                <p className="text-sm text-blue-700 mt-1">
-                  {bypassMode ? (
+                <p className="text-sm text-amber-700 mt-1">
+                  {!bypassMode ? (
                     <>
-                      <strong>Enabled:</strong> Shift will be marked as "confirmed" (no staff confirmation needed).
-                      Use when you've spoken to staff by phone and they've verbally agreed.
+                      <strong>Checked:</strong> Shift will be marked as "assigned" - staff must confirm via portal/SMS.
+                      Recommended for accountability and formal confirmation.
                     </>
                   ) : (
                     <>
-                      <strong>Disabled:</strong> Shift will be marked as "assigned" - staff must confirm via portal/SMS.
-                      Recommended for accountability.
+                      <strong>Unchecked (default):</strong> Shift will be marked as "confirmed" immediately (no staff confirmation needed).
+                      Use when you've spoken to staff by phone and they've verbally agreed.
                     </>
                   )}
                 </p>

@@ -400,9 +400,23 @@ serve(async (req) => {
 
             for (const shift of unconfirmedShifts) {
                 try {
-                    // Check when shift was assigned (use staff_confirmation_requested_at or created_date)
-                    const assignedAt = new Date(shift.staff_confirmation_requested_at || shift.created_date);
+                    // ✅ FIX: Find when shift was assigned from journey log (not created_date!)
+                    // Look for the most recent 'assigned' state in shift_journey_log
+                    type JourneyEntry = { state: string; timestamp: string; [key: string]: unknown };
+                    const journeyLog = (shift.shift_journey_log || []) as JourneyEntry[];
+                    const assignedEntry = journeyLog
+                        .filter((entry) => entry.state === 'assigned')
+                        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+
+                    if (!assignedEntry) {
+                        console.log(`⚠️ [Shift Automation] Shift ${shift.id.substring(0, 8)} has status 'assigned' but no journey log entry - skipping`);
+                        continue;
+                    }
+
+                    const assignedAt = new Date(assignedEntry.timestamp);
                     const hoursAssigned = (now.getTime() - assignedAt.getTime()) / (1000 * 60 * 60);
+
+                    console.log(`🔍 [Shift Automation] Shift ${shift.id.substring(0, 8)} assigned ${hoursAssigned.toFixed(1)}h ago (at ${assignedAt.toISOString()})`);
 
                     // 12h: Send reminder
                     if (hoursAssigned >= 12 && hoursAssigned < 24 && !shift.confirmation_reminder_sent) {
@@ -452,6 +466,8 @@ serve(async (req) => {
                     // 24h: Move to marketplace
                     if (hoursAssigned >= 24) {
                         console.log(`🛒 [Shift Automation] Moving shift ${shift.id.substring(0, 8)} to marketplace (24h unconfirmed)`);
+                        console.log(`📊 [Marketplace] Shift ${shift.id.substring(0, 8)} - Setting marketplace_visible: true (reason: 24h unconfirmed)`);
+                        console.log(`📊 [Marketplace] Previous state - status: ${shift.status}, assigned_staff: ${shift.assigned_staff_id?.substring(0, 8) || 'none'}, marketplace_visible: ${shift.marketplace_visible}`);
 
                         await supabase
                             .from("shifts")

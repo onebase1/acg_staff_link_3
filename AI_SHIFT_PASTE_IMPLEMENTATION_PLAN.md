@@ -459,7 +459,7 @@ src/
 
   // Status
   status: "open",
-  marketplace_visible: true,
+  marketplace_visible: false, // ✅ FIXED: Manual approval required (admin toggles in UI)
 
   // Optional
   work_location_within_site: "",

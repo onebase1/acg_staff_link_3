@@ -119,7 +119,7 @@
    - `charge_rate` (from role)
    - `urgency`
    - `status: 'open'`
-   - `marketplace_visible: true`
+   - `marketplace_visible: false` (✅ FIXED: Manual approval required)
 
 ### **Example:**
 - 2 dates selected (Oct 15, Oct 17)
