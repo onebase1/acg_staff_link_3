@@ -39,6 +39,35 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
     setExistingTimesheet(initialTimesheet);
   }, [initialTimesheet]);
 
+  // 🔄 REAL-TIME TIMESHEET SYNC: Detect when admin clocks in staff
+  useEffect(() => {
+    const timesheetSubscription = supabase
+      .channel(`timesheet-sync-${shift.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'timesheets',
+          filter: `shift_id=eq.${shift.id}`
+        },
+        (payload) => {
+          console.log('📡 Timesheet update detected:', payload);
+          if (payload.new) {
+            setExistingTimesheet(payload.new);
+            toast.info('Timesheet updated', {
+              description: 'Your shift status has been updated'
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(timesheetSubscription);
+    };
+  }, [shift.id]);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -202,8 +231,22 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
           client_id: shift.client_id
         }
       });
-      if (validationError) throw validationError;
+
+      // 🛡️ NULL-SAFE: Comprehensive validation error handling
+      if (validationError) {
+        const errorMsg = validationError.message || 'Failed to validate location';
+        toast.error(`Clock-in failed: ${errorMsg}`);
+        throw new Error(errorMsg);
+      }
+
+      if (!validation) {
+        const errorMsg = 'No validation response received from server. Please try again.';
+        toast.error(errorMsg);
+        throw new Error(errorMsg);
+      }
+
       setValidationResult(validation);
+
       if (!validation.validated) {
         toast.error(`Clock-in failed: ${validation.message}`);
         throw new Error(validation.message);
@@ -282,8 +325,28 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
 
     } catch (error) {
       console.error('❌ [Clock-In] Error:', error);
-      setGpsError(error.message);
-      toast.error(`Clock-in failed: ${error.message}`);
+
+      // 🛡️ PRODUCTION-GRADE ERROR HANDLING
+      let userFriendlyMessage = error.message;
+
+      // Network errors
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+        userFriendlyMessage = 'Network connection issue. Please check your internet and try again.';
+      }
+      // Edge Function errors
+      else if (error.message?.includes('Edge Function')) {
+        userFriendlyMessage = 'Server communication error. Please try again in a moment.';
+      }
+      // GPS errors
+      else if (error.message?.includes('location') || error.message?.includes('GPS')) {
+        userFriendlyMessage = 'Location access issue. Please enable location services and try again.';
+      }
+
+      setGpsError(userFriendlyMessage);
+      toast.error(`Clock-in failed: ${userFriendlyMessage}`, {
+        description: 'If this persists, contact your supervisor',
+        duration: 5000
+      });
     } finally {
       setValidationStep('');
       setIsClockingIn(false);
@@ -418,12 +481,21 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
       setLocation(capturedLocation);
 
       setValidationStep('Validating geofence...');
-      const { data: validation } = await invokeFunction('geofence-validator', {
+      const { data: validation, error: validationError } = await invokeFunction('geofence-validator', {
         body: {
           staff_location: capturedLocation,
           client_id: shift.client_id
         }
       });
+
+      // 🛡️ NULL-SAFE: Check if validation response exists
+      if (validationError) {
+        throw new Error(validationError.message || 'Failed to validate location');
+      }
+
+      if (!validation) {
+        throw new Error('No validation response received from server');
+      }
 
       setValidationResult(validation);
 

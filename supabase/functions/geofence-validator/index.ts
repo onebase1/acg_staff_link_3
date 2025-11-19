@@ -12,7 +12,18 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * ROLLBACK: Feature can be disabled per-client (geofence_enabled = false)
  */
 
+// CORS headers for mobile browser support
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 serve(async (req) => {
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+        return new Response(null, { headers: corsHeaders });
+    }
+
     try {
         const supabase = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",
@@ -27,7 +38,7 @@ serve(async (req) => {
                 error: 'staff_location {latitude, longitude} and client_id required'
             }), {
                 status: 400,
-                headers: { "Content-Type": "application/json" }
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
         }
 
@@ -45,7 +56,7 @@ serve(async (req) => {
                 error: 'Client not found'
             }), {
                 status: 404,
-                headers: { "Content-Type": "application/json" }
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
         }
 
@@ -73,7 +84,7 @@ serve(async (req) => {
                 reason: 'geofence_disabled',
                 message: 'Geofencing is disabled for this client'
             }), {
-                headers: { "Content-Type": "application/json" }
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
         }
 
@@ -99,7 +110,7 @@ serve(async (req) => {
                 message: 'Client GPS coordinates not configured - validation skipped',
                 warning: 'Please set client coordinates in Client settings'
             }), {
-                headers: { "Content-Type": "application/json" }
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
         }
 
@@ -163,7 +174,7 @@ serve(async (req) => {
                 ? 'Contact staff to confirm location. If legitimate, admin can override in timesheet approval.'
                 : null
         }), {
-            headers: { "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
 
     } catch (error) {
@@ -173,7 +184,7 @@ serve(async (req) => {
             error: error.message
         }), {
             status: 500,
-            headers: { "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
     }
 });
