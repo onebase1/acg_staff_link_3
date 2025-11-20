@@ -117,7 +117,7 @@ None - All tasks either complete or pending
    - SMTP Host: `smtp.resend.com`
    - SMTP Port: `587`
    - SMTP Username: `resend`
-   - SMTP Password: `re_hzPF7CWV_CTkBHMxuNM2rfAKUwEdJ6GB2`
+   - SMTP Password: `[Your Resend API Key]`
    - Sender Email: `noreply@agilecaremanagement.co.uk`
    - Sender Name: `Agile Care Management`
    - Save and test
@@ -174,16 +174,33 @@ None - All tasks either complete or pending
 
 ---
 
+#### Email Trust Fix (Bonus Task)
+**Status**: ✅ COMPLETE
+**Completed**: 2025-11-20 21:30 UTC
+
+1. ✅ Created branded HTML email templates
+2. ✅ User updated Supabase Auth templates
+3. ✅ DNS records verified (DKIM, SPF, DMARC)
+4. ✅ Emails no longer marked as spam
+5. ✅ Professional branding in all auth emails
+
+**Files Created**:
+- `supabase/email-templates/confirm-signup.html`
+- `supabase/email-templates/reset-password.html`
+- `supabase/email-templates/invite-user.html`
+
+---
+
 ## 📊 PROGRESS SUMMARY
 
 | Metric | Value |
 |--------|-------|
 | **Total Groups** | 9 |
-| **Completed** | 2 (22%) |
+| **Completed** | 2 (22%) ✅ |
 | **In Progress** | 0 |
 | **Pending** | 7 (78%) |
 | **Files Modified** | 18 |
-| **Files Created** | 5 |
+| **Files Created** | 8 |
 | **Estimated Time Remaining** | 17-27 hours |
 
 ---

@@ -31,7 +31,7 @@ const from = `${senderName} <noreply@${RESEND_FROM_DOMAIN}>`;
 
 **Environment Variables:**
 ```bash
-RESEND_API_KEY=re_hzPF7CWV_CTkBHMxuNM2rfAKUwEdJ6GB2
+RESEND_API_KEY=your_resend_api_key_here
 RESEND_FROM_DOMAIN=agilecaremanagement.co.uk (default)
 ```
 
@@ -137,9 +137,9 @@ These emails are sent by **Supabase Auth service** (NOT Resend):
 Resend provides SMTP access for custom integrations:
 
 **SMTP Server:** `smtp.resend.com`  
-**Port:** `587` (TLS) or `465` (SSL)  
-**Username:** `resend`  
-**Password:** Your Resend API Key (`re_hzPF7CWV_CTkBHMxuNM2rfAKUwEdJ6GB2`)
+**Port:** `587` (TLS) or `465` (SSL)
+**Username:** `resend`
+**Password:** Your Resend API Key (from Resend dashboard)
 
 ---
 
@@ -157,7 +157,7 @@ Resend provides SMTP access for custom integrations:
    SMTP Host: smtp.resend.com
    SMTP Port: 587
    SMTP Username: resend
-   SMTP Password: re_hzPF7CWV_CTkBHMxuNM2rfAKUwEdJ6GB2
+   SMTP Password: [Your Resend API Key]
 
    Sender Email: noreply@agilecaremanagement.co.uk
    Sender Name: Agile Care Management

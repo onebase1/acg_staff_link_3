@@ -138,8 +138,8 @@ email: 'info@agilecaremanagement.co.uk',
    SMTP Host: smtp.resend.com
    SMTP Port: 587
    SMTP Username: resend
-   SMTP Password: re_hzPF7CWV_CTkBHMxuNM2rfAKUwEdJ6GB2
-   
+   SMTP Password: [Your Resend API Key]
+
    Sender Email: noreply@agilecaremanagement.co.uk
    Sender Name: Agile Care Management
    ```
