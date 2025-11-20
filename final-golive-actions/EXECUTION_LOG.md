@@ -72,10 +72,73 @@ If issues arise, revert to previous calculation: `rate * duration_hours`
 
 ## 🔄 IN PROGRESS TASKS
 
-### [ ] GROUP A: Domain & Email Migration
-**Priority**: 🔴 CRITICAL  
-**Status**: Not Started  
-**Next**: Start after GROUP G testing complete
+None - All tasks either complete or pending
+
+---
+
+## ✅ COMPLETED TASKS
+
+### [x] GROUP A: Domain & Email Migration
+**Priority**: 🔴 CRITICAL
+**Status**: ✅ Code Deployed - Manual Steps Pending
+**Completed**: 2025-11-20 20:45 UTC
+
+#### What Was Done
+1. ✅ Updated all edge functions to use `agilecaremanagement.co.uk`
+2. ✅ Changed sender name from "ACG StaffLink" to "Agile Care Management"
+3. ✅ Updated test configurations and scripts
+4. ✅ Updated documentation files
+5. ✅ Committed changes to Git (commit: ece7c08)
+6. ✅ Pushed to GitHub main branch
+7. ✅ Deployed edge functions to Supabase:
+   - send-email
+   - send-agency-admin-invite
+   - critical-change-notifier
+
+#### Files Modified (9 files)
+- `supabase/functions/send-email/index.ts`
+- `supabase/functions/send-agency-admin-invite/index.ts`
+- `supabase/functions/critical-change-notifier/index.ts`
+- `src/components/notifications/NotificationService.jsx`
+- `scripts/testResend.mjs`
+- `scripts/createDominionAgency.mjs`
+- `tests/test-config.ts`
+- `dominion_doc/EMAIL_SENDER_AUDIT_AND_FIX.md`
+- `NETLIFY_DEPLOYMENT_GUIDE.md`
+
+#### ⚠️ MANUAL STEPS STILL REQUIRED
+
+**CRITICAL - Must be done before emails will work correctly:**
+
+1. **Configure Supabase Auth SMTP** (5 minutes)
+   - Go to: https://supabase.com/dashboard/project/rzzxxkppkiasuouuglaf
+   - Navigate to: Authentication → Email Templates → SMTP Settings
+   - Enable Custom SMTP
+   - SMTP Host: `smtp.resend.com`
+   - SMTP Port: `587`
+   - SMTP Username: `resend`
+   - SMTP Password: `re_hzPF7CWV_CTkBHMxuNM2rfAKUwEdJ6GB2`
+   - Sender Email: `noreply@agilecaremanagement.co.uk`
+   - Sender Name: `Agile Care Management`
+   - Save and test
+
+2. **Update Netlify Environment Variables** (2 minutes)
+   - Go to Netlify dashboard
+   - Navigate to: Site settings → Environment variables
+   - Update: `RESEND_FROM_DOMAIN=agilecaremanagement.co.uk`
+   - Update: `RESEND_DEFAULT_FROM=noreply@agilecaremanagement.co.uk`
+   - Trigger redeploy
+
+3. **Verify Domain in Resend** (Check only)
+   - Login to: https://resend.com/domains
+   - Verify `agilecaremanagement.co.uk` is verified
+   - If not, add DNS records (SPF, DKIM, DMARC)
+
+4. **Test Email Sending**
+   - Test send-email edge function
+   - Test password reset email
+   - Test signup confirmation email
+   - Verify sender shows "Agile Care Management <noreply@agilecaremanagement.co.uk>"
 
 ---
 
@@ -116,30 +179,36 @@ If issues arise, revert to previous calculation: `rate * duration_hours`
 | Metric | Value |
 |--------|-------|
 | **Total Groups** | 9 |
-| **Completed** | 1 (11%) |
+| **Completed** | 2 (22%) |
 | **In Progress** | 0 |
-| **Pending** | 8 (89%) |
-| **Files Modified** | 9 |
-| **Files Created** | 4 |
-| **Estimated Time Remaining** | 19-29 hours |
+| **Pending** | 7 (78%) |
+| **Files Modified** | 18 |
+| **Files Created** | 5 |
+| **Estimated Time Remaining** | 17-27 hours |
 
 ---
 
 ## 🎯 NEXT STEPS
 
-1. **Test GROUP G Changes**
+1. **Complete GROUP A Manual Steps** (URGENT)
+   - Configure Supabase Auth SMTP (5 minutes)
+   - Update Netlify environment variables (2 minutes)
+   - Verify Resend domain is verified
+   - Test email sending functionality
+
+2. **Test GROUP G Changes**
    - Verify earnings calculations in staff portal
    - Test email notifications
    - Check timesheet creation
    - Validate invoice generation
 
-2. **Start GROUP A: Domain Migration**
-   - Change Resend domain from guest-glow.com to agilecaremanagement.co.uk
-   - Update all email references
-   - Update Supabase Auth SMTP
-   - Test email sending
+3. **Start GROUP F: GPS & Mapbox Verification**
+   - Test GPS clock-in/clock-out functionality
+   - Verify Mapbox images are generated
+   - Check geofencing (100m radius)
+   - Validate data is saved to database
 
-3. **Continue with Priority Order**
+4. **Continue with Priority Order**
    - Follow execution plan in PRE_LAUNCH_STRATEGIC_PLAN.md
    - Complete critical tasks first
    - Test thoroughly before moving to next group
@@ -156,6 +225,6 @@ If issues arise, revert to previous calculation: `rate * duration_hours`
 
 ---
 
-**Last Updated**: 2025-11-20  
-**Next Review**: After GROUP A completion
+**Last Updated**: 2025-11-20 20:45 UTC
+**Next Review**: After GROUP A manual steps completion
 
