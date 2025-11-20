@@ -1837,15 +1837,6 @@ export default function Shifts() {
                         </div>
                       )}
 
-                      {shift.pay_rate_override && (
-                        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs">
-                          <p className="text-amber-900">
-                            <strong>Override:</strong> £{shift.pay_rate_override.original_rate} → £{shift.pay_rate_override.override_rate}/hr
-                          </p>
-                          <p className="text-amber-800">Reason: {shift.pay_rate_override.reason_notes || shift.pay_rate_override.reason}</p>
-                        </div>
-                      )}
-
                       {shift.notes && (
                         <p className="text-sm text-gray-600 mt-3 bg-gray-50 p-3 rounded">
                           {shift.notes}
