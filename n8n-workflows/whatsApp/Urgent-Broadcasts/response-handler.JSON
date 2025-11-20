@@ -1,0 +1,259 @@
+{
+  "name": "WhatsApp Response Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-urgent-shift",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-123-456-789",
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "whatsapp-webhook-urgent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract WhatsApp webhook data\nconst data = $input.item.json;\n\n// Check if valid message exists\nif (!data.entry?.[0]?.changes?.[0]?.value?.messages) {\n  return { json: { isMessage: false } };\n}\n\nconst message = data.entry[0].changes[0].value.messages[0];\nconst from = message.from;\nconst text = message.text?.body || '';\nconst timestamp = message.timestamp;\n\n// Check for confirmation keywords\nconst upperText = text.toUpperCase();\nconst isConfirm = upperText.includes('YES') || \n                  upperText.includes('CONFIRM') || \n                  upperText === 'Y';\n\nreturn {\n  json: {\n    from: from,\n    messageText: text,\n    timestamp: timestamp,\n    isConfirm: isConfirm,\n    isMessage: true\n  }\n};"
+      },
+      "id": "code-234-567-890",
+      "name": "Extract Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isMessage }}",
+              "value2": true
+            },
+            {
+              "value1": "={{ $json.isConfirm }}",
+              "value2": true
+            }
+          ]
+        },
+        "combineOperation": "all"
+      },
+      "id": "if-345-678-901",
+      "name": "Is Confirm?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "urgent_shifts",
+        "returnAll": false,
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "pending"
+            }
+          ]
+        },
+        "sort": {
+          "fields": [
+            {
+              "fieldName": "created_at",
+              "order": "DESC"
+            }
+          ]
+        }
+      },
+      "id": "supabase-456-789-012",
+      "name": "Get Pending Shift",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [900, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.assigned_staff_id }}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      },
+      "id": "if-567-890-123",
+      "name": "Still Available?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "urgent_shifts",
+        "filterType": "string",
+        "filterString": "=shift_id=eq.{{ $json.shift_id }}&assigned_staff_id=is.null",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldName": "assigned_staff_id",
+              "fieldValue": "={{ $node['Extract Message'].json.from }}"
+            },
+            {
+              "fieldName": "status",
+              "fieldValue": "assigned"
+            },
+            {
+              "fieldName": "assigned_at",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "id": "supabase-678-901-234",
+      "name": "Assign Shift",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1340, 100],
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "phoneNumberId": "={{ $env.WHATSAPP_PHONE_NUMBER_ID }}",
+        "recipientPhoneNumber": "={{ $node['Extract Message'].json.from }}",
+        "message": "=✅ SHIFT CONFIRMED!\n\nYou've been assigned to:\n📍 {{ $node['Get Pending Shift'].json.location }}\n📅 {{ $node['Get Pending Shift'].json.shift_date }}\n🕐 {{ $node['Get Pending Shift'].json.shift_time }}\n💷 £{{ $node['Get Pending Shift'].json.hourly_rate }}/hr\n\n⏰ IMPORTANT: Arrive 10 mins early and clock in via the app.\n\nGood luck! 🎉\n\n- Dominion Healthcare Services Ltd"
+      },
+      "id": "whatsapp-789-012-345",
+      "name": "Send Confirmation",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [1560, 100],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "YOUR_WHATSAPP_CREDENTIAL_ID",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "phoneNumberId": "={{ $env.WHATSAPP_PHONE_NUMBER_ID }}",
+        "recipientPhoneNumber": "={{ $node['Extract Message'].json.from }}",
+        "message": "⏱️ Sorry, this shift has already been taken by another staff member.\n\nKeep an eye out for the next urgent shift!\n\n- Dominion Healthcare Services Ltd"
+      },
+      "id": "whatsapp-890-123-456",
+      "name": "Send Already Taken",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "YOUR_WHATSAPP_CREDENTIAL_ID",
+          "name": "WhatsApp account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WhatsApp Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message": {
+      "main": [
+        [
+          {
+            "node": "Is Confirm?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Confirm?": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Shift",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Shift": {
+      "main": [
+        [
+          {
+            "node": "Still Available?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Still Available?": {
+      "main": [
+        [
+          {
+            "node": "Assign Shift",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Already Taken",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assign Shift": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "",
+  "meta": {},
+  "id": "",
+  "tags": []
+}

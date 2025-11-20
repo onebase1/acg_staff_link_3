@@ -28,6 +28,7 @@ import RecentActivity from "../components/dashboard/RecentActivity";
 import ShiftAssignmentModal from "../components/shifts/ShiftAssignmentModal";
 import ViewSwitcher from "../components/admin/ViewSwitcher";
 import QuickStatsWidget from "../components/dashboard/QuickStatsWidget";
+import { calculateClientCharge } from "../utils/shiftCalculations";
 import ShiftStatusAnalytics from "../components/dashboard/ShiftStatusAnalytics";
 import { format, subDays, parseISO, isToday, isTomorrow, addDays, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
 import { toast } from "sonner";
@@ -419,10 +420,10 @@ export default function Dashboard() {
     .filter(s => {
       const shiftDate = new Date(s.date);
       const weekAgo = subDays(new Date(), 7);
-      return shiftDate >= weekAgo && 
+      return shiftDate >= weekAgo &&
              (s.status === 'confirmed' || s.status === 'in_progress' || s.status === 'completed' || s.status === 'awaiting_admin_closure');
     })
-    .reduce((sum, s) => sum + ((s.charge_rate || 0) * (s.duration_hours || 0)), 0);
+    .reduce((sum, s) => sum + calculateClientCharge(s), 0);
 
   // Use potential revenue if higher than approved timesheet revenue
   const displayRevenue = Math.max(weekRevenue, weekPotentialRevenue);

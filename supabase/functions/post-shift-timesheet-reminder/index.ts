@@ -79,7 +79,13 @@ serve(async (req) => {
             // Don't send if already sent reminder
             const reminderAlreadySent = shift.timesheet_reminder_sent === true;
 
-            return hasEnded && !reminderAlreadySent;
+            // ✅ FIX: Don't send reminder if shift already completed (GPS auto-complete)
+            const shiftAlreadyCompleted = shift.status === 'completed';
+
+            // ✅ FIX: Don't send reminder if timesheet already received
+            const timesheetAlreadyReceived = shift.timesheet_received === true;
+
+            return hasEnded && !reminderAlreadySent && !shiftAlreadyCompleted && !timesheetAlreadyReceived;
         });
 
         console.log(`📋 [Post-Shift Reminder] ${shiftsToRemind.length} shifts need reminders`);

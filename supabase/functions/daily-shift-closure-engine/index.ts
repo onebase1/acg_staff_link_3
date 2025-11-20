@@ -4,24 +4,36 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /**
  * 🚨 DAILY SHIFT CLOSURE ENGINE - FINANCIAL PROTECTION
  *
- * CRITICAL: Prevents financial disputes by ensuring all shifts are verified
+ * ⚠️ DEPRECATED: This function is now redundant with shift-status-automation
  *
- * RUNS DAILY (recommended: 9am) to create AdminWorkflows for:
+ * The shift-status-automation function (runs every 5 min) now handles:
+ * - Auto-close shifts 48h after scheduled end time
+ * - Create admin workflows for manual verification
+ * - Escalate overdue workflows at 24h/48h/72h
  *
- * 1. ✅ Shifts past end time still "in_progress" or "confirmed" (not closed)
- * 2. ✅ Shifts ended >24h ago without timesheets
- * 3. ✅ Assigned shifts past date never confirmed by staff/client
+ * This function was creating workflows after only 2 hours, which conflicted
+ * with the 48-hour grace period for GPS/timesheet uploads.
  *
- * WHY THIS MATTERS:
- * - Prevents invoicing unverified shifts → client disputes
- * - Catches no-shows before invoice generation
- * - Ensures accurate payroll (staff may have worked different hours)
+ * STATUS: DISABLED - Returns success without processing
+ * REPLACEMENT: shift-status-automation (runs every 5 min via cron)
  *
- * SCHEDULE: Run this function daily via cron job or manual trigger
+ * To re-enable: Remove the early return statement below
  */
 
 serve(async (req) => {
     try {
+        // ⚠️ DISABLED: This function is now redundant with shift-status-automation
+        console.log('⚠️ [Daily Closure] Function disabled - using shift-status-automation instead');
+
+        return new Response(
+            JSON.stringify({
+                success: true,
+                message: 'Function disabled - shift-status-automation handles this now',
+                timestamp: new Date().toISOString()
+            }),
+            { headers: { "Content-Type": "application/json" } }
+        );
+
         // Initialize Supabase client
         const supabase = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",

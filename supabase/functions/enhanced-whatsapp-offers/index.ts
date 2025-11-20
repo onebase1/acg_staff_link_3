@@ -109,8 +109,10 @@ serve(async (req) => {
                     ? `${client.address.line1}, ${client.address.city} ${client.address.postcode}`
                     : 'Location TBA';
 
-                // Calculate earnings
-                const totalEarnings = (shift.pay_rate * shift.duration_hours).toFixed(2);
+                // Calculate earnings (accounting for break time)
+                const breakHours = (shift.break_duration_minutes || 60) / 60;
+                const billableHours = Math.max(0, shift.duration_hours - breakHours);
+                const totalEarnings = (shift.pay_rate * billableHours).toFixed(2);
 
                 // Format message with rich details
                 const message = `🏥 *NEW SHIFT OFFER*

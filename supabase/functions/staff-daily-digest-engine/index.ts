@@ -106,10 +106,13 @@ serve(async (req) => {
                     // Sort shifts by start time
                     shiftsWithClients.sort((a, b) => a.start_time.localeCompare(b.start_time));
 
-                    // Calculate total earnings
-                    const totalEarnings = shiftsWithClients.reduce((sum, s) =>
-                        sum + (s.pay_rate * s.duration_hours), 0
-                    ).toFixed(2);
+                    // Calculate total earnings (accounting for break time)
+                    // Default to 60-minute break if not specified
+                    const totalEarnings = shiftsWithClients.reduce((sum, s) => {
+                        const breakHours = (s.break_duration_minutes || 60) / 60;
+                        const billableHours = Math.max(0, s.duration_hours - breakHours);
+                        return sum + (s.pay_rate * billableHours);
+                    }, 0).toFixed(2);
 
                     // SEND EMAIL
                     if (sendEmail && staffMember.email) {

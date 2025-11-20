@@ -88,12 +88,12 @@ function buildInviteEmail({
     : "";
 
   return {
-    subject: `Activate your ACG StaffLink access for ${safeAgency}`,
+    subject: `Activate your Agile Care Management access for ${safeAgency}`,
     html: `
       <div style="font-family: Arial, sans-serif; color: #0f172a;">
-        <h2 style="color:#0284c7;">Welcome to ACG StaffLink</h2>
+        <h2 style="color:#0284c7;">Welcome to Agile Care Management</h2>
         <p>Hi ${safeName},</p>
-        <p>You have been invited to manage <strong>${safeAgency}</strong> on the ACG StaffLink platform.</p>
+        <p>You have been invited to manage <strong>${safeAgency}</strong> on the Agile Care Management platform.</p>
         <p>To get started, please secure your account by setting a password:</p>
         <p style="margin: 24px 0;">
           <a href="${actionLink}" style="background:#0284c7;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold;">
@@ -107,7 +107,7 @@ function buildInviteEmail({
           If you did not expect this invitation, contact the platform owner immediately or ignore this email.
         </p>
         <p style="font-size:12px;color:#64748b;">
-          Need help? Visit <a href="${siteUrl}" style="color:#0284c7;">ACG StaffLink</a>.
+          Need help? Visit <a href="${siteUrl}" style="color:#0284c7;">Agile Care Management</a>.
         </p>
       </div>
     `,

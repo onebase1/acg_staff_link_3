@@ -21,7 +21,7 @@ export const EmailTemplates = {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <meta name="color-scheme" content="light dark">
       <meta name="supported-color-schemes" content="light dark">
-      <title>${agencyName || 'ACG StaffLink'}</title>
+      <title>${agencyName || 'Agile Care Management'}</title>
       <style>
         /* Dark mode support */
         @media (prefers-color-scheme: dark) {
@@ -45,8 +45,8 @@ export const EmailTemplates = {
             <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%; margin-top: 20px;">
               <tr>
                 <td style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px;">
-                  <p style="margin: 0 0 10px 0;">© ${new Date().getFullYear()} ${agencyName || 'ACG StaffLink'}. All rights reserved.</p>
-                  <p style="margin: 0; color: #9ca3af;">Powered by ACG StaffLink</p>
+                  <p style="margin: 0 0 10px 0;">© ${new Date().getFullYear()} ${agencyName || 'Agile Care Management'}. All rights reserved.</p>
+                  <p style="margin: 0; color: #9ca3af;">Powered by Agile Care Management</p>
                 </td>
               </tr>
             </table>

@@ -8,12 +8,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * Runs every 5 minutes via cron
  *
  * AUTOMATIONS:
- * 0. Past-dated shifts → awaiting_admin_closure (any shift where date < today)
+ * 0. Past shifts → awaiting_admin_closure (48h after scheduled end_time, handles overnight shifts)
  * 1. confirmed → in_progress (when shift start time reached)
- * 2. in_progress → awaiting_admin_closure (when shift end time reached)
+ * 2. in_progress → awaiting_admin_closure OR completed (when shift end time reached)
  *
+ * ✅ FIXED: Uses scheduled end_time + 48h grace period (not just shift date)
+ * ✅ FIXED: Handles overnight shifts (end_time < start_time means next day)
  * Creates admin_workflows for all shifts moved to awaiting_admin_closure
- * ✅ FIXED: Uses correct status 'awaiting_admin_closure' (not 'awaiting_verification')
  */
 
 serve(async (req) => {

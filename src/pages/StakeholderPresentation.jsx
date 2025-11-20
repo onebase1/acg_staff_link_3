@@ -21,7 +21,7 @@ export default function StakeholderPresentation() {
   };
 
   const presentationData = {
-    executiveSummary: `SLIDE 1: ACG STAFFLINK - EXECUTIVE SUMMARY
+    executiveSummary: `SLIDE 1: AGILE CARE MANAGEMENT - EXECUTIVE SUMMARY
 
 THE PROBLEM:
 Healthcare staffing agencies lose £50,000+ annually to:
@@ -33,7 +33,7 @@ Healthcare staffing agencies lose £50,000+ annually to:
 • Invoice disputes over location/hours (delays payment by weeks)
 
 THE SOLUTION:
-ACG StaffLink - AI-powered staffing automation platform that:
+Agile Care Management - AI-powered staffing automation platform that:
 ✓ Fills urgent shifts in 15 minutes (vs 4 hours)
 ✓ Automates 90% of administrative tasks
 ✓ Eliminates compliance violations
@@ -49,7 +49,7 @@ MARKET OPPORTUNITY:
 • Our target: 50 agencies by Q4 2026 = £300K ARR
 
 COMPETITIVE ADVANTAGE:
-Unlike traditional staffing software, ACG StaffLink is:
+Unlike traditional staffing software, Agile Care Management is:
 • AI-first (WhatsApp agents, predictive matching)
 • Built for temporary staffing (not permanent placement)
 • Compliance-native (CQC-ready from day one)
@@ -339,7 +339,7 @@ The GPS verification and financial locking alone justify the entire cost.`,
 
     competitiveAnalysis: `SLIDE 6: COMPETITIVE ADVANTAGE
 
-WHY ACG STAFFLINK WINS:
+WHY AGILE CARE MANAGEMENT WINS:
 
 EXISTING SOLUTIONS (Why they fail):
 1. RotaMaster, PlanDay - £150-300/month
@@ -365,7 +365,7 @@ EXISTING SOLUTIONS (Why they fail):
    ❌ Zero fraud prevention
    ❌ Frequent invoice disputes
 
-ACG STAFFLINK ADVANTAGES:
+AGILE CARE MANAGEMENT ADVANTAGES:
 ✓ Built FOR temp agencies, BY temp agency needs
 ✓ AI-first architecture (WhatsApp native, voice calls)
 ✓ Compliance-native (CQC-ready from day one)
@@ -550,7 +550,7 @@ TERMS:
 
     closingSlide: `SLIDE 10: CLOSING - THE OPPORTUNITY
 
-ACG STAFFLINK: Transforming Healthcare Staffing with AI
+AGILE CARE MANAGEMENT: Transforming Healthcare Staffing with AI
 
 THE ASK:
 £18,000 for 20% equity (staged: £9K + £9K)

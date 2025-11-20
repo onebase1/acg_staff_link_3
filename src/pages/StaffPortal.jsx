@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, isWithinInterval, isFuture, isPast, isToday, parseISO, addDays } from "date-fns";
 import MobileClockIn from "../components/staff/MobileClockIn";
 import { formatShiftTimeRange, formatTodayShiftTime, getShiftType, formatTime12Hour } from "../utils/shiftTimeFormatter";
+import { calculateStaffEarnings } from "../utils/shiftCalculations";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -668,11 +669,11 @@ export default function StaffPortal() {
       // Check if shiftDate is within the last 7 days (inclusive of today)
       return shiftDate >= sevenDaysAgo && shiftDate <= today;
     })
-    .reduce((sum, shift) => sum + ((shift.pay_rate || 0) * (shift.duration_hours || 0)), 0);
+    .reduce((sum, shift) => sum + calculateStaffEarnings(shift), 0);
 
   const totalEarningsAllTime = myShifts
     .filter(s => s.status === 'confirmed') // Only confirmed shifts
-    .reduce((sum, shift) => sum + ((shift.pay_rate || 0) * (shift.duration_hours || 0)), 0);
+    .reduce((sum, shift) => sum + calculateStaffEarnings(shift), 0);
 
   const thisWeekShiftCount = myShifts.filter(s => {
     if (s.status !== 'confirmed') return false;
@@ -1215,7 +1216,7 @@ export default function StaffPortal() {
                       <div className="flex items-center gap-1">
                         <DollarSign className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span className="font-semibold text-green-600">
-                          £{((shift.duration_hours || 0) * (shift.pay_rate || staffRecord.hourly_rate || 15)).toFixed(2)}
+                          £{calculateStaffEarnings({ ...shift, pay_rate: shift.pay_rate || staffRecord.hourly_rate || 15 }).toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -1419,7 +1420,7 @@ export default function StaffPortal() {
                     <span className="font-semibold">Earnings</span>
                   </div>
                   <p className="text-2xl font-bold text-gray-900">
-                    £{((selectedShift.duration_hours || 0) * (selectedShift.pay_rate || staffRecord.hourly_rate || 15)).toFixed(2)}
+                    £{calculateStaffEarnings({ ...selectedShift, pay_rate: selectedShift.pay_rate || staffRecord.hourly_rate || 15 }).toFixed(2)}
                   </p>
                   <p className="text-sm text-gray-600 mt-1">
                     £{(selectedShift.pay_rate || staffRecord.hourly_rate || 15).toFixed(2)}/hour

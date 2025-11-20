@@ -1,5 +1,5 @@
 # Super Admin Improvement Roadmap
-**ACG StaffLink - Platform Control Center Enhancement Plan**
+**Agile Care Management - Platform Control Center Enhancement Plan**
 
 ---
 
@@ -214,14 +214,14 @@ This document provides a comprehensive review of the current super admin impleme
 - **Recommend:** LOW PRIORITY (Phase 2)
 
 ##### 11. **No White-Label Branding** 🟢
-- **Missing:** All agencies see "ACG StaffLink" branding
+- **Missing:** All agencies see "Agile Care Management" branding
 - **Current:** Single brand
 - **Industry Standard:**
   - Per-agency branding:
     - Custom logo
     - Custom color scheme
     - Custom domain (agency.theirname.com)
-  - White-label mode (hide ACG StaffLink branding)
+  - White-label mode (hide Agile Care Management branding)
 - **Impact:** Harder to sell to agencies who want their own branding
 - **Estimated Effort:** 7-10 days
 - **Recommend:** LOW PRIORITY (if selling white-label)
@@ -246,7 +246,7 @@ This document provides a comprehensive review of the current super admin impleme
 
 ### **Critical KPIs Missing** 🔴
 
-Based on [Bullhorn's healthcare staffing best practices](https://www.bullhorn.com/blog/5-kpis-every-healthcare-staffing-firm-should-track/), ACG StaffLink super admin should track:
+Based on [Bullhorn's healthcare staffing best practices](https://www.bullhorn.com/blog/5-kpis-every-healthcare-staffing-firm-should-track/), Agile Care Management super admin should track:
 
 #### 1. **Redeployment Rate** 🔴
 - **Definition:** % of shifts filled by staff who've worked that client before
@@ -302,7 +302,7 @@ Based on [Bullhorn's healthcare staffing best practices](https://www.bullhorn.co
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  🏢 ACG StaffLink Platform Control Center                   │
+│  🏢 Agile Care Management Platform Control Center           │
 │                                                              │
 │  [ViewSwitcher]  [Global Search]  [Profile]  [Alerts: 3]   │
 └─────────────────────────────────────────────────────────────┘
@@ -519,7 +519,7 @@ const handleGlobalSearch = (term) => {
 
 ## Industry Comparison Benchmark
 
-### **ACG StaffLink vs Industry Leaders**
+### **Agile Care Management vs Industry Leaders**
 
 | Feature | ACG Current | Industry Standard | Gap |
 |---------|-------------|-------------------|-----|
@@ -780,7 +780,7 @@ USING (
 - ⚠️ Basic multi-tenant support
 - ⚠️ Limited healthcare-specific features
 
-#### **ACG StaffLink Positioning**
+#### **Agile Care Management Positioning**
 - ⭐ Superior impersonation/view switching
 - ⭐ Better financial controls (CFO Dashboard)
 - ⚠️ Need to catch up on analytics
@@ -815,7 +815,7 @@ Before prioritizing implementation:
 
 ## Conclusion
 
-**Current State:** ACG StaffLink has a solid foundation with excellent features like ViewSwitcher and CFO Dashboard.
+**Current State:** Agile Care Management has a solid foundation with excellent features like ViewSwitcher and CFO Dashboard.
 
 **Gap:** Missing critical analytics layer that is standard for multi-tenant SaaS platforms.
 

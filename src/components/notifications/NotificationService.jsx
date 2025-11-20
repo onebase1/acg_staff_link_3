@@ -590,7 +590,7 @@ export const NotificationService = {
 
   /**
    * 🆕 BATCHED: Client notification for shift assignment
-   * FROM: ACG StaffLink (admin email, not agency)
+   * FROM: Agile Care Management (admin email, not agency)
    */
   async notifyShiftConfirmedToClient({ staff, shift, client, useBatching = true }) {
     const item = {
@@ -635,7 +635,7 @@ export const NotificationService = {
     ];
 
     const html = EmailTemplates.baseWrapper({
-      agencyName: 'ACG StaffLink',
+      agencyName: 'Agile Care Management',
       agencyLogo: null,
       children: `
         ${EmailTemplates.header({
@@ -673,7 +673,7 @@ export const NotificationService = {
       to: clientEmail,
       subject: `Shift Confirmed - ${staff.first_name} ${staff.last_name} assigned for ${shift.date}`,
       html,
-      from_name: 'ACG StaffLink'
+      from_name: 'Agile Care Management'
     });
   }
 };

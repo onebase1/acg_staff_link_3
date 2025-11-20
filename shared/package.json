@@ -1,0 +1,16 @@
+{
+  "name": "@acg/shared",
+  "version": "1.0.0",
+  "description": "Shared types and utilities for ACG StaffLink",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "generate-types": "supabase gen types typescript --project-id rzzxxkppkiasuouuglaf > types/supabase-generated.ts"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

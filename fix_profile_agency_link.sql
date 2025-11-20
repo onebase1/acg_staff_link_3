@@ -34,7 +34,7 @@ BEGIN
     )
     VALUES (
       'acg-' || gen_random_uuid()::text,
-      'ACG StaffLink Agency',
+      'Agile Care Management Agency',
       'g.basera@yahoo.com',
       '+44 20 1234 5678',
       '123 Main Street, London, UK',

@@ -1,0 +1,166 @@
+{
+  "name": "WhatsApp Message Router (MASTER)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["messages"]
+      },
+      "id": "whatsapp-trigger",
+      "name": "WhatsApp Trigger",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "position": [300, 400],
+      "notes": "ONLY active WhatsApp trigger - routes to sub-workflows"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Route incoming WhatsApp messages to correct workflow\nconst message = $json.messages[0];\nconst from = $json.contacts[0].wa_id;\nconst messageType = message.type; // 'text', 'image', 'document', etc.\n\n// Extract text content\nlet text = '';\nif (messageType === 'text') {\n  text = message.text.body.toLowerCase();\n}\n\n// Route 1: Image Upload = Timesheet Processing\nif (messageType === 'image') {\n  return [{\n    json: {\n      route: 'timesheet_upload',\n      workflow: 'ACG Timesheet Processing',\n      data: $json\n    }\n  }];\n}\n\n// Route 2: Staff Query Keywords\nconst queryKeywords = ['status', 'submitted', 'hours', 'total', 'rejected', 'why', 'recorded', 'timesheet'];\nif (queryKeywords.some(keyword => text.includes(keyword))) {\n  return [{\n    json: {\n      route: 'staff_query',\n      workflow: 'Staff Query Handler',\n      data: $json\n    }\n  }];\n}\n\n// Route 3: Shift Confirmation (YES/NO replies)\nif (text === 'yes' || text === 'no' || text === 'confirm' || text === 'decline') {\n  return [{\n    json: {\n      route: 'shift_confirmation',\n      workflow: 'Shift Confirmation Handler',\n      data: $json\n    }\n  }];\n}\n\n// Route 4: Help/Unknown\nif (text.includes('help') || text === '') {\n  return [{\n    json: {\n      route: 'help',\n      workflow: 'Help Menu',\n      data: $json\n    }\n  }];\n}\n\n// Default: Unknown message\nreturn [{\n  json: {\n    route: 'unknown',\n    workflow: 'Unknown Message Handler',\n    data: $json\n  }\n}];\n"
+      },
+      "id": "message-router",
+      "name": "Message Router",
+      "type": "n8n-nodes-base.code",
+      "position": [500, 400],
+      "notes": "Intelligent routing based on message type and content"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.route }}",
+              "operation": "equals",
+              "value2": "timesheet_upload"
+            }
+          ]
+        }
+      },
+      "id": "route-timesheet",
+      "name": "Route: Timesheet Upload?",
+      "type": "n8n-nodes-base.if",
+      "position": [700, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.route }}",
+              "operation": "equals",
+              "value2": "staff_query"
+            }
+          ]
+        }
+      },
+      "id": "route-query",
+      "name": "Route: Staff Query?",
+      "type": "n8n-nodes-base.if",
+      "position": [700, 400],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.route }}",
+              "operation": "equals",
+              "value2": "shift_confirmation"
+            }
+          ]
+        }
+      },
+      "id": "route-confirmation",
+      "name": "Route: Shift Confirmation?",
+      "type": "n8n-nodes-base.if",
+      "position": [700, 500],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $workflow('ACG Timesheet Processing - Production').id }}",
+        "options": {}
+      },
+      "id": "execute-timesheet-workflow",
+      "name": "Execute: Timesheet Processing",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [900, 200],
+      "notes": "Calls timesheet processing sub-workflow"
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $workflow('Staff Query Handler').id }}",
+        "options": {}
+      },
+      "id": "execute-query-workflow",
+      "name": "Execute: Staff Query Handler",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [900, 300],
+      "notes": "Calls staff query sub-workflow"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $json.data.metadata.display_phone_number }}",
+        "recipientPhoneNumber": "={{ $json.data.contacts[0].wa_id }}",
+        "textBody": "📋 ACG StaffLink Help\n\n📸 Send timesheet photo → Auto-process\n❓ Ask questions → \"What shifts recorded?\"\n✅ Confirm shifts → Reply YES/NO\n\nNeed help? Contact admin.",
+        "additionalFields": {}
+      },
+      "id": "send-help",
+      "name": "Send Help Menu",
+      "type": "n8n-nodes-base.whatsApp",
+      "position": [900, 500],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $json.data.metadata.display_phone_number }}",
+        "recipientPhoneNumber": "={{ $json.data.contacts[0].wa_id }}",
+        "textBody": "Sorry, I didn't understand that.\n\nSend:\n📸 Timesheet photo to submit\n❓ Questions like \"What shifts recorded?\"\n\nType HELP for more options.",
+        "additionalFields": {}
+      },
+      "id": "send-unknown",
+      "name": "Send Unknown Message",
+      "type": "n8n-nodes-base.whatsApp",
+      "position": [900, 600],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [[{ "node": "Message Router", "type": "main", "index": 0 }]]
+    },
+    "Message Router": {
+      "main": [
+        [
+          { "node": "Route: Timesheet Upload?", "type": "main", "index": 0 },
+          { "node": "Route: Staff Query?", "type": "main", "index": 0 },
+          { "node": "Route: Shift Confirmation?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Route: Timesheet Upload?": {
+      "main": [
+        [{ "node": "Execute: Timesheet Processing", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Route: Staff Query?": {
+      "main": [
+        [{ "node": "Execute: Staff Query Handler", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Route: Shift Confirmation?": {
+      "main": [
+        [{ "node": "Send Help Menu", "type": "main", "index": 0 }],
+        [{ "node": "Send Unknown Message", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+

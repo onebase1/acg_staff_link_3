@@ -1,0 +1,143 @@
+{
+  "name": "ACG Timesheet Test (Google Sheets)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["messages"],
+        "options": {}
+      },
+      "id": "whatsapp-trigger",
+      "name": "WhatsApp Trigger",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "position": [300, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.messages[0].image.id }}"
+      },
+      "id": "get-media-url",
+      "name": "Get Media URL",
+      "type": "n8n-nodes-base.whatsApp",
+      "position": [500, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "responseFormat": "file",
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.FACEBOOK_ACCESS_TOKEN }}"
+            }
+          ]
+        }
+      },
+      "id": "download-image",
+      "name": "Download Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [700, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list"
+        },
+        "inputType": "base64",
+        "text": "Extract timesheet data from this image. Return ONLY valid JSON with this exact structure:\n\n{\n  \"employee_number\": \"string\",\n  \"employee_name\": \"string\",\n  \"workplace\": \"string\",\n  \"job_title\": \"string\",\n  \"week_beginning\": \"YYYY-MM-DD or null\",\n  \"shift_entries\": [\n    {\n      \"date\": \"YYYY-MM-DD\",\n      \"start_time\": \"HH:MM\",\n      \"end_time\": \"HH:MM\",\n      \"break_minutes\": integer,\n      \"total_hours\": decimal,\n      \"is_overnight\": boolean\n    }\n  ],\n  \"weekly_total_hours\": decimal,\n  \"employee_signature_present\": boolean,\n  \"supervisor_signature_present\": boolean\n}\n\nRULES:\n- Round times to nearest 30 minutes\n- If end_time < start_time, it's overnight (is_overnight: true)\n- Convert breaks to minutes (1 hr = 60)\n- Calculate total_hours = (end - start - break)\n- Use null for missing fields",
+        "options": {
+          "detail": "high"
+        }
+      },
+      "id": "analyze-timesheet",
+      "name": "Analyze Timesheet",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [900, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse AI response\nconst aiResponse = $json[0].content[0].text;\nlet timesheetData;\n\ntry {\n  const jsonMatch = aiResponse.match(/\\{[\\s\\S]*\\}/);\n  timesheetData = JSON.parse(jsonMatch ? jsonMatch[0] : aiResponse);\n} catch (error) {\n  throw new Error('Failed to parse: ' + error.message);\n}\n\n// Flatten for Google Sheets (one row per shift)\nconst rows = [];\n\nfor (const shift of timesheetData.shift_entries) {\n  rows.push({\n    employee_number: timesheetData.employee_number,\n    employee_name: timesheetData.employee_name,\n    workplace: timesheetData.workplace,\n    job_title: timesheetData.job_title,\n    shift_date: shift.date,\n    start_time: shift.start_time,\n    end_time: shift.end_time,\n    break_minutes: shift.break_minutes,\n    total_hours: shift.total_hours,\n    is_overnight: shift.is_overnight,\n    weekly_total: timesheetData.weekly_total_hours,\n    employee_signed: timesheetData.employee_signature_present,\n    supervisor_signed: timesheetData.supervisor_signature_present,\n    extracted_at: new Date().toISOString()\n  });\n}\n\nreturn rows.map(row => ({ json: row }));\n"
+      },
+      "id": "flatten-data",
+      "name": "Flatten for Sheets",
+      "type": "n8n-nodes-base.code",
+      "position": [1100, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": ["employee_number", "shift_date"]
+        },
+        "options": {}
+      },
+      "id": "save-to-sheets",
+      "name": "Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [1300, 300],
+      "typeVersion": 4.6
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('WhatsApp Trigger').item.json.metadata.display_phone_number }}",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "textBody": "✅ Test successful!\n\n📋 Extracted {{ $('Flatten for Sheets').all().length }} shifts\n📊 Data saved to Google Sheets\n\nEmployee: {{ $('Flatten for Sheets').first().json.employee_name }}\nTotal Hours: {{ $('Flatten for Sheets').first().json.weekly_total }}",
+        "additionalFields": {}
+      },
+      "id": "send-confirmation",
+      "name": "Send Confirmation",
+      "type": "n8n-nodes-base.whatsApp",
+      "position": [1500, 300],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [[{ "node": "Get Media URL", "type": "main", "index": 0 }]]
+    },
+    "Get Media URL": {
+      "main": [[{ "node": "Download Image", "type": "main", "index": 0 }]]
+    },
+    "Download Image": {
+      "main": [[{ "node": "Analyze Timesheet", "type": "main", "index": 0 }]]
+    },
+    "Analyze Timesheet": {
+      "main": [[{ "node": "Flatten for Sheets", "type": "main", "index": 0 }]]
+    },
+    "Flatten for Sheets": {
+      "main": [[{ "node": "Save to Google Sheets", "type": "main", "index": 0 }]]
+    },
+    "Save to Google Sheets": {
+      "main": [[{ "node": "Send Confirmation", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+

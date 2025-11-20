@@ -50,6 +50,28 @@ serve(async (req) => {
         const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
         const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER");
 
+        // ✅ ENHANCED ERROR LOGGING
+        if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+            console.error('❌ [SMS] Missing Twilio credentials:', {
+                hasSID: !!TWILIO_ACCOUNT_SID,
+                hasToken: !!TWILIO_AUTH_TOKEN,
+                hasPhone: !!TWILIO_PHONE_NUMBER
+            });
+            return new Response(JSON.stringify({
+                error: 'Twilio credentials not configured',
+                details: {
+                    TWILIO_ACCOUNT_SID: !!TWILIO_ACCOUNT_SID,
+                    TWILIO_AUTH_TOKEN: !!TWILIO_AUTH_TOKEN,
+                    TWILIO_PHONE_NUMBER: !!TWILIO_PHONE_NUMBER
+                }
+            }), {
+                status: 500,
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+        }
+
+        console.log(`📤 [SMS] Sending to ${to} from ${TWILIO_PHONE_NUMBER}`);
+
         const credentials = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
 
         const response = await fetch(

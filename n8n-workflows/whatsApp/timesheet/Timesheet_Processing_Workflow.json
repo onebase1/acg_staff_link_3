@@ -1,0 +1,244 @@
+{
+  "name": "ACG Timesheet Processing (WhatsApp)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["messages"],
+        "options": {}
+      },
+      "id": "whatsapp-trigger",
+      "name": "WhatsApp Trigger",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "position": [300, 300],
+      "webhookId": "timesheet-upload-webhook",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.messages[0].image.id }}"
+      },
+      "id": "get-media-url",
+      "name": "Get Media URL",
+      "type": "n8n-nodes-base.whatsApp",
+      "position": [500, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "responseFormat": "file",
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.FACEBOOK_ACCESS_TOKEN }}"
+            }
+          ]
+        }
+      },
+      "id": "download-image",
+      "name": "Download Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [700, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list"
+        },
+        "inputType": "base64",
+        "text": "Extract timesheet data from this image. Return ONLY valid JSON with this exact structure:\n\n{\n  \"employee_number\": \"string\",\n  \"employee_name\": \"string\",\n  \"workplace\": \"string\",\n  \"job_title\": \"string\",\n  \"week_beginning\": \"YYYY-MM-DD or null\",\n  \"shift_entries\": [\n    {\n      \"date\": \"YYYY-MM-DD\",\n      \"start_time\": \"HH:MM\",\n      \"end_time\": \"HH:MM\",\n      \"break_minutes\": integer,\n      \"total_hours\": decimal,\n      \"is_overnight\": boolean\n    }\n  ],\n  \"weekly_total_hours\": decimal,\n  \"employee_signature_present\": boolean,\n  \"supervisor_signature_present\": boolean\n}\n\nRULES:\n- Round times to nearest 30 minutes\n- If end_time < start_time, it's overnight (is_overnight: true)\n- Convert breaks to minutes (1 hr = 60)\n- Calculate total_hours = (end - start - break)\n- Use null for missing fields",
+        "options": {
+          "detail": "high"
+        }
+      },
+      "id": "analyze-timesheet",
+      "name": "Analyze Timesheet Image",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [900, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse AI response and validate\nconst aiResponse = $json[0].content[0].text;\nlet timesheetData;\n\ntry {\n  // Extract JSON from response (in case AI adds explanation)\n  const jsonMatch = aiResponse.match(/\\{[\\s\\S]*\\}/);\n  timesheetData = JSON.parse(jsonMatch ? jsonMatch[0] : aiResponse);\n} catch (error) {\n  throw new Error('Failed to parse AI response: ' + error.message);\n}\n\n// Validation\nconst errors = [];\n\nif (!timesheetData.employee_number && !timesheetData.employee_name) {\n  errors.push('Missing employee identification');\n}\n\nif (!timesheetData.shift_entries || timesheetData.shift_entries.length === 0) {\n  errors.push('No shift entries found');\n}\n\n// Validate each shift\ntimesheetData.shift_entries.forEach((shift, index) => {\n  if (!shift.date) errors.push(`Shift ${index + 1}: Missing date`);\n  if (!shift.start_time) errors.push(`Shift ${index + 1}: Missing start time`);\n  if (!shift.end_time) errors.push(`Shift ${index + 1}: Missing end time`);\n  if (shift.total_hours < 4 || shift.total_hours > 16) {\n    errors.push(`Shift ${index + 1}: Unusual hours (${shift.total_hours})`);\n  }\n});\n\nif (errors.length > 0) {\n  return [{\n    json: {\n      success: false,\n      errors: errors,\n      raw_data: timesheetData\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    success: true,\n    timesheet_data: timesheetData,\n    staff_phone: $('WhatsApp Trigger').item.json.contacts[0].wa_id\n  }\n}];\n"
+      },
+      "id": "parse-and-validate",
+      "name": "Parse & Validate",
+      "type": "n8n-nodes-base.code",
+      "position": [1100, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.success }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "validation-check",
+      "name": "Validation Check",
+      "type": "n8n-nodes-base.if",
+      "position": [1300, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, employee_number, full_name FROM staff WHERE employee_number = '{{ $json.timesheet_data.employee_number }}' OR full_name ILIKE '%{{ $json.timesheet_data.employee_name }}%' LIMIT 1",
+        "options": {}
+      },
+      "id": "lookup-staff",
+      "name": "Lookup Staff Member",
+      "type": "n8n-nodes-base.postgres",
+      "position": [1500, 200],
+      "typeVersion": 2.4
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "timesheets",
+        "fileName": "={{ $json.timesheet_data.employee_number }}_{{ $json.timesheet_data.shift_entries[0].date }}.jpg",
+        "options": {
+          "upsert": true
+        }
+      },
+      "id": "upload-to-supabase",
+      "name": "Upload to Supabase Storage",
+      "type": "n8n-nodes-base.supabase",
+      "position": [1500, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enrich timesheet data with database lookups\nconst timesheetData = $('Parse & Validate').item.json.timesheet_data;\nconst staffData = $('Lookup Staff Member').item.json[0];\nconst storageUrl = $json.publicUrl;\n\nif (!staffData) {\n  throw new Error('Staff member not found in database');\n}\n\nconst enrichedShifts = [];\n\nfor (const shift of timesheetData.shift_entries) {\n  // Calculate actual end datetime (add 1 day if overnight)\n  let actualEndDate = shift.date;\n  if (shift.is_overnight) {\n    const endDate = new Date(shift.date);\n    endDate.setDate(endDate.getDate() + 1);\n    actualEndDate = endDate.toISOString().split('T')[0];\n  }\n\n  enrichedShifts.push({\n    staff_id: staffData.id,\n    shift_date: shift.date,\n    actual_start_time: shift.start_time,\n    actual_end_time: shift.end_time,\n    actual_start_datetime: `${shift.date}T${shift.start_time}:00`,\n    actual_end_datetime: `${actualEndDate}T${shift.end_time}:00`,\n    break_duration_minutes: shift.break_minutes,\n    total_hours: shift.total_hours,\n    timesheet_image_url: storageUrl,\n    status: 'pending_approval',\n    submitted_at: new Date().toISOString()\n  });\n}\n\nreturn enrichedShifts.map(shift => ({ json: shift }));\n"
+      },
+      "id": "enrich-data",
+      "name": "Enrich Data",
+      "type": "n8n-nodes-base.code",
+      "position": [1700, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id FROM shifts WHERE staff_id = '{{ $json.staff_id }}' AND date = '{{ $json.shift_date }}' LIMIT 1",
+        "options": {}
+      },
+      "id": "find-shift",
+      "name": "Find Matching Shift",
+      "type": "n8n-nodes-base.postgres",
+      "position": [1900, 300],
+      "typeVersion": 2.4
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE timesheets SET actual_start_time = '{{ $json.actual_start_time }}', actual_end_time = '{{ $json.actual_end_time }}', break_duration_minutes = {{ $json.break_duration_minutes }}, total_hours = {{ $json.total_hours }}, timesheet_image_url = '{{ $json.timesheet_image_url }}', status = 'pending_approval', updated_date = NOW() WHERE shift_id = '{{ $('Find Matching Shift').item.json[0].id }}' RETURNING *",
+        "options": {}
+      },
+      "id": "update-timesheet",
+      "name": "Update Timesheet",
+      "type": "n8n-nodes-base.postgres",
+      "position": [2100, 300],
+      "typeVersion": 2.4
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE shifts SET status = 'awaiting_admin_closure', timesheet_received = true, timesheet_received_at = NOW(), updated_date = NOW() WHERE id = '{{ $('Find Matching Shift').item.json[0].id }}' AND date < CURRENT_DATE",
+        "options": {}
+      },
+      "id": "update-shift-status",
+      "name": "Update Shift Status",
+      "type": "n8n-nodes-base.postgres",
+      "position": [2300, 300],
+      "typeVersion": 2.4
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('WhatsApp Trigger').item.json.metadata.display_phone_number }}",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "textBody": "✅ Timesheet received!\n\n📋 Shifts processed: {{ $('Enrich Data').all().length }}\n📅 Dates: {{ $('Enrich Data').all().map(item => item.json.shift_date).join(', ') }}\n⏰ Total hours: {{ $('Enrich Data').all().reduce((sum, item) => sum + item.json.total_hours, 0) }}\n\nYour timesheet is now pending admin approval.",
+        "additionalFields": {}
+      },
+      "id": "send-confirmation",
+      "name": "Send Confirmation",
+      "type": "n8n-nodes-base.whatsApp",
+      "position": [2500, 200],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('WhatsApp Trigger').item.json.metadata.display_phone_number }}",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "textBody": "❌ Timesheet validation failed:\n\n{{ $json.errors.join('\\n') }}\n\nPlease check your timesheet and try again.",
+        "additionalFields": {}
+      },
+      "id": "send-error",
+      "name": "Send Error Message",
+      "type": "n8n-nodes-base.whatsApp",
+      "position": [1500, 400],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [[{ "node": "Get Media URL", "type": "main", "index": 0 }]]
+    },
+    "Get Media URL": {
+      "main": [[{ "node": "Download Image", "type": "main", "index": 0 }]]
+    },
+    "Download Image": {
+      "main": [[{ "node": "Analyze Timesheet Image", "type": "main", "index": 0 }]]
+    },
+    "Analyze Timesheet Image": {
+      "main": [[{ "node": "Parse & Validate", "type": "main", "index": 0 }]]
+    },
+    "Parse & Validate": {
+      "main": [[{ "node": "Validation Check", "type": "main", "index": 0 }]]
+    },
+    "Validation Check": {
+      "main": [
+        [{ "node": "Lookup Staff Member", "type": "main", "index": 0 }, { "node": "Upload to Supabase Storage", "type": "main", "index": 0 }],
+        [{ "node": "Send Error Message", "type": "main", "index": 0 }]
+      ]
+    },
+    "Lookup Staff Member": {
+      "main": [[{ "node": "Enrich Data", "type": "main", "index": 0 }]]
+    },
+    "Upload to Supabase Storage": {
+      "main": [[{ "node": "Enrich Data", "type": "main", "index": 0 }]]
+    },
+    "Enrich Data": {
+      "main": [[{ "node": "Find Matching Shift", "type": "main", "index": 0 }]]
+    },
+    "Find Matching Shift": {
+      "main": [[{ "node": "Update Timesheet", "type": "main", "index": 0 }]]
+    },
+    "Update Timesheet": {
+      "main": [[{ "node": "Update Shift Status", "type": "main", "index": 0 }]]
+    },
+    "Update Shift Status": {
+      "main": [[{ "node": "Send Confirmation", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+

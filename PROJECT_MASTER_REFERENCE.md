@@ -1,4 +1,4 @@
-# ACG Staff Link - Master Reference Document
+# Agile Care Management - Master Reference Document
 
 **Last Updated:** 2025-11-13  
 **Project Status:** Refactored - Base64 SDK → Supabase Migration Complete  
@@ -21,7 +21,7 @@
 ## 🎯 Project Overview
 
 ### What This Project Is
-ACG Staff Link is a **multi-tenant healthcare staffing management platform** that manages the complete lifecycle of shift-based healthcare work:
+Agile Care Management is a **multi-tenant healthcare staffing management platform** that manages the complete lifecycle of shift-based healthcare work:
 - **Shift Creation** → **Staff Assignment** → **Completion** → **Invoicing** → **Payment**
 
 ### Primary Goal of This Refactor

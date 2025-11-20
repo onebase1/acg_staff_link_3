@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import NotificationService from "../components/notifications/NotificationService";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { calculateStaffEarnings, calculateClientCharge } from "../utils/shiftCalculations";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
@@ -1087,8 +1088,8 @@ export default function Shifts() {
         'Staff Phone': staffMember?.phone || '',
         'Pay Rate (£/hr)': payRate.toFixed(2),
         'Charge Rate (£/hr)': chargeRate.toFixed(2),
-        'Staff Cost (£)': (durationHours * payRate).toFixed(2),
-        'Client Charge (£)': (durationHours * chargeRate).toFixed(2),
+        'Staff Cost (£)': calculateStaffEarnings(shift).toFixed(2),
+        'Client Charge (£)': calculateClientCharge(shift).toFixed(2),
         'Break (mins)': shift.break_duration_minutes || 0,
         'Notes': shift.notes || '',
         'Created Date': formattedCreatedDate,

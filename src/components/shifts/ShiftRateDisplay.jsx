@@ -1,10 +1,12 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, TrendingUp } from "lucide-react";
+import { calculateStaffEarnings, calculateClientCharge, calculateShiftMargin, calculateShiftMarginPercentage } from "../../utils/shiftCalculations";
 
 /**
  * 💰 SIMPLIFIED SHIFT RATE DISPLAY (ROLLBACK VERSION)
  * Basic rate display without advanced calculations
+ * Updated to account for break time in financial calculations
  */
 
 export default function ShiftRateDisplay({ shift, client, compact = false }) {
@@ -12,14 +14,11 @@ export default function ShiftRateDisplay({ shift, client, compact = false }) {
 
   const payRate = shift.pay_rate || 0;
   const chargeRate = shift.charge_rate || 0;
-  const hours = shift.duration_hours || 0;
-  
-  const staffCost = (payRate * hours).toFixed(2);
-  const clientCharge = (chargeRate * hours).toFixed(2);
-  const margin = (parseFloat(clientCharge) - parseFloat(staffCost)).toFixed(2);
-  const marginPercent = parseFloat(clientCharge) > 0 
-    ? ((parseFloat(margin) / parseFloat(clientCharge)) * 100).toFixed(1) 
-    : '0';
+
+  const staffCost = calculateStaffEarnings(shift).toFixed(2);
+  const clientCharge = calculateClientCharge(shift).toFixed(2);
+  const margin = calculateShiftMargin(shift).toFixed(2);
+  const marginPercent = calculateShiftMarginPercentage(shift).toFixed(1);
 
   // Compact version (for tables/lists)
   if (compact) {

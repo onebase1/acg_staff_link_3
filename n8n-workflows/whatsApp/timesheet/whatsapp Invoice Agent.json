@@ -1,0 +1,703 @@
+{
+  "name": "whatsapp Invoice Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "id": "f9844bc4-4e98-4ef1-a13a-14038597e61a",
+      "name": "WhatsApp Trigger",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "position": [
+        336,
+        -32
+      ],
+      "webhookId": "4bd2157f-fbf7-45ae-94de-d26cb15f3972",
+      "typeVersion": 1,
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "OJ641A137YJnJfNr",
+          "name": "WhatsApp OAuth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "responseFormat": "file",
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer EAAJYdMwUpp8BP1FfIsLKvvIxBjJK7vwhYYAkvB9VBn4VEzBgsnWNq9vN7Y4duxgQLoLAVxE2pUI6mIkVXuZCWO8tZApJBqbOPtz9ZAbhTZAZAJZAqjkNlGl4zNJGqOdEA3JzIP5pTZA8CiEfvQ54NIF2o5yQPxyZASFlGEuS6NajgUSEVzhnn7BTp6q7TMXJQQZDZD"
+            }
+          ]
+        }
+      },
+      "id": "fe425630-7d68-4f6e-a47c-b49804665a52",
+      "name": "Download File",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        752,
+        -32
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "name": "=Invoice {{ $json['Due Date'] }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1CbPlxSzy9XZQf3wxMAvm6qVQOPcPcVV8",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1CbPlxSzy9XZQf3wxMAvm6qVQOPcPcVV8",
+          "cachedResultName": "iNVOICE db"
+        },
+        "options": {}
+      },
+      "id": "a6f7995b-1a16-4b9c-914a-06bd7799e14e",
+      "name": "Add Invoice To Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "position": [
+        800,
+        224
+      ],
+      "typeVersion": 3,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "4AaUbYDOQPDMjMvT",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1D13TAbXIUWF_zNt4VwEv7MGaQUY8pErisqZwKY-ANeU",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1D13TAbXIUWF_zNt4VwEv7MGaQUY8pErisqZwKY-ANeU/edit?usp=drivesdk",
+          "cachedResultName": "Save Invoice Details"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gid=0",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1D13TAbXIUWF_zNt4VwEv7MGaQUY8pErisqZwKY-ANeU/edit#gid=0",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "value": {
+            "Notes": "={{ $json.Notes }}",
+            "Amount": "={{ $json.Amount }}",
+            "Due Date": "={{ $json.DueDate }}",
+            "Invoice Date": "={{ $json.InvoiceDate }}",
+            "Payment Method": "={{ $json.PaymentMethod }}"
+          },
+          "schema": [
+            {
+              "id": "Amount",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "required": false,
+              "displayName": "Amount",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Payment Method",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "displayName": "Payment Method",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Invoice Date",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "displayName": "Invoice Date",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Due Date",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "displayName": "Due Date",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "displayName": "Notes",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ],
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "Amount"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "5a5d5315-a9fe-4d51-8262-602f9c72f96f",
+      "name": "Update DataBase",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        336,
+        224
+      ],
+      "typeVersion": 4.6,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ldtku0rackgdIafR",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('WhatsApp Trigger').item.json.metadata.display_phone_number }}",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "textBody": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "id": "f4864ec1-06f2-4ca7-862f-eda42fd4d675",
+      "name": "Reply",
+      "type": "n8n-nodes-base.whatsApp",
+      "position": [
+        1360,
+        224
+      ],
+      "webhookId": "7cf7aecc-39c6-406b-b54b-42a9228d17fb",
+      "typeVersion": 1,
+      "credentials": {
+        "whatsAppApi": {
+          "id": "M8TtYksLuUl3SLo4",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Download File').item.json.url }}",
+        "responseFormat": "file",
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ FACEBOOK_ACCESS_TOKEN }}"
+            }
+          ]
+        }
+      },
+      "id": "2386a4fa-4e06-44fe-b94a-d8ed6425eeb8",
+      "name": "Original Invoice Retrieval",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        544,
+        224
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Analyze Image').item.json.ParsedResults[0].ParsedText }}",
+        "options": {
+          "systemMessage": "From the given parsed invoice text, extract and summarize the following key points in 3–4 short lines:\n\nTotal Amount\nPayment Method\nDue Date\n\nAny important instruction or penalty mentioned in the Notes section\n\nThe response should be short, clear, and user-friendly. Ignore unnecessary lines and correct any obvious OCR formatting issues like extra commas or spacing in currency.\n\n"
+        }
+      },
+      "id": "5e7932d2-60cc-49a2-a75d-cbb9e87c1539",
+      "name": "Invoice Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        1040,
+        224
+      ],
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "jsCode": "// Step 1: Get the raw text from OCR output\nconst rawText = $json.ParsedResults[0].ParsedText || '';\n\n// Step 2: Clean and split into lines\nconst cleaned = rawText.replace(/\\r/g, '').replace(/\\\\n/g, '\\n');\nconst lines = cleaned.split('\\n').map(l => l.trim()).filter(Boolean);\n\n// Step 3: Helper function to support both \":\" and \".\" after field names\nfunction extractField(label) {\n  const index = lines.findIndex(line =>\n    line.toLowerCase().startsWith(label.toLowerCase() + ':') ||\n    line.toLowerCase().startsWith(label.toLowerCase() + '.')\n  );\n\n  if (index !== -1) {\n    return lines[index].split(/[:.]/).slice(1).join(':').trim();\n  }\n  return null;\n}\n\n// Step 4: Extract Amount\nlet amountLine = lines.find(line => line.toLowerCase().includes('total amount'));\nlet amount = amountLine ? amountLine.split(/[:.]/).pop().trim() : null;\n\n// Step 5: Extract Payment Method (next 1–3 lines)\nlet paymentMethod = '';\nconst paymentIndex = lines.findIndex(l => l.toLowerCase().includes('payment method'));\nif (paymentIndex !== -1) {\n  for (let i = paymentIndex + 1; i <= paymentIndex + 3 && i < lines.length; i++) {\n    paymentMethod += lines[i] + ' ';\n  }\n  paymentMethod = paymentMethod.trim();\n}\n\n// Step 6: Extract Notes (everything after Notes label)\nlet notes = '';\nconst notesIndex = lines.findIndex(l => l.toLowerCase().startsWith('notes'));\nif (notesIndex !== -1) {\n  notes = lines.slice(notesIndex + 1).join(' ').trim();\n}\n\n// Step 7: Return the structured data\nreturn [\n  {\n    json: {\n      InvoiceDate: extractField('Date'),\n      DueDate: extractField('Due Date'),\n      Amount: amount,\n      PaymentMethod: paymentMethod,\n      Notes: notes\n    }\n  }\n];\n"
+      },
+      "id": "9e17118f-fc76-4146-a608-70fc45a6c734",
+      "name": "Parse Text",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1520,
+        -32
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "id": "9f50c9ba-fd9e-4ee3-b531-9d3a4f6b83f1",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        832,
+        496
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "tFcIPTBu9oNfbJex",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Whatsapp Intake",
+        "height": 208,
+        "width": 688,
+        "color": 7
+      },
+      "id": "9b3b7f6f-121e-45e9-b0a7-03d8ffee660e",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        288,
+        -80
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## OCR & Parsing",
+        "height": 208,
+        "width": 528,
+        "color": 6
+      },
+      "id": "e9474472-9881-4c4f-82ad-80ceb0b929ba",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1008,
+        -80
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## AI Summary & Reply",
+        "height": 224,
+        "width": 528,
+        "color": 4
+      },
+      "id": "239325cb-dc34-4f19-8c0c-40c374242de1",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1008,
+        160
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Update & Save Invoice Record",
+        "height": 224,
+        "width": 688
+      },
+      "id": "a4a8373b-4ba8-440b-9ae4-e41f7c1107ec",
+      "name": "Sticky Note6",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        288,
+        160
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Chat Model",
+        "height": 208,
+        "width": 208,
+        "color": 3
+      },
+      "id": "6f01b3ee-9850-4a20-8965-dc3765415dea",
+      "name": "Sticky Note7",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        768,
+        416
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.messages[0].image.id }}"
+      },
+      "id": "94baa90b-20d4-4d08-a8c7-3a325b574c4d",
+      "name": "Get Download URL",
+      "type": "n8n-nodes-base.whatsApp",
+      "position": [
+        576,
+        -32
+      ],
+      "webhookId": "93af4974-e660-4a74-ae7b-f96495c44a17",
+      "notesInFlow": false,
+      "typeVersion": 1,
+      "credentials": {
+        "whatsAppApi": {
+          "id": "M8TtYksLuUl3SLo4",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# 🧾 WhatsApp Invoice Automation\n\n## How it works\nThis workflow automates invoice processing via WhatsApp. When a new invoice image or PDF arrives, it’s automatically downloaded and scanned with OCR to extract key data such as **amount**, **date**, **payment method**, and **notes**.\n\nThe parsed data is logged to **Google Sheets**, the original file is uploaded to **Google Drive**, and an AI-generated summary is sent back to the sender on WhatsApp.\n\n## ⚙️ Setup steps\n\n### 1. WhatsApp Cloud API\nCreate a WhatsApp Business App on [Meta Developers](https://developers.facebook.com/).  \nThen add your Access Token and Phone Number ID in the Trigger and Reply nodes.\n\n### 2. OCR.Space API\nGet a free API key from [ocr.space/ocrapi](https://ocr.space/ocrapi)  \nand paste it in the Analyze Image node.\n\n### 3. Google Sheets & Drive\nConnect your Google account and ensure your sheet has columns like:\n- Amount  \n- Date  \n- Notes\n\n### 4. OpenAI\nGet your API key from [OpenAI](https://platform.openai.com/)  \nand add it to the Chat Model node.",
+        "height": 864,
+        "width": 528
+      },
+      "id": "2f7bb503-6816-4b25-8f08-8bfbd6d8eb86",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -320,
+        -80
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json['0'].content[0].text }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        -32
+      ],
+      "id": "594adab2-42bf-410b-865d-243bbdd2734f",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        912,
+        176
+      ],
+      "id": "522278e9-60e9-4a8b-aac1-763b948e6cce",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "tFcIPTBu9oNfbJex",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "inputType": "base64",
+        "options": {
+          "detail": "auto"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2,
+      "position": [
+        928,
+        -32
+      ],
+      "id": "2c387451-809a-49da-99c1-d478f364e18d",
+      "name": "Analyze image",
+      "credentials": {
+        "openAiApi": {
+          "id": "tFcIPTBu9oNfbJex",
+          "name": "OpenAi account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Download File": [
+      {
+        "json": {
+          "url": "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=1495918905008975&source=getMedia&ext=1763609250&hash=ARl2knATcQog9iI7V_wawnOVihYl9L_FiBXCyunLZwQUBA",
+          "mime_type": "image/jpeg",
+          "sha256": "83bb96411d501f51620eab5dbb061f3b20c546a339eb19003760c7dc21940c44",
+          "file_size": 530641,
+          "id": "1495918905008975",
+          "messaging_product": "whatsapp"
+        },
+        "binary": {
+          "data": {
+            "mimeType": "image/jpeg",
+            "fileType": "image",
+            "fileExtension": "jpg",
+            "data": "filesystem-v2",
+            "fileName": "File.jpg",
+            "id": "filesystem-v2:workflows/kYs6s4z3zhTkUqB9/executions/2255/binary_data/771e40c6-d0e5-45ca-a88c-61dcfb83c0cc",
+            "fileSize": "531 kB"
+          }
+        }
+      }
+    ],
+    "Analyze image": [
+      {
+        "json": [
+          {
+            "id": "msg_02ea981b08c1e19700691e897c692881999790be9dc83dbd9f",
+            "type": "message",
+            "status": "completed",
+            "content": [
+              {
+                "type": "output_text",
+                "annotations": [],
+                "logprobs": [],
+                "text": "The image shows a time sheet from Dominion Healthcare Services Ltd. It includes:\n\n- **Employer Name:** Theresa Atomi\n- **Employer Number:** 0426065951\n- **Title:** (Unspecified, possibly related to the job)\n- **Week Beginning:** (Date not specified)\n- **Job Title:** Care Assistant\n- **Workplace:** Hampton Manor\n\nThe time sheet records shifts for several dates in January 2025, detailing:\n\n- **Dates of Work:** 13th, 17th, and 18th January\n- **Start and End Times:** Starting at 20:00 and ending at 08:00 (next day)\n- **Breaks:** 1 hour each\n- **Total Hours Worked:** 33 hours for the week\n\nThere are spaces for employee and supervisor signatures, along with contact information for the company."
+              }
+            ],
+            "role": "assistant"
+          }
+        ]
+      }
+    ],
+    "Get Download URL": [
+      {
+        "json": {
+          "url": "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=1495918905008975&source=getMedia&ext=1763609250&hash=ARl2knATcQog9iI7V_wawnOVihYl9L_FiBXCyunLZwQUBA",
+          "mime_type": "image/jpeg",
+          "sha256": "83bb96411d501f51620eab5dbb061f3b20c546a339eb19003760c7dc21940c44",
+          "file_size": 530641,
+          "id": "1495918905008975",
+          "messaging_product": "whatsapp"
+        }
+      }
+    ],
+    "WhatsApp Trigger": [
+      {
+        "json": {
+          "messaging_product": "whatsapp",
+          "metadata": {
+            "display_phone_number": "447824975049",
+            "phone_number_id": "683816761472557"
+          },
+          "contacts": [
+            {
+              "profile": {
+                "name": "I AM"
+              },
+              "wa_id": "447557679989"
+            }
+          ],
+          "messages": [
+            {
+              "from": "447557679989",
+              "id": "wamid.HBgMNDQ3NTU3Njc5OTg5FQIAEhgUM0Y4QTU1MEUxOUExMzQ3RkYxOEMA",
+              "timestamp": "1763608947",
+              "type": "image",
+              "image": {
+                "mime_type": "image/jpeg",
+                "sha256": "g7uWQR1QH1FiDqtduwYfOyDFRqM56xkAN2DH3CGUDEQ=",
+                "id": "1495918905008975"
+              }
+            }
+          ],
+          "field": "messages"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Parse Text": {
+      "main": [
+        [
+          {
+            "node": "Update DataBase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Analyze image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoice Agent": {
+      "main": [
+        [
+          {
+            "node": "Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update DataBase": {
+      "main": [
+        [
+          {
+            "node": "Original Invoice Retrieval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Download URL": {
+      "main": [
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Download URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Invoice Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Invoice To Drive": {
+      "main": [
+        [
+          {
+            "node": "Invoice Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Original Invoice Retrieval": {
+      "main": [
+        [
+          {
+            "node": "Add Invoice To Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze image": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f6895733-6e3a-4262-8308-e8a7e30f1dbd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  },
+  "id": "kYs6s4z3zhTkUqB9",
+  "tags": []
+}

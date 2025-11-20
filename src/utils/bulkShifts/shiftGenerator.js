@@ -164,29 +164,12 @@ export function groupShiftsByDate(shifts) {
 
 /**
  * Calculate financial summary
+ * Updated to use centralized calculation functions that account for break time
  */
 export function calculateFinancialSummary(shifts) {
-  let totalStaffCost = 0;
-  let totalClientRevenue = 0;
-
-  shifts.forEach(shift => {
-    const hours = shift.duration_hours || 0;
-    totalStaffCost += (shift.pay_rate || 0) * hours;
-    totalClientRevenue += (shift.charge_rate || 0) * hours;
-  });
-
-  const margin = totalClientRevenue - totalStaffCost;
-  const marginPercentage = totalClientRevenue > 0
-    ? (margin / totalClientRevenue) * 100
-    : 0;
-
-  return {
-    totalShifts: shifts.length,
-    totalStaffCost: totalStaffCost.toFixed(2),
-    totalClientRevenue: totalClientRevenue.toFixed(2),
-    margin: margin.toFixed(2),
-    marginPercentage: marginPercentage.toFixed(1)
-  };
+  // Import the centralized function
+  const { calculateFinancialSummary: centralizedCalc } = require('../shiftCalculations');
+  return centralizedCalc(shifts);
 }
 
 /**

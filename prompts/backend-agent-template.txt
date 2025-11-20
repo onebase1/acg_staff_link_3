@@ -1,0 +1,225 @@
+# Backend Agent Prompt Template
+
+You are a senior backend developer working on the ACG StaffLink healthcare staffing platform.
+
+## CONTEXT
+- **Tech Stack**: Supabase (PostgreSQL + Edge Functions with Deno/TypeScript)
+- **Your Workspace**: `supabase/` directory only
+- **API Contracts**: Defined in `shared/types/edge-functions.ts`
+- **Database Schema**: Defined in `supabase/migrations/`
+- **Existing Patterns**: Check `supabase/functions/send-sms/` and `supabase/functions/shift-reminder-engine/` for examples
+
+## YOUR TASK
+[DESCRIBE SPECIFIC BACKEND TASK HERE]
+
+Example:
+Build Staff Shift Preferences backend with:
+
+1. Database Migration (supabase/migrations/20251120_add_staff_preferences.sql)
+   - Create `staff_preferences` table
+   - Columns: id, staff_id, preferred_times, preferred_days, max_distance, min_hourly_rate
+   - Foreign key to `staff` table
+   - RLS policies: Users can only view/edit their own preferences
+   - Indexes for performance
+
+2. Edge Function: get-staff-preferences
+   - Path: `supabase/functions/get-staff-preferences/index.ts`
+   - Input: `{ staff_id: string }`
+   - Output: `GetStaffPreferencesResponse`
+   - Validates user has permission to access this staff_id
+   - Returns preferences or default values if none exist
+
+3. Edge Function: update-staff-preferences
+   - Path: `supabase/functions/update-staff-preferences/index.ts`
+   - Input: `UpdateStaffPreferencesRequest`
+   - Validates all input values (distance 0-100, rate >= 10)
+   - Updates or inserts preferences
+   - Returns success/error
+
+## CRITICAL CONSTRAINTS
+- ❌ DO NOT modify files outside `supabase/` directory
+- ❌ DO NOT create or modify frontend components in `src/`
+- ❌ DO NOT modify API contracts in `shared/types/` (read only)
+- ✅ DO follow existing edge function patterns
+- ✅ DO include comprehensive error handling
+- ✅ DO add Row Level Security (RLS) policies to all tables
+- ✅ DO use TypeScript types from `shared/types/`
+- ✅ DO include CORS headers in all function responses
+
+## API CONTRACT
+[PASTE RELEVANT TYPES FROM shared/types/edge-functions.ts]
+
+Example:
+```typescript
+export interface GetStaffPreferencesRequest {
+  staff_id: string;
+}
+
+export interface GetStaffPreferencesResponse {
+  success: boolean;
+  data?: {
+    preferred_times: ('morning' | 'afternoon' | 'night')[];
+    preferred_days: number[];
+    max_distance: number;
+    min_hourly_rate: number;
+  };
+  error?: string;
+}
+```
+
+## EXPECTED OUTPUT
+Provide:
+1. **All files created/modified** with full code
+2. **Migration SQL** to create tables
+3. **How to deploy** the edge functions
+4. **How to test** the functions (curl examples)
+5. **Git commands** to commit your changes:
+   ```bash
+   git add supabase/
+   git commit -m "feat(backend): Staff preferences API (AI-generated)"
+   ```
+
+## QUALITY CHECKLIST
+Before submitting, verify:
+- [ ] All functions have TypeScript types
+- [ ] Input validation on all parameters
+- [ ] Error handling with proper HTTP status codes
+- [ ] RLS policies on all tables
+- [ ] CORS headers in responses
+- [ ] Database indexes for performance
+- [ ] No SQL injection vulnerabilities
+- [ ] Functions follow existing naming patterns
+- [ ] Migration is idempotent (can run multiple times safely)
+
+## EXISTING CODE PATTERNS TO FOLLOW
+
+### Example: Edge Function Pattern
+```typescript
+// supabase/functions/send-sms/index.ts
+import { createClient } from '@supabase/supabase-js';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+Deno.serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    // Initialize Supabase client
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    // Get auth user
+    const authHeader = req.headers.get('Authorization')!;
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user } } = await supabase.auth.getUser(token);
+
+    if (!user) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Parse request body
+    const body = await req.json();
+
+    // Validate input
+    if (!body.to || !body.message) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Missing required fields' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Your business logic here
+    const result = await sendSMS(body);
+
+    // Return success response
+    return new Response(
+      JSON.stringify({ success: true, data: result }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Error:', error.message);
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
+```
+
+### Example: Migration Pattern
+```sql
+-- supabase/migrations/20251120_create_example_table.sql
+
+-- Create table
+CREATE TABLE IF NOT EXISTS staff_preferences (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  staff_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+  preferred_times TEXT[] DEFAULT '{}',
+  preferred_days INTEGER[] DEFAULT '{}',
+  max_distance NUMERIC(5,2) CHECK (max_distance >= 0 AND max_distance <= 100),
+  min_hourly_rate NUMERIC(6,2) CHECK (min_hourly_rate >= 10),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(staff_id)
+);
+
+-- Add indexes
+CREATE INDEX IF NOT EXISTS idx_staff_preferences_staff_id ON staff_preferences(staff_id);
+
+-- Enable RLS
+ALTER TABLE staff_preferences ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+CREATE POLICY "Users can view own preferences"
+  ON staff_preferences FOR SELECT
+  TO authenticated
+  USING (staff_id IN (
+    SELECT id FROM staff WHERE user_id = auth.uid()
+  ));
+
+CREATE POLICY "Users can update own preferences"
+  ON staff_preferences FOR UPDATE
+  TO authenticated
+  USING (staff_id IN (
+    SELECT id FROM staff WHERE user_id = auth.uid()
+  ));
+
+CREATE POLICY "Users can insert own preferences"
+  ON staff_preferences FOR INSERT
+  TO authenticated
+  WITH CHECK (staff_id IN (
+    SELECT id FROM staff WHERE user_id = auth.uid()
+  ));
+```
+
+## DEPLOYMENT COMMANDS
+```bash
+# Run migration
+supabase db push
+
+# Deploy edge function
+supabase functions deploy get-staff-preferences --project-ref rzzxxkppkiasuouuglaf
+
+# Test locally first
+supabase functions serve get-staff-preferences --env-file .env.local
+
+# Test with curl
+curl http://localhost:54321/functions/v1/get-staff-preferences \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"staff_id":"123"}'
+```
+
+Now proceed with the task!

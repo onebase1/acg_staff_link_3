@@ -1,0 +1,32 @@
+scenario_id,scenario_name,staff_id,employee_number,phone_number,extracted_date,extracted_start,extracted_end,extracted_break,scheduled_date,scheduled_start,scheduled_end,expected_result,expected_status,validation_flags,notes
+1,Perfect Match,1,0426065951,+447449034730,2025-01-13,20:00,08:00,60,2025-01-13,20:00,08:00,PASS,pending_approval,,Exact match - auto approve
+2,Minor Start Variance,1,0426065951,+447449034730,2025-01-13,19:45,08:00,60,2025-01-13,20:00,08:00,PASS,pending_approval,time_variance,Started 15 min early - acceptable
+3,Minor End Variance,1,0426065951,+447449034730,2025-01-13,20:00,08:15,60,2025-01-13,20:00,08:00,PASS,pending_approval,time_variance,Ended 15 min late - acceptable
+4,Major Start Variance,1,0426065951,+447449034730,2025-01-13,19:00,08:00,60,2025-01-13,20:00,08:00,REJECT,rejected,major_time_variance,Started 1 hour early - reject
+5,Major End Variance,1,0426065951,+447449034730,2025-01-13,20:00,09:30,60,2025-01-13,20:00,08:00,REJECT,rejected,major_time_variance,Ended 1.5 hours late - reject
+6,No Shift Scheduled,1,0426065951,+447449034730,2025-01-19,20:00,08:00,60,,,,,REJECT,rejected,no_shift_scheduled,Staff not scheduled this date
+7,Wrong Date,1,0426065951,+447449034730,2025-01-14,20:00,08:00,60,2025-01-13,20:00,08:00,REJECT,rejected,no_shift_scheduled,Submitted wrong date
+8,Workplace Mismatch,1,0426065951,+447449034730,2025-01-13,20:00,08:00,60,2025-01-13,20:00,08:00,FLAG,pending_review,workplace_mismatch,Timesheet shows different location
+9,Excessive Hours,1,0426065951,+447449034730,2025-01-13,20:00,14:00,60,2025-01-13,20:00,08:00,REJECT,rejected,excessive_hours,17 hours - unreasonable
+10,Short Shift,3,0426065953,+447449034732,2025-01-13,08:00,11:00,30,2025-01-13,08:00,14:00,FLAG,pending_review,short_shift,Only 2.5 hours - flag for review
+11,Overtime Shift,5,0426065955,+447449034734,2025-01-13,07:00,20:00,90,2025-01-13,07:00,19:00,PASS,pending_approval,overtime,13 hours - overtime detected
+12,Excessive Break,1,0426065951,+447449034730,2025-01-13,20:00,08:00,180,2025-01-13,20:00,08:00,FLAG,pending_review,excessive_break,3 hour break - unusual
+13,Missing Break,5,0426065955,+447449034734,2025-01-13,07:00,19:00,0,2025-01-13,07:00,19:00,FLAG,pending_review,missing_break,12 hours no break - legal issue
+14,Multiple Shifts Same Day,3,0426065953,+447449034732,2025-01-13,08:00,14:00,30,2025-01-13,08:00,14:00,PASS,pending_approval,,Morning shift - match by time
+15,Multiple Shifts Wrong Time,3,0426065953,+447449034732,2025-01-13,10:00,16:00,30,2025-01-13,08:00,14:00,FLAG,pending_review,time_mismatch,Doesn't match either shift
+16,Staff Not Found - Wrong Number,99,0426065999,+447449999999,2025-01-13,20:00,08:00,60,,,,,REJECT,verification_required,staff_not_found,Phone number not in system
+17,Staff Not Found - Wrong Employee Number,99,9999999999,+447449034730,2025-01-13,20:00,08:00,60,,,,,FLAG,verification_required,employee_number_mismatch,Number doesn't match phone
+18,Fuzzy Name Match,1,0426065951,+447449034740,2025-01-13,20:00,08:00,60,2025-01-13,20:00,08:00,FLAG,verification_required,fuzzy_match,Name similar but phone different
+19,Day/Night Confusion,1,0426065951,+447449034730,2025-01-13,08:00,20:00,60,2025-01-13,20:00,08:00,REJECT,rejected,shift_type_mismatch,Submitted day shift for night shift
+20,Overnight Flag Missing,1,0426065951,+447449034730,2025-01-13,20:00,08:00,60,2025-01-13,20:00,08:00,PASS,pending_approval,,Should detect overnight automatically
+21,Weekend Shift,1,0426065951,+447449034730,2025-01-18,20:00,08:00,60,2025-01-18,20:00,08:00,PASS,pending_approval,,Saturday shift - normal processing
+22,Future Shift,1,0426065951,+447449034730,2025-01-25,20:00,08:00,60,2025-01-25,20:00,08:00,REJECT,rejected,future_shift,Cannot submit timesheet for future
+23,Very Old Shift,1,0426065951,+447449034730,2024-12-01,20:00,08:00,60,2024-12-01,20:00,08:00,FLAG,pending_review,old_shift,Shift >30 days old - flag
+24,Duplicate Submission,1,0426065951,+447449034730,2025-01-13,20:00,08:00,60,2025-01-13,20:00,08:00,REJECT,rejected,duplicate,Timesheet already submitted
+25,Financially Locked Shift,1,0426065951,+447449034730,2025-01-13,20:00,08:00,60,2025-01-13,20:00,08:00,REJECT,rejected,financially_locked,Shift already invoiced - cannot modify
+26,Shift Cancelled,1,0426065951,+447449034730,2025-01-13,20:00,08:00,60,2025-01-13,20:00,08:00,REJECT,rejected,shift_cancelled,Shift was cancelled - no timesheet needed
+27,Staff Suspended,1,0426065951,+447449034730,2025-01-13,20:00,08:00,60,2025-01-13,20:00,08:00,REJECT,rejected,staff_suspended,Staff account suspended
+28,Client Mismatch,1,0426065951,+447449034730,2025-01-13,20:00,08:00,60,2025-01-13,20:00,08:00,FLAG,pending_review,client_mismatch,Scheduled at different client
+29,Handwritten Unclear Times,1,0426065951,+447449034730,2025-01-13,20:15,08:10,60,2025-01-13,20:00,08:00,PASS,pending_approval,time_rounded,Times rounded to nearest 30 min
+30,Missing Signatures,1,0426065951,+447449034730,2025-01-13,20:00,08:00,60,2025-01-13,20:00,08:00,FLAG,pending_review,missing_signatures,No employee/supervisor signature
+

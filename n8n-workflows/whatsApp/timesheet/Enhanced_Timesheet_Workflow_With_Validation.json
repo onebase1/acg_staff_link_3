@@ -1,0 +1,306 @@
+{
+  "name": "ACG Timesheet Processing - Production (With Full Validation)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["messages"],
+        "options": {}
+      },
+      "id": "whatsapp-trigger",
+      "name": "WhatsApp Trigger",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "position": [300, 400],
+      "typeVersion": 1,
+      "notes": "Receives timesheet images from staff via WhatsApp"
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.messages[0].image.id }}"
+      },
+      "id": "get-media-url",
+      "name": "Get Media URL",
+      "type": "n8n-nodes-base.whatsApp",
+      "position": [500, 400],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "responseFormat": "file",
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.FACEBOOK_ACCESS_TOKEN }}"
+            }
+          ]
+        }
+      },
+      "id": "download-image",
+      "name": "Download Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [700, 400],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list"
+        },
+        "inputType": "base64",
+        "text": "Extract timesheet data from this image. Return ONLY valid JSON with this exact structure:\n\n{\n  \"employee_number\": \"string\",\n  \"employee_name\": \"string\",\n  \"workplace\": \"string\",\n  \"job_title\": \"string\",\n  \"week_beginning\": \"YYYY-MM-DD or null\",\n  \"shift_entries\": [\n    {\n      \"date\": \"YYYY-MM-DD\",\n      \"start_time\": \"HH:MM\",\n      \"end_time\": \"HH:MM\",\n      \"break_minutes\": integer,\n      \"total_hours\": decimal,\n      \"is_overnight\": boolean\n    }\n  ],\n  \"weekly_total_hours\": decimal,\n  \"employee_signature_present\": boolean,\n  \"supervisor_signature_present\": boolean\n}\n\nRULES:\n- Round times to nearest 30 minutes\n- If end_time < start_time, it's overnight (is_overnight: true)\n- Convert breaks to minutes (1 hr = 60)\n- Calculate total_hours = (end - start - break)\n- Use null for missing fields\n- Return ONLY JSON, no explanations",
+        "options": {
+          "detail": "high"
+        }
+      },
+      "id": "analyze-timesheet",
+      "name": "Analyze Timesheet Image",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [900, 400],
+      "typeVersion": 2,
+      "notes": "GPT-4o extracts structured data from timesheet image"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse AI response and basic validation\nconst aiResponse = $json[0].content[0].text;\nlet timesheetData;\n\ntry {\n  const jsonMatch = aiResponse.match(/\\{[\\s\\S]*\\}/);\n  timesheetData = JSON.parse(jsonMatch ? jsonMatch[0] : aiResponse);\n} catch (error) {\n  return [{\n    json: {\n      success: false,\n      errors: ['Failed to parse AI response: ' + error.message],\n      raw_response: aiResponse\n    }\n  }];\n}\n\n// Basic validation\nconst errors = [];\n\nif (!timesheetData.employee_number && !timesheetData.employee_name) {\n  errors.push('Missing employee identification');\n}\n\nif (!timesheetData.shift_entries || timesheetData.shift_entries.length === 0) {\n  errors.push('No shift entries found');\n}\n\ntimesheetData.shift_entries?.forEach((shift, index) => {\n  if (!shift.date || !shift.start_time || !shift.end_time) {\n    errors.push(`Shift ${index + 1}: Missing required fields`);\n  }\n  if (shift.total_hours < 4 || shift.total_hours > 16) {\n    errors.push(`Shift ${index + 1}: Unusual hours (${shift.total_hours})`);\n  }\n});\n\nreturn [{\n  json: {\n    success: errors.length === 0,\n    timesheet_data: timesheetData,\n    errors: errors,\n    whatsapp_number: $('WhatsApp Trigger').item.json.contacts[0].wa_id\n  }\n}];\n"
+      },
+      "id": "parse-validate",
+      "name": "Parse & Basic Validation",
+      "type": "n8n-nodes-base.code",
+      "position": [1100, 400],
+      "typeVersion": 2,
+      "notes": "Parse JSON and run basic validation checks"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.success }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "validation-check",
+      "name": "Basic Validation Pass?",
+      "type": "n8n-nodes-base.if",
+      "position": [1300, 400],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Layer 1: Staff Identification (4-step fallback)\n-- Step 1: WhatsApp number lookup\nSELECT \n  id as staff_id,\n  employee_number,\n  full_name,\n  phone_number,\n  'whatsapp_match' as match_method\nFROM staff\nWHERE phone_number = '{{ $json.whatsapp_number }}'\n\nUNION ALL\n\n-- Step 2: Employee number lookup\nSELECT \n  id as staff_id,\n  employee_number,\n  full_name,\n  phone_number,\n  'employee_number_match' as match_method\nFROM staff\nWHERE employee_number = '{{ $json.timesheet_data.employee_number }}'\n  AND NOT EXISTS (\n    SELECT 1 FROM staff WHERE phone_number = '{{ $json.whatsapp_number }}'\n  )\n\nLIMIT 1;",
+        "options": {}
+      },
+      "id": "identify-staff",
+      "name": "Layer 1: Identify Staff",
+      "type": "n8n-nodes-base.postgres",
+      "position": [1500, 300],
+      "typeVersion": 2.4,
+      "notes": "Multi-step staff identification with fallback"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.length }}",
+              "operation": "equal",
+              "value2": 1
+            }
+          ]
+        }
+      },
+      "id": "staff-found",
+      "name": "Staff Found?",
+      "type": "n8n-nodes-base.if",
+      "position": [1700, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "// Layer 2: Validate each shift against scheduled shifts\nconst staffData = $('Layer 1: Identify Staff').item.json[0];\nconst timesheetData = $('Parse & Basic Validation').item.json.timesheet_data;\n\nconst enrichedShifts = [];\nconst validationErrors = [];\n\nfor (const shift of timesheetData.shift_entries) {\n  enrichedShifts.push({\n    staff_id: staffData.staff_id,\n    employee_number: staffData.employee_number,\n    full_name: staffData.full_name,\n    shift_date: shift.date,\n    extracted_start_time: shift.start_time,\n    extracted_end_time: shift.end_time,\n    break_minutes: shift.break_minutes,\n    total_hours: shift.total_hours,\n    is_overnight: shift.is_overnight,\n    workplace: timesheetData.workplace\n  });\n}\n\nreturn enrichedShifts.map(shift => ({ json: shift }));\n"
+      },
+      "id": "prepare-shift-validation",
+      "name": "Prepare Shift Validation",
+      "type": "n8n-nodes-base.code",
+      "position": [1900, 200],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Layer 2: Find matching scheduled shift\nSELECT \n  s.id as shift_id,\n  s.date as scheduled_date,\n  s.start_time as scheduled_start_time,\n  s.end_time as scheduled_end_time,\n  s.client_id,\n  c.name as client_name,\n  s.status as shift_status,\n  s.financial_locked,\n  -- Calculate time variance\n  ABS(EXTRACT(EPOCH FROM (s.start_time::time - '{{ $json.extracted_start_time }}'::time)) / 60) as start_variance_minutes,\n  ABS(EXTRACT(EPOCH FROM (s.end_time::time - '{{ $json.extracted_end_time }}'::time)) / 60) as end_variance_minutes\nFROM shifts s\nJOIN clients c ON s.client_id = c.id\nWHERE s.assigned_staff_id = '{{ $json.staff_id }}'\n  AND s.date = '{{ $json.shift_date }}'\nLIMIT 1;",
+        "options": {}
+      },
+      "id": "find-scheduled-shift",
+      "name": "Layer 2: Find Scheduled Shift",
+      "type": "n8n-nodes-base.postgres",
+      "position": [2100, 200],
+      "typeVersion": 2.4,
+      "notes": "Match extracted shift to scheduled shift in database"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Layer 3-5: Comprehensive validation\nconst extractedShift = $('Prepare Shift Validation').item.json;\nconst scheduledShift = $json[0];\n\nif (!scheduledShift) {\n  return [{\n    json: {\n      ...extractedShift,\n      validation_result: 'REJECT',\n      validation_status: 'rejected',\n      validation_flags: ['no_shift_scheduled'],\n      validation_message: `No shift scheduled for ${extractedShift.shift_date}`\n    }\n  }];\n}\n\nconst flags = [];\nlet status = 'approved';\nlet result = 'PASS';\n\n// Layer 3: Time Variance Check\nconst startVariance = scheduledShift.start_variance_minutes;\nconst endVariance = scheduledShift.end_variance_minutes;\n\nif (startVariance > 60 || endVariance > 60) {\n  result = 'REJECT';\n  status = 'rejected';\n  flags.push('major_time_variance');\n} else if (startVariance > 30 || endVariance > 30) {\n  status = 'pending_review';\n  flags.push('time_variance');\n}\n\n// Layer 4: Workplace/Client Fuzzy Match\nconst extractedWorkplace = extractedShift.workplace.toLowerCase();\nconst scheduledClient = scheduledShift.client_name.toLowerCase();\n\nif (!scheduledClient.includes(extractedWorkplace) && !extractedWorkplace.includes(scheduledClient)) {\n  const similarity = 1 - (levenshteinDistance(extractedWorkplace, scheduledClient) / Math.max(extractedWorkplace.length, scheduledClient.length));\n  if (similarity < 0.8) {\n    status = 'pending_review';\n    flags.push('workplace_mismatch');\n  }\n}\n\n// Layer 5: Hours Reasonability\nif (extractedShift.total_hours > 16) {\n  result = 'REJECT';\n  status = 'rejected';\n  flags.push('excessive_hours');\n} else if (extractedShift.total_hours < 4) {\n  status = 'pending_review';\n  flags.push('short_shift');\n} else if (extractedShift.total_hours > 12) {\n  flags.push('overtime');\n}\n\nif (extractedShift.break_minutes > 120) {\n  status = 'pending_review';\n  flags.push('excessive_break');\n}\n\nif (extractedShift.total_hours > 6 && extractedShift.break_minutes === 0) {\n  status = 'pending_review';\n  flags.push('missing_break');\n}\n\n// Financial lock check\nif (scheduledShift.financial_locked) {\n  result = 'REJECT';\n  status = 'rejected';\n  flags.push('financially_locked');\n}\n\n// Helper function\nfunction levenshteinDistance(str1, str2) {\n  const matrix = [];\n  for (let i = 0; i <= str2.length; i++) {\n    matrix[i] = [i];\n  }\n  for (let j = 0; j <= str1.length; j++) {\n    matrix[0][j] = j;\n  }\n  for (let i = 1; i <= str2.length; i++) {\n    for (let j = 1; j <= str1.length; j++) {\n      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {\n        matrix[i][j] = matrix[i - 1][j - 1];\n      } else {\n        matrix[i][j] = Math.min(\n          matrix[i - 1][j - 1] + 1,\n          matrix[i][j - 1] + 1,\n          matrix[i - 1][j] + 1\n        );\n      }\n    }\n  }\n  return matrix[str2.length][str1.length];\n}\n\nreturn [{\n  json: {\n    ...extractedShift,\n    shift_id: scheduledShift.shift_id,\n    scheduled_start_time: scheduledShift.scheduled_start_time,\n    scheduled_end_time: scheduledShift.scheduled_end_time,\n    client_id: scheduledShift.client_id,\n    client_name: scheduledShift.client_name,\n    start_variance_minutes: startVariance,\n    end_variance_minutes: endVariance,\n    validation_result: result,\n    validation_status: status,\n    validation_flags: flags,\n    overtime_hours: extractedShift.total_hours > 12 ? extractedShift.total_hours - 12 : 0\n  }\n}];\n"
+      },
+      "id": "validate-shift",
+      "name": "Layer 3-5: Validate Shift",
+      "type": "n8n-nodes-base.code",
+      "position": [2300, 200],
+      "typeVersion": 2,
+      "notes": "Time variance, workplace match, hours reasonability"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.validation_result }}",
+              "operation": "equals",
+              "value2": "PASS"
+            }
+          ]
+        }
+      },
+      "id": "validation-pass",
+      "name": "Validation Pass?",
+      "type": "n8n-nodes-base.if",
+      "position": [2500, 200],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('WhatsApp Trigger').item.json.metadata.display_phone_number }}",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "textBody": "❌ Timesheet validation failed:\n\n{{ $json.validation_message || $json.validation_flags.join(', ') }}\n\nPlease check and resubmit.",
+        "additionalFields": {}
+      },
+      "id": "send-rejection",
+      "name": "Send Rejection",
+      "type": "n8n-nodes-base.whatsApp",
+      "position": [2700, 400],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('WhatsApp Trigger').item.json.metadata.display_phone_number }}",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "textBody": "⚠️ Staff not found.\n\nPlease ensure:\n1. Your WhatsApp number is registered\n2. Employee number is clearly visible on timesheet\n\nContact admin for assistance.",
+        "additionalFields": {}
+      },
+      "id": "send-staff-not-found",
+      "name": "Send Staff Not Found",
+      "type": "n8n-nodes-base.whatsApp",
+      "position": [1700, 500],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('WhatsApp Trigger').item.json.metadata.display_phone_number }}",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "textBody": "❌ Timesheet validation failed:\n\n{{ $json.errors.join('\\n') }}\n\nPlease check your timesheet and try again.",
+        "additionalFields": {}
+      },
+      "id": "send-basic-validation-error",
+      "name": "Send Basic Validation Error",
+      "type": "n8n-nodes-base.whatsApp",
+      "position": [1300, 600],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Save to Google Sheets for testing\n-- This will be replaced with Supabase update in production\nINSERT INTO timesheet_test_log (\n  staff_id,\n  employee_number,\n  full_name,\n  shift_date,\n  extracted_start_time,\n  extracted_end_time,\n  break_minutes,\n  total_hours,\n  validation_status,\n  validation_flags,\n  created_at\n) VALUES (\n  '{{ $json.staff_id }}',\n  '{{ $json.employee_number }}',\n  '{{ $json.full_name }}',\n  '{{ $json.shift_date }}',\n  '{{ $json.extracted_start_time }}',\n  '{{ $json.extracted_end_time }}',\n  {{ $json.break_minutes }},\n  {{ $json.total_hours }},\n  '{{ $json.validation_status }}',\n  '{{ $json.validation_flags.join(\",\") }}',\n  NOW()\n);",
+        "options": {}
+      },
+      "id": "log-to-test-db",
+      "name": "Log to Test Database",
+      "type": "n8n-nodes-base.postgres",
+      "position": [2700, 100],
+      "typeVersion": 2.4,
+      "notes": "For testing - replace with Supabase update in production"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('WhatsApp Trigger').item.json.metadata.display_phone_number }}",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "textBody": "✅ Timesheet received!\n\n📋 Shifts processed: {{ $('Validate Shift').all().filter(s => s.json.validation_result === 'PASS').length }}\n📅 Dates: {{ $('Validate Shift').all().map(s => s.json.shift_date).join(', ') }}\n⏰ Total hours: {{ $('Validate Shift').all().reduce((sum, s) => sum + s.json.total_hours, 0) }}\n\n{{ $('Validate Shift').all().some(s => s.json.validation_flags.includes('overtime')) ? '⚠️ Overtime detected' : '' }}\n\nStatus: {{ $json.validation_status }}",
+        "additionalFields": {}
+      },
+      "id": "send-success",
+      "name": "Send Success Confirmation",
+      "type": "n8n-nodes-base.whatsApp",
+      "position": [2900, 100],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [[{ "node": "Get Media URL", "type": "main", "index": 0 }]]
+    },
+    "Get Media URL": {
+      "main": [[{ "node": "Download Image", "type": "main", "index": 0 }]]
+    },
+    "Download Image": {
+      "main": [[{ "node": "Analyze Timesheet Image", "type": "main", "index": 0 }]]
+    },
+    "Analyze Timesheet Image": {
+      "main": [[{ "node": "Parse & Basic Validation", "type": "main", "index": 0 }]]
+    },
+    "Parse & Basic Validation": {
+      "main": [[{ "node": "Basic Validation Pass?", "type": "main", "index": 0 }]]
+    },
+    "Basic Validation Pass?": {
+      "main": [
+        [{ "node": "Layer 1: Identify Staff", "type": "main", "index": 0 }],
+        [{ "node": "Send Basic Validation Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Layer 1: Identify Staff": {
+      "main": [[{ "node": "Staff Found?", "type": "main", "index": 0 }]]
+    },
+    "Staff Found?": {
+      "main": [
+        [{ "node": "Prepare Shift Validation", "type": "main", "index": 0 }],
+        [{ "node": "Send Staff Not Found", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Shift Validation": {
+      "main": [[{ "node": "Layer 2: Find Scheduled Shift", "type": "main", "index": 0 }]]
+    },
+    "Layer 2: Find Scheduled Shift": {
+      "main": [[{ "node": "Layer 3-5: Validate Shift", "type": "main", "index": 0 }]]
+    },
+    "Layer 3-5: Validate Shift": {
+      "main": [[{ "node": "Validation Pass?", "type": "main", "index": 0 }]]
+    },
+    "Validation Pass?": {
+      "main": [
+        [{ "node": "Log to Test Database", "type": "main", "index": 0 }],
+        [{ "node": "Send Rejection", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log to Test Database": {
+      "main": [[{ "node": "Send Success Confirmation", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+

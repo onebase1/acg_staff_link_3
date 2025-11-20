@@ -1,0 +1,262 @@
+{
+  "name": "WhatsApp Urgent Shift Broadcast",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "d1a2b3c4-5678-90ab-cdef-1234567890ab",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "urgent_shifts",
+        "returnAll": true
+      },
+      "id": "e2b3c4d5-6789-01bc-def2-234567890abc",
+      "name": "Get Urgent Shift",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "staff",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            },
+            {
+              "keyName": "available",
+              "condition": "eq",
+              "keyValue": "true"
+            }
+          ]
+        }
+      },
+      "id": "f3c4d5e6-7890-12cd-ef34-567890abcdef",
+      "name": "Get Eligible Staff",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "a4d5e6f7-8901-23de-f456-7890abcdef01",
+      "name": "Loop Over Staff",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "unit": "milliseconds",
+        "amount": 300
+      },
+      "id": "b5e6f7a8-9012-34ef-5678-90abcdef0123",
+      "name": "Rate Limit",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1120, 300],
+      "webhookId": "rate-limit-delay"
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "phoneNumberId": "={{ $env.WHATSAPP_PHONE_NUMBER_ID }}",
+        "recipientPhoneNumber": "={{ $json.phone }}",
+        "template": "urgent_shift_available",
+        "components": {
+          "values": [
+            {
+              "type": "body",
+              "parameters": [
+                {
+                  "type": "text",
+                  "text": "={{ $json.first_name }}"
+                },
+                {
+                  "type": "text",
+                  "text": "={{ $node['Get Urgent Shift'].json.location }}"
+                },
+                {
+                  "type": "text",
+                  "text": "={{ $node['Get Urgent Shift'].json.shift_date }}"
+                },
+                {
+                  "type": "text",
+                  "text": "={{ $node['Get Urgent Shift'].json.shift_time }}"
+                },
+                {
+                  "type": "text",
+                  "text": "={{ $node['Get Urgent Shift'].json.shift_id }}"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "id": "c6f7a8b9-0123-45f0-6789-0abcdef01234",
+      "name": "Send WhatsApp",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "YOUR_WHATSAPP_CREDENTIAL_ID",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "shift_notifications_sent",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldName": "shift_id",
+              "fieldValue": "={{ $node['Get Urgent Shift'].json.shift_id }}"
+            },
+            {
+              "fieldName": "staff_id",
+              "fieldValue": "={{ $json.staff_id }}"
+            },
+            {
+              "fieldName": "phone_number",
+              "fieldValue": "={{ $json.phone }}"
+            },
+            {
+              "fieldName": "sent_at",
+              "fieldValue": "={{ $now.toISO() }}"
+            },
+            {
+              "fieldName": "status",
+              "fieldValue": "sent"
+            }
+          ]
+        }
+      },
+      "id": "d7a8b9c0-1234-56f1-7890-bcdef0123456",
+      "name": "Log Sent",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1560, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Urgent Shift",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Urgent Shift": {
+      "main": [
+        [
+          {
+            "node": "Get Eligible Staff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Eligible Staff": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Staff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Staff": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Log Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Sent": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Staff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "",
+  "meta": {},
+  "id": "",
+  "tags": []
+}

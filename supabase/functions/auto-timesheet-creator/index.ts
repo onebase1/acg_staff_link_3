@@ -248,12 +248,16 @@ serve(async (req) => {
         const defaultTimes = getDefaultShiftTimes(shift);
         console.log('🕐 [AutoTimesheet] Default shift times:', defaultTimes);
 
-        // ✅ CALCULATE AMOUNTS
-        const staff_pay_amount = (shift.duration_hours || 0) * (shift.pay_rate || 0);
-        const client_charge_amount = (shift.duration_hours || 0) * (shift.charge_rate || 0);
+        // ✅ CALCULATE AMOUNTS (accounting for break time)
+        const breakHours = (shift.break_duration_minutes || 60) / 60;
+        const billableHours = Math.max(0, (shift.duration_hours || 0) - breakHours);
+        const staff_pay_amount = billableHours * (shift.pay_rate || 0);
+        const client_charge_amount = billableHours * (shift.charge_rate || 0);
 
         console.log('💰 [AutoTimesheet] Calculated amounts:', {
-            hours: shift.duration_hours,
+            total_hours: shift.duration_hours,
+            break_hours: breakHours,
+            billable_hours: billableHours,
             staff_pay: `£${staff_pay_amount.toFixed(2)}`,
             client_charge: `£${client_charge_amount.toFixed(2)}`
         });
