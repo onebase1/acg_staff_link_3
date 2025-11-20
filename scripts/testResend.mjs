@@ -7,7 +7,7 @@ if (!RESEND_API_KEY) {
 
 const toEmail = process.env.TEST_EMAIL || "g.basera@yahoo.com";
 const fromEmail =
-  process.env.RESEND_DEFAULT_FROM || "noreply@guest-glow.com";
+  process.env.RESEND_DEFAULT_FROM || "noreply@agilecaremanagement.co.uk";
 
 const payload = {
   from: fromEmail,

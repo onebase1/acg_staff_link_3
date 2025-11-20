@@ -45,7 +45,7 @@ const agencyPayload = {
 };
 
 const admin = {
-  email: "info@guest-glow.com",
+  email: "info@agilecaremanagement.co.uk",
   fullName: "Dominion Agency Admin",
   phone: "+44 20 7123 4567",
   tempPassword: "Dominion#2025",

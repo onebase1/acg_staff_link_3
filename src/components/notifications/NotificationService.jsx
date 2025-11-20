@@ -19,7 +19,7 @@ export const NotificationService = {
   /**
    * ✅ FIXED: Send email notification using Supabase Edge Function
    */
-  async sendEmail({ to, subject, html, from_name = 'ACG StaffLink' }) {
+  async sendEmail({ to, subject, html, from_name = 'Agile Care Management' }) {
     try {
       const { data, error } = await supabase.functions.invoke('send-email', {
         body: {

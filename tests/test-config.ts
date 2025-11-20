@@ -5,7 +5,7 @@ config();
 
 export const TEST_CONFIG = {
   dominion: {
-    email: 'info@guest-glow.com',
+    email: 'info@agilecaremanagement.co.uk',
     password: 'Dominion#2025',
     agency_name: 'Dominion Healthcare Services Ltd'
   },

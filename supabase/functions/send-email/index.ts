@@ -68,7 +68,7 @@ serve(async (req) => {
         }
 
         const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-        const RESEND_FROM_DOMAIN = Deno.env.get("RESEND_FROM_DOMAIN") || "guest-glow.com";
+        const RESEND_FROM_DOMAIN = Deno.env.get("RESEND_FROM_DOMAIN") || "agilecaremanagement.co.uk";
 
         if (!RESEND_API_KEY) {
             console.error('❌ RESEND_API_KEY not set in environment');
@@ -80,8 +80,8 @@ serve(async (req) => {
             });
         }
 
-        // Use provided from_name or default to "ACG StaffLink"
-        const senderName = from_name || 'ACG StaffLink';
+        // Use provided from_name or default to "Agile Care Management"
+        const senderName = from_name || 'Agile Care Management';
 
         console.log(`📧 Sending email to: ${to}`);
         console.log(`📧 Subject: ${subject}`);

@@ -55,7 +55,7 @@ VITE_SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 ### Verify Deployment
 1. **Open your Netlify URL**
 2. **Test login** with:
-   - Email: `info@guest-glow.com`
+   - Email: `info@agilecaremanagement.co.uk`
    - Password: `Dominion#2025`
 3. **Check key features:**
    - Dashboard loads

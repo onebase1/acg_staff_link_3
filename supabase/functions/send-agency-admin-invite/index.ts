@@ -52,7 +52,7 @@ function resolveSiteUrl(request: Request, payload?: InvitePayload) {
     }
   }
   // fallback to agency-specific redirect path if provided later
-  return "https://guest-glow.com";
+  return "https://agilecaremanagement.co.uk";
 }
 
 function buildInviteEmail({
@@ -163,7 +163,7 @@ async function sendEmail(to: string, subject: string, html: string) {
   }
 
   const from =
-    Deno.env.get("RESEND_DEFAULT_FROM") ?? "noreply@guest-glow.com";
+    Deno.env.get("RESEND_DEFAULT_FROM") ?? "noreply@agilecaremanagement.co.uk";
 
   const response = await fetch(RESEND_API_URL, {
     method: "POST",

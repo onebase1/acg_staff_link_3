@@ -59,7 +59,7 @@ serve(async (req) => {
         } = await req.json();
 
         const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-        const RESEND_FROM_DOMAIN = Deno.env.get("RESEND_FROM_DOMAIN") || "guest-glow.com";
+        const RESEND_FROM_DOMAIN = Deno.env.get("RESEND_FROM_DOMAIN") || "agilecaremanagement.co.uk";
 
         const notifications = [];
 
