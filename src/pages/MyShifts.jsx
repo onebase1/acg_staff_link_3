@@ -10,7 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import {
   Calendar as CalendarIcon, Clock, MapPin, DollarSign,
   Upload, CheckCircle, AlertCircle, XCircle, Filter, ChevronDown,
-  TrendingUp, CalendarCheck, CalendarClock, Info
+  TrendingUp, CalendarCheck, CalendarClock
 } from "lucide-react";
 import { format, isSameDay, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { toast } from "sonner";
@@ -29,6 +29,7 @@ export default function MyShifts() {
   const [user, setUser] = useState(null);
   const [staffRecord, setStaffRecord] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [statusFilter, setStatusFilter] = useState('all');
   const navigate = useNavigate();
 
@@ -128,6 +129,9 @@ export default function MyShifts() {
   });
 
   // Get dates with shifts for calendar highlighting
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const datesWithShifts = allShifts.map(shift => {
     try {
       return parseISO(shift.date);
@@ -135,6 +139,35 @@ export default function MyShifts() {
       return null;
     }
   }).filter(Boolean);
+
+  // Separate past and future shifts for different colors
+  // Exclude selected date to let CSS styling show through
+  const selectedDateNormalized = new Date(selectedDate);
+  selectedDateNormalized.setHours(0, 0, 0, 0);
+
+  const pastShiftDates = datesWithShifts.filter(date => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d < today && d.getTime() !== selectedDateNormalized.getTime();
+  });
+
+  const futureShiftDates = datesWithShifts.filter(date => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d > today && d.getTime() !== selectedDateNormalized.getTime();
+  });
+
+  const todayShiftDates = datesWithShifts.filter(date => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime() === today.getTime() && d.getTime() !== selectedDateNormalized.getTime();
+  });
+
+  // Debug: Log dates with shifts
+  console.log('🔵 Dates with shifts:', datesWithShifts.map(d => format(d, 'yyyy-MM-dd')));
+  console.log('⏮️ Past shifts:', pastShiftDates.map(d => format(d, 'yyyy-MM-dd')));
+  console.log('⏭️ Future shifts:', futureShiftDates.map(d => format(d, 'yyyy-MM-dd')));
+  console.log('📅 Today shifts:', todayShiftDates.map(d => format(d, 'yyyy-MM-dd')));
 
   // Get status badge
   const getStatusBadge = (status) => {
@@ -154,7 +187,17 @@ export default function MyShifts() {
 
   // Navigate to today
   const goToToday = () => {
-    setSelectedDate(new Date());
+    const today = new Date();
+    setSelectedDate(today);
+    setCurrentMonth(today);
+  };
+
+  // Handle date selection - update both selected date and month view
+  const handleDateSelect = (date) => {
+    if (date) {
+      setSelectedDate(date);
+      setCurrentMonth(date);
+    }
   };
 
   // Get shift count by status for stats
@@ -273,122 +316,117 @@ export default function MyShifts() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="p-2">
+            <CardContent className="p-3">
               <style>{`
-                /* Make calendar full width with better touch targets */
-                .rdp {
+                /* FULL WIDTH CALENDAR - Force 100% */
+                .staff-calendar-container {
                   width: 100%;
-                  margin: 0;
-                  --rdp-cell-size: 44px; /* Increased for better touch */
-                }
-                .rdp-months {
-                  width: 100%;
-                }
-                .rdp-month {
-                  width: 100%;
-                }
-                .rdp-table {
-                  width: 100%;
-                  max-width: 100%;
-                  table-layout: fixed;
-                }
-                .rdp-cell {
-                  width: 14.28%;
-                  text-align: center;
-                }
-                .rdp-day {
-                  width: 100%;
-                }
-                .rdp-day_button {
-                  min-width: 40px;
-                  min-height: 40px;
-                  font-size: 0.875rem;
+                  overflow: hidden;
                 }
 
-                /* Style dates with shifts - bold + circle + color */
-                .rdp-day_has-shift {
-                  font-weight: bold;
-                  position: relative;
+                .staff-calendar-container .rdp {
+                  --rdp-cell-size: 40px;
+                  width: 100% !important;
+                  margin: 0 !important;
                 }
-                .rdp-day_has-shift .rdp-day_button {
-                  background-color: #3b82f6 !important;
-                  color: white !important;
+
+                .staff-calendar-container .rdp-months {
+                  width: 100% !important;
+                }
+
+                .staff-calendar-container .rdp-month {
+                  width: 100% !important;
+                }
+
+                .staff-calendar-container .rdp-table {
+                  width: 100% !important;
+                  max-width: 100% !important;
+                }
+
+                .staff-calendar-container .rdp-head,
+                .staff-calendar-container .rdp-tbody {
+                  width: 100% !important;
+                }
+
+                /* Make all buttons circular by default */
+                .staff-calendar-container .rdp-button {
                   border-radius: 50% !important;
+                  width: 40px !important;
+                  height: 40px !important;
+                  transition: all 0.2s ease !important;
+                }
+
+                /* RED RING for today - High priority, no background override */
+                .staff-calendar-container .rdp-day_today .rdp-button {
+                  border: 3px solid #ef4444 !important;
+                  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+                }
+
+                /* NAVY BLUE with red border for selected date - Highest priority */
+                .staff-calendar-container .rdp-day_selected .rdp-button {
+                  background-color: #1e3a8a !important;  /* Navy blue (blue-900) */
+                  color: white !important;
                   font-weight: 700 !important;
-                }
-                .rdp-day_has-shift .rdp-day_button:hover {
-                  background-color: #2563eb !important;
-                  transform: scale(1.05);
-                  transition: all 0.2s ease;
+                  border: 3px solid #ef4444 !important;  /* Red border */
+                  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3) !important;  /* Red glow */
                 }
 
-                /* Today's date - red ring */
-                .rdp-day_today .rdp-day_button {
-                  border: 2px solid #ef4444 !important;
-                  font-weight: bold !important;
-                  box-shadow: 0 0 0 1px #ef4444 inset;
-                }
-
-                /* Selected date - darker blue with glow */
-                .rdp-day_selected .rdp-day_button {
-                  background-color: #1e40af !important;
+                /* Today + Selected = Navy with stronger red border */
+                .staff-calendar-container .rdp-day_today.rdp-day_selected .rdp-button {
+                  background-color: #1e3a8a !important;  /* Navy blue */
                   color: white !important;
-                  border-radius: 50% !important;
-                  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.2);
+                  border: 3px solid #ef4444 !important;  /* Red border (matches today ring) */
+                  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.4) !important;  /* Stronger red glow */
                 }
 
-                /* Focus indicators for accessibility */
-                .rdp-day_button:focus-visible {
-                  outline: 2px solid #3b82f6;
-                  outline-offset: 2px;
-                  border-radius: 50%;
+                /* Hover effects */
+                .staff-calendar-container .rdp-button:hover:not(.rdp-day_selected .rdp-button) {
+                  transform: scale(1.08) !important;
+                  opacity: 0.9 !important;
                 }
 
-                /* Navigation buttons - larger touch targets */
-                .rdp-nav_button {
-                  width: 44px !important;
-                  height: 44px !important;
+                /* Accessibility - focus states */
+                .staff-calendar-container .rdp-button:focus-visible {
+                  outline: 3px solid #3b82f6 !important;
+                  outline-offset: 2px !important;
                 }
               `}</style>
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => date && setSelectedDate(date)}
-                className="rounded-md border w-full"
-                modifiers={{
-                  hasShift: datesWithShifts,
-                }}
-                modifiersClassNames={{
-                  hasShift: 'rdp-day_has-shift',
-                }}
-              />
-
-              {/* Calendar Legend */}
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <Info className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs font-semibold text-blue-900">Calendar Legend</span>
-                </div>
-                <div className="space-y-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">12</span>
-                    </div>
-                    <span className="text-gray-700">Date with shifts</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full border-2 border-red-500 flex items-center justify-center">
-                      <span className="text-gray-900 text-xs font-bold">12</span>
-                    </div>
-                    <span className="text-gray-700">Today's date</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-blue-900 flex items-center justify-center shadow-[0_0_0_3px_rgba(30,64,175,0.2)]">
-                      <span className="text-white text-xs font-bold">12</span>
-                    </div>
-                    <span className="text-gray-700">Selected date</span>
-                  </div>
-                </div>
+              <div className="staff-calendar-container">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDateSelect}
+                  month={currentMonth}
+                  onMonthChange={setCurrentMonth}
+                  modifiers={{
+                    pastShift: pastShiftDates,
+                    futureShift: futureShiftDates,
+                    todayShift: todayShiftDates,
+                  }}
+                  modifiersStyles={{
+                    pastShift: {
+                      backgroundColor: '#9ca3af',  // Gray for past shifts
+                      color: 'white',
+                      fontWeight: 'bold',
+                      borderRadius: '50%',
+                    },
+                    futureShift: {
+                      backgroundColor: '#3b82f6',  // Blue for future shifts
+                      color: 'white',
+                      fontWeight: 'bold',
+                      borderRadius: '50%',
+                    },
+                    todayShift: {
+                      backgroundColor: '#10b981',  // Green for today's shifts
+                      color: 'white',
+                      fontWeight: 'bold',
+                      borderRadius: '50%',
+                    }
+                  }}
+                  classNames={{
+                    day: "h-10 w-10 p-0 font-normal aria-selected:opacity-100 rounded-full transition-all",
+                  }}
+                />
               </div>
 
               {/* Enhanced Metrics Cards */}
@@ -476,7 +514,7 @@ export default function MyShifts() {
                     You don't have any shifts on this date.
                   </p>
                   <p className="text-sm text-gray-500 mb-6">
-                    Select a different date with blue circles or browse available shifts.
+                    Select a different date or browse available shifts.
                   </p>
                   <Button
                     className="bg-blue-600 hover:bg-blue-700 font-semibold"
