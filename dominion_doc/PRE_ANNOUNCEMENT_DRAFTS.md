@@ -8,7 +8,7 @@
 
 ## 📧 DRAFT 1: EMAIL (Send from Dominion domain)
 
-**From:** Dominion Healthcare Services <admin@dominionhealthcare.co.uk>
+**From:** Dominion Healthcare Services <info@dhcservisesltd.co.uk>
 **To:** All Dominion Staff
 **Subject:** Important: New Shift Management System - Agile Care Management
 
@@ -28,7 +28,10 @@ Starting this week, you'll be able to:
 ✅ **Upload Timesheets** - Submit timesheets via photo upload (no more paperwork delays)
 ✅ **GPS Clock-In/Clock-Out** - Verify your attendance with GPS location tracking
 ✅ **View Shift History** - See all your past and upcoming shifts
-✅ **Get Paid Faster** - Streamlined payment processing
+✅ **Compliants Documents** - Update your expiring mandatory documents 
+**Find Shifts** - 
+Be the first to to pick
+shifts as they are updated
 ✅ **Mobile Access** - Manage everything from your phone
 
 ### 📩 What to Expect
@@ -67,12 +70,9 @@ We've already created your account using:
 ### ❓ Need Help?
 
 If you have any questions:
-- **Email:** admin@dominionhealthcare.co.uk
-- **Phone:** [Dominion phone number]
+- **Email:** info@dhcservisesltd.co.uk
+- **Phone:** +44 7449 034730
 
-Or contact Agile Care Management support:
-- **Email:** support@agilecaremanagement.co.uk
-- **Phone:** +44 1234 567890
 
 ### 🚀 Next Steps
 
@@ -127,7 +127,7 @@ You'll receive an email from **Agile Care Management** with subject:
 ✅ Upload timesheets via photo (no more paperwork!)
 ✅ GPS clock-in/clock-out for verified attendance
 ✅ View your shift history
-✅ Get paid faster
+✅ Find and accept shifts
 ✅ Manage everything from your phone
 
 💡 **Important:**
@@ -136,7 +136,7 @@ You'll receive an email from **Agile Care Management** with subject:
 - You just need to set your password and review
 
 ❓ **Questions?**
-Contact us or Agile Care support: support@agilecaremanagement.co.uk
+Contact us or Agile Care support: info@dhcservisesltd.co.uk
 
 🚀 **This will make your life easier - promise!**
 

@@ -1,12 +1,12 @@
 ---
 status: active
 last_sync_date: 2025-11-21
-code_reference: src/pages/ShiftMarketplace.jsx:151-184
-associated_issues: Staff Portal showing past-dated shifts in marketplace
+code_reference: src/pages/ShiftMarketplace.jsx:151-183
+associated_issues: Staff Portal showing past-dated shifts + overnight shift edge case
 commit_hash: pending
 ---
 
-# Past Shift Filtering Fix - Staff Portal Marketplace
+# Past Shift Filtering Fix - Staff Portal Marketplace (WITH OVERNIGHT SHIFT SUPPORT)
 
 ## 🐛 Issue Identified
 
@@ -48,76 +48,182 @@ The marketplace was filtering for:
 
 ---
 
-## ✅ Solution Implemented
+## ✅ Solution Implemented (V2 - WITH OVERNIGHT SHIFT SUPPORT)
 
 ### Code Changes
-**File:** `src/pages/ShiftMarketplace.jsx`  
-**Lines:** 151-184
+**File:** `src/pages/ShiftMarketplace.jsx`
+**Lines:** 151-183
 
 **Added:**
 ```javascript
-// ✅ Get today's date for filtering past shifts
-const today = new Date();
-today.setHours(0, 0, 0, 0); // Normalize to start of day
+// ✅ Get current datetime for filtering past shifts
+const now = new Date();
 
 // Inside filter function:
-// ✅ CRITICAL FIX: Only show future or today's shifts (no past shifts)
-const shiftDate = new Date(shift.date);
-shiftDate.setHours(0, 0, 0, 0); // Normalize to start of day
-if (shiftDate < today) {
-  console.log(`🚫 Filtering out past shift on ${shift.date}`);
+// ✅ CRITICAL FIX: Only show shifts that haven't ended yet (handles overnight shifts)
+// For overnight shifts (end_time < start_time), the end datetime is next day
+const shiftEndDateTime = new Date(`${shift.date}T${shift.end_time}`);
+
+// If end_time < start_time, it's an overnight shift - add 1 day to end time
+if (shift.end_time < shift.start_time) {
+  shiftEndDateTime.setDate(shiftEndDateTime.getDate() + 1);
+}
+
+// Only filter out if shift has completely ended
+if (shiftEndDateTime < now) {
+  console.log(`🚫 Filtering out completed shift on ${shift.date} (ended at ${shiftEndDateTime.toISOString()})`);
   return false;
 }
 ```
 
 ### How It Works
-1. **Normalize today's date** to midnight (00:00:00) for accurate comparison
-2. **Normalize shift date** to midnight (00:00:00)
-3. **Compare dates:** If `shiftDate < today`, filter it out
-4. **Log filtered shifts** for debugging
+1. **Use current datetime** (not just date) for comparison
+2. **Calculate shift end datetime** by combining `shift.date` + `shift.end_time`
+3. **Detect overnight shifts:** If `end_time < start_time`, add 1 day to end datetime
+4. **Compare:** Only filter out if `shiftEndDateTime < now` (shift has completely ended)
+5. **Log filtered shifts** with end datetime for debugging
 
-### Date Comparison Logic
-- **Today's shifts:** `shiftDate === today` → ✅ SHOW (staff can still accept today)
-- **Future shifts:** `shiftDate > today` → ✅ SHOW
-- **Past shifts:** `shiftDate < today` → ❌ HIDE
+### Shift End DateTime Calculation Logic
+
+#### Day Shift (8am-8pm)
+- **Date:** Nov 20
+- **Start:** "08:00"
+- **End:** "20:00"
+- **End DateTime:** Nov 20, 8pm
+- **Overnight?** NO (`end_time >= start_time`)
+
+#### Night Shift (8pm-8am) - OVERNIGHT
+- **Date:** Nov 20 (START date)
+- **Start:** "20:00"
+- **End:** "08:00"
+- **End DateTime:** Nov 21, 8am (date + 1 day)
+- **Overnight?** YES (`end_time < start_time`)
+
+### Filtering Logic Examples
+
+| Current Time | Shift | Start | End | End DateTime | Visible? | Reason |
+|--------------|-------|-------|-----|--------------|----------|--------|
+| Nov 21, 12:30 AM | Nov 20, 8pm-8am | 20:00 | 08:00 | Nov 21, 8am | ✅ YES | Shift ends at 8am (7.5h away) |
+| Nov 21, 9:00 AM | Nov 20, 8pm-8am | 20:00 | 08:00 | Nov 21, 8am | ❌ NO | Shift ended 1h ago |
+| Nov 21, 7:00 AM | Nov 20, 8pm-8am | 20:00 | 08:00 | Nov 21, 8am | ✅ YES | Shift ends in 1h |
+| Nov 21, 10:00 AM | Nov 21, 8am-8pm | 08:00 | 20:00 | Nov 21, 8pm | ✅ YES | Shift ends at 8pm (10h away) |
+| Nov 21, 9:00 PM | Nov 21, 8am-8pm | 08:00 | 20:00 | Nov 21, 8pm | ❌ NO | Shift ended 1h ago |
+| Nov 20, 11:00 PM | Nov 20, 8pm-8am | 20:00 | 08:00 | Nov 21, 8am | ✅ YES | Shift ends tomorrow 8am (9h away) |
+
+---
+
+## 🚨 Critical Edge Case: Urgent Overnight Shift After Midnight
+
+### The Scenario (User's Concern)
+**Time:** Nov 21, 12:30 AM (just after midnight)
+**Urgent shift created:** Nov 20, 8pm-8am (overnight)
+**Shift date field:** "2024-11-20"
+**Status:** "open" (urgent, needs staff NOW)
+
+### ❌ BROKEN LOGIC (V1 - Date-Only Comparison)
+```javascript
+const shiftDate = new Date(shift.date); // Nov 20
+if (shiftDate < today) { // Nov 20 < Nov 21
+  return false; // FILTERS OUT THE SHIFT! ❌
+}
+```
+**Result:** Shift disappears from marketplace even though it's ACTIVE RIGHT NOW
+
+### ✅ CORRECT LOGIC (V2 - End DateTime Comparison)
+```javascript
+const shiftEndDateTime = new Date(`${shift.date}T${shift.end_time}`); // Nov 20, 08:00
+if (shift.end_time < shift.start_time) { // 08:00 < 20:00 = true
+  shiftEndDateTime.setDate(shiftEndDateTime.getDate() + 1); // Nov 21, 08:00
+}
+if (shiftEndDateTime < now) { // Nov 21, 08:00 < Nov 21, 00:30 = false
+  return false; // DOES NOT FILTER OUT ✅
+}
+```
+**Result:** Shift stays visible because it ends at Nov 21, 8am (7.5 hours away)
+
+### Why This Matters
+- **Urgent overnight shifts** can be created after midnight
+- **Staff availability** - night shift workers are awake and available
+- **Data integrity** - shift is ACTIVE, not past
+- **Business continuity** - critical care home coverage
 
 ---
 
 ## 🧪 Testing
 
 ### Manual Test Steps
-1. **Create a past-dated shift:**
-   - Go to Shifts page (admin)
-   - Create shift with date = "2024-11-20" (past date)
-   - Set status = "open"
-   - Set marketplace_visible = true
+
+#### Test 1: Past Day Shift (Should Hide)
+1. **Create shift:**
+   - Date: "2024-11-19" (2 days ago)
+   - Start: "08:00"
+   - End: "20:00"
+   - Status: "open"
+   - marketplace_visible: true
 
 2. **Check Staff Portal:**
-   - Login as staff member
-   - Navigate to Staff Portal
-   - Verify past shift does NOT appear in "Available Shifts"
+   - ❌ Should NOT appear (shift ended Nov 19, 8pm)
 
-3. **Create a future shift:**
-   - Create shift with date = tomorrow
-   - Set status = "open"
-   - Set marketplace_visible = true
+#### Test 2: Active Overnight Shift (Should Show)
+1. **Create shift:**
+   - Date: "2024-11-20" (yesterday)
+   - Start: "20:00"
+   - End: "08:00"
+   - Status: "open"
+   - marketplace_visible: true
 
-4. **Check Staff Portal:**
-   - Verify future shift DOES appear in "Available Shifts"
+2. **Check Staff Portal at 12:30 AM Nov 21:**
+   - ✅ Should appear (shift ends Nov 21, 8am - still active)
 
-5. **Create today's shift:**
-   - Create shift with date = today
-   - Set status = "open"
-   - Set marketplace_visible = true
+3. **Check Staff Portal at 9:00 AM Nov 21:**
+   - ❌ Should NOT appear (shift ended 1 hour ago)
 
-6. **Check Staff Portal:**
-   - Verify today's shift DOES appear in "Available Shifts"
+#### Test 3: Future Day Shift (Should Show)
+1. **Create shift:**
+   - Date: Tomorrow
+   - Start: "08:00"
+   - End: "20:00"
+   - Status: "open"
+   - marketplace_visible: true
 
-### Expected Results
-- ✅ Past shifts: Hidden from marketplace
-- ✅ Today's shifts: Visible in marketplace
-- ✅ Future shifts: Visible in marketplace
-- ✅ Console logs: "🚫 Filtering out past shift on [date]" for past shifts
+2. **Check Staff Portal:**
+   - ✅ Should appear (shift hasn't started yet)
+
+#### Test 4: Today's Day Shift (Should Show)
+1. **Create shift:**
+   - Date: Today
+   - Start: "08:00"
+   - End: "20:00"
+   - Status: "open"
+   - marketplace_visible: true
+
+2. **Check Staff Portal at 10:00 AM:**
+   - ✅ Should appear (shift ends at 8pm today)
+
+3. **Check Staff Portal at 9:00 PM:**
+   - ❌ Should NOT appear (shift ended 1 hour ago)
+
+#### Test 5: Tonight's Overnight Shift (Should Show)
+1. **Create shift:**
+   - Date: Today
+   - Start: "20:00"
+   - End: "08:00"
+   - Status: "open"
+   - marketplace_visible: true
+
+2. **Check Staff Portal at 7:00 PM:**
+   - ✅ Should appear (shift starts in 1 hour)
+
+3. **Check Staff Portal at 11:00 PM:**
+   - ✅ Should appear (shift ends tomorrow 8am)
+
+4. **Check Staff Portal at 9:00 AM tomorrow:**
+   - ❌ Should NOT appear (shift ended 1 hour ago)
+
+### Expected Console Logs
+- ✅ Completed shifts: `"🚫 Filtering out completed shift on 2024-11-19 (ended at 2024-11-19T20:00:00.000Z)"`
+- ✅ Active overnight: No log (shift visible)
+- ✅ Future shifts: No log (shift visible)
 
 ---
 

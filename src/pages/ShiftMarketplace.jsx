@@ -148,9 +148,8 @@ export default function ShiftMarketplace() {
 
       console.log('📅 Staff already working on:', assignedShiftDates);
 
-      // ✅ Get today's date for filtering past shifts
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Normalize to start of day
+      // ✅ Get current datetime for filtering past shifts
+      const now = new Date();
 
       // CRITICAL: Only show truly UNASSIGNED open shifts that match staff role
       const openShifts = allShifts.filter(shift => {
@@ -168,11 +167,18 @@ export default function ShiftMarketplace() {
         // Even if marketplace_visible=true, role must match
         if (shift.role_required !== staffProfile.role) return false;
 
-        // ✅ CRITICAL FIX: Only show future or today's shifts (no past shifts)
-        const shiftDate = new Date(shift.date);
-        shiftDate.setHours(0, 0, 0, 0); // Normalize to start of day
-        if (shiftDate < today) {
-          console.log(`🚫 Filtering out past shift on ${shift.date}`);
+        // ✅ CRITICAL FIX: Only show shifts that haven't ended yet (handles overnight shifts)
+        // For overnight shifts (end_time < start_time), the end datetime is next day
+        const shiftEndDateTime = new Date(`${shift.date}T${shift.end_time}`);
+
+        // If end_time < start_time, it's an overnight shift - add 1 day to end time
+        if (shift.end_time < shift.start_time) {
+          shiftEndDateTime.setDate(shiftEndDateTime.getDate() + 1);
+        }
+
+        // Only filter out if shift has completely ended
+        if (shiftEndDateTime < now) {
+          console.log(`🚫 Filtering out completed shift on ${shift.date} (ended at ${shiftEndDateTime.toISOString()})`);
           return false;
         }
 
