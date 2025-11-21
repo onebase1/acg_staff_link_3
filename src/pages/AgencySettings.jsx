@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Settings, Save, Info, Bell, AlertTriangle, Upload, Building2,
-  Shield, Zap, DollarSign, RefreshCw, CheckCircle, Rocket, Star, MapPin, XCircle
+  Shield, Zap, DollarSign, RefreshCw, CheckCircle, Rocket, Star, MapPin, XCircle,
+  MessageSquare, Mail, MessageCircle
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -752,6 +753,108 @@ export default function AgencySettings() {
               </div>
               <p className="text-xs text-green-700 mt-3 bg-green-100 p-2 rounded">
                 💡 Recommended: Keep enabled for maximum automation. Disable if you want to manually review all shifts regardless of GPS validation.
+              </p>
+            </div>
+          </div>
+
+          {/* 🆕 URGENT SHIFT BROADCAST CHANNELS */}
+          <div className="border-l-4 border-red-500 pl-4 py-2">
+            <div className="mb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <Bell className="w-5 h-5 text-red-600" />
+                <div>
+                  <h4 className="font-semibold text-gray-900">📢 Urgent Shift Broadcast Channels</h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Choose which notification channels to use for urgent shift broadcasts
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Channel Toggles */}
+            <div className="ml-8 space-y-4">
+              {/* SMS Toggle */}
+              <div className="flex items-start justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-start gap-3">
+                  <MessageSquare className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-gray-900">SMS (Twilio)</p>
+                    <p className="text-xs text-gray-600 mt-1">Instant delivery, ~£0.20 per message</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={getCurrentValue('settings.urgent_shift_notifications.sms_enabled', true)}
+                    onChange={(e) => updateField('settings.urgent_shift_notifications.sms_enabled', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              {/* Email Toggle */}
+              <div className="flex items-start justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-start gap-3">
+                  <Mail className="w-5 h-5 text-green-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-gray-900">Email (Resend)</p>
+                    <p className="text-xs text-gray-600 mt-1">Free, detailed info + portal link, 1-5 min delay</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={getCurrentValue('settings.urgent_shift_notifications.email_enabled', false)}
+                    onChange={(e) => updateField('settings.urgent_shift_notifications.email_enabled', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                </label>
+              </div>
+
+              {/* WhatsApp Toggle */}
+              <div className="flex items-start justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                <div className="flex items-start gap-3">
+                  <MessageCircle className="w-5 h-5 text-emerald-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-gray-900">WhatsApp (Meta)</p>
+                    <p className="text-xs text-gray-600 mt-1">Free, instant, rich formatting</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={getCurrentValue('settings.urgent_shift_notifications.whatsapp_enabled', false)}
+                    onChange={(e) => updateField('settings.urgent_shift_notifications.whatsapp_enabled', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
+              </div>
+
+              {/* Manual Override Toggle */}
+              <div className="flex items-start justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
+                <div className="flex items-start gap-3">
+                  <Settings className="w-5 h-5 text-purple-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-gray-900">Allow Manual Override</p>
+                    <p className="text-xs text-gray-600 mt-1">Let admins choose channels per broadcast</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={getCurrentValue('settings.urgent_shift_notifications.allow_manual_override', true)}
+                    onChange={(e) => updateField('settings.urgent_shift_notifications.allow_manual_override', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                </label>
+              </div>
+
+              <p className="text-xs text-red-700 mt-3 bg-red-100 p-2 rounded">
+                💡 <strong>Testing Mode:</strong> Enable all 3 channels to test, then disable unwanted ones for production. Manual override lets you choose channels per broadcast.
               </p>
             </div>
           </div>

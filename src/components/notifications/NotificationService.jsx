@@ -300,39 +300,129 @@ export const NotificationService = {
   },
 
   /**
-   * 📢 URGENT: Broadcast shift to eligible staff via SMS + WhatsApp
-   * ✅ ALREADY MULTI-CHANNEL
+   * 📢 URGENT: Broadcast shift to eligible staff via SMS (Twilio)
+   * ✅ SINGLE CHANNEL - SMS ONLY
    */
   async notifyUrgentShift({ staff, shift, client, agency }) {
-    console.log(`📢 [NotificationService] Broadcasting urgent shift to ${staff.email}`);
-    
+    console.log(`📢 [NotificationService] Broadcasting urgent shift via SMS to ${staff.email}`);
+
     const agencyName = agency?.name || 'Your Agency';
-    const locationLine = shift.work_location_within_site 
-      ? ` at ${shift.work_location_within_site}` 
+    const locationLine = shift.work_location_within_site
+      ? ` at ${shift.work_location_within_site}`
       : '';
-    
+
     const message = `🚨 URGENT SHIFT [${agencyName}]: ${client.name}${locationLine} needs ${shift.role_required.replace('_', ' ')} on ${new Date(shift.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}, ${shift.start_time}-${shift.end_time}. £${shift.pay_rate}/hr. Reply YES to accept.`;
 
-    const results = {
-      sms: { success: false },
-      whatsapp: { success: false }
-    };
-
-    if (staff.phone) {
-      const [smsResult, whatsappResult] = await Promise.allSettled([
-        this.sendSMS({ to: staff.phone, message }),
-        this.sendWhatsApp({ to: staff.phone, message })
-      ]);
-
-      results.sms = smsResult.status === 'fulfilled' ? smsResult.value : { success: false };
-      results.whatsapp = whatsappResult.status === 'fulfilled' ? whatsappResult.value : { success: false };
+    if (!staff.phone) {
+      return { success: false, error: 'No phone number' };
     }
 
-    return {
-      success: results.sms.success || results.whatsapp.success,
-      sms: results.sms,
-      whatsapp: results.whatsapp
-    };
+    const result = await this.sendSMS({ to: staff.phone, message });
+    return result;
+  },
+
+  /**
+   * 📧 URGENT: Broadcast shift via Email (Resend)
+   * ✅ NEW - EMAIL WITH PORTAL LINK
+   */
+  async notifyUrgentShiftEmail({ staff, shift, client, agency }) {
+    console.log(`📧 [NotificationService] Broadcasting urgent shift via Email to ${staff.email}`);
+
+    const agencyName = agency?.name || 'Your Agency';
+    const portalUrl = `${window.location.origin}/staff-portal?highlight=${shift.id}`;
+
+    const items = [
+      { label: 'Client:', value: client.name },
+      { label: 'Role:', value: shift.role_required.replace('_', ' ') },
+      { label: 'Date:', value: new Date(shift.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) },
+      { label: 'Time:', value: `${shift.start_time} - ${shift.end_time}` },
+      { label: 'Pay Rate:', value: `£${shift.pay_rate}/hour` },
+      ...(shift.work_location_within_site ? [{ label: 'Location:', value: shift.work_location_within_site }] : [])
+    ];
+
+    const html = EmailTemplates.baseWrapper({
+      agencyName,
+      agencyLogo: agency?.logo_url,
+      children: `
+        ${EmailTemplates.header({
+          title: '🚨 URGENT SHIFT AVAILABLE',
+          subtitle: 'First Come, First Served',
+          bgColor: '#dc2626',
+          agencyLogo: agency?.logo_url
+        })}
+        ${EmailTemplates.content({
+          greeting: `Hi ${staff.first_name},`,
+          body: `
+            <p style="font-size: 18px; color: #dc2626; font-weight: 600; margin: 0 0 20px 0;">
+              An urgent shift matching your role is now available!
+            </p>
+
+            ${EmailTemplates.infoCard({
+              title: 'Shift Details',
+              items,
+              borderColor: '#dc2626'
+            })}
+
+            ${EmailTemplates.alertBox({
+              type: 'warning',
+              title: '⚡ Act Fast!',
+              message: 'This shift is available on a first-come, first-served basis. Click below to view and accept in the Staff Portal.'
+            })}
+
+            ${EmailTemplates.button({
+              text: '🚀 View & Accept Shift',
+              url: portalUrl,
+              bgColor: '#dc2626'
+            })}
+
+            <p style="font-size: 14px; color: #6b7280; line-height: 1.6; margin: 25px 0 0 0;">
+              <strong>Important:</strong> This shift may be filled quickly. If you're interested, please click the button above immediately to secure it.
+            </p>
+          `
+        })}
+      `
+    });
+
+    return await this.sendEmail({
+      to: staff.email,
+      subject: `🚨 URGENT: ${shift.role_required.replace('_', ' ')} Shift Available - ${client.name}`,
+      html,
+      from_name: agencyName
+    });
+  },
+
+  /**
+   * 💬 URGENT: Broadcast shift via WhatsApp (Meta/n8n)
+   * ✅ NEW - WHATSAPP VIA N8N WEBHOOK
+   */
+  async notifyUrgentShiftWhatsApp({ staff, shift, client, agency }) {
+    console.log(`💬 [NotificationService] Broadcasting urgent shift via WhatsApp to ${staff.first_name}`);
+
+    // Check staff opt-in
+    if (!staff.whatsapp_opt_in) {
+      console.log(`⚠️ [WhatsApp] ${staff.first_name} has not opted in to WhatsApp`);
+      return { success: false, error: 'Staff has not opted in to WhatsApp' };
+    }
+
+    if (!staff.phone) {
+      return { success: false, error: 'No phone number' };
+    }
+
+    try {
+      // For now, use Twilio WhatsApp (can be replaced with n8n webhook later)
+      const agencyName = agency?.name || 'Your Agency';
+      const locationLine = shift.work_location_within_site
+        ? ` at ${shift.work_location_within_site}`
+        : '';
+
+      const message = `🚨 URGENT SHIFT [${agencyName}]: ${client.name}${locationLine} needs ${shift.role_required.replace('_', ' ')} on ${new Date(shift.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}, ${shift.start_time}-${shift.end_time}. £${shift.pay_rate}/hr. Reply YES to accept.`;
+
+      const result = await this.sendWhatsApp({ to: staff.phone, message });
+      return result;
+    } catch (error) {
+      console.error('❌ [WhatsApp] Send failed:', error);
+      return { success: false, error: error.message };
+    }
   },
 
   /**

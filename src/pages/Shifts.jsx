@@ -35,6 +35,7 @@ import { Textarea } from "@/components/ui/textarea";
 import ShiftRateDisplay from "../components/shifts/ShiftRateDisplay";
 import { Label } from "@/components/ui/label";
 import ShiftCompletionModal from "../components/shifts/ShiftCompletionModal";
+import { ChannelSelectorModal } from "../components/shifts/ChannelSelectorModal";
 
 /**
  * Format time from ISO timestamp to HH:MM
@@ -84,9 +85,13 @@ export default function Shifts() {
   const [adminBypassMode, setAdminBypassMode] = useState(true); // Default to enabled - admin must untick for normal flow
 
   const [completingShift, setCompletingShift] = useState(null);
-  
+
   // ✅ NEW: Track which shifts are sending timesheet requests
   const [sendingTimesheetRequest, setSendingTimesheetRequest] = useState(new Set());
+
+  // 🆕 MULTI-CHANNEL BROADCAST STATE
+  const [showChannelSelector, setShowChannelSelector] = useState(false);
+  const [pendingBroadcastShift, setPendingBroadcastShift] = useState(null);
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -653,25 +658,65 @@ export default function Shifts() {
     }
   });
 
-  const broadcastUrgentShift = async (shift) => {
+  // 🆕 MULTI-CHANNEL BROADCAST: Initiate broadcast (with channel selection if enabled)
+  const initiateUrgentBroadcast = async (shift) => {
     try {
-      console.log('🚨 [Broadcast] Starting urgent shift broadcast for shift:', shift.id);
-      
+      console.log('🚨 [Broadcast] Initiating urgent shift broadcast for shift:', shift.id);
+
       if (shift.broadcast_sent_at) {
         const sentTime = new Date(shift.broadcast_sent_at);
         const minutesAgo = Math.round((new Date() - sentTime) / (1000 * 60));
-        
+
         const confirmed = window.confirm(
           `⚠️ This shift was already broadcast ${minutesAgo} minutes ago.\n\n` +
           `Sent at: ${sentTime.toLocaleTimeString('en-GB')}\n\n` +
-          `Are you sure you want to broadcast again? This will send duplicate SMS/WhatsApp to all eligible staff.`
+          `Are you sure you want to broadcast again? This will send duplicate notifications to all eligible staff.`
         );
-        
+
         if (!confirmed) {
           console.log('❌ [Broadcast] User cancelled re-broadcast');
           return;
         }
       }
+
+      const agency = agencies.find(a => a.id === shift.agency_id);
+      const urgentSettings = agency?.settings?.urgent_shift_notifications || {};
+
+      // Get enabled channels from agency settings
+      const enabledChannels = [];
+      if (urgentSettings.sms_enabled !== false) enabledChannels.push('sms'); // Default true
+      if (urgentSettings.email_enabled === true) enabledChannels.push('email');
+      if (urgentSettings.whatsapp_enabled === true) enabledChannels.push('whatsapp');
+
+      console.log(`📋 [Broadcast] Enabled channels:`, enabledChannels);
+
+      if (enabledChannels.length === 0) {
+        toast.error('No broadcast channels enabled. Please enable at least one channel in Agency Settings.');
+        return;
+      }
+
+      // Check if manual override is allowed
+      const allowManualOverride = urgentSettings.allow_manual_override !== false; // Default true
+
+      if (allowManualOverride && enabledChannels.length > 1) {
+        // Show channel selector modal
+        setPendingBroadcastShift(shift);
+        setShowChannelSelector(true);
+      } else {
+        // Proceed with all enabled channels
+        await executeBroadcast(shift, enabledChannels);
+      }
+
+    } catch (error) {
+      console.error('❌ [Broadcast] Initiation error:', error);
+      toast.error(`Broadcast initiation failed: ${error.message}`);
+    }
+  };
+
+  // 🆕 MULTI-CHANNEL BROADCAST: Execute broadcast with selected channels
+  const executeBroadcast = async (shift, selectedChannels) => {
+    try {
+      console.log('🚨 [Broadcast] Executing broadcast with channels:', selectedChannels);
 
       setBroadcastingShiftIds(prev => new Set([...prev, shift.id]));
 
@@ -698,40 +743,107 @@ export default function Shifts() {
         return;
       }
 
+      // 🆕 MULTI-CHANNEL: Send via all selected channels in parallel
+      const channelStats = {
+        sms: { sent: 0, failed: 0 },
+        email: { sent: 0, failed: 0 },
+        whatsapp: { sent: 0, failed: 0 }
+      };
+
       const results = await Promise.allSettled(
         eligibleStaff.map(async (staffMember) => {
-          console.log(`📤 [Broadcast] Sending to ${staffMember.first_name} (${staffMember.phone})`);
-          const result = await NotificationService.notifyUrgentShift({
-            staff: staffMember,
-            shift: shift,
-            client: client,
-            agency: agency
-          });
-          console.log(`📊 [Broadcast] Result for ${staffMember.first_name}:`, result);
-          return result;
+          console.log(`📤 [Broadcast] Sending to ${staffMember.first_name}`);
+
+          const channelResults = {};
+
+          // SMS Channel
+          if (selectedChannels.includes('sms') && staffMember.phone) {
+            try {
+              const result = await NotificationService.notifyUrgentShift({
+                staff: staffMember,
+                shift: shift,
+                client: client,
+                agency: agency
+              });
+              channelResults.sms = result;
+              if (result.success) channelStats.sms.sent++;
+              else channelStats.sms.failed++;
+            } catch (error) {
+              console.error(`❌ SMS failed for ${staffMember.first_name}:`, error);
+              channelStats.sms.failed++;
+            }
+          }
+
+          // Email Channel
+          if (selectedChannels.includes('email') && staffMember.email) {
+            try {
+              const result = await NotificationService.notifyUrgentShiftEmail({
+                staff: staffMember,
+                shift: shift,
+                client: client,
+                agency: agency
+              });
+              channelResults.email = result;
+              if (result.success) channelStats.email.sent++;
+              else channelStats.email.failed++;
+            } catch (error) {
+              console.error(`❌ Email failed for ${staffMember.first_name}:`, error);
+              channelStats.email.failed++;
+            }
+          }
+
+          // WhatsApp Channel
+          if (selectedChannels.includes('whatsapp') && staffMember.phone && staffMember.whatsapp_opt_in) {
+            try {
+              const result = await NotificationService.notifyUrgentShiftWhatsApp({
+                staff: staffMember,
+                shift: shift,
+                client: client,
+                agency: agency
+              });
+              channelResults.whatsapp = result;
+              if (result.success) channelStats.whatsapp.sent++;
+              else channelStats.whatsapp.failed++;
+            } catch (error) {
+              console.error(`❌ WhatsApp failed for ${staffMember.first_name}:`, error);
+              channelStats.whatsapp.failed++;
+            }
+          }
+
+          return channelResults;
         })
       );
 
-      const successCount = results.filter(r => r.status === 'fulfilled' && r.value?.success).length;
-      const failCount = results.length - successCount;
+      console.log(`✅ [Broadcast] Complete. Stats:`, channelStats);
 
-      console.log(`✅ [Broadcast] Complete: ${successCount} successful, ${failCount} failed`);
-
+      // Update shift with broadcast timestamp
       const { error } = await supabase
         .from('shifts')
         .update({
           broadcast_sent_at: new Date().toISOString()
         })
         .eq('id', shift.id);
-      
+
       if (error) throw error;
 
       queryClient.invalidateQueries(['shifts']);
 
-      if (successCount > 0) {
-        toast.success(`📢 Broadcast sent to ${successCount} staff! ${failCount > 0 ? `(${failCount} failed)` : ''}`);
+      // Build success message with channel breakdown
+      const successMessages = [];
+      if (channelStats.sms.sent > 0) successMessages.push(`📱 SMS: ${channelStats.sms.sent}`);
+      if (channelStats.email.sent > 0) successMessages.push(`📧 Email: ${channelStats.email.sent}`);
+      if (channelStats.whatsapp.sent > 0) successMessages.push(`💬 WhatsApp: ${channelStats.whatsapp.sent}`);
+
+      const totalSent = channelStats.sms.sent + channelStats.email.sent + channelStats.whatsapp.sent;
+      const totalFailed = channelStats.sms.failed + channelStats.email.failed + channelStats.whatsapp.failed;
+
+      if (totalSent > 0) {
+        toast.success(
+          `📢 Broadcast sent! ${successMessages.join(', ')}` +
+          (totalFailed > 0 ? ` (${totalFailed} failed)` : '')
+        );
       } else {
-        toast.error(`Failed to send broadcast to any staff. Check console for details.`);
+        toast.error(`Failed to send broadcast via any channel. Check console for details.`);
       }
 
       setTimeout(() => {
@@ -743,7 +855,7 @@ export default function Shifts() {
       }, 5000);
 
     } catch (error) {
-      console.error('❌ [Broadcast] Error:', error);
+      console.error('❌ [Broadcast] Execution error:', error);
       toast.error(`Broadcast failed: ${error.message}`);
 
       setBroadcastingShiftIds(prev => {
@@ -1679,7 +1791,7 @@ export default function Shifts() {
                                        size="sm"
                                        variant="ghost"
                                        className="h-8 w-8 p-0"
-                                       onClick={() => broadcastUrgentShift(shift)}
+                                       onClick={() => initiateUrgentBroadcast(shift)}
                                        disabled={isBroadcasting}
                                        title="Broadcast Urgent Shift"
                                      >
@@ -1872,7 +1984,7 @@ export default function Shifts() {
                           {(shift.urgency === 'urgent' || shift.urgency === 'critical') && (
                             <Button
                               size="sm"
-                              onClick={() => broadcastUrgentShift(shift)}
+                              onClick={() => initiateUrgentBroadcast(shift)}
                               disabled={isBroadcasting}
                               className={
                                 isBroadcasting ? "bg-green-600" : 
@@ -2235,6 +2347,45 @@ export default function Shifts() {
           clientName={getClientName(completingShift.client_id)}
           onConfirm={handleConfirmCompletion}
           isLoading={completeShiftMutation.isPending}
+        />
+      )}
+
+      {/* 🆕 CHANNEL SELECTOR MODAL */}
+      {showChannelSelector && pendingBroadcastShift && (
+        <ChannelSelectorModal
+          isOpen={showChannelSelector}
+          onClose={() => {
+            setShowChannelSelector(false);
+            setPendingBroadcastShift(null);
+          }}
+          enabledChannels={(() => {
+            const agency = agencies.find(a => a.id === pendingBroadcastShift.agency_id);
+            const urgentSettings = agency?.settings?.urgent_shift_notifications || {};
+            const channels = [];
+            if (urgentSettings.sms_enabled !== false) channels.push('sms');
+            if (urgentSettings.email_enabled === true) channels.push('email');
+            if (urgentSettings.whatsapp_enabled === true) channels.push('whatsapp');
+            return channels;
+          })()}
+          defaultChannels={(() => {
+            const agency = agencies.find(a => a.id === pendingBroadcastShift.agency_id);
+            const urgentSettings = agency?.settings?.urgent_shift_notifications || {};
+            const channels = [];
+            if (urgentSettings.sms_enabled !== false) channels.push('sms');
+            if (urgentSettings.email_enabled === true) channels.push('email');
+            if (urgentSettings.whatsapp_enabled === true) channels.push('whatsapp');
+            return channels;
+          })()}
+          staffCount={staff.filter(s =>
+            s.status === 'active' &&
+            s.role === pendingBroadcastShift.role_required &&
+            s.agency_id === pendingBroadcastShift.agency_id
+          ).length}
+          onConfirm={(selectedChannels) => {
+            setShowChannelSelector(false);
+            executeBroadcast(pendingBroadcastShift, selectedChannels);
+            setPendingBroadcastShift(null);
+          }}
         />
       )}
     </div>
