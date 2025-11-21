@@ -242,8 +242,22 @@ serve(async (req) => {
                                             </p>
                                         </div>
                                     </div>
-                                    <div style="background: #6d28d9; padding: 20px; text-align: center;">
-                                        <p style="color: white; font-size: 12px; margin: 0;">© ${now.getFullYear()} ${agency.name}</p>
+
+                                    <!-- Unsubscribe Link -->
+                                    <div style="background: #f9fafb; padding: 15px; text-align: center;">
+                                        <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                                            <a href="https://agilecaremanagement.co.uk/preferences?email=${encodeURIComponent(admin.email)}" style="color: #64748b; text-decoration: underline;">
+                                                Manage email preferences
+                                            </a>
+                                        </p>
+                                    </div>
+
+                                    <!-- Footer -->
+                                    <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
+                                        <p style="margin: 0; font-size: 13px;">© ${now.getFullYear()} Agile Care Management. All rights reserved.</p>
+                                        <p style="margin: 10px 0 0 0; font-size: 12px;">
+                                            Need help? Contact us at <a href="mailto:support@agilecaremanagement.co.uk" style="color: #06b6d4; text-decoration: none;">support@agilecaremanagement.co.uk</a>
+                                        </p>
                                     </div>
                                 </div>
                             `

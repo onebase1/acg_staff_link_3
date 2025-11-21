@@ -146,14 +146,24 @@ serve(async (req) => {
                                     </div>
 
                                     <p style="font-size: 14px; color: #6b7280; margin: 20px 0 0 0;">
-                                        Questions? Contact us at <a href="mailto:${agency?.contact_email || 'info@agency.com'}" style="color: #0284c7; text-decoration: none;">${agency?.contact_email || 'info@agency.com'}</a> or ${agency?.contact_phone || '01642 255242'}
+                                        Questions? Contact us at <a href="mailto:${agency?.contact_email || 'support@agilecaremanagement.co.uk'}" style="color: #0284c7; text-decoration: none;">${agency?.contact_email || 'support@agilecaremanagement.co.uk'}</a> or ${agency?.contact_phone || '+44 20 1234 5678'}
+                                    </p>
+                                </div>
+
+                                <!-- Unsubscribe Link -->
+                                <div style="background: #f9fafb; padding: 15px; text-align: center;">
+                                    <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                                        <a href="https://agilecaremanagement.co.uk/preferences?email=${encodeURIComponent(queue.recipient_email)}" style="color: #64748b; text-decoration: underline;">
+                                            Manage email preferences
+                                        </a>
                                     </p>
                                 </div>
 
                                 <!-- ✅ FOOTER -->
-                                <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); padding: 20px; text-align: center;">
-                                    <p style="margin: 0; color: #ffffff; font-size: 12px;">
-                                        © ${new Date().getFullYear()} ${agency?.name || 'Your Agency'}
+                                <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
+                                    <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} Agile Care Management. All rights reserved.</p>
+                                    <p style="margin: 10px 0 0 0; font-size: 12px;">
+                                        Need help? Contact us at <a href="mailto:support@agilecaremanagement.co.uk" style="color: #06b6d4; text-decoration: none;">support@agilecaremanagement.co.uk</a>
                                     </p>
                                 </div>
 
@@ -228,10 +238,20 @@ serve(async (req) => {
                                     </p>
                                 </div>
 
+                                <!-- Unsubscribe Link -->
+                                <div style="background: #f9fafb; padding: 15px; text-align: center;">
+                                    <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                                        <a href="https://agilecaremanagement.co.uk/preferences?email=${encodeURIComponent(queue.recipient_email)}" style="color: #64748b; text-decoration: underline;">
+                                            Manage email preferences
+                                        </a>
+                                    </p>
+                                </div>
+
                                 <!-- FOOTER -->
-                                <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); padding: 20px; text-align: center;">
-                                    <p style="margin: 0; color: #ffffff; font-size: 12px;">
-                                        © ${new Date().getFullYear()} ACG StaffLink
+                                <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
+                                    <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} Agile Care Management. All rights reserved.</p>
+                                    <p style="margin: 10px 0 0 0; font-size: 12px;">
+                                        Need help? Contact us at <a href="mailto:support@agilecaremanagement.co.uk" style="color: #06b6d4; text-decoration: none;">support@agilecaremanagement.co.uk</a>
                                     </p>
                                 </div>
 
@@ -247,7 +267,7 @@ serve(async (req) => {
                         to: queue.recipient_email,
                         subject: subject,
                         html: emailHtml,
-                        from_name: agency?.name || 'ACG StaffLink'
+                        from_name: agency?.name || 'Agile Care Management'
                     }
                 });
 

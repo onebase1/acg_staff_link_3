@@ -55,11 +55,31 @@ serve(async (req) => {
             staff_name,
             client_name,
             shift_date,
-            shift_time
+            shift_time,
+            agency_id
         } = await req.json();
 
         const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
         const RESEND_FROM_DOMAIN = Deno.env.get("RESEND_FROM_DOMAIN") || "agilecaremanagement.co.uk";
+
+        // Fetch agency details for contact information
+        let agency = null;
+        if (agency_id) {
+            const { data: agencyData, error: agencyError } = await supabase
+                .from('agencies')
+                .select('id, name, email, phone, contact_phone, logo_url')
+                .eq('id', agency_id)
+                .single();
+
+            if (!agencyError && agencyData) {
+                agency = agencyData;
+            }
+        }
+
+        // Fallback agency contact info
+        const agencyName = agency?.name || 'Agile Care Management';
+        const agencyPhone = agency?.phone || agency?.contact_phone || '+44 20 1234 5678';
+        const agencyEmail = agency?.email || 'support@agilecaremanagement.co.uk';
 
         const notifications = [];
 
@@ -94,7 +114,7 @@ serve(async (req) => {
             // Notify Staff
             if (staff_email) {
                 notifications.push({
-                    from: `ACG StaffLink <noreply@${RESEND_FROM_DOMAIN}>`,
+                    from: `Agile Care Management <noreply@${RESEND_FROM_DOMAIN}>`,
                     to: [staff_email],
                     subject: `SHIFT CANCELLED - ${client_name} on ${shift_date}`,
                     html: email_body(staff_name || 'Staff Member')
@@ -104,7 +124,7 @@ serve(async (req) => {
             // Notify Client
             if (client_email) {
                 notifications.push({
-                    from: `ACG StaffLink <noreply@${RESEND_FROM_DOMAIN}>`,
+                    from: `Agile Care Management <noreply@${RESEND_FROM_DOMAIN}>`,
                     to: [client_email],
                     subject: `Shift Cancellation for ${shift_date}`,
                     html: email_body(client_name || 'Team')
@@ -136,7 +156,20 @@ serve(async (req) => {
                             </p>
                             <p style="margin: 10px 0 0 0; color: #991b1b; font-size: 14px;">
                                 If you did NOT authorize this change, your account may be compromised.<br/>
-                                <strong>CONTACT AGENCY IMMEDIATELY: +44 XXX XXX XXXX</strong>
+                                <strong>CONTACT ${agencyName} IMMEDIATELY:</strong><br/>
+                                📱 ${agencyPhone}<br/>
+                                📧 <a href="mailto:${agencyEmail}" style="color: #991b1b; text-decoration: underline;">${agencyEmail}</a>
+                            </p>
+                        </div>
+
+                        <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 20px; margin: 25px 0; border-radius: 8px;">
+                            <p style="margin: 0 0 10px 0; color: #0c4a6e; font-size: 15px; font-weight: bold;">
+                                📞 Need Help?
+                            </p>
+                            <p style="margin: 0; color: #0c4a6e; font-size: 14px; line-height: 1.8;">
+                                Contact ${agencyName}:<br/>
+                                📧 <a href="mailto:${agencyEmail}" style="color: #0284c7; text-decoration: none;">${agencyEmail}</a><br/>
+                                📱 ${agencyPhone}
                             </p>
                         </div>
 
@@ -146,11 +179,19 @@ serve(async (req) => {
                             IP Address: [Logged for security]
                         </p>
                     </div>
+
+                    <!-- Footer -->
+                    <div style="background: #1e293b; color: #94a3b8; padding: 25px 30px; text-align: center; border-radius: 0 0 10px 10px;">
+                        <p style="margin: 0; font-size: 13px;">© 2025 Agile Care Management. All rights reserved.</p>
+                        <p style="margin: 10px 0 0 0; font-size: 12px;">
+                            Need help? Contact us at <a href="mailto:support@agilecaremanagement.co.uk" style="color: #06b6d4; text-decoration: none;">support@agilecaremanagement.co.uk</a>
+                        </p>
+                    </div>
                 </div>
             `;
 
             notifications.push({
-                from: `ACG StaffLink Security <noreply@${RESEND_FROM_DOMAIN}>`,
+                from: `Agile Care Management <noreply@${RESEND_FROM_DOMAIN}>`,
                 to: [staff_email],
                 subject: `🔒 SECURITY ALERT: Your Bank Details Were Changed`,
                 html: html
@@ -178,15 +219,34 @@ serve(async (req) => {
                             </p>
                         </div>
 
+                        <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 20px; margin: 25px 0; border-radius: 8px;">
+                            <p style="margin: 0 0 10px 0; color: #0c4a6e; font-size: 15px; font-weight: bold;">
+                                📞 Questions?
+                            </p>
+                            <p style="margin: 0; color: #0c4a6e; font-size: 14px; line-height: 1.8;">
+                                Contact ${agencyName}:<br/>
+                                📧 <a href="mailto:${agencyEmail}" style="color: #0284c7; text-decoration: none;">${agencyEmail}</a><br/>
+                                📱 ${agencyPhone}
+                            </p>
+                        </div>
+
                         <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
                             This adjustment was made by ${user.user_metadata?.full_name || user.email} on ${new Date().toLocaleString()}
+                        </p>
+                    </div>
+
+                    <!-- Footer -->
+                    <div style="background: #1e293b; color: #94a3b8; padding: 25px 30px; text-align: center; border-radius: 0 0 10px 10px;">
+                        <p style="margin: 0; font-size: 13px;">© 2025 Agile Care Management. All rights reserved.</p>
+                        <p style="margin: 10px 0 0 0; font-size: 12px;">
+                            Need help? Contact us at <a href="mailto:support@agilecaremanagement.co.uk" style="color: #06b6d4; text-decoration: none;">support@agilecaremanagement.co.uk</a>
                         </p>
                     </div>
                 </div>
             `;
 
             notifications.push({
-                from: `ACG StaffLink <noreply@${RESEND_FROM_DOMAIN}>`,
+                from: `Agile Care Management <noreply@${RESEND_FROM_DOMAIN}>`,
                 to: [staff_email],
                 subject: `💰 Pay Rate Adjusted - ${client_name} on ${shift_date}`,
                 html: html
@@ -218,7 +278,22 @@ serve(async (req) => {
 
                         <div style="background: #fef2f2; border: 1px solid #fca5a5; padding: 15px; margin: 20px 0; border-radius: 5px;">
                             <p style="margin: 0; color: #991b1b; font-size: 14px;">
-                                <strong>ACTION REQUIRED:</strong> If these changes are incorrect or you can no longer work this shift, please contact the agency immediately.
+                                <strong>ACTION REQUIRED:</strong> If these changes are incorrect or you can no longer work this shift, please contact ${agencyName} immediately at:
+                            </p>
+                            <p style="margin: 10px 0 0 0; color: #991b1b; font-size: 14px;">
+                                📱 ${agencyPhone}<br/>
+                                📧 <a href="mailto:${agencyEmail}" style="color: #991b1b; text-decoration: underline;">${agencyEmail}</a>
+                            </p>
+                        </div>
+
+                        <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 20px; margin: 25px 0; border-radius: 8px;">
+                            <p style="margin: 0 0 10px 0; color: #0c4a6e; font-size: 15px; font-weight: bold;">
+                                📞 Need Help?
+                            </p>
+                            <p style="margin: 0; color: #0c4a6e; font-size: 14px; line-height: 1.8;">
+                                Contact ${agencyName}:<br/>
+                                📧 <a href="mailto:${agencyEmail}" style="color: #0284c7; text-decoration: none;">${agencyEmail}</a><br/>
+                                📱 ${agencyPhone}
                             </p>
                         </div>
 
@@ -227,11 +302,19 @@ serve(async (req) => {
                             Timestamp: ${new Date().toISOString()}
                         </p>
                     </div>
+
+                    <!-- Footer -->
+                    <div style="background: #1e293b; color: #94a3b8; padding: 25px 30px; text-align: center; border-radius: 0 0 10px 10px;">
+                        <p style="margin: 0; font-size: 13px;">© 2025 Agile Care Management. All rights reserved.</p>
+                        <p style="margin: 10px 0 0 0; font-size: 12px;">
+                            Need help? Contact us at <a href="mailto:support@agilecaremanagement.co.uk" style="color: #06b6d4; text-decoration: none;">support@agilecaremanagement.co.uk</a>
+                        </p>
+                    </div>
                 </div>
             `;
 
             notifications.push({
-                from: `ACG StaffLink <noreply@${RESEND_FROM_DOMAIN}>`,
+                from: `Agile Care Management <noreply@${RESEND_FROM_DOMAIN}>`,
                 to: [staff_email],
                 subject: `⚠️ Shift Update for ${client_name} on ${shift_date}`,
                 html: html
@@ -244,7 +327,7 @@ serve(async (req) => {
             if (staff_email) {
                 const html = `
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <!-- Header: ACG StaffLink Standard Gradient -->
+                        <!-- Header -->
                         <div style="background: linear-gradient(to right, #06b6d4, #3b82f6); color: white; padding: 40px 30px; text-align: center;">
                             <h1 style="margin: 0; font-size: 28px; font-weight: 600;">Shift Update Notice</h1>
                         </div>
@@ -263,12 +346,16 @@ serve(async (req) => {
                                 </p>
                             </div>
 
-                            <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 20px; margin: 25px 0;">
-                                <p style="margin: 0 0 10px 0; color: #0c4a6e; font-size: 15px; font-weight: bold;">
-                                    ⚠️ ACTION REQUIRED (if this is an error):
+                            <div style="background: #fef2f2; border: 1px solid #fca5a5; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                                <p style="margin: 0; color: #991b1b; font-size: 14px;">
+                                    <strong>⚠️ ACTION REQUIRED (if this is an error):</strong>
                                 </p>
-                                <p style="margin: 0; color: #0c4a6e; font-size: 14px; line-height: 1.6;">
-                                    If you <strong>planned to work</strong> or <strong>already worked</strong> this shift, please contact the agency immediately.
+                                <p style="margin: 10px 0 0 0; color: #991b1b; font-size: 14px; line-height: 1.6;">
+                                    If you <strong>planned to work</strong> or <strong>already worked</strong> this shift, please contact ${agencyName} immediately at:
+                                </p>
+                                <p style="margin: 10px 0 0 0; color: #991b1b; font-size: 14px;">
+                                    📱 ${agencyPhone}<br/>
+                                    📧 <a href="mailto:${agencyEmail}" style="color: #991b1b; text-decoration: underline;">${agencyEmail}</a>
                                 </p>
                             </div>
 
@@ -278,20 +365,34 @@ serve(async (req) => {
                                 </p>
                             </div>
 
+                            <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 20px; margin: 25px 0; border-radius: 8px;">
+                                <p style="margin: 0 0 10px 0; color: #0c4a6e; font-size: 15px; font-weight: bold;">
+                                    📞 Need Help?
+                                </p>
+                                <p style="margin: 0; color: #0c4a6e; font-size: 14px; line-height: 1.8;">
+                                    Contact ${agencyName}:<br/>
+                                    📧 <a href="mailto:${agencyEmail}" style="color: #0284c7; text-decoration: none;">${agencyEmail}</a><br/>
+                                    📱 ${agencyPhone}
+                                </p>
+                            </div>
+
                             <p style="color: #6b7280; font-size: 13px; margin-top: 30px; line-height: 1.6;">
                                 This is an automated notification to protect both you and the agency from payroll errors.
                             </p>
                         </div>
 
-                        <!-- Footer: ACG StaffLink Standard -->
-                        <div style="background: #1e293b; color: #94a3b8; padding: 25px 30px; text-align: center;">
-                            <p style="margin: 0; font-size: 13px;">© 2025 ACG StaffLink. All rights reserved.</p>
+                        <!-- Footer -->
+                        <div style="background: #1e293b; color: #94a3b8; padding: 25px 30px; text-align: center; border-radius: 0 0 10px 10px;">
+                            <p style="margin: 0; font-size: 13px;">© 2025 Agile Care Management. All rights reserved.</p>
+                            <p style="margin: 10px 0 0 0; font-size: 12px;">
+                                Need help? Contact us at <a href="mailto:support@agilecaremanagement.co.uk" style="color: #06b6d4; text-decoration: none;">support@agilecaremanagement.co.uk</a>
+                            </p>
                         </div>
                     </div>
                 `;
 
                 notifications.push({
-                    from: `ACG StaffLink <noreply@${RESEND_FROM_DOMAIN}>`,
+                    from: `Agile Care Management <noreply@${RESEND_FROM_DOMAIN}>`,
                     to: [staff_email],
                     subject: `Shift Update - You've been removed from ${client_name} on ${shift_date}`,
                     html: html

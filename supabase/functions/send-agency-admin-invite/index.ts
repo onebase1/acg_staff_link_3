@@ -90,25 +90,62 @@ function buildInviteEmail({
   return {
     subject: `Activate your Agile Care Management access for ${safeAgency}`,
     html: `
-      <div style="font-family: Arial, sans-serif; color: #0f172a;">
-        <h2 style="color:#0284c7;">Welcome to Agile Care Management</h2>
-        <p>Hi ${safeName},</p>
-        <p>You have been invited to manage <strong>${safeAgency}</strong> on the Agile Care Management platform.</p>
-        <p>To get started, please secure your account by setting a password:</p>
-        <p style="margin: 24px 0;">
-          <a href="${actionLink}" style="background:#0284c7;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold;">
-            Set your password
-          </a>
-        </p>
-        <p>This link is unique to you and will expire shortly for security reasons. If it expires, the super admin can resend a fresh invite anytime.</p>
-        <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;" />
-        ${bankDetailsSection}
-        <p style="font-size:12px;color:#64748b;">
-          If you did not expect this invitation, contact the platform owner immediately or ignore this email.
-        </p>
-        <p style="font-size:12px;color:#64748b;">
-          Need help? Visit <a href="${siteUrl}" style="color:#0284c7;">Agile Care Management</a>.
-        </p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="margin: 0; font-size: 28px; font-weight: 600;">Welcome to Agile Care Management</h1>
+        </div>
+
+        <!-- Body -->
+        <div style="background: #fff; padding: 40px 30px; border: 1px solid #e5e7eb; border-top: none;">
+          <p style="font-size: 16px; color: #1f2937; margin-bottom: 20px;">Hi ${safeName},</p>
+          <p style="font-size: 16px; color: #1f2937; line-height: 1.6; margin-bottom: 25px;">
+            You have been invited to manage <strong>${safeAgency}</strong> on the Agile Care Management platform.
+          </p>
+          <p style="font-size: 16px; color: #1f2937; line-height: 1.6; margin-bottom: 30px;">
+            To get started, please secure your account by setting a password:
+          </p>
+
+          <!-- CTA Button -->
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${actionLink}" style="display: inline-block; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #fff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">
+              Set Your Password
+            </a>
+          </div>
+
+          <p style="font-size: 14px; color: #6b7280; line-height: 1.6; margin: 25px 0;">
+            This link is unique to you and will expire shortly for security reasons. If it expires, the super admin can resend a fresh invite anytime.
+          </p>
+
+          ${bankDetailsSection ? `<hr style="border:none;border-top:1px solid #e2e8f0;margin:30px 0;" />` : ''}
+          ${bankDetailsSection}
+
+          <!-- Security Notice -->
+          <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 15px; margin: 25px 0; border-radius: 8px;">
+            <p style="margin: 0; font-size: 13px; color: #0c4a6e; line-height: 1.6;">
+              <strong>Security Notice:</strong> If you did not expect this invitation, please contact the platform owner immediately or ignore this email.
+            </p>
+          </div>
+
+          <!-- Help Section -->
+          <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 25px 0;">
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: #374151; font-weight: bold;">
+              📞 Need Help?
+            </p>
+            <p style="margin: 0; font-size: 14px; color: #6b7280; line-height: 1.6;">
+              Visit <a href="${siteUrl}" style="color: #0284c7; text-decoration: none;">Agile Care Management</a> or contact us at
+              <a href="mailto:support@agilecaremanagement.co.uk" style="color: #0284c7; text-decoration: none;">support@agilecaremanagement.co.uk</a>
+            </p>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background: #1e293b; color: #94a3b8; padding: 25px 30px; text-align: center; border-radius: 0 0 10px 10px;">
+          <p style="margin: 0; font-size: 13px;">© 2025 Agile Care Management. All rights reserved.</p>
+          <p style="margin: 10px 0 0 0; font-size: 12px;">
+            Need help? Contact us at <a href="mailto:support@agilecaremanagement.co.uk" style="color: #06b6d4; text-decoration: none;">support@agilecaremanagement.co.uk</a>
+          </p>
+        </div>
       </div>
     `,
   };

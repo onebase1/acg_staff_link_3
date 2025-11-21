@@ -52,7 +52,7 @@ function SignInForm({ onSuccess }) {
           id="signin-email"
           type="email"
           autoComplete="email"
-          placeholder="you@example.com"
+          placeholder="you@agilecaremanagement.co.uk"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           required
@@ -234,7 +234,7 @@ function SignUpForm({ onSuccess }) {
           id="signup-email"
           type="email"
           autoComplete="email"
-          placeholder="your.email@example.com"
+          placeholder="your.email@agilecaremanagement.co.uk"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           disabled={!!prefilledEmail} // Lock email if from invitation link
@@ -290,11 +290,11 @@ function SignUpForm({ onSuccess }) {
         />
         <label htmlFor="terms" className="leading-relaxed">
           I agree to the{" "}
-          <a href="https://guest-glow.com/terms" target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">
+          <a href="https://agilecaremanagement.co.uk/terms" target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">
             Terms of Service
           </a>{" "}
           and{" "}
-          <a href="https://guest-glow.com/privacy" target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">
+          <a href="https://agilecaremanagement.co.uk/privacy" target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">
             Privacy Policy
           </a>
         </label>
@@ -311,7 +311,7 @@ function SignUpForm({ onSuccess }) {
           <AlertCircle className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-900 text-sm">
             <strong>Invitation-Only Platform</strong><br />
-            ACG StaffLink requires an invitation. If you don't have one, your account will be reviewed by our team (usually within 24 hours).
+            Agile Care Management requires an invitation. If you don't have one, your account will be reviewed by our team (usually within 24 hours).
           </AlertDescription>
         </Alert>
       )}
@@ -348,7 +348,7 @@ function ForgotPasswordForm({ onSuccess }) {
           id="forgot-email"
           type="email"
           autoComplete="email"
-          placeholder="operations@example.com"
+          placeholder="support@agilecaremanagement.co.uk"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           required
@@ -441,46 +441,43 @@ export default function Login() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.2),_transparent_55%)]" />
           <div className="relative z-10">
             <div className="flex items-center gap-3 text-sm font-semibold uppercase tracking-widest text-white/90">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 border border-white/20">
-                ACG
-              </div>
+              <img src="/ACGTransLogo.png" alt="Agile Care Management" className="h-10 w-10 object-contain" />
               Agile Care Management
             </div>
             <h1 className="mt-10 text-3xl font-semibold leading-tight md:text-4xl">
-              Enterprise-grade workforce orchestration for multi-tenant care teams.
+              Simplifying care home staffing with smart technology.
             </h1>
             <p className="mt-6 max-w-xl text-base text-white/80">
-              Unified staffing, compliance, finance, and communications—powered by Supabase and AI-driven automations.
-              Seamless SSO-ready architecture aligned with NHS DSPT and ISO 27001 best practices.
+              Manage shifts, compliance, and timesheets in one place. GPS clock-in, instant notifications, and automated workflows designed for care professionals.
             </p>
           </div>
           <div className="relative z-10 mt-12 grid gap-6 text-sm text-white/85">
             <div className="rounded-xl border border-white/15 bg-white/10 p-4 shadow-lg backdrop-blur">
-              <h3 className="font-semibold">Operational command hub</h3>
+              <h3 className="font-semibold">Easy Shift Management</h3>
               <p className="mt-2 text-white/70">
-                Real-time shift orchestration, anomaly detection, and automated timesheet pipelines.
+                Accept shifts instantly, view your schedule, and get reminders before each shift.
               </p>
             </div>
             <div className="rounded-xl border border-white/15 bg-white/10 p-4 shadow-lg backdrop-blur">
-              <h3 className="font-semibold">Financial guardrails</h3>
+              <h3 className="font-semibold">GPS Clock-In/Out</h3>
               <p className="mt-2 text-white/70">
-                Automated invoice generation, dispute management, BI-grade reporting, and audited change logs.
+                Clock in when you arrive at the care home. Automatic timesheet generation and approval.
               </p>
             </div>
             <div className="rounded-xl border border-white/15 bg-white/10 p-4 shadow-lg backdrop-blur">
-              <h3 className="font-semibold">Compliance by design</h3>
+              <h3 className="font-semibold">Compliance Made Simple</h3>
               <p className="mt-2 text-white/70">
-                Enforced RBAC, full audit trails, secure file storage, and policy-driven onboarding workflows.
+                Upload certificates once, get reminders before expiry. Stay compliant effortlessly.
               </p>
             </div>
           </div>
           <div className="relative z-10 mt-10 text-xs text-white/60">
-            Need a bespoke deployment or SSO handshake?{" "}
+            Need help or have questions?{" "}
             <a
-              href="mailto:enterprise@guest-glow.com"
+              href="mailto:support@agilecaremanagement.co.uk"
               className="font-medium text-white hover:underline"
             >
-              enterprise@guest-glow.com
+              support@agilecaremanagement.co.uk
             </a>
           </div>
         </aside>
@@ -491,9 +488,7 @@ export default function Login() {
           <div className="w-full max-w-lg">
             <div className="lg:hidden mb-6 text-center">
               <div className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-slate-700 mb-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white font-bold">
-                  ACG
-                </div>
+                <img src="/ACGTransLogo.png" alt="Agile Care Management" className="h-10 w-10 object-contain" />
                 <span>Agile Care Management</span>
               </div>
             </div>
@@ -501,7 +496,7 @@ export default function Login() {
             <Card className="w-full border-slate-200 shadow-2xl">
               <CardHeader>
                 <CardTitle className="text-xl lg:text-2xl font-semibold">
-                  {view === VIEW.SIGN_IN && "Sign in to ACG StaffLink"}
+                  {view === VIEW.SIGN_IN && "Sign in to Agile Care Management"}
                   {view === VIEW.SIGN_UP && "Create your account"}
                   {view === VIEW.FORGOT_PASSWORD && "Reset your password"}
                 </CardTitle>
@@ -509,7 +504,7 @@ export default function Login() {
                   {view === VIEW.SIGN_IN &&
                     "Secure access for admins, agencies, and staff portals."}
                   {view === VIEW.SIGN_UP &&
-                    "Join ACG StaffLink with an invitation or request access."}
+                    "Join Agile Care Management with an invitation or request access."}
                   {view === VIEW.FORGOT_PASSWORD &&
                     "We will send a single-use recovery link to your verified email."}
                 </CardDescription>

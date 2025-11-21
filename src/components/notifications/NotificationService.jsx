@@ -407,14 +407,20 @@ export const NotificationService = {
                 days_until_expiry <= 7 ? ' You will be unable to accept new shifts if this document expires.' : ''
               }`
             })}
+
+            ${EmailTemplates.ctaButton({
+              text: 'Update My Documents',
+              url: 'https://agilecaremanagement.co.uk/staff-portal',
+              bgColor: bgColor
+            })}
           `
         })}
       `
     });
 
-    results.email = await this.sendEmail({ 
-      to: staff.email, 
-      subject: `${urgencyLevel}: ${document.document_name} Expiring Soon (${agencyName})`, 
+    results.email = await this.sendEmail({
+      to: staff.email,
+      subject: `${urgencyLevel}: ${document.document_name} Expiring Soon (${agencyName})`,
       html,
       from_name: agencyName
     });
@@ -489,8 +495,14 @@ export const NotificationService = {
                 • Arrive 10 minutes before your shift start time<br>
                 • Bring your ID badge and any required documentation<br>
                 • Clock in via the app when you arrive<br>
-                • Contact us immediately if you're running late or cannot attend
+                • Contact ${agencyName} at ${agency?.phone || agency?.contact_phone || 'your agency'} immediately if you're running late or cannot attend
               `
+            })}
+
+            ${EmailTemplates.ctaButton({
+              text: 'Go to Staff Portal',
+              url: 'https://agilecaremanagement.co.uk/staff-portal',
+              bgColor: '#10b981'
             })}
           `
         })}
@@ -570,16 +582,22 @@ export const NotificationService = {
             ${EmailTemplates.alertBox({
               type: 'warning',
               title: '⚠️ Important',
-              message: 'If you cannot attend this shift, please contact us immediately. Last-minute cancellations affect client care.'
+              message: `If you cannot attend this shift, please contact ${agencyName} at ${agency?.phone || agency?.contact_phone || 'your agency'} immediately. Last-minute cancellations affect client care.`
+            })}
+
+            ${EmailTemplates.ctaButton({
+              text: 'View Shift Details',
+              url: 'https://agilecaremanagement.co.uk/staff-portal',
+              bgColor: '#f59e0b'
             })}
           `
         })}
       `
     });
 
-    results.email = await this.sendEmail({ 
-      to: staff.email, 
-      subject: `Shift Reminder - Tomorrow at ${client.name}`, 
+    results.email = await this.sendEmail({
+      to: staff.email,
+      subject: `Shift Reminder - Tomorrow at ${client.name}`,
       html,
       from_name: agencyName
     });
