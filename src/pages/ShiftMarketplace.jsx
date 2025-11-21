@@ -148,6 +148,10 @@ export default function ShiftMarketplace() {
 
       console.log('📅 Staff already working on:', assignedShiftDates);
 
+      // ✅ Get today's date for filtering past shifts
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Normalize to start of day
+
       // CRITICAL: Only show truly UNASSIGNED open shifts that match staff role
       const openShifts = allShifts.filter(shift => {
         // Must be open status
@@ -163,6 +167,14 @@ export default function ShiftMarketplace() {
         // Staff should NEVER see shifts for roles they can't work
         // Even if marketplace_visible=true, role must match
         if (shift.role_required !== staffProfile.role) return false;
+
+        // ✅ CRITICAL FIX: Only show future or today's shifts (no past shifts)
+        const shiftDate = new Date(shift.date);
+        shiftDate.setHours(0, 0, 0, 0); // Normalize to start of day
+        if (shiftDate < today) {
+          console.log(`🚫 Filtering out past shift on ${shift.date}`);
+          return false;
+        }
 
         // ✅ CRITICAL FIX: Check for double-booking
         // Staff should NOT see shifts on days they're already working
