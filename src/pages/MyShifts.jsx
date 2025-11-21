@@ -188,6 +188,7 @@ export default function MyShifts() {
                 .rdp {
                   width: 100%;
                   margin: 0;
+                  --rdp-cell-size: 40px;
                 }
                 .rdp-months {
                   width: 100%;
@@ -198,6 +199,14 @@ export default function MyShifts() {
                 .rdp-table {
                   width: 100%;
                   max-width: 100%;
+                  table-layout: fixed;
+                }
+                .rdp-cell {
+                  width: 14.28%;
+                  text-align: center;
+                }
+                .rdp-day {
+                  width: 100%;
                 }
 
                 /* Style dates with shifts - bold + circle + color */
