@@ -152,8 +152,49 @@ export default function SuperAdminAgencyOnboarding() {
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (!form.agencyName || !form.contactEmail || !form.adminEmail) {
-      toast.error("Agency name, contact email, and admin email are mandatory.");
+    // ✅ ENHANCED VALIDATION: Check all critical fields
+    const errors = [];
+
+    if (!form.agencyName) errors.push("Agency name");
+    if (!form.contactEmail) errors.push("Contact email");
+    if (!form.contactPhone) errors.push("Contact phone number");
+    if (!form.adminEmail) errors.push("Admin email");
+
+    if (errors.length > 0) {
+      toast.error(
+        <div>
+          <p className="font-bold">❌ Missing Required Fields</p>
+          <p className="text-sm mt-1">Please provide: {errors.join(", ")}</p>
+          <p className="text-xs mt-2 text-red-200">
+            Contact email and phone are critical for staff notifications!
+          </p>
+        </div>,
+        { duration: 6000 }
+      );
+      return;
+    }
+
+    // ✅ EMAIL VALIDATION
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.contactEmail)) {
+      toast.error("Contact email is invalid");
+      return;
+    }
+    if (!emailRegex.test(form.adminEmail)) {
+      toast.error("Admin email is invalid");
+      return;
+    }
+
+    // ✅ PHONE VALIDATION (UK format)
+    const phoneRegex = /^(\+44|0)[0-9\s]{9,13}$/;
+    if (!phoneRegex.test(form.contactPhone.replace(/\s/g, ''))) {
+      toast.error(
+        <div>
+          <p className="font-bold">❌ Invalid Phone Number</p>
+          <p className="text-sm mt-1">Please use UK format: +44 20 1234 5678 or 020 1234 5678</p>
+        </div>,
+        { duration: 5000 }
+      );
       return;
     }
 
@@ -244,12 +285,16 @@ export default function SuperAdminAgencyOnboarding() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="contact-phone">Contact Phone</Label>
+                  <Label htmlFor="contact-phone">Contact Phone *</Label>
                   <Input
                     id="contact-phone"
                     value={form.contactPhone}
                     onChange={handleChange("contactPhone")}
+                    placeholder="+44 20 1234 5678"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Required for staff notifications (shift confirmations, reminders)
+                  </p>
                 </div>
                 <div>
                   <Label htmlFor="billing-email">Billing Email</Label>

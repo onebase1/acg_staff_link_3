@@ -227,6 +227,54 @@ export default function AgencySettings() {
       toast.info('No changes to save');
       return;
     }
+
+    // ✅ VALIDATION: Check critical fields before saving
+    const finalData = { ...agency, ...pendingChanges };
+    const errors = [];
+
+    // Check contact email
+    if (!finalData.contact_email || finalData.contact_email.trim() === '') {
+      errors.push("Contact email is required");
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(finalData.contact_email)) {
+        errors.push("Contact email is invalid");
+      }
+    }
+
+    // Check contact phone
+    if (!finalData.contact_phone || finalData.contact_phone.trim() === '') {
+      errors.push("Contact phone is required");
+    } else {
+      const phoneRegex = /^(\+44|0)[0-9\s]{9,13}$/;
+      if (!phoneRegex.test(finalData.contact_phone.replace(/\s/g, ''))) {
+        errors.push("Contact phone must be UK format (+44 20 1234 5678)");
+      }
+    }
+
+    // Check agency name
+    if (!finalData.name || finalData.name.trim() === '') {
+      errors.push("Agency name is required");
+    }
+
+    if (errors.length > 0) {
+      toast.error(
+        <div>
+          <p className="font-bold">❌ Cannot Save - Validation Errors</p>
+          <ul className="text-sm mt-2 list-disc list-inside">
+            {errors.map((error, idx) => (
+              <li key={idx}>{error}</li>
+            ))}
+          </ul>
+          <p className="text-xs mt-2 text-red-200">
+            Contact email and phone are critical for staff notifications!
+          </p>
+        </div>,
+        { duration: 8000 }
+      );
+      return;
+    }
+
     updateAgencyMutation.mutate(pendingChanges);
   };
 
@@ -510,6 +558,15 @@ export default function AgencySettings() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
+          {(!agency?.contact_email || !agency?.contact_phone) && (
+            <Alert className="mb-6 border-red-300 bg-red-50">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <AlertDescription className="text-red-900">
+                <strong>⚠️ CRITICAL:</strong> Contact email and phone are missing!
+                Staff will not receive shift notifications until this is configured.
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <Label className="font-semibold mb-2 flex items-center gap-2">
@@ -542,7 +599,7 @@ export default function AgencySettings() {
 
             <div>
               <Label className="font-semibold mb-2 flex items-center gap-2">
-                Phone Number
+                Phone Number <span className="text-red-500">*</span>
                 {hasChange('contact_phone') && (
                   <Badge className="bg-yellow-500 text-white text-xs">Modified</Badge>
                 )}
@@ -551,7 +608,11 @@ export default function AgencySettings() {
                 value={getValue('contact_phone')}
                 onChange={(e) => setChange('contact_phone', e.target.value)}
                 className={hasChange('contact_phone') ? 'border-yellow-400 border-2' : ''}
+                placeholder="+44 20 1234 5678"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Required for staff notifications (shift confirmations, reminders)
+              </p>
             </div>
 
             <div>

@@ -413,6 +413,17 @@ export const NotificationService = {
               url: 'https://agilecaremanagement.co.uk/staff-portal',
               bgColor: bgColor
             })}
+
+            <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 20px; margin: 25px 0; border-radius: 8px;">
+              <p style="margin: 0 0 10px 0; color: #0c4a6e; font-size: 15px; font-weight: bold;">
+                📞 Need Help?
+              </p>
+              <p style="margin: 0; color: #0c4a6e; font-size: 14px; line-height: 1.8;">
+                Contact ${agencyName}:<br/>
+                📧 <a href="mailto:${agency?.contact_email || 'support@agilecaremanagement.co.uk'}" style="color: #0284c7; text-decoration: none;">${agency?.contact_email || 'support@agilecaremanagement.co.uk'}</a><br/>
+                📱 ${agency?.contact_phone || '+44 20 1234 5678'}
+              </p>
+            </div>
           `
         })}
       `
@@ -495,7 +506,9 @@ export const NotificationService = {
                 • Arrive 10 minutes before your shift start time<br>
                 • Bring your ID badge and any required documentation<br>
                 • Clock in via the app when you arrive<br>
-                • Contact ${agencyName} at ${agency?.phone || agency?.contact_phone || 'your agency'} immediately if you're running late or cannot attend
+                • Contact ${agencyName} immediately if you're running late or cannot attend:<br>
+                &nbsp;&nbsp;📧 ${agency?.contact_email || 'support@agilecaremanagement.co.uk'}<br>
+                &nbsp;&nbsp;📱 ${agency?.contact_phone || '+44 20 1234 5678'}
               `
             })}
 
@@ -582,7 +595,9 @@ export const NotificationService = {
             ${EmailTemplates.alertBox({
               type: 'warning',
               title: '⚠️ Important',
-              message: `If you cannot attend this shift, please contact ${agencyName} at ${agency?.phone || agency?.contact_phone || 'your agency'} immediately. Last-minute cancellations affect client care.`
+              message: `If you cannot attend this shift, please contact ${agencyName} immediately. Last-minute cancellations affect client care.<br><br>
+                📧 ${agency?.contact_email || 'support@agilecaremanagement.co.uk'}<br>
+                📱 ${agency?.contact_phone || '+44 20 1234 5678'}`
             })}
 
             ${EmailTemplates.ctaButton({
