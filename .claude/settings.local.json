@@ -54,7 +54,10 @@
       "Bash(/c/Users/gbase/superbasecli/supabase.exe functions list:*)",
       "Bash(./supabase.exe functions download:*)",
       "Bash(./supabase.exe secrets get:*)",
-      "Bash(./supabase.exe secrets set:*)"
+      "Bash(./supabase.exe secrets set:*)",
+      "Bash(./supabase.exe db query:*)",
+      "Bash(python:*)",
+      "Bash(./supabase.exe functions deploy:*)"
     ],
     "deny": [],
     "ask": []

@@ -10,10 +10,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * AUTOMATIONS:
  * 0. Past shifts → awaiting_admin_closure (48h after scheduled end_time, handles overnight shifts)
  * 1. confirmed → in_progress (when shift start time reached)
- * 2. in_progress → awaiting_admin_closure OR completed (when shift end time reached)
+ * 2. in_progress → awaiting_admin_closure OR completed (2h after shift end time + grace period)
  *
- * ✅ FIXED: Uses scheduled end_time + 48h grace period (not just shift date)
+ * ✅ FIXED: Uses scheduled end_time + 48h grace period for past shifts (SQL function)
+ * ✅ FIXED: Uses scheduled end_time + 2h grace period for today's shifts (Edge function)
  * ✅ FIXED: Handles overnight shifts (end_time < start_time means next day)
+ * 🎯 GRACE PERIOD: Staff can clock out with GPS up to 2 hours after scheduled end
  * Creates admin_workflows for all shifts moved to awaiting_admin_closure
  */
 
@@ -182,8 +184,11 @@ serve(async (req) => {
                 }
 
                 // ✅ FIXED: AUTOMATION 2: Shift should end (in_progress → awaiting_admin_closure OR auto-complete)
-                if (shift.status === 'in_progress' && now >= endDateTime) {
-                    console.log(`🟠 [Shift Automation] Ending shift ${shift.id.substring(0, 8)} - checking for auto-verification...`);
+                // 🎯 GRACE PERIOD: Give staff 2 hours after scheduled end to clock out with GPS
+                const twoHoursAfterEnd = new Date(endDateTime.getTime() + 2 * 60 * 60 * 1000);
+
+                if (shift.status === 'in_progress' && now >= twoHoursAfterEnd) {
+                    console.log(`🟠 [Shift Automation] Ending shift ${shift.id.substring(0, 8)} (2h grace period expired) - checking for auto-verification...`);
 
                     // ✅ SMART AUTO-VERIFICATION: Check if shift can be auto-completed
                     let canAutoComplete = false;
@@ -243,7 +248,7 @@ serve(async (req) => {
                         results.shifts_verified++;
                         console.log(`✅ [Shift Automation] Auto-completed shift ${shift.id.substring(0, 8)}: ${autoCompleteReason}`);
                     } else {
-                        // MANUAL VERIFICATION REQUIRED: No timesheet or GPS data
+                        // MANUAL VERIFICATION REQUIRED: No timesheet or GPS data after 2h grace period
                         await supabase
                             .from("shifts")
                             .update({
@@ -255,7 +260,7 @@ serve(async (req) => {
                                         state: 'awaiting_admin_closure',
                                         timestamp: now.toISOString(),
                                         method: 'automated',
-                                        notes: 'Auto-ended at scheduled end time - awaiting admin verification (no timesheet or GPS data)'
+                                        notes: 'Auto-ended 2 hours after scheduled end time - awaiting admin verification (no timesheet or GPS data received during grace period)'
                                     }
                                 ]
                             })
