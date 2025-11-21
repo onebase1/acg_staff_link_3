@@ -182,21 +182,62 @@ export default function MyShifts() {
             <CardHeader>
               <CardTitle className="text-lg">Select Date</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-2">
+              <style>{`
+                /* Make calendar full width */
+                .rdp {
+                  width: 100%;
+                  margin: 0;
+                }
+                .rdp-months {
+                  width: 100%;
+                }
+                .rdp-month {
+                  width: 100%;
+                }
+                .rdp-table {
+                  width: 100%;
+                  max-width: 100%;
+                }
+
+                /* Style dates with shifts - bold + circle + color */
+                .rdp-day_has-shift {
+                  font-weight: bold;
+                  position: relative;
+                }
+                .rdp-day_has-shift .rdp-day_button {
+                  background-color: #3b82f6 !important;
+                  color: white !important;
+                  border-radius: 50% !important;
+                  font-weight: 700 !important;
+                }
+                .rdp-day_has-shift .rdp-day_button:hover {
+                  background-color: #2563eb !important;
+                }
+
+                /* Today's date - red circle */
+                .rdp-day_today .rdp-day_button {
+                  border: 2px solid #ef4444 !important;
+                  font-weight: bold !important;
+                }
+
+                /* Selected date - darker blue */
+                .rdp-day_selected .rdp-day_button {
+                  background-color: #1e40af !important;
+                  color: white !important;
+                  border-radius: 50% !important;
+                }
+              `}</style>
               <Calendar
                 mode="single"
                 selected={selectedDate}
                 onSelect={(date) => date && setSelectedDate(date)}
-                className="rounded-md border"
+                className="rounded-md border w-full"
                 modifiers={{
                   hasShift: datesWithShifts,
                 }}
-                modifiersStyles={{
-                  hasShift: {
-                    fontWeight: 'bold',
-                    textDecoration: 'underline',
-                    color: '#2563eb',
-                  },
+                modifiersClassNames={{
+                  hasShift: 'rdp-day_has-shift',
                 }}
               />
 
