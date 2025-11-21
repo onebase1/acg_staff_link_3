@@ -834,8 +834,43 @@ export default function StaffPortal() {
     );
   }
 
+  // ✅ NEW: Get personalized greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  // ✅ NEW: Get staff first name for personalization
+  const getFirstName = () => {
+    if (staffRecord?.first_name) return staffRecord.first_name;
+    if (user?.email) return user.email.split('@')[0];
+    return 'there';
+  };
+
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-20 px-3 sm:px-4 md:px-6">
+      {/* ✅ NEW: Personalized Welcome Header - Task 10 */}
+      <div className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg p-4 sm:p-6 shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm sm:text-base opacity-90 mb-1">
+              {format(new Date(), 'EEE d MMM yyyy')}
+            </p>
+            <h1 className="text-2xl sm:text-3xl font-bold">
+              {getGreeting()}, {getFirstName()}
+            </h1>
+          </div>
+          <div className="hidden sm:block">
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+              <p className="text-xs opacity-75">Your Portal</p>
+              <p className="text-lg font-bold">Staff Dashboard</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ✅ MOBILE-FIRST: Onboarding Progress Alert (Only if not 100%) */}
       {!isFullyCompliant && (
         <Card className="border-2 border-orange-300 bg-gradient-to-r from-orange-50 to-amber-50">
@@ -1526,8 +1561,8 @@ export default function StaffPortal() {
       )}
 
 
-      {/* Quick Actions - LARGE BUTTONS */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Quick Actions - MOBILE: Single column, DESKTOP: 2 columns */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Button 
           variant="outline" 
           className="h-24 flex flex-col gap-2 border-2"
@@ -1555,14 +1590,15 @@ export default function StaffPortal() {
           <CheckCircle className="w-6 h-6 text-green-600" />
           <span className="font-semibold">My Docs</span>
         </Button>
-        <Button 
-          variant="outline" 
+        {/* HIDDEN: Payslip feature - Task 13 */}
+        {/* <Button
+          variant="outline"
           className="h-24 flex flex-col gap-2 border-2"
           onClick={() => navigate(createPageUrl('Payslips'))}
         >
           <DollarSign className="w-6 h-6 text-green-600" />
           <span className="font-semibold">Payslips</span>
-        </Button>
+        </Button> */}
       </div>
 
       {/* Agency Info Footer */}

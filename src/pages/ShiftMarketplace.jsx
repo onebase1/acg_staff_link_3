@@ -384,15 +384,7 @@ export default function ShiftMarketplace() {
             <p className="text-purple-50">
               {availableShifts.length} shifts matched to your profile
             </p>
-            {agency && (
-              <div className="mt-3 flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-purple-200" />
-                <span className="text-sm text-purple-100">Powered by</span>
-                <Badge className="bg-white text-purple-700 font-semibold">
-                  {agency.name}
-                </Badge>
-              </div>
-            )}
+            {/* REMOVED: "Powered by" branding - Task 10 */}
           </div>
           <div className="text-right">
             <p className="text-sm text-purple-200">Your Role</p>

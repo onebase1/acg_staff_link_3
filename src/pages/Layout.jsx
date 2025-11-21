@@ -91,7 +91,7 @@ const settingsItems = [
 // Staff portal items
 const staffPortalItems = [
   { title: "Staff Portal", url: createPageUrl("StaffPortal"), icon: UserPlus, staffOnly: true },
-  { title: "Shift Marketplace", url: createPageUrl("ShiftMarketplace"), icon: Calendar, staffOnly: true },
+  { title: "Find Shifts", url: createPageUrl("ShiftMarketplace"), icon: Calendar, staffOnly: true },
   { title: "My Availability", url: createPageUrl("MyAvailability"), icon: Clock, staffOnly: true },
   { title: "My Compliance", url: createPageUrl("ComplianceTracker"), icon: Shield, staffOnly: true },
 ];
