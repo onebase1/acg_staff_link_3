@@ -24,7 +24,6 @@ import {
 import { toast } from "sonner";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, isWithinInterval, isFuture, isPast, isToday, parseISO, addDays } from "date-fns";
 import MobileClockIn from "../components/staff/MobileClockIn";
-import StaffShiftCalendar from "../components/staff/StaffShiftCalendar";
 import { formatShiftTimeRange, formatTodayShiftTime, getShiftType, formatTime12Hour } from "../utils/shiftTimeFormatter";
 import { calculateStaffEarnings } from "../utils/shiftCalculations";
 import {
@@ -1601,19 +1600,6 @@ export default function StaffPortal() {
           <span className="font-semibold">Payslips</span>
         </Button> */}
       </div>
-
-      {/* ✅ NEW: Shift Calendar - Task 14 */}
-      <StaffShiftCalendar
-        shifts={myShifts}
-        timesheets={myTimesheets}
-        clients={clients}
-        staffRecord={staffRecord}
-        onUploadTimesheet={(shift) => {
-          // Navigate to timesheets page with shift pre-selected
-          navigate(createPageUrl('Timesheets'));
-          toast.info('Please upload your timesheet for this shift');
-        }}
-      />
 
       {/* Agency Info Footer */}
       {agency && (

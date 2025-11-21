@@ -118,6 +118,8 @@ import WhatsAppSetup from "./WhatsAppSetup";
 
 import MyAvailability from "./MyAvailability";
 
+import MyShifts from "./MyShifts";
+
 import DominionPresentation from "./DominionPresentation";
 
 import AdminTrainingHub from "./AdminTrainingHub";
@@ -272,7 +274,9 @@ const PAGES = {
     WhatsAppSetup: WhatsAppSetup,
     
     MyAvailability: MyAvailability,
-    
+
+    MyShifts: MyShifts,
+
     DominionPresentation: DominionPresentation,
     
     AdminTrainingHub: AdminTrainingHub,
@@ -452,7 +456,9 @@ function PagesContent() {
                 <Route path="/WhatsAppSetup" element={<WhatsAppSetup />} />
                 
                 <Route path="/MyAvailability" element={<MyAvailability />} />
-                
+
+                <Route path="/MyShifts" element={<MyShifts />} />
+
                 <Route path="/DominionPresentation" element={<DominionPresentation />} />
                 
                 <Route path="/AdminTrainingHub" element={<AdminTrainingHub />} />
