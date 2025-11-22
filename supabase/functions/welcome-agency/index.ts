@@ -69,21 +69,21 @@ serve(async (req) => {
         const adminName = adminUsers && adminUsers[0]?.full_name || agency.name;
 
         const welcomeEmail = `
-            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 700px; margin: 0 auto; background: #ffffff;">
-                <!-- Header with Gradient -->
-                <div style="background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%, #0369a1 100%); padding: 50px 40px; text-align: center; position: relative;">
-                    <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; display: inline-block;">
-                        <h1 style="color: white; margin: 0; font-size: 36px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 700px; margin: 0 auto; background-color: #ffffff;">
+                <!-- Header -->
+                <div style="background-color: #0284c7; padding: 50px 40px; text-align: center; position: relative;" bgcolor="#0284c7">
+                    <div style="background-color: rgba(255,255,255,0.15); border-radius: 20px; padding: 30px; display: inline-block;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 36px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                             🎉 Welcome to ACG StaffLink!
                         </h1>
-                        <p style="color: rgba(255,255,255,0.95); margin: 15px 0 0 0; font-size: 18px; font-weight: 400;">
+                        <p style="color: #ffffff; margin: 15px 0 0 0; font-size: 18px; font-weight: 400;">
                             The UK's Leading Healthcare Staffing Platform
                         </p>
                     </div>
                 </div>
 
                 <!-- Main Body -->
-                <div style="padding: 50px 40px; background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);">
+                <div style="padding: 50px 40px; background-color: #f9fafb;" bgcolor="#f9fafb">
                     <p style="font-size: 18px; color: #1f2937; margin: 0 0 25px 0; line-height: 1.6;">
                         Dear ${adminName},
                     </p>
@@ -99,7 +99,7 @@ serve(async (req) => {
                     </p>
 
                     <!-- What You Can Do Now - Feature Cards -->
-                    <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 16px; padding: 30px; margin: 35px 0; border: 2px solid #bfdbfe;">
+                    <div style="background-color: #dbeafe; border-radius: 16px; padding: 30px; margin: 35px 0; border: 2px solid #bfdbfe;" bgcolor="#dbeafe">
                         <h2 style="color: #1e40af; margin: 0 0 25px 0; font-size: 24px; font-weight: 600; text-align: center;">
                             🚀 Get Started in Minutes
                         </h2>
@@ -148,7 +148,7 @@ serve(async (req) => {
                     </div>
 
                     <!-- What Makes Us Different -->
-                    <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 16px; padding: 30px; margin: 35px 0; border: 2px solid #fbbf24;">
+                    <div style="background-color: #fef3c7; border-radius: 16px; padding: 30px; margin: 35px 0; border: 2px solid #fbbf24;" bgcolor="#fef3c7">
                         <h2 style="color: #92400e; margin: 0 0 20px 0; font-size: 22px; font-weight: 600; text-align: center;">
                             💎 Why Healthcare Leaders Choose ACG
                         </h2>
@@ -188,7 +188,7 @@ serve(async (req) => {
                     </div>
 
                     <!-- Need Help Section -->
-                    <div style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border-radius: 12px; padding: 25px; margin: 35px 0; border-left: 4px solid #ef4444;">
+                    <div style="background-color: #fee2e2; border-radius: 12px; padding: 25px; margin: 35px 0; border-left: 4px solid #ef4444;" bgcolor="#fee2e2">
                         <h3 style="color: #991b1b; margin: 0 0 15px 0; font-size: 20px; font-weight: 600;">
                             🆘 Need Help Getting Started?
                         </h3>

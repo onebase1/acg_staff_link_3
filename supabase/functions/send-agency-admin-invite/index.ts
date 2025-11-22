@@ -90,14 +90,14 @@ function buildInviteEmail({
   return {
     subject: `Activate your Agile Care Management access for ${safeAgency}`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
         <!-- Header -->
-        <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1 style="margin: 0; font-size: 28px; font-weight: 600;">Welcome to Agile Care Management</h1>
+        <div style="background-color: #0369a1; padding: 40px 30px; text-align: center; border-radius: 10px 10px 0 0;" bgcolor="#0369a1">
+          <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">Welcome to Agile Care Management</h1>
         </div>
 
         <!-- Body -->
-        <div style="background: #fff; padding: 40px 30px; border: 1px solid #e5e7eb; border-top: none;">
+        <div style="background-color: #ffffff; padding: 40px 30px; border: 1px solid #e5e7eb; border-top: none;" bgcolor="#ffffff">
           <p style="font-size: 16px; color: #1f2937; margin-bottom: 20px;">Hi ${safeName},</p>
           <p style="font-size: 16px; color: #1f2937; line-height: 1.6; margin-bottom: 25px;">
             You have been invited to manage <strong>${safeAgency}</strong> on the Agile Care Management platform.
@@ -107,11 +107,21 @@ function buildInviteEmail({
           </p>
 
           <!-- CTA Button -->
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${actionLink}" style="display: inline-block; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #fff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">
-              Set Your Password
-            </a>
-          </div>
+          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 30px 0;">
+            <tr>
+              <td align="center">
+                <table border="0" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="background-color: #0369a1; border-radius: 8px;" bgcolor="#0369a1">
+                      <a href="${actionLink}" style="display: inline-block; padding: 14px 32px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 16px; font-family: Arial, sans-serif;">
+                        Set Your Password
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
 
           <p style="font-size: 14px; color: #6b7280; line-height: 1.6; margin: 25px 0;">
             This link is unique to you and will expire shortly for security reasons. If it expires, the super admin can resend a fresh invite anytime.
