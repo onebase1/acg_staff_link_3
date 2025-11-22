@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { format } from "date-fns";
 import GPSIndicator from "../components/timesheets/GPSIndicator";
+import PayDisplay from "../components/timesheets/PayDisplay";
 
 export default function TimesheetDetail() {
   const [timesheetId, setTimesheetId] = useState(null);
@@ -1074,50 +1075,43 @@ export default function TimesheetDetail() {
 
         {/* Right Column - Financial & Actions */}
         <div className="space-y-6">
-          {/* Financial Summary */}
-          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
-            <CardHeader className="border-b border-green-200">
-              <CardTitle className="flex items-center gap-2 text-green-900">
-                <DollarSign className="w-5 h-5" />
-                Financial Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <div>
-                <p className="text-sm text-green-700">Staff Pay</p>
-                <p className="text-2xl font-bold text-green-900">
-                  £{(timesheet.staff_pay_amount || 0).toFixed(2)}
-                </p>
-                <p className="text-xs text-green-600">
-                  £{timesheet.pay_rate}/hr × {workedHours}h
-                </p>
-              </div>
+          {/* Staff Pay Display */}
+          {shift && (
+            <PayDisplay shift={shift} timesheet={timesheet} />
+          )}
 
-              {isAdmin && (
-                <>
-                  <div className="pt-4 border-t border-green-200">
-                    <p className="text-sm text-green-700">Client Charge</p>
-                    <p className="text-2xl font-bold text-green-900">
-                      £{(timesheet.client_charge_amount || 0).toFixed(2)}
-                    </p>
-                    <p className="text-xs text-green-600">
-                      £{timesheet.charge_rate}/hr × {workedHours}h
-                    </p>
-                  </div>
+          {/* Admin Financial Details */}
+          {isAdmin && workedHours > 0 && (
+            <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+              <CardHeader className="border-b border-blue-200">
+                <CardTitle className="flex items-center gap-2 text-blue-900">
+                  <DollarSign className="w-5 h-5" />
+                  Agency Financial Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div>
+                  <p className="text-sm text-blue-700">Client Charge</p>
+                  <p className="text-2xl font-bold text-blue-900">
+                    £{(timesheet.client_charge_amount || 0).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-blue-600">
+                    £{timesheet.charge_rate}/hr × {workedHours}h
+                  </p>
+                </div>
 
-                  <div className="pt-4 border-t border-green-200">
-                    <p className="text-sm text-green-700">Agency Margin</p>
-                    <p className="text-2xl font-bold text-green-900">
-                      £{((timesheet.client_charge_amount || 0) - (timesheet.staff_pay_amount || 0)).toFixed(2)}
-                    </p>
-                    <p className="text-xs text-green-600">
-                      {(((timesheet.client_charge_amount || 0) - (timesheet.staff_pay_amount || 0)) / (timesheet.client_charge_amount || 1) * 100).toFixed(1)}% margin
-                    </p>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+                <div className="pt-4 border-t border-blue-200">
+                  <p className="text-sm text-blue-700">Agency Margin</p>
+                  <p className="text-2xl font-bold text-blue-900">
+                    £{((timesheet.client_charge_amount || 0) - (timesheet.staff_pay_amount || 0)).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-blue-600">
+                    {(((timesheet.client_charge_amount || 0) - (timesheet.staff_pay_amount || 0)) / (timesheet.client_charge_amount || 1) * 100).toFixed(1)}% margin
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Actions */}
           {isAdmin && timesheet.status === 'submitted' && (

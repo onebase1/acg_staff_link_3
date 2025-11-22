@@ -489,6 +489,24 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
       const totalHours = (new Date(clockOutTime).getTime() - new Date(existingTimesheet.clock_in_time).getTime()) / (1000 * 60 * 60);
       const totalHoursRounded = parseFloat(totalHours.toFixed(2));
 
+      // 💰 CALCULATE ACTUAL PAY: Based on hours worked with break deduction
+      // UK Working Time Regulations + NHS/CQC Standards
+      let breakMinutes = 0;
+      if (totalHoursRounded >= 8) {
+        breakMinutes = 60;  // 8+ hours → 60 min unpaid break
+      } else if (totalHoursRounded >= 6) {
+        breakMinutes = 30;  // 6-8 hours → 30 min unpaid break
+      } else if (totalHoursRounded >= 4) {
+        breakMinutes = 20;  // 4-6 hours → 20 min unpaid break
+      }
+      // < 4 hours → no break
+
+      const billableHours = totalHoursRounded - (breakMinutes / 60);
+      const billableHoursRounded = parseFloat(billableHours.toFixed(2));
+
+      const staffPayAmount = parseFloat((shift.pay_rate * billableHoursRounded).toFixed(2));
+      const clientChargeAmount = parseFloat((shift.charge_rate * billableHoursRounded).toFixed(2));
+
       // 🗺️ Generate map image URL from GPS coordinates
       const mapImageUrl = generateMapImageUrl(capturedLocation.latitude, capturedLocation.longitude);
 
@@ -501,6 +519,9 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
           clock_out_geofence_validated: clockOutGeofenceValidated,
           clock_out_geofence_distance_meters: clockOutGeofenceDistance,
           total_hours: totalHoursRounded,
+          break_duration_minutes: breakMinutes,  // ← FIX: Auto-calculate break
+          staff_pay_amount: staffPayAmount,      // ← FIX: Recalculate based on actual
+          client_charge_amount: clientChargeAmount,  // ← FIX: Recalculate client charge
           status: 'submitted',
         })
         .eq('id', existingTimesheet.id);

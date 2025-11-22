@@ -143,7 +143,7 @@ export default function ShiftMarketplace() {
 
       // ✅ Get staff's assigned shifts to prevent double-booking
       const assignedShiftDates = allShifts
-        .filter(s => s.assigned_staff_id === staffProfile.id && s.status === 'assigned')
+        .filter(s => s.assigned_staff_id === staffProfile.id && (s.status === 'assigned' || s.status === 'confirmed'))
         .map(s => s.date);
 
       console.log('📅 Staff already working on:', assignedShiftDates);

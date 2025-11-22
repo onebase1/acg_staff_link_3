@@ -13,13 +13,15 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import GPSIndicator, { GPSDetails } from "./GPSIndicator";
+import PayDisplay from "./PayDisplay";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
-export default function TimesheetCard({ 
-  timesheet, 
-  staffName, 
-  clientName, 
+export default function TimesheetCard({
+  timesheet,
+  shift,
+  staffName,
+  clientName,
   issues = [],
   onApprove,
   onReject,
@@ -173,25 +175,15 @@ export default function TimesheetCard({
                 <span className="font-semibold text-gray-900">{timesheet.total_hours}h worked</span>
               </div>
             )}
-            
-            <div className="flex items-center justify-between pt-2 border-t">
-              <div className="text-right">
-                <p className="text-xs text-gray-600">Pay</p>
-                <p className="text-lg font-bold text-gray-900">
-                  £{(timesheet.staff_pay_amount || 0).toFixed(2)}
-                </p>
-              </div>
-              {isAdmin && (
-                <div className="text-right">
-                  <p className="text-xs text-gray-600">Charge</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    £{(timesheet.client_charge_amount || 0).toFixed(2)}
-                  </p>
-                </div>
-              )}
-            </div>
           </div>
         </div>
+
+        {/* Pay Display - Smart 3-tier system */}
+        {shift && (
+          <div className="mt-4">
+            <PayDisplay shift={shift} timesheet={timesheet} />
+          </div>
+        )}
 
         {/* ✅ FIX 2: Only show issues alert if shift has ended */}
         {hasIssues && (
