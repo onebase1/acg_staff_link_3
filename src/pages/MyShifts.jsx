@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Calendar as CalendarIcon, Clock, MapPin, DollarSign,
-  Upload, CheckCircle, AlertCircle, XCircle, Filter, ChevronDown,
+  Upload, CheckCircle, AlertCircle, XCircle,
   TrendingUp, CalendarCheck, CalendarClock
 } from "lucide-react";
 import { format, isSameDay, startOfMonth, endOfMonth, parseISO } from "date-fns";
@@ -30,7 +30,6 @@ export default function MyShifts() {
   const [staffRecord, setStaffRecord] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [statusFilter, setStatusFilter] = useState('all');
   const navigate = useNavigate();
 
   // Get current user and staff record
@@ -116,58 +115,86 @@ export default function MyShifts() {
     enabled: !!staffRecord?.id,
   });
 
-  // Get shifts for selected date
+  // Get shifts for selected date (no filtering by status - staff sees everything for the date)
   const shiftsForSelectedDate = allShifts.filter(shift => {
     try {
       const shiftDate = parseISO(shift.date);
-      const matchesDate = isSameDay(shiftDate, selectedDate);
-      const matchesStatus = statusFilter === 'all' || shift.status === statusFilter;
-      return matchesDate && matchesStatus;
+      return isSameDay(shiftDate, selectedDate);
     } catch {
       return false;
     }
   });
 
-  // Get dates with shifts for calendar highlighting
+  // ✨ STATUS-BASED CALENDAR COLORS with Priority System
+  // Priority: Issues (Red) > Needs Action (Yellow/Orange) > Confirmed (Green) > Completed (Light Green)
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const datesWithShifts = allShifts.map(shift => {
-    try {
-      return parseISO(shift.date);
-    } catch {
-      return null;
+  // Helper function to get highest priority status for a date
+  const getDatePriorityStatus = (dateStr) => {
+    const shiftsOnDate = allShifts.filter(s => s.date === dateStr);
+
+    // Priority 1: Issues (no_show, disputed, cancelled)
+    if (shiftsOnDate.some(s => ['no_show', 'disputed'].includes(s.status))) {
+      return 'issue';
     }
-  }).filter(Boolean);
 
-  // Separate past and future shifts for different colors
-  // Exclude selected date to let CSS styling show through
-  const selectedDateNormalized = new Date(selectedDate);
-  selectedDateNormalized.setHours(0, 0, 0, 0);
+    // Priority 2: Needs timesheet
+    if (shiftsOnDate.some(s => s.status === 'awaiting_admin_closure' && !s.timesheet_received)) {
+      return 'needsTimesheet';
+    }
 
-  const pastShiftDates = datesWithShifts.filter(date => {
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    return d < today && d.getTime() !== selectedDateNormalized.getTime();
+    // Priority 3: Needs confirmation
+    if (shiftsOnDate.some(s => ['awaiting_staff_confirmation', 'assigned'].includes(s.status))) {
+      return 'needsConfirmation';
+    }
+
+    // Priority 4: Confirmed
+    if (shiftsOnDate.some(s => ['confirmed', 'in_progress'].includes(s.status))) {
+      return 'confirmed';
+    }
+
+    // Priority 5: Completed
+    if (shiftsOnDate.some(s => s.status === 'completed')) {
+      return 'completed';
+    }
+
+    return null;
+  };
+
+  // Get unique dates and categorize by priority status
+  const uniqueDates = [...new Set(allShifts.map(s => s.date))];
+
+  const datesWithIssues = [];
+  const datesNeedingTimesheet = [];
+  const datesNeedingConfirmation = [];
+  const datesConfirmed = [];
+  const datesCompleted = [];
+
+  uniqueDates.forEach(dateStr => {
+    const priorityStatus = getDatePriorityStatus(dateStr);
+    const date = parseISO(dateStr);
+
+    if (priorityStatus === 'issue') {
+      datesWithIssues.push(date);
+    } else if (priorityStatus === 'needsTimesheet') {
+      datesNeedingTimesheet.push(date);
+    } else if (priorityStatus === 'needsConfirmation') {
+      datesNeedingConfirmation.push(date);
+    } else if (priorityStatus === 'confirmed') {
+      datesConfirmed.push(date);
+    } else if (priorityStatus === 'completed') {
+      datesCompleted.push(date);
+    }
   });
 
-  const futureShiftDates = datesWithShifts.filter(date => {
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    return d > today && d.getTime() !== selectedDateNormalized.getTime();
-  });
-
-  const todayShiftDates = datesWithShifts.filter(date => {
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    return d.getTime() === today.getTime() && d.getTime() !== selectedDateNormalized.getTime();
-  });
-
-  // Debug: Log dates with shifts
-  console.log('🔵 Dates with shifts:', datesWithShifts.map(d => format(d, 'yyyy-MM-dd')));
-  console.log('⏮️ Past shifts:', pastShiftDates.map(d => format(d, 'yyyy-MM-dd')));
-  console.log('⏭️ Future shifts:', futureShiftDates.map(d => format(d, 'yyyy-MM-dd')));
-  console.log('📅 Today shifts:', todayShiftDates.map(d => format(d, 'yyyy-MM-dd')));
+  // Debug: Log status-based dates
+  console.log('🔴 Dates with issues:', datesWithIssues.map(d => format(d, 'yyyy-MM-dd')));
+  console.log('🟠 Dates needing timesheet:', datesNeedingTimesheet.map(d => format(d, 'yyyy-MM-dd')));
+  console.log('🟡 Dates needing confirmation:', datesNeedingConfirmation.map(d => format(d, 'yyyy-MM-dd')));
+  console.log('🟢 Dates confirmed:', datesConfirmed.map(d => format(d, 'yyyy-MM-dd')));
+  console.log('✅ Dates completed:', datesCompleted.map(d => format(d, 'yyyy-MM-dd')));
 
   // Get status badge
   const getStatusBadge = (status) => {
@@ -200,12 +227,29 @@ export default function MyShifts() {
     }
   };
 
-  // Get shift count by status for stats
+  // ✨ SMART STATS - Actionable metrics for staff
+  const shiftsNeedingAction = allShifts.filter(s =>
+    ['awaiting_staff_confirmation', 'assigned'].includes(s.status) ||
+    (s.status === 'awaiting_admin_closure' && !s.timesheet_received)
+  );
+
+  const shiftsConfirmed = allShifts.filter(s =>
+    ['confirmed', 'in_progress'].includes(s.status)
+  );
+
+  const shiftsCompleted = allShifts.filter(s =>
+    s.status === 'completed'
+  );
+
+  const shiftsWithIssues = allShifts.filter(s =>
+    ['no_show', 'disputed', 'cancelled'].includes(s.status)
+  );
+
   const shiftStats = {
-    total: allShifts.length,
-    confirmed: allShifts.filter(s => s.status === 'confirmed').length,
-    pending: allShifts.filter(s => s.status === 'awaiting_staff_confirmation').length,
-    completed: allShifts.filter(s => s.status === 'completed').length,
+    needsAction: shiftsNeedingAction.length,
+    confirmed: shiftsConfirmed.length,
+    completed: shiftsCompleted.length,
+    issues: shiftsWithIssues.length,
   };
 
   if (shiftsLoading) {
@@ -256,15 +300,15 @@ export default function MyShifts() {
           </Badge>
         </div>
 
-        {/* Quick Stats Cards */}
+        {/* Quick Stats Cards - Actionable Metrics */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
             <div className="flex items-center gap-2 mb-1">
-              <CalendarCheck className="w-4 h-4 text-white/80" />
-              <span className="text-xs text-white/80 font-medium">Total</span>
+              <AlertCircle className="w-4 h-4 text-orange-300" />
+              <span className="text-xs text-white/80 font-medium">Needs Action</span>
             </div>
-            <p className="text-2xl font-bold">{shiftStats.total}</p>
-            <p className="text-xs text-white/70 mt-0.5">This month</p>
+            <p className="text-2xl font-bold">{shiftStats.needsAction}</p>
+            <p className="text-xs text-white/70 mt-0.5">Confirm/Upload</p>
           </div>
 
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
@@ -278,20 +322,20 @@ export default function MyShifts() {
 
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
             <div className="flex items-center gap-2 mb-1">
-              <CalendarClock className="w-4 h-4 text-yellow-300" />
-              <span className="text-xs text-white/80 font-medium">Pending</span>
-            </div>
-            <p className="text-2xl font-bold">{shiftStats.pending}</p>
-            <p className="text-xs text-white/70 mt-0.5">Needs action</p>
-          </div>
-
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="w-4 h-4 text-blue-300" />
+              <TrendingUp className="w-4 h-4 text-emerald-300" />
               <span className="text-xs text-white/80 font-medium">Completed</span>
             </div>
             <p className="text-2xl font-bold">{shiftStats.completed}</p>
             <p className="text-xs text-white/70 mt-0.5">Finished</p>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+            <div className="flex items-center gap-2 mb-1">
+              <XCircle className="w-4 h-4 text-red-300" />
+              <span className="text-xs text-white/80 font-medium">Issues</span>
+            </div>
+            <p className="text-2xl font-bold">{shiftStats.issues}</p>
+            <p className="text-xs text-white/70 mt-0.5">Need attention</p>
           </div>
         </div>
       </div>
@@ -362,21 +406,18 @@ export default function MyShifts() {
                   box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
                 }
 
-                /* NAVY BLUE with red border for selected date - Highest priority */
+                /* NAVY RING for selected date (preserves underlying color) */
                 .staff-calendar-container .rdp-day_selected .rdp-button {
-                  background-color: #1e3a8a !important;  /* Navy blue (blue-900) */
-                  color: white !important;
+                  border: 3px solid #1e3a8a !important;  /* Navy blue ring */
+                  box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.25) !important;  /* Navy glow */
                   font-weight: 700 !important;
-                  border: 3px solid #ef4444 !important;  /* Red border */
-                  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3) !important;  /* Red glow */
                 }
 
-                /* Today + Selected = Navy with stronger red border */
+                /* Today + Selected = Double ring effect */
                 .staff-calendar-container .rdp-day_today.rdp-day_selected .rdp-button {
-                  background-color: #1e3a8a !important;  /* Navy blue */
-                  color: white !important;
-                  border: 3px solid #ef4444 !important;  /* Red border (matches today ring) */
-                  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.4) !important;  /* Stronger red glow */
+                  border: 3px solid #1e3a8a !important;  /* Navy inner ring */
+                  box-shadow: 0 0 0 1px #ef4444, 0 0 0 3px rgba(239, 68, 68, 0.3) !important;  /* Red outer glow */
+                  font-weight: 700 !important;
                 }
 
                 /* Hover effects */
@@ -399,26 +440,40 @@ export default function MyShifts() {
                   month={currentMonth}
                   onMonthChange={setCurrentMonth}
                   modifiers={{
-                    pastShift: pastShiftDates,
-                    futureShift: futureShiftDates,
-                    todayShift: todayShiftDates,
+                    hasIssue: datesWithIssues,
+                    needsTimesheet: datesNeedingTimesheet,
+                    needsConfirmation: datesNeedingConfirmation,
+                    confirmed: datesConfirmed,
+                    completed: datesCompleted,
                   }}
                   modifiersStyles={{
-                    pastShift: {
-                      backgroundColor: '#9ca3af',  // Gray for past shifts
+                    hasIssue: {
+                      backgroundColor: '#ef4444',  // Red for issues (no_show, disputed)
                       color: 'white',
                       fontWeight: 'bold',
                       borderRadius: '50%',
                     },
-                    futureShift: {
-                      backgroundColor: '#3b82f6',  // Blue for future shifts
+                    needsTimesheet: {
+                      backgroundColor: '#f97316',  // Orange for timesheet needed
                       color: 'white',
                       fontWeight: 'bold',
                       borderRadius: '50%',
                     },
-                    todayShift: {
-                      backgroundColor: '#10b981',  // Green for today's shifts
+                    needsConfirmation: {
+                      backgroundColor: '#eab308',  // Yellow for confirmation needed
                       color: 'white',
+                      fontWeight: 'bold',
+                      borderRadius: '50%',
+                    },
+                    confirmed: {
+                      backgroundColor: '#10b981',  // Green for confirmed shifts
+                      color: 'white',
+                      fontWeight: 'bold',
+                      borderRadius: '50%',
+                    },
+                    completed: {
+                      backgroundColor: '#6ee7b7',  // Light green for completed
+                      color: '#065f46',  // Dark green text
                       fontWeight: 'bold',
                       borderRadius: '50%',
                     }
@@ -429,60 +484,85 @@ export default function MyShifts() {
                 />
               </div>
 
-              {/* Enhanced Metrics Cards */}
-              <div className="mt-4 space-y-2">
-                <Card className="border-2 border-blue-100 bg-gradient-to-br from-blue-50 to-white">
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <CalendarCheck className="w-5 h-5 text-blue-600" />
-                        <span className="text-sm font-semibold text-gray-700">This Month</span>
-                      </div>
-                      <Badge variant="outline" className="text-base font-bold px-2">
-                        {allShifts.length}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-2 border-green-100 bg-gradient-to-br from-green-50 to-white">
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <CalendarIcon className="w-5 h-5 text-green-600" />
-                        <span className="text-sm font-semibold text-gray-700">Selected Date</span>
-                      </div>
-                      <Badge className="bg-green-600 text-base font-bold">
-                        {shiftsForSelectedDate.length}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Enhanced Status Filter */}
+              {/* ✨ STATUS-BASED CALENDAR LEGEND */}
               <div className="mt-4">
-                <label
-                  htmlFor="status-filter"
-                  className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2"
-                >
-                  <Filter className="w-4 h-4 text-gray-500" />
-                  Filter by Status
-                </label>
-                <select
-                  id="status-filter"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg text-sm font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all cursor-pointer hover:border-gray-400"
-                  aria-label="Filter shifts by status"
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="assigned">Awaiting Confirmation</option>
-                  <option value="awaiting_staff_confirmation">Please Confirm</option>
-                  <option value="completed">Completed</option>
-                  <option value="awaiting_admin_closure">Under Review</option>
-                </select>
+                <Card className="border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-white">
+                  <CardContent className="p-3">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertCircle className="w-4 h-4 text-gray-600" />
+                        <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Calendar Guide</span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {/* Red - Issues */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-xs font-bold">22</span>
+                          </div>
+                          <span className="text-xs text-gray-700 font-medium">Issue (No-show, Disputed)</span>
+                        </div>
+
+                        {/* Orange - Needs Timesheet */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-xs font-bold">15</span>
+                          </div>
+                          <span className="text-xs text-gray-700 font-medium">Upload Timesheet</span>
+                        </div>
+
+                        {/* Yellow - Needs Confirmation */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-xs font-bold">10</span>
+                          </div>
+                          <span className="text-xs text-gray-700 font-medium">Confirm Shift</span>
+                        </div>
+
+                        {/* Green - Confirmed */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-xs font-bold">5</span>
+                          </div>
+                          <span className="text-xs text-gray-700 font-medium">Confirmed & Ready</span>
+                        </div>
+
+                        {/* Light Green - Completed */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-emerald-300 flex items-center justify-center flex-shrink-0">
+                            <span className="text-emerald-900 text-xs font-bold">3</span>
+                          </div>
+                          <span className="text-xs text-gray-700 font-medium">Completed</span>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="border-t border-gray-200 my-2"></div>
+
+                        {/* Today */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full border-3 border-red-500 flex items-center justify-center flex-shrink-0" style={{borderWidth: '3px'}}>
+                            <span className="text-gray-700 text-xs font-bold">22</span>
+                          </div>
+                          <span className="text-xs text-gray-700 font-medium">Today (Red ring)</span>
+                        </div>
+
+                        {/* Selected */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full border-3 border-blue-900 flex items-center justify-center flex-shrink-0" style={{borderWidth: '3px'}}>
+                            <span className="text-gray-700 text-xs font-bold">15</span>
+                          </div>
+                          <span className="text-xs text-gray-700 font-medium">Selected (Navy ring)</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-2 pt-2 border-t border-gray-200">
+                        <p className="text-xs text-gray-600 italic">
+                          💡 Click any colored date to view shift details
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </CardContent>
           </Card>
