@@ -211,20 +211,20 @@ async function sendDay1Reminder(supabase, staff, agency, progress) {
             to: staff.email,
             subject: `👋 Welcome to ${agency.name} - Complete Your Profile`,
             html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%); padding: 30px; text-align: center;">
-                        <h1 style="color: white; margin: 0;">Welcome Aboard!</h1>
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <div style="background-color: #0284c7; padding: 30px; text-align: center;" bgcolor="#0284c7">
+                        <h1 style="color: #ffffff; margin: 0; font-weight: bold;">Welcome Aboard!</h1>
                     </div>
-                    <div style="padding: 30px; background: #f9fafb;">
+                    <div style="padding: 30px; background-color: #f9fafb;" bgcolor="#f9fafb">
                         <p style="font-size: 16px; color: #1f2937;">Hi ${staff.first_name},</p>
                         <p style="font-size: 16px; color: #1f2937;">
                             Welcome to ${agency.name}! We're excited to have you on the team.
                         </p>
 
-                        <div style="background: white; border-left: 4px solid #06b6d4; padding: 20px; margin: 20px 0;">
+                        <div style="background-color: #ffffff; border-left: 4px solid #0284c7; padding: 20px; margin: 20px 0;" bgcolor="#ffffff">
                             <p style="margin: 0;"><strong>Your Profile Progress:</strong></p>
-                            <div style="background: #e5e7eb; height: 20px; border-radius: 10px; margin: 10px 0;">
-                                <div style="background: linear-gradient(90deg, #06b6d4, #0284c7); height: 20px; border-radius: 10px; width: ${progress.percentage}%;"></div>
+                            <div style="background-color: #e5e7eb; height: 20px; border-radius: 10px; margin: 10px 0;" bgcolor="#e5e7eb">
+                                <div style="background-color: #0284c7; height: 20px; border-radius: 10px; width: ${progress.percentage}%;" bgcolor="#0284c7"></div>
                             </div>
                             <p style="margin: 10px 0 0 0; color: #6b7280;">${progress.percentage}% Complete</p>
                         </div>
@@ -233,11 +233,21 @@ async function sendDay1Reminder(supabase, staff, agency, progress) {
                             Complete your profile today to start accepting shifts!
                         </p>
 
-                        <div style="text-align: center; margin: 30px 0;">
-                            <a href="${setupUrl}" style="background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">
-                                Complete My Profile
-                            </a>
-                        </div>
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 30px 0;">
+                            <tr>
+                                <td align="center">
+                                    <table border="0" cellspacing="0" cellpadding="0">
+                                        <tr>
+                                            <td style="background-color: #0284c7; border-radius: 8px;" bgcolor="#0284c7">
+                                                <a href="${setupUrl}" style="display: inline-block; padding: 15px 40px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 16px; font-family: Arial, sans-serif;">
+                                                    Complete My Profile
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
             `
@@ -260,17 +270,17 @@ async function sendDay3Reminder(supabase, staff, agency, progress) {
             to: staff.email,
             subject: `⏰ Reminder: Complete Your ${agency.name} Profile`,
             html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; text-align: center;">
-                        <h1 style="color: white; margin: 0;">Profile Incomplete</h1>
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <div style="background-color: #d97706; padding: 30px; text-align: center;" bgcolor="#d97706">
+                        <h1 style="color: #ffffff; margin: 0; font-weight: bold;">Profile Incomplete</h1>
                     </div>
-                    <div style="padding: 30px; background: #f9fafb;">
+                    <div style="padding: 30px; background-color: #f9fafb;" bgcolor="#f9fafb">
                         <p style="font-size: 16px; color: #1f2937;">Hi ${staff.first_name},</p>
                         <p style="font-size: 16px; color: #1f2937;">
                             We noticed you haven't finished setting up your profile yet. You're ${progress.percentage}% complete!
                         </p>
 
-                        <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0;">
+                        <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0;" bgcolor="#fef3c7">
                             <p style="margin: 0 0 10px 0; font-weight: bold; color: #92400e;">Still Missing:</p>
                             <ul style="margin: 0; padding-left: 20px; color: #92400e;">
                                 ${missingItemsHtml}
@@ -281,11 +291,21 @@ async function sendDay3Reminder(supabase, staff, agency, progress) {
                             ⚠️ You cannot accept shifts until your profile is 100% complete.
                         </p>
 
-                        <div style="text-align: center; margin: 30px 0;">
-                            <a href="${setupUrl}" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">
-                                Complete Now
-                            </a>
-                        </div>
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 30px 0;">
+                            <tr>
+                                <td align="center">
+                                    <table border="0" cellspacing="0" cellpadding="0">
+                                        <tr>
+                                            <td style="background-color: #d97706; border-radius: 8px;" bgcolor="#d97706">
+                                                <a href="${setupUrl}" style="display: inline-block; padding: 15px 40px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 16px; font-family: Arial, sans-serif;">
+                                                    Complete Now
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
             `
@@ -304,11 +324,11 @@ async function sendDay7Reminder(supabase, staff, agency, progress) {
             to: staff.email,
             subject: `🚨 URGENT: Complete Your Profile to Start Working`,
             html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 30px; text-align: center;">
-                        <h1 style="color: white; margin: 0;">⚠️ Action Required</h1>
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <div style="background-color: #dc2626; padding: 30px; text-align: center;" bgcolor="#dc2626">
+                        <h1 style="color: #ffffff; margin: 0; font-weight: bold;">⚠️ Action Required</h1>
                     </div>
-                    <div style="padding: 30px; background: #f9fafb;">
+                    <div style="padding: 30px; background-color: #f9fafb;" bgcolor="#f9fafb">
                         <p style="font-size: 16px; color: #1f2937;">Hi ${staff.first_name},</p>
                         <p style="font-size: 16px; color: #1f2937;">
                             Your profile has been incomplete for 7 days. Without a complete profile, you cannot:
@@ -320,7 +340,7 @@ async function sendDay7Reminder(supabase, staff, agency, progress) {
                             <li>Start earning with ${agency.name}</li>
                         </ul>
 
-                        <div style="background: #fee2e2; border-left: 4px solid #dc2626; padding: 20px; margin: 20px 0;">
+                        <div style="background-color: #fee2e2; border-left: 4px solid #dc2626; padding: 20px; margin: 20px 0;" bgcolor="#fee2e2">
                             <p style="margin: 0; font-weight: bold; color: #7f1d1d;">
                                 🚨 Complete your profile within 7 days or your invitation may expire.
                             </p>
@@ -330,11 +350,21 @@ async function sendDay7Reminder(supabase, staff, agency, progress) {
                             Need help? Contact ${agency.contact_email || 'your agency administrator'}.
                         </p>
 
-                        <div style="text-align: center; margin: 30px 0;">
-                            <a href="${setupUrl}" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">
-                                Complete Profile Now
-                            </a>
-                        </div>
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 30px 0;">
+                            <tr>
+                                <td align="center">
+                                    <table border="0" cellspacing="0" cellpadding="0">
+                                        <tr>
+                                            <td style="background-color: #dc2626; border-radius: 8px;" bgcolor="#dc2626">
+                                                <a href="${setupUrl}" style="display: inline-block; padding: 15px 40px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 16px; font-family: Arial, sans-serif;">
+                                                    Complete Profile Now
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
             `
@@ -353,17 +383,17 @@ async function sendDay14Reminder(supabase, staff, agency, progress) {
             to: staff.email,
             subject: `⏰ FINAL REMINDER: Complete Your Profile Today`,
             html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background: linear-gradient(135deg, #7c2d12 0%, #44180a 100%); padding: 30px; text-align: center;">
-                        <h1 style="color: white; margin: 0;">Final Reminder</h1>
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <div style="background-color: #92400e; padding: 30px; text-align: center;" bgcolor="#92400e">
+                        <h1 style="color: #ffffff; margin: 0; font-weight: bold;">Final Reminder</h1>
                     </div>
-                    <div style="padding: 30px; background: #f9fafb;">
+                    <div style="padding: 30px; background-color: #f9fafb;" bgcolor="#f9fafb">
                         <p style="font-size: 16px; color: #1f2937;">Hi ${staff.first_name},</p>
                         <p style="font-size: 16px; color: #1f2937;">
                             Your profile has been incomplete for 14 days. This is your final reminder.
                         </p>
 
-                        <div style="background: #fef3c7; border-left: 4px solid #d97706; padding: 20px; margin: 20px 0;">
+                        <div style="background-color: #fef3c7; border-left: 4px solid #d97706; padding: 20px; margin: 20px 0;" bgcolor="#fef3c7">
                             <p style="margin: 0; font-weight: bold; color: #78350f;">
                                 ⚠️ Your invitation will expire soon. We've notified ${agency.name} administration.
                             </p>
@@ -373,11 +403,21 @@ async function sendDay14Reminder(supabase, staff, agency, progress) {
                             If you're experiencing difficulties, please contact us immediately at ${agency.contact_email || 'support'}.
                         </p>
 
-                        <div style="text-align: center; margin: 30px 0;">
-                            <a href="${setupUrl}" style="background: linear-gradient(135deg, #d97706 0%, #92400e 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">
-                                Complete Profile Immediately
-                            </a>
-                        </div>
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 30px 0;">
+                            <tr>
+                                <td align="center">
+                                    <table border="0" cellspacing="0" cellpadding="0">
+                                        <tr>
+                                            <td style="background-color: #92400e; border-radius: 8px;" bgcolor="#92400e">
+                                                <a href="${setupUrl}" style="display: inline-block; padding: 15px 40px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 16px; font-family: Arial, sans-serif;">
+                                                    Complete Profile Immediately
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
             `

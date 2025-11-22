@@ -86,14 +86,14 @@ serve(async (req) => {
         // SHIFT CANCELLATION
         if (change_type === 'shift_cancelled') {
             const email_body = (recipient_name) => `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
-                        <h1 style="margin: 0; font-size: 24px;">⚠️ Shift Cancellation Notice</h1>
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <div style="background-color: #dc2626; padding: 30px; border-radius: 10px 10px 0 0;" bgcolor="#dc2626">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">⚠️ Shift Cancellation Notice</h1>
                     </div>
-                    <div style="background: #fff; padding: 30px; border: 2px solid #fee2e2; border-top: none; border-radius: 0 0 10px 10px;">
+                    <div style="background-color: #ffffff; padding: 30px; border: 2px solid #fee2e2; border-top: none; border-radius: 0 0 10px 10px;" bgcolor="#ffffff">
                         <p style="font-size: 16px; color: #1f2937;">Dear ${recipient_name},</p>
 
-                        <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0;">
+                        <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0;" bgcolor="#fef2f2">
                             <p style="margin: 0; color: #991b1b; font-weight: bold;">The following shift has been CANCELLED</p>
                             <p style="margin: 10px 0 0 0; color: #7f1d1d;">
                                 <strong>Client:</strong> ${client_name}<br/>
@@ -135,11 +135,11 @@ serve(async (req) => {
         // BANK DETAILS CHANGED
         if (change_type === 'bank_details_changed' && staff_email) {
             const html = `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
-                        <h1 style="margin: 0; font-size: 24px;">🔒 Security Alert: Bank Details Changed</h1>
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <div style="background-color: #dc2626; padding: 30px; border-radius: 10px 10px 0 0;" bgcolor="#dc2626">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">🔒 Security Alert: Bank Details Changed</h1>
                     </div>
-                    <div style="background: #fff; padding: 30px; border: 2px solid #fee2e2; border-top: none; border-radius: 0 0 10px 10px;">
+                    <div style="background-color: #ffffff; padding: 30px; border: 2px solid #fee2e2; border-top: none; border-radius: 0 0 10px 10px;" bgcolor="#ffffff">
                         <p style="font-size: 16px; color: #1f2937;">Dear ${staff_name},</p>
 
                         <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0;">
@@ -201,11 +201,11 @@ serve(async (req) => {
         // PAY RATE OVERRIDE
         if (change_type === 'pay_rate_override' && staff_email) {
             const html = `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
-                        <h1 style="margin: 0; font-size: 24px;">💰 Pay Rate Adjusted for Shift</h1>
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <div style="background-color: #0e7490; padding: 30px; border-radius: 10px 10px 0 0;" bgcolor="#0e7490">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">💰 Pay Rate Adjusted for Shift</h1>
                     </div>
-                    <div style="background: #fff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+                    <div style="background-color: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;" bgcolor="#ffffff">
                         <p style="font-size: 16px; color: #1f2937;">Dear ${staff_name},</p>
 
                         <div style="background: #ecfeff; border-left: 4px solid #0891b2; padding: 15px; margin: 20px 0;">
@@ -256,11 +256,11 @@ serve(async (req) => {
         // CONFIRMED SHIFT MODIFIED
         if (change_type === 'confirmed_shift_modified' && staff_email) {
             const html = `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
-                        <h1 style="margin: 0; font-size: 24px;">⚠️ IMPORTANT: Your Confirmed Shift Was Changed</h1>
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <div style="background-color: #ea580c; padding: 30px; border-radius: 10px 10px 0 0;" bgcolor="#ea580c">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">⚠️ IMPORTANT: Your Confirmed Shift Was Changed</h1>
                     </div>
-                    <div style="background: #fff; padding: 30px; border: 2px solid #fed7aa; border-top: none; border-radius: 0 0 10px 10px;">
+                    <div style="background-color: #ffffff; padding: 30px; border: 2px solid #fed7aa; border-top: none; border-radius: 0 0 10px 10px;" bgcolor="#ffffff">
                         <p style="font-size: 16px; color: #1f2937;">Dear ${staff_name},</p>
                         <p style="font-size: 16px; color: #1f2937;">An administrator has updated a shift that you already confirmed. Please review the changes carefully.</p>
 
@@ -326,14 +326,14 @@ serve(async (req) => {
             // Notify original staff (if provided)
             if (staff_email) {
                 const html = `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
                         <!-- Header -->
-                        <div style="background: linear-gradient(to right, #06b6d4, #3b82f6); color: white; padding: 40px 30px; text-align: center;">
-                            <h1 style="margin: 0; font-size: 28px; font-weight: 600;">Shift Update Notice</h1>
+                        <div style="background-color: #3b82f6; padding: 40px 30px; text-align: center;" bgcolor="#3b82f6">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">Shift Update Notice</h1>
                         </div>
 
                         <!-- Body -->
-                        <div style="background: #fff; padding: 40px 30px;">
+                        <div style="background-color: #ffffff; padding: 40px 30px;" bgcolor="#ffffff">
                             <p style="font-size: 16px; color: #1f2937; margin-bottom: 20px;">Hi ${staff_name},</p>
 
                             <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; margin: 25px 0;">
