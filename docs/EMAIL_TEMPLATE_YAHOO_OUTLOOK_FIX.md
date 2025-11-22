@@ -123,11 +123,13 @@ What Yahoo users see:          White header + White button ❌
 - [ ] Update **Invite User** template from `invite-user.html`
 - [ ] Test: Request password reset → Check Yahoo Mail
 
-### Phase 2: High Priority Edge Functions (60 mins)
+### Phase 2: High Priority Edge Functions ✅ **COMPLETE**
 - [x] **incomplete-profile-reminder** (9 gradients) ✅ **FIXED 2025-11-22**
 - [x] **critical-change-notifier** (5 gradients) ✅ **FIXED 2025-11-22**
-- [ ] **welcome-agency** (5 gradients) 🔄 IN PROGRESS
-- [ ] **send-agency-admin-invite** (2 gradients)
+- [x] **welcome-agency** (5 gradients) ✅ **FIXED 2025-11-22**
+- [x] **send-agency-admin-invite** (2 gradients) ✅ **FIXED 2025-11-22**
+
+**📊 PROGRESS: 21/39 gradients fixed (54%)**
 
 ### Phase 3: Medium Priority Edge Functions (45 mins)
 - [ ] **notification-digest-engine** (3 gradients)
