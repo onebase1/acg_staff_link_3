@@ -64,8 +64,9 @@ export default function Timesheets() {
   const isStaff = user?.user_type === 'staff_member';
 
   const { data: timesheets = [] } = useQuery({
-    queryKey: ['timesheets', user?.agency_id],
+    queryKey: ['timesheets', user?.agency_id, user?.id, isStaff],
     queryFn: async () => {
+      if (!user) return [];
       let query = supabase
         .from('timesheets')
         .select('*')
@@ -74,19 +75,27 @@ export default function Timesheets() {
       if (isStaff) {
         const { data: staffRecords, error } = await supabase
           .from('staff')
-          .select('*')
-          .eq('user_id', user.id);
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
 
         if (error) {
-          console.error('❌ Error fetching staff:', error);
+          console.error('❌ Error fetching staff record for current user:', error);
+          return [];
+        }
+        
+        if (staffRecords) {
+          query = query.eq('staff_id', staffRecords.id);
+        } else {
+          // No staff record found for this user, they have no timesheets
           return [];
         }
 
-        if (staffRecords && staffRecords[0]) {
-          query = query.eq('staff_id', staffRecords[0].id);
-        }
-      } else if (user?.agency_id) {
+      } else if (isAdmin && user.agency_id) {
         query = query.eq('agency_id', user.agency_id);
+      } else {
+        // User is not staff or admin in an agency, return empty
+        return [];
       }
 
       const { data, error } = await query;
@@ -105,10 +114,11 @@ export default function Timesheets() {
   const { data: staff = [] } = useQuery({
     queryKey: ['staff', user?.agency_id],
     queryFn: async () => {
+      if (!user?.agency_id) return [];
       const { data, error } = await supabase
         .from('staff')
         .select('*')
-        .eq('agency_id', user?.agency_id)
+        .eq('agency_id', user.agency_id)
         .order('first_name', { ascending: true });
 
       if (error) {
@@ -117,17 +127,18 @@ export default function Timesheets() {
       }
       return data || [];
     },
-    enabled: !!user?.agency_id,
+    enabled: !!user, // ✅ FIX: Fetch for both staff and admin users
     refetchOnMount: 'always'
   });
 
   const { data: clients = [] } = useQuery({
     queryKey: ['clients', user?.agency_id],
     queryFn: async () => {
+      if (!user?.agency_id) return [];
       const { data, error } = await supabase
         .from('clients')
         .select('*')
-        .eq('agency_id', user?.agency_id)
+        .eq('agency_id', user.agency_id)
         .order('name', { ascending: true });
 
       if (error) {
@@ -136,17 +147,18 @@ export default function Timesheets() {
       }
       return data || [];
     },
-    enabled: !!user?.agency_id,
+    enabled: !!user, // ✅ FIX: Fetch for both staff and admin users
     refetchOnMount: 'always'
   });
 
   const { data: shifts = [] } = useQuery({
     queryKey: ['shifts', user?.agency_id],
     queryFn: async () => {
+      if (!user?.agency_id) return [];
       const { data, error } = await supabase
         .from('shifts')
         .select('*')
-        .eq('agency_id', user?.agency_id)
+        .eq('agency_id', user.agency_id)
         .order('date', { ascending: false });
 
       if (error) {
@@ -155,7 +167,7 @@ export default function Timesheets() {
       }
       return data || [];
     },
-    enabled: !!user?.agency_id,
+    enabled: !!user, // ✅ FIX: Fetch for both staff and admin users
     refetchOnMount: 'always'
   });
 
@@ -925,6 +937,7 @@ export default function Timesheets() {
               <div key={timesheet.id} className="relative">
                 <TimesheetCard
                   timesheet={timesheet}
+                  shift={shift}
                   staffName={getStaffName(timesheet.staff_id)}
                   clientName={getClientName(timesheet.client_id)}
                   issues={validateTimesheet(timesheet)}
@@ -1069,3 +1082,4 @@ export default function Timesheets() {
     </div>
   );
 }
+
