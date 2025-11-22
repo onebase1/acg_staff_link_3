@@ -442,8 +442,8 @@ serve(async (req) => {
                                     subject: `⏰ Reminder: Please confirm your shift on ${shift.date}`,
                                     html: `
                                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                                            <div style="background: linear-gradient(to right, #06b6d4, #3b82f6); color: white; padding: 40px 30px; text-align: center;">
-                                                <h1 style="margin: 0; font-size: 28px; font-weight: 600;">⏰ Shift Confirmation Reminder</h1>
+                                            <div style="background-color: #3b82f6; color: white; padding: 40px 30px; text-align: center;" bgcolor="#3b82f6">
+                                                <h1 style="margin: 0; font-size: 28px; font-weight: bold;">⏰ Shift Confirmation Reminder</h1>
                                             </div>
                                             <div style="background: #fff; padding: 40px 30px;">
                                                 <p style="font-size: 16px; color: #1f2937; margin-bottom: 20px;">Hi ${shift.staff?.first_name},</p>
@@ -508,8 +508,8 @@ serve(async (req) => {
                                     subject: `Shift Unassigned - ${shift.date}`,
                                     html: `
                                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                                            <div style="background: linear-gradient(to right, #06b6d4, #3b82f6); color: white; padding: 40px 30px; text-align: center;">
-                                                <h1 style="margin: 0; font-size: 28px; font-weight: 600;">Shift Update</h1>
+                                            <div style="background-color: #3b82f6; color: white; padding: 40px 30px; text-align: center;" bgcolor="#3b82f6">
+                                                <h1 style="margin: 0; font-size: 28px; font-weight: bold;">Shift Update</h1>
                                             </div>
                                             <div style="background: #fff; padding: 40px 30px;">
                                                 <p style="font-size: 16px; color: #1f2937; margin-bottom: 20px;">Hi ${shift.staff?.first_name},</p>

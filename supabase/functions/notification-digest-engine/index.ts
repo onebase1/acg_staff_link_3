@@ -102,7 +102,7 @@ serve(async (req) => {
                             <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
 
                                 <!-- ✅ HEADER - Fixed for both light and dark mode -->
-                                <div style="background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%); padding: 30px 20px; text-align: center;">
+                                <div style="background-color: #0284c7; padding: 30px 20px; text-align: center;" bgcolor="#0284c7">
                                     ${agency?.logo_url ? `
                                         <img src="${agency.logo_url}" alt="${agency.name}" style="max-height: 60px; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">
                                     ` : ''}
@@ -125,7 +125,7 @@ serve(async (req) => {
                                     ${shiftCardsHtml}
 
                                     <!-- Total Earnings Box -->
-                                    <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border: 2px solid #059669; border-radius: 12px; padding: 20px; text-align: center; margin: 25px 0;">
+                                    <div style="background-color: #d1fae5; border: 2px solid #059669; border-radius: 12px; padding: 20px; text-align: center; margin: 25px 0;" bgcolor="#d1fae5">
                                         <div style="font-size: 18px; color: #065f46; font-weight: bold; margin-bottom: 5px;">
                                             💰 Total Earnings: £${totalEarnings.toFixed(2)}
                                         </div>
@@ -214,7 +214,7 @@ serve(async (req) => {
                             <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
 
                                 <!-- HEADER -->
-                                <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px 20px; text-align: center;">
+                                <div style="background-color: #10b981; padding: 30px 20px; text-align: center;" bgcolor="#10b981">
                                     <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
                                         <span style="font-size: 32px;">✅</span>
                                         <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">Shift${shiftCount > 1 ? 's' : ''} Confirmed</h1>

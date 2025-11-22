@@ -135,8 +135,8 @@ serve(async (req) => {
 
             html = `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; text-align: center;">
-                        <h1 style="color: white; margin: 0;">✅ Shift Confirmed</h1>
+                    <div style="background-color: #059669; padding: 30px; text-align: center;" bgcolor="#059669">
+                        <h1 style="color: white; margin: 0; font-weight: bold;">✅ Shift Confirmed</h1>
                     </div>
                     <div style="padding: 30px; background: #f0fdf4;">
                         <p style="font-size: 16px; color: #1f2937;">Dear ${client.contact_person?.name || 'Team'},</p>
@@ -177,8 +177,8 @@ serve(async (req) => {
 
             html = `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 30px; text-align: center;">
-                        <h1 style="color: white; margin: 0;">📅 Shift Reminder</h1>
+                    <div style="background-color: #2563eb; padding: 30px; text-align: center;" bgcolor="#2563eb">
+                        <h1 style="color: white; margin: 0; font-weight: bold;">📅 Shift Reminder</h1>
                     </div>
                     <div style="padding: 30px; background: #eff6ff;">
                         <p style="font-size: 16px; color: #1f2937;">Dear ${client.contact_person?.name || 'Team'},</p>
@@ -215,8 +215,8 @@ serve(async (req) => {
 
             html = `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 30px; text-align: center;">
-                        <h1 style="color: white; margin: 0;">🙏 Thank You!</h1>
+                    <div style="background-color: #7c3aed; padding: 30px; text-align: center;" bgcolor="#7c3aed">
+                        <h1 style="color: white; margin: 0; font-weight: bold;">🙏 Thank You!</h1>
                     </div>
                     <div style="padding: 30px; background: #faf5ff;">
                         <p style="font-size: 16px; color: #1f2937;">Dear ${client.contact_person?.name || 'Team'},</p>

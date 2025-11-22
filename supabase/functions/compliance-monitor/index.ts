@@ -185,8 +185,8 @@ serve(async (req) => {
                                 subject: `📋 Reminder: ${doc.document_name} expires in 30 days`,
                                 html: `
                                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                                        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; text-align: center;">
-                                            <h1 style="color: white; margin: 0;">📋 Document Expiry Reminder</h1>
+                                        <div style="background-color: #d97706; padding: 30px; text-align: center;" bgcolor="#d97706">
+                                            <h1 style="color: white; margin: 0; font-weight: bold;">📋 Document Expiry Reminder</h1>
                                         </div>
                                         <div style="padding: 30px; background: #fffbeb;">
                                             <p style="font-size: 16px; color: #1f2937;">Hi ${staffMember.first_name},</p>

@@ -1,0 +1,510 @@
+import React, { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Building2,
+  Mail,
+  RefreshCw,
+  Shield,
+  UserPlus,
+  Users,
+  AlertTriangle,
+  Eye,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+
+export default function SuperAdminAgencyManagement() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [expandedAgencies, setExpandedAgencies] = useState(new Set());
+  const [selectedAgencyForAdmin, setSelectedAgencyForAdmin] = useState("");
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [newAdminName, setNewAdminName] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const isSuperAdmin = useMemo(
+    () => !!user && (user.email === "g.basera@yahoo.com" || user.user_type === "super_admin"),
+    [user]
+  );
+
+  // Fetch agencies
+  const { data: agencies = [], isLoading: agenciesLoading } = useQuery({
+    queryKey: ["super-admin-agencies-full"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agencies")
+        .select("*")
+        .order("name", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching agencies:", error);
+        return [];
+      }
+
+      return data || [];
+    },
+    enabled: isSuperAdmin,
+    initialData: [],
+  });
+
+  // Fetch all agency admins
+  const { data: agencyAdmins = [], isLoading: adminsLoading } = useQuery({
+    queryKey: ["super-admin-all-agency-admins"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, email, full_name, user_type, agency_id, created_at")
+        .eq("user_type", "agency_admin")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching agency admins:", error);
+        return [];
+      }
+
+      return data || [];
+    },
+    enabled: isSuperAdmin,
+    initialData: [],
+  });
+
+  // Fetch pending invitations
+  const { data: invitations = [], isLoading: invitationsLoading } = useQuery({
+    queryKey: ["agency-admin-invitations"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agency_admin_invitations")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching invitations:", error);
+        return [];
+      }
+
+      return data || [];
+    },
+    enabled: isSuperAdmin,
+    initialData: [],
+  });
+
+  // Add admin mutation
+  const addAdminMutation = useMutation({
+    mutationFn: async ({ agencyId, adminEmail, adminName }) => {
+      const { data, error } = await supabase.functions.invoke("add-additional-agency-admin", {
+        body: {
+          agencyId,
+          adminEmail,
+          adminName,
+        },
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Admin invitation sent successfully!");
+      queryClient.invalidateQueries({ queryKey: ["super-admin-all-agency-admins"] });
+      queryClient.invalidateQueries({ queryKey: ["agency-admin-invitations"] });
+      setIsDialogOpen(false);
+      setNewAdminEmail("");
+      setNewAdminName("");
+      setSelectedAgencyForAdmin("");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to add admin");
+    },
+  });
+
+  const toggleAgency = (agencyId) => {
+    const newSet = new Set(expandedAgencies);
+    if (newSet.has(agencyId)) {
+      newSet.delete(agencyId);
+    } else {
+      newSet.add(agencyId);
+    }
+    setExpandedAgencies(newSet);
+  };
+
+  const handleAddAdmin = () => {
+    if (!selectedAgencyForAdmin || !newAdminEmail) {
+      toast.error("Please select an agency and enter an email");
+      return;
+    }
+
+    addAdminMutation.mutate({
+      agencyId: selectedAgencyForAdmin,
+      adminEmail: newAdminEmail,
+      adminName: newAdminName,
+    });
+  };
+
+  if (loading || agenciesLoading || adminsLoading || invitationsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading agency management...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="max-w-xl mx-auto mt-16">
+        <Alert variant="destructive">
+          <Shield className="h-5 w-5" />
+          <AlertDescription>
+            Only platform super admins can access agency management.
+          </AlertDescription>
+        </Alert>
+        <Button className="mt-6" onClick={() => navigate("/")}>
+          Return to dashboard
+        </Button>
+      </div>
+    );
+  }
+
+  // Group admins and invitations by agency
+  const agenciesWithAdmins = agencies.map((agency) => {
+    const admins = agencyAdmins.filter((admin) => admin.agency_id === agency.id);
+    const pending = invitations.filter(
+      (inv) => inv.agency_id === agency.id && inv.status === "pending"
+    );
+    return { ...agency, admins, pendingInvitations: pending };
+  });
+
+  const agenciesWithoutAdmins = agenciesWithAdmins.filter((a) => a.admins.length === 0);
+  const agenciesWithAdminsCount = agenciesWithAdmins.filter((a) => a.admins.length > 0).length;
+
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto pb-24">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Agency Management</h1>
+          <p className="text-gray-600 mt-1">
+            View and manage all agencies and their administrators
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge className="bg-purple-600 text-white px-4 py-2">Super Admin</Badge>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <UserPlus className="w-4 h-4 mr-2" />
+                Add Admin to Agency
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Admin to Existing Agency</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div>
+                  <Label htmlFor="agency-select">Select Agency *</Label>
+                  <Select value={selectedAgencyForAdmin} onValueChange={setSelectedAgencyForAdmin}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose an agency..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agencies.map((agency) => (
+                        <SelectItem key={agency.id} value={agency.id}>
+                          {agency.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="admin-email">Admin Email *</Label>
+                  <Input
+                    id="admin-email"
+                    type="email"
+                    value={newAdminEmail}
+                    onChange={(e) => setNewAdminEmail(e.target.value)}
+                    placeholder="admin@example.com"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="admin-name">Admin Full Name</Label>
+                  <Input
+                    id="admin-name"
+                    value={newAdminName}
+                    onChange={(e) => setNewAdminName(e.target.value)}
+                    placeholder="John Doe"
+                  />
+                </div>
+                <Button
+                  onClick={handleAddAdmin}
+                  disabled={addAdminMutation.isPending}
+                  className="w-full"
+                >
+                  {addAdminMutation.isPending ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Sending Invitation...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4 mr-2" />
+                      Send Invitation
+                    </>
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-600">Total Agencies</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{agencies.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-600">
+              Agencies with Admins
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-green-600">{agenciesWithAdminsCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-600">
+              Missing Admins
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-red-600">
+              {agenciesWithoutAdmins.length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-600">
+              Total Admins
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{agencyAdmins.length}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Agencies without admins warning */}
+      {agenciesWithoutAdmins.length > 0 && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertDescription>
+            <strong>{agenciesWithoutAdmins.length} agencies have no administrators:</strong>{" "}
+            {agenciesWithoutAdmins.map((a) => a.name).join(", ")}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Agencies List */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="w-5 h-5" />
+            All Agencies ({agencies.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="divide-y">
+            {agenciesWithAdmins.map((agency) => {
+              const isExpanded = expandedAgencies.has(agency.id);
+              const hasNoAdmins = agency.admins.length === 0;
+
+              return (
+                <Collapsible
+                  key={agency.id}
+                  open={isExpanded}
+                  onOpenChange={() => toggleAgency(agency.id)}
+                >
+                  <div
+                    className={`p-4 hover:bg-gray-50 ${
+                      hasNoAdmins ? "bg-red-50 border-l-4 border-red-500" : ""
+                    }`}
+                  >
+                    <CollapsibleTrigger className="w-full">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {isExpanded ? (
+                            <ChevronDown className="w-5 h-5 text-gray-400" />
+                          ) : (
+                            <ChevronRight className="w-5 h-5 text-gray-400" />
+                          )}
+                          <div className="text-left">
+                            <div className="font-semibold text-gray-900">{agency.name}</div>
+                            <div className="text-sm text-gray-500">
+                              {agency.email || agency.contact_email || "No contact email"}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge variant={hasNoAdmins ? "destructive" : "secondary"}>
+                            {agency.admins.length} admin{agency.admins.length !== 1 ? "s" : ""}
+                          </Badge>
+                          {agency.pendingInvitations.length > 0 && (
+                            <Badge variant="outline" className="text-orange-600 border-orange-600">
+                              {agency.pendingInvitations.length} pending
+                            </Badge>
+                          )}
+                          <Badge
+                            variant={agency.status === "active" ? "default" : "secondary"}
+                            className={
+                              agency.status === "active"
+                                ? "bg-green-100 text-green-800"
+                                : ""
+                            }
+                          >
+                            {agency.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CollapsibleTrigger>
+
+                    <CollapsibleContent>
+                      <div className="mt-4 ml-8 space-y-4">
+                        {/* Admins List */}
+                        {agency.admins.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                              <Users className="w-4 h-4" />
+                              Administrators
+                            </h4>
+                            <div className="space-y-2">
+                              {agency.admins.map((admin) => (
+                                <div
+                                  key={admin.id}
+                                  className="flex items-center justify-between p-3 bg-white border rounded-lg"
+                                >
+                                  <div>
+                                    <div className="font-medium text-gray-900">{admin.email}</div>
+                                    <div className="text-sm text-gray-500">
+                                      {admin.full_name || "Name not set"}
+                                    </div>
+                                    <div className="text-xs text-gray-400">
+                                      Added: {new Date(admin.created_at).toLocaleDateString()}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Pending Invitations */}
+                        {agency.pendingInvitations.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                              <Mail className="w-4 h-4" />
+                              Pending Invitations
+                            </h4>
+                            <div className="space-y-2">
+                              {agency.pendingInvitations.map((invitation) => (
+                                <div
+                                  key={invitation.id}
+                                  className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg"
+                                >
+                                  <div>
+                                    <div className="font-medium text-gray-900">
+                                      {invitation.email}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      Sent: {new Date(invitation.created_at).toLocaleDateString()}
+                                      {invitation.expires_at && (
+                                        <> • Expires: {new Date(invitation.expires_at).toLocaleDateString()}</>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <Badge variant="outline" className="text-orange-600">
+                                    Awaiting Setup
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Agency Details */}
+                        <div className="grid grid-cols-2 gap-4 pt-3 border-t">
+                          <div>
+                            <span className="text-xs text-gray-500">Agency ID</span>
+                            <p className="text-sm font-mono text-gray-700">{agency.id}</p>
+                          </div>
+                          <div>
+                            <span className="text-xs text-gray-500">Created</span>
+                            <p className="text-sm text-gray-700">
+                              {new Date(agency.created_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                          {agency.billing_email && (
+                            <div>
+                              <span className="text-xs text-gray-500">Billing Email</span>
+                              <p className="text-sm text-gray-700">{agency.billing_email}</p>
+                            </div>
+                          )}
+                          {agency.payment_terms_days && (
+                            <div>
+                              <span className="text-xs text-gray-500">Payment Terms</span>
+                              <p className="text-sm text-gray-700">
+                                {agency.payment_terms_days} days
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  </div>
+                </Collapsible>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

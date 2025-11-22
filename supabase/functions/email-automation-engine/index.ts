@@ -109,8 +109,8 @@ serve(async (req) => {
                                     subject: `🌅 Good Morning! You have ${shifts.length} shift${shifts.length > 1 ? 's' : ''} today`,
                                     html: `
                                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                                        <div style="background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%); padding: 30px; text-align: center;">
-                                            <h1 style="color: white; margin: 0;">🌅 Good Morning, ${staffMember.first_name}!</h1>
+                                        <div style="background-color: #0284c7; padding: 30px; text-align: center;" bgcolor="#0284c7">
+                                            <h1 style="color: white; margin: 0; font-weight: bold;">🌅 Good Morning, ${staffMember.first_name}!</h1>
                                         </div>
                                         <div style="padding: 30px; background: #f0f9ff;">
                                             <p style="font-size: 16px; color: #1f2937;">Here's your schedule for today:</p>
@@ -210,8 +210,8 @@ serve(async (req) => {
                                 subject: `📊 Weekly Summary: ${agency.name} - ${completedShifts} shifts completed`,
                                 html: `
                                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                                    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); padding: 30px; text-align: center;">
-                                        <h1 style="color: white; margin: 0;">📊 Weekly Performance Report</h1>
+                                    <div style="background-color: #6d28d9; padding: 30px; text-align: center;" bgcolor="#6d28d9">
+                                        <h1 style="color: white; margin: 0; font-weight: bold;">📊 Weekly Performance Report</h1>
                                         <p style="color: #e9d5ff; margin-top: 10px;">${weekAgoStr} to ${todayStr}</p>
                                     </div>
                                     <div style="padding: 30px; background: #faf5ff;">

@@ -266,9 +266,9 @@ serve(async (req) => {
                 subject: `Invoice ${invoice.invoice_number} from ${agency.name}`,
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
-                    <div style="background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%); padding: 40px; text-align: center;">
+                    <div style="background-color: #0284c7; padding: 40px; text-align: center;" bgcolor="#0284c7">
                         ${agency.logo_url ? `<img src="${agency.logo_url}" alt="${agency.name}" style="max-height: 80px; margin-bottom: 15px;">` : ''}
-                        <h1 style="color: white; margin: 0; font-size: 32px;">INVOICE</h1>
+                        <h1 style="color: white; margin: 0; font-size: 32px; font-weight: bold;">INVOICE</h1>
                         <p style="color: #e0f2fe; margin-top: 10px; font-size: 18px;">${invoice.invoice_number}</p>
                         <a href="${invoiceViewUrl}" style="display: inline-block; margin-top: 15px; background: white; color: #0284c7; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">📄 View Full Invoice</a>
                     </div>

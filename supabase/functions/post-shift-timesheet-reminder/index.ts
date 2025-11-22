@@ -252,13 +252,21 @@ async function sendTimesheetReminder(supabase, shift) {
                     </p>
                 </div>
 
-                <div style="text-align: center; margin: 30px 0;">
-                    <a href="${portalLink}" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-                       color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px;
-                       font-weight: 600; display: inline-block;">
-                        📱 View Timesheet
-                    </a>
-                </div>
+                <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 30px 0;">
+                    <tr>
+                        <td align="center">
+                            <table border="0" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td style="background-color: #059669; border-radius: 8px;" bgcolor="#059669">
+                                        <a href="${portalLink}" style="display: inline-block; padding: 15px 30px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 16px; font-family: Arial, sans-serif;">
+                                            📱 View Timesheet
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
 
                 <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
                     <strong>Forgot to clock out?</strong> Please clock out now via the app.<br>
@@ -297,13 +305,21 @@ async function sendTimesheetReminder(supabase, shift) {
                     </ol>
                 </div>
 
-                <div style="text-align: center; margin: 30px 0;">
-                    <a href="${portalLink}" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-                       color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px;
-                       font-weight: 600; display: inline-block;">
-                        📱 Upload Timesheet
-                    </a>
-                </div>
+                <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 30px 0;">
+                    <tr>
+                        <td align="center">
+                            <table border="0" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td style="background-color: #0369a1; border-radius: 8px;" bgcolor="#0369a1">
+                                        <a href="${portalLink}" style="display: inline-block; padding: 15px 30px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 16px; font-family: Arial, sans-serif;">
+                                            📱 Upload Timesheet
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
 
                 <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
                     Timesheets must be submitted within 48 hours of shift completion.<br>

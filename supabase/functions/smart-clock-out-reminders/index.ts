@@ -204,8 +204,8 @@ async function sendReminder(supabase: any, staff: any, shift: any, clientName: s
     // Build rich email template
     const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: ${urgency === 'high' ? 'linear-gradient(to right, #dc2626, #ef4444)' : urgency === 'medium' ? 'linear-gradient(to right, #f59e0b, #fbbf24)' : 'linear-gradient(to right, #06b6d4, #3b82f6)'}; color: white; padding: 40px 30px; text-align: center;">
-                <h1 style="margin: 0; font-size: 28px; font-weight: 600;">${subject}</h1>
+            <div style="background-color: ${urgency === 'high' ? '#ef4444' : urgency === 'medium' ? '#fbbf24' : '#3b82f6'}; color: white; padding: 40px 30px; text-align: center;" bgcolor="${urgency === 'high' ? '#ef4444' : urgency === 'medium' ? '#fbbf24' : '#3b82f6'}">
+                <h1 style="margin: 0; font-size: 28px; font-weight: bold;">${subject}</h1>
             </div>
 
             <div style="background: #fff; padding: 40px 30px;">
@@ -227,14 +227,21 @@ async function sendReminder(supabase: any, staff: any, shift: any, clientName: s
                     <p style="margin: 5px 0;"><strong>Scheduled Time:</strong> ${shift.start_time} - ${shift.end_time}</p>
                 </div>
 
-                <div style="text-align: center; margin: 30px 0;">
-                    <a href="${Deno.env.get("VITE_APP_URL") || 'https://agilecaremanagement.netlify.app'}/StaffPortal"
-                       style="background: linear-gradient(135deg, ${urgency === 'high' ? '#dc2626' : urgency === 'medium' ? '#f59e0b' : '#0284c7'} 0%, ${urgency === 'high' ? '#ef4444' : urgency === 'medium' ? '#fbbf24' : '#0369a1'} 100%);
-                       color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px;
-                       font-weight: 600; display: inline-block; font-size: 18px;">
-                        📱 Clock Out Now
-                    </a>
-                </div>
+                <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 30px 0;">
+                    <tr>
+                        <td align="center">
+                            <table border="0" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td style="background-color: ${urgency === 'high' ? '#ef4444' : urgency === 'medium' ? '#fbbf24' : '#0369a1'}; border-radius: 8px;" bgcolor="${urgency === 'high' ? '#ef4444' : urgency === 'medium' ? '#fbbf24' : '#0369a1'}">
+                                        <a href="${Deno.env.get("VITE_APP_URL") || 'https://agilecaremanagement.netlify.app'}/StaffPortal" style="display: inline-block; padding: 15px 40px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 18px; font-family: Arial, sans-serif;">
+                                            📱 Clock Out Now
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
 
                 ${urgency === 'high' ? `
                 <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 25px 0;">

@@ -57,7 +57,8 @@
       "Bash(./supabase.exe secrets set:*)",
       "Bash(./supabase.exe db query:*)",
       "Bash(python:*)",
-      "Bash(./supabase.exe functions deploy:*)"
+      "Bash(./supabase.exe functions deploy:*)",
+      "Bash(deno run:*)"
     ],
     "deny": [],
     "ask": []

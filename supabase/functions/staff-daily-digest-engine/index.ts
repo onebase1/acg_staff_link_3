@@ -132,8 +132,8 @@ serve(async (req) => {
                                 subject: `🌅 Good Morning! You have ${shifts.length} shift${shifts.length > 1 ? 's' : ''} today`,
                                 html: `
                                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                                        <div style="background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%); padding: 30px; text-align: center;">
-                                            <h1 style="color: white; margin: 0;">🌅 Good Morning, ${staffMember.first_name}!</h1>
+                                        <div style="background-color: #0284c7; padding: 30px; text-align: center;" bgcolor="#0284c7">
+                                            <h1 style="color: white; margin: 0; font-weight: bold;">🌅 Good Morning, ${staffMember.first_name}!</h1>
                                             <p style="color: #e0f2fe; margin-top: 10px; font-size: 18px;">${now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                                         </div>
                                         <div style="padding: 30px; background: #f0f9ff;">
@@ -230,8 +230,8 @@ serve(async (req) => {
                                     subject: `☀️ Good Morning! Rest day today`,
                                     html: `
                                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                                            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; text-align: center;">
-                                                <h1 style="color: white; margin: 0;">☀️ Good Morning, ${staffMember.first_name}!</h1>
+                                            <div style="background-color: #059669; padding: 30px; text-align: center;" bgcolor="#059669">
+                                                <h1 style="color: white; margin: 0; font-weight: bold;">☀️ Good Morning, ${staffMember.first_name}!</h1>
                                             </div>
                                             <div style="padding: 30px; background: #f0fdf4; text-align: center;">
                                                 <p style="font-size: 18px; color: #1f2937; margin: 20px 0;">You have no shifts scheduled today.</p>
