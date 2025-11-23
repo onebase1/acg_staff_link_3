@@ -99,6 +99,12 @@ EXTRACT THE FOLLOWING DATA:
 - Look for keywords: "scheduled", "contracted", "planned", "expected" for scheduled hours
 - Actual worked hours might be in a different field/section than scheduled
 
+**MULTI-ROW TIMESHEET HANDLING:**
+- If the timesheet table has MULTIPLE date rows (e.g., Mon/Wed/Sat), extract EACH row separately
+- Do NOT sum weekly totals - extract individual shift data for each date
+- Return array of rows with separate date/hours for each
+- If only ONE row exists, return single-item array
+
 **CONFIDENCE ASSESSMENT:**
 - Rate your confidence in each field extraction (0-100%)
 - Note if data is unclear, handwritten poorly, or partially obscured
@@ -107,11 +113,20 @@ Return ONLY valid JSON in this exact format (no markdown, no explanations):
 {
   "employee_name": "string",
   "client_name": "string",
-  "date": "YYYY-MM-DD",
-  "start_time": "HH:MM",
-  "end_time": "HH:MM",
-  "break_minutes": number,
-  "total_hours": number,
+  "rows": [
+    {
+      "date": "YYYY-MM-DD",
+      "start_time": "HH:MM",
+      "end_time": "HH:MM",
+      "break_minutes": number,
+      "hours": number
+    }
+  ],
+  "date": "YYYY-MM-DD (primary/first date for backward compatibility)",
+  "start_time": "HH:MM (from primary row)",
+  "end_time": "HH:MM (from primary row)",
+  "break_minutes": number (from primary row),
+  "total_hours": number (from primary row, NOT sum of all rows),
   "scheduled_hours": number or null,
   "staff_signature": boolean,
   "supervisor_signature": boolean,
@@ -181,6 +196,40 @@ Please extract all data from the document and compare with expected values.`
       );
     }
 
+    // PHASE 1 ENHANCEMENT: Find matched row for multi-row timesheets
+    let matchedRow = null;
+    if (extractedData.rows && extractedData.rows.length > 0) {
+      // If we have an expected date, find the matching row
+      if (expected_data?.shift_date) {
+        matchedRow = extractedData.rows.find(row => row.date === expected_data.shift_date);
+
+        if (matchedRow) {
+          console.log(`✅ Found matching row for date ${expected_data.shift_date}:`, matchedRow);
+          // Use matched row data for validation
+          extractedData.matched_row_hours = matchedRow.hours;
+          extractedData.matched_row_date = matchedRow.date;
+        } else {
+          console.log(`⚠️ No row matches expected date ${expected_data.shift_date}`);
+          // Use first row as fallback
+          matchedRow = extractedData.rows[0];
+          extractedData.matched_row_hours = matchedRow.hours;
+          extractedData.matched_row_date = matchedRow.date;
+        }
+      } else {
+        // No expected date, use first row
+        matchedRow = extractedData.rows[0];
+        extractedData.matched_row_hours = matchedRow.hours;
+        extractedData.matched_row_date = matchedRow.date;
+      }
+
+      // Add multi-row info to warnings if multiple rows detected
+      if (extractedData.rows.length > 1) {
+        extractedData.warnings = extractedData.warnings || [];
+        extractedData.warnings.push(`Multi-row timesheet detected: ${extractedData.rows.length} shifts found (dates: ${extractedData.rows.map(r => r.date).join(', ')})`);
+        console.log(`📋 Multi-row timesheet: ${extractedData.rows.length} rows extracted`);
+      }
+    }
+
     // VALIDATION: Compare with expected data
     const validation = {
       validation_status: 'match',
@@ -191,8 +240,13 @@ Please extract all data from the document and compare with expected values.`
 
     if (expected_data) {
       // 1. HOURS VALIDATION (most important)
-      if (expected_data.scheduled_hours && extractedData.total_hours) {
-        const hoursDiff = Math.abs(expected_data.scheduled_hours - extractedData.total_hours);
+      // Use matched_row_hours if available (for multi-row timesheets), otherwise fall back to total_hours
+      const hoursToValidate = extractedData.matched_row_hours !== undefined
+        ? extractedData.matched_row_hours
+        : extractedData.total_hours;
+
+      if (expected_data.scheduled_hours && hoursToValidate) {
+        const hoursDiff = Math.abs(expected_data.scheduled_hours - hoursToValidate);
         const percentDiff = (hoursDiff / expected_data.scheduled_hours) * 100;
 
         if (hoursDiff > 0.5) {
@@ -200,7 +254,7 @@ Please extract all data from the document and compare with expected values.`
           validation.mismatches.push({
             field: 'hours',
             expected: expected_data.scheduled_hours,
-            actual: extractedData.total_hours,
+            actual: hoursToValidate,
             scheduled_hours: extractedData.scheduled_hours,
             difference: hoursDiff,
             percent_difference: percentDiff.toFixed(1),
@@ -330,13 +384,25 @@ Please extract all data from the document and compare with expected values.`
         extracted_data: {
           ...extractedData,
           ...validation,
-          hours_worked: extractedData.total_hours,
+          hours_worked: extractedData.matched_row_hours !== undefined
+            ? extractedData.matched_row_hours
+            : extractedData.total_hours,
           extracted_at: new Date().toISOString(),
           requires_manual_review: requiresReview,
           review_reasons: requiresReview ? [
             ...(validation.mismatches.filter(m => m.severity === 'critical').map(m => m.field)),
             ...(validation.confidence_score < 70 ? ['low_confidence'] : [])
-          ] : []
+          ] : [],
+          // Include matched row info for transparency
+          ...(matchedRow && {
+            matched_row_info: {
+              date: matchedRow.date,
+              hours: matchedRow.hours,
+              start_time: matchedRow.start_time,
+              end_time: matchedRow.end_time,
+              break_minutes: matchedRow.break_minutes
+            }
+          })
         }
       }),
       { headers: { "Content-Type": "application/json" } }

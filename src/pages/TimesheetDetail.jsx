@@ -304,19 +304,32 @@ export default function TimesheetDetail() {
         if (ocrResult.data?.success && ocrResult.data.extracted_data) {
           const extracted = ocrResult.data.extracted_data;
 
-          if (extracted.start_time) {
-            updateData.actual_start_time = extracted.start_time;
-            console.log('✅ Set actual_start_time:', extracted.start_time);
+          // PHASE 1 ENHANCEMENT: Use matched_row_info for multi-row timesheets
+          // If matched_row_info exists, it means OCR found the correct row for this shift date
+          const rowData = extracted.matched_row_info || extracted;
+
+          if (rowData.start_time) {
+            updateData.actual_start_time = rowData.start_time;
+            console.log('✅ Set actual_start_time:', rowData.start_time,
+              extracted.matched_row_info ? `(from matched row ${extracted.matched_row_info.date})` : '');
           }
 
-          if (extracted.end_time) {
-            updateData.actual_end_time = extracted.end_time;
-            console.log('✅ Set actual_end_time:', extracted.end_time);
+          if (rowData.end_time) {
+            updateData.actual_end_time = rowData.end_time;
+            console.log('✅ Set actual_end_time:', rowData.end_time,
+              extracted.matched_row_info ? `(from matched row ${extracted.matched_row_info.date})` : '');
           }
 
-          if (extracted.break_minutes !== undefined && extracted.break_minutes !== null) {
-            updateData.break_duration_minutes = extracted.break_minutes;
-            console.log('✅ Set break_duration_minutes:', extracted.break_minutes);
+          if (rowData.break_minutes !== undefined && rowData.break_minutes !== null) {
+            updateData.break_duration_minutes = rowData.break_minutes;
+            console.log('✅ Set break_duration_minutes:', rowData.break_minutes,
+              extracted.matched_row_info ? `(from matched row ${extracted.matched_row_info.date})` : '');
+          }
+
+          // Also update hours_worked to use matched row hours
+          if (extracted.hours_worked !== undefined) {
+            updateData.hours_worked = extracted.hours_worked;
+            console.log('✅ Set hours_worked:', extracted.hours_worked);
           }
         }
 
