@@ -24,6 +24,7 @@ import { format } from "date-fns";
 import GPSIndicator, { GPSDetails } from "../components/timesheets/GPSIndicator";
 import PayDisplay from "../components/timesheets/PayDisplay";
 import ResponsiveUploadZone from "../components/timesheets/ResponsiveUploadZone";
+import ConfirmOCRModal from "../components/timesheets/ConfirmOCRModal";
 
 export default function TimesheetDetail() {
   const [timesheetId, setTimesheetId] = useState(null);
@@ -34,6 +35,15 @@ export default function TimesheetDetail() {
   const [ocrExpanded, setOcrExpanded] = useState(() => window.innerWidth >= 768);
   // State for tracking last OCR confidence (for re-upload guidance)
   const [lastOcrConfidence, setLastOcrConfidence] = useState(null);
+
+  // PHASE 2: Staff Validation Workflow
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingOcrData, setPendingOcrData] = useState(null);
+  const [pendingDocument, setPendingDocument] = useState(null);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [confirming, setConfirming] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -285,92 +295,39 @@ export default function TimesheetDetail() {
         const newDocument = {
           file_url,
           uploaded_at: new Date().toISOString(),
-          uploaded_by: user?.email || 'unknown', // Changed from currentUser to user
+          uploaded_by: user?.email || 'unknown',
           file_name: file.name,
           file_type: file.type,
           file_size: file.size,
           notes: `OCR Status: ${ocrResult.data?.status || 'failed'}`,
-          extracted_data: ocrResult.data // Use extracted_data to be consistent with existing UI render logic
+          extracted_data: ocrResult.data
         };
 
-        const existingDocs = timesheet.uploaded_documents || [];
-
-        // Quick Fix 3: Populate actual times from OCR extraction
-        const updateData = {
-          uploaded_documents: [...existingDocs, newDocument]
-        };
-
-        // Add actual times if OCR successfully extracted them
+        // PHASE 2: Instead of immediately saving, show confirmation modal
         if (ocrResult.data?.success && ocrResult.data.extracted_data) {
-          const extracted = ocrResult.data.extracted_data;
+          console.log('✅ OCR succeeded - showing confirmation modal');
+          setPendingOcrData(ocrResult.data.extracted_data);
+          setPendingDocument(newDocument);
+          setPendingFile(file);
+          setShowConfirmModal(true);
+          setUploadingDoc(false);
+          return { showModal: true }; // Return signal that modal will be shown
+        } else {
+          // OCR failed - save document without confirmation
+          console.log('⚠️ OCR failed - saving without confirmation');
+          const existingDocs = timesheet.uploaded_documents || [];
+          const { error: updateError } = await supabase
+            .from('timesheets')
+            .update({
+              uploaded_documents: [...existingDocs, newDocument]
+            })
+            .eq('id', timesheetId);
 
-          // PHASE 1 ENHANCEMENT: Use matched_row_info for multi-row timesheets
-          // If matched_row_info exists, it means OCR found the correct row for this shift date
-          const rowData = extracted.matched_row_info || extracted;
+          if (updateError) throw updateError;
 
-          if (rowData.start_time) {
-            updateData.actual_start_time = rowData.start_time;
-            console.log('✅ Set actual_start_time:', rowData.start_time,
-              extracted.matched_row_info ? `(from matched row ${extracted.matched_row_info.date})` : '');
-          }
-
-          if (rowData.end_time) {
-            updateData.actual_end_time = rowData.end_time;
-            console.log('✅ Set actual_end_time:', rowData.end_time,
-              extracted.matched_row_info ? `(from matched row ${extracted.matched_row_info.date})` : '');
-          }
-
-          if (rowData.break_minutes !== undefined && rowData.break_minutes !== null) {
-            updateData.break_duration_minutes = rowData.break_minutes;
-            console.log('✅ Set break_duration_minutes:', rowData.break_minutes,
-              extracted.matched_row_info ? `(from matched row ${extracted.matched_row_info.date})` : '');
-          }
-
-          // Also update hours_worked to use matched row hours
-          if (extracted.hours_worked !== undefined) {
-            updateData.hours_worked = extracted.hours_worked;
-            console.log('✅ Set hours_worked:', extracted.hours_worked);
-          }
+          toast.warning('Document uploaded, but OCR extraction failed. File is still saved.');
+          return file_url;
         }
-
-        const { error: updateError } = await supabase
-          .from('timesheets')
-          .update(updateData)
-          .eq('id', timesheetId);
-
-        // CRITICAL: Auto-trigger validation if discrepancies detected
-        if (ocrResult.data.status === 'success' && ocrResult.data.discrepancies?.length > 0) {
-          console.log('⚠️ Discrepancies detected - triggering intelligentTimesheetValidator...');
-
-          try {
-            const { data: validationResult, error: validationError } = await supabase.functions.invoke('intelligent-timesheet-validator', {
-              body: {
-                timesheet_id: timesheetId,
-                ocr_extracted_data: ocrResult.data.extracted_data,
-                expected_data: {
-                  staff_name: staff ? `${staff.first_name} ${staff.last_name}` : null,
-                  client_name: client?.name,
-                  shift_date: timesheet?.shift_date,
-                  hours: timesheet?.total_hours
-                },
-                discrepancies: ocrResult.data.discrepancies,
-                confidence_score: ocrResult.data.confidence_score
-              }
-            });
-
-            console.log('✅ Validation triggered:', validationResult.data);
-
-            if (validationResult.data.workflow_created) {
-              toast.success('📋 Discrepancy detected - AdminWorkflow created for review');
-            }
-          } catch (validationError) {
-            console.error('❌ Failed to trigger validation:', validationError);
-            toast.warning('OCR completed but validation failed to trigger');
-          }
-        }
-
-        toast.success('✅ Document uploaded and processed successfully!');
-        return file_url; // Return something on success
       } catch (error) {
         console.error('Upload error:', error);
         setUploadError(error.message);
@@ -403,6 +360,152 @@ export default function TimesheetDetail() {
 
     setUploadingDoc(true);
     uploadFileMutation.mutate(file);
+  };
+
+  // PHASE 2: Staff Confirmation Handlers
+  const handleConfirmOCR = async () => {
+    if (!pendingOcrData || !pendingDocument) return;
+
+    setConfirming(true);
+    try {
+      const extracted = pendingOcrData;
+      const existingDocs = timesheet.uploaded_documents || [];
+
+      // Prepare update data with actual times from OCR
+      const rowData = extracted.matched_row_info || extracted;
+      const updateData = {
+        uploaded_documents: [...existingDocs, pendingDocument],
+        staff_confirmed: true,
+        staff_confirmed_at: new Date().toISOString()
+      };
+
+      // Populate actual times from OCR
+      if (rowData.start_time) {
+        updateData.actual_start_time = rowData.start_time;
+        console.log('✅ Set actual_start_time:', rowData.start_time,
+          extracted.matched_row_info ? `(from matched row ${extracted.matched_row_info.date})` : '');
+      }
+
+      if (rowData.end_time) {
+        updateData.actual_end_time = rowData.end_time;
+        console.log('✅ Set actual_end_time:', rowData.end_time,
+          extracted.matched_row_info ? `(from matched row ${extracted.matched_row_info.date})` : '');
+      }
+
+      if (rowData.break_minutes !== undefined && rowData.break_minutes !== null) {
+        updateData.break_duration_minutes = rowData.break_minutes;
+        console.log('✅ Set break_duration_minutes:', rowData.break_minutes,
+          extracted.matched_row_info ? `(from matched row ${extracted.matched_row_info.date})` : '');
+      }
+
+      if (extracted.hours_worked !== undefined) {
+        updateData.hours_worked = extracted.hours_worked;
+        console.log('✅ Set hours_worked:', extracted.hours_worked);
+      }
+
+      // AUTO-APPROVAL LOGIC
+      const canAutoApprove = (
+        extracted.confidence?.overall >= 80 &&
+        extracted.validation_status === 'match' &&
+        !extracted.mismatches?.some(m => m.severity === 'critical')
+      );
+
+      if (canAutoApprove) {
+        updateData.status = 'approved';
+        updateData.approved_by = 'auto_approved_by_staff';
+        updateData.approved_at = new Date().toISOString();
+        updateData.auto_approved = true;
+        console.log('✅ Auto-approving timesheet (high confidence + staff confirmed)');
+      } else {
+        updateData.status = 'pending_admin_review';
+        console.log('⏳ Sending to admin review (low confidence or mismatches detected)');
+      }
+
+      const { error: updateError } = await supabase
+        .from('timesheets')
+        .update(updateData)
+        .eq('id', timesheetId);
+
+      if (updateError) throw updateError;
+
+      // Invalidate queries to refresh UI
+      queryClient.invalidateQueries(['timesheet', timesheetId]);
+      queryClient.invalidateQueries(['timesheets']);
+
+      // Success toast based on auto-approval
+      if (canAutoApprove) {
+        toast.success('✅ Timesheet approved automatically! High confidence extraction confirmed.');
+      } else {
+        toast.info('⏳ Sent to admin for review. Thank you for confirming!');
+      }
+
+      // Close modal and reset state
+      setShowConfirmModal(false);
+      setPendingOcrData(null);
+      setPendingDocument(null);
+      setPendingFile(null);
+
+    } catch (error) {
+      console.error('❌ Failed to confirm timesheet:', error);
+      toast.error(`Failed to save: ${error.message}`);
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const handleRejectOCR = async () => {
+    if (!pendingDocument) return;
+
+    setRejecting(true);
+    try {
+      const existingDocs = timesheet.uploaded_documents || [];
+
+      const { error: updateError } = await supabase
+        .from('timesheets')
+        .update({
+          uploaded_documents: [...existingDocs, pendingDocument],
+          status: 'pending_admin_review',
+          staff_confirmed: false,
+          staff_confirmed_at: new Date().toISOString()
+        })
+        .eq('id', timesheetId);
+
+      if (updateError) throw updateError;
+
+      queryClient.invalidateQueries(['timesheet', timesheetId]);
+      queryClient.invalidateQueries(['timesheets']);
+
+      toast.info('⏳ Timesheet sent to admin for manual review.');
+
+      setShowConfirmModal(false);
+      setPendingOcrData(null);
+      setPendingDocument(null);
+      setPendingFile(null);
+
+    } catch (error) {
+      console.error('❌ Failed to reject timesheet:', error);
+      toast.error(`Failed to save: ${error.message}`);
+    } finally {
+      setRejecting(false);
+    }
+  };
+
+  const handleReUpload = () => {
+    // Close modal and trigger file picker again
+    setShowConfirmModal(false);
+    setPendingOcrData(null);
+    setPendingDocument(null);
+    setPendingFile(null);
+
+    // Trigger file input click
+    setTimeout(() => {
+      const fileInput = document.querySelector('input[type="file"]');
+      if (fileInput) {
+        fileInput.click();
+      }
+    }, 100);
+
+    toast.info('📸 Please upload a better quality photo');
   };
 
   const handleApprove = () => {
@@ -1261,6 +1364,24 @@ export default function TimesheetDetail() {
           </Alert>
         )}
       </div>
+
+      {/* PHASE 2: Staff Validation Modal */}
+      <ConfirmOCRModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        extractedData={pendingOcrData}
+        expectedData={{
+          staff_name: staff ? `${staff.first_name} ${staff.last_name}` : null,
+          client_name: client?.name,
+          shift_date: timesheet?.shift_date,
+          scheduled_hours: timesheet?.total_hours
+        }}
+        onConfirm={handleConfirmOCR}
+        onReject={handleRejectOCR}
+        onReUpload={handleReUpload}
+        confirming={confirming}
+        rejecting={rejecting}
+      />
     </div>
   );
 }
