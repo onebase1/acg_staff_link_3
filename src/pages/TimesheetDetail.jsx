@@ -9,21 +9,29 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Clock, MapPin, FileText, CheckCircle, XCircle, DollarSign,
   AlertTriangle, User, Building2, Calendar, Eye, Download,
-  Upload, ArrowLeft, Sun, Moon, Sunrise, TrendingUp, TrendingDown
+  Upload, ArrowLeft, Sun, Moon, Sunrise, TrendingUp, TrendingDown,
+  ChevronDown
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import GPSIndicator, { GPSDetails } from "../components/timesheets/GPSIndicator";
 import PayDisplay from "../components/timesheets/PayDisplay";
+import ResponsiveUploadZone from "../components/timesheets/ResponsiveUploadZone";
 
 export default function TimesheetDetail() {
   const [timesheetId, setTimesheetId] = useState(null);
   const [user, setUser] = useState(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [uploadError, setUploadError] = useState(null); // New state for upload error
-  const [dragActive, setDragActive] = useState(false);
+  // State for OCR collapsible - default open on desktop (>= 768px), closed on mobile
+  const [ocrExpanded, setOcrExpanded] = useState(() => window.innerWidth >= 768);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -356,26 +364,6 @@ export default function TimesheetDetail() {
     uploadFileMutation.mutate(file);
   };
 
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileUpload(e.dataTransfer.files[0]);
-    }
-  };
-
   const handleApprove = () => {
     updateMutation.mutate({
       id: timesheetId,
@@ -532,15 +520,13 @@ export default function TimesheetDetail() {
 
       {gpsConsentMessage}
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Left Column - Main Details */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Basic Info */}
-          <Card>
+      <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6">
+        {/* Basic Info - Always first */}
+        <Card className="order-1 lg:col-span-2">
             <CardHeader className="border-b">
               <CardTitle>Basic Information</CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="p-3 sm:p-6 space-y-4">
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="flex items-start gap-3">
                   <User className="w-5 h-5 text-gray-400 mt-1" />
@@ -608,10 +594,10 @@ export default function TimesheetDetail() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+        </Card>
 
-          {/* Uploaded Documents */}
-          <Card>
+        {/* Uploaded Documents - Show after financial on mobile */}
+        <Card className="order-5 lg:col-span-2">
             <CardHeader className="border-b">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
@@ -620,51 +606,14 @@ export default function TimesheetDetail() {
                 </CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="p-6">
-              {/* Drag & Drop Upload Zone */}
-              <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                  dragActive
-                    ? 'border-cyan-500 bg-cyan-50'
-                    : 'border-gray-300 hover:border-cyan-400 hover:bg-gray-50'
-                }`}
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-              >
-                <Upload className={`w-12 h-12 mx-auto mb-4 ${dragActive ? 'text-cyan-600' : 'text-gray-400'}`} />
-                <p className="text-sm font-semibold text-gray-700 mb-2">
-                  {dragActive ? 'Drop file here' : 'Drag & drop timesheet document'}
-                </p>
-                <p className="text-xs text-gray-500 mb-4">
-                  or click to browse (PDF, JPG, PNG - max 10MB)
-                </p>
-                <label className="cursor-pointer">
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={uploadingDoc}
-                    asChild
-                  >
-                    <span>
-                      <Upload className="w-4 h-4 mr-2" />
-                      {uploadingDoc ? 'Uploading...' : 'Browse Files'}
-                    </span>
-                  </Button>
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => {
-                      if (e.target.files[0]) {
-                        handleFileUpload(e.target.files[0]);
-                      }
-                    }}
-                    disabled={uploadingDoc}
-                  />
-                </label>
-              </div>
+            <CardContent className="p-3 sm:p-6">
+              {/* Responsive Upload Zone - Mobile: Compact button | Desktop: Drag & drop */}
+              <ResponsiveUploadZone
+                onFileSelect={handleFileUpload}
+                uploading={uploadingDoc}
+                acceptedFormats=".pdf,.jpg,.jpeg,.png"
+                maxSizeMB={10}
+              />
 
               {/* Show uploaded documents */}
               {timesheet.uploaded_documents && timesheet.uploaded_documents.length > 0 ? (
@@ -716,7 +665,36 @@ export default function TimesheetDetail() {
 
                       {/* ✅ ENHANCED: OCR Validation Results Canvas */}
                       {doc.extracted_data && (
-                        <div className="p-4 bg-white">
+                        <Collapsible
+                          open={ocrExpanded}
+                          onOpenChange={setOcrExpanded}
+                          className="p-4 bg-white"
+                        >
+                          {/* Collapsible Trigger - Summary Header */}
+                          <CollapsibleTrigger className="w-full">
+                            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border-2 border-purple-200 hover:border-purple-400 transition-colors mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
+                                  doc.extracted_data.confidence_score >= 80 ? 'bg-green-500' :
+                                  doc.extracted_data.confidence_score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                                }`}>
+                                  {doc.extracted_data.confidence_score}%
+                                </div>
+                                <div className="text-left">
+                                  <p className="text-sm font-bold text-purple-900">AI Data Extraction</p>
+                                  <p className="text-xs text-purple-700">
+                                    {doc.extracted_data.validation_status === 'match'
+                                      ? '✅ Validated' : '⚠️ Review Required'}
+                                    {' • '}
+                                    {ocrExpanded ? 'Click to collapse' : 'Click to expand'}
+                                  </p>
+                                </div>
+                              </div>
+                              <ChevronDown className={`w-5 h-5 text-purple-600 transition-transform ${ocrExpanded ? 'rotate-180' : ''}`} />
+                            </div>
+                          </CollapsibleTrigger>
+
+                          <CollapsibleContent>
                           {/* Confidence Score Banner */}
                           {doc.extracted_data.confidence_score !== undefined && (
                             <div className={`p-4 rounded-lg mb-4 ${
@@ -1026,7 +1004,8 @@ export default function TimesheetDetail() {
                               </pre>
                             </details>
                           )}
-                        </div>
+                          </CollapsibleContent>
+                        </Collapsible>
                       )}
                     </div>
                   ))}
@@ -1055,41 +1034,40 @@ export default function TimesheetDetail() {
                 </div>
               )}
             </CardContent>
-          </Card>
+        </Card>
 
-          {/* GPS Location */}
-          {hasGPSConsent && timesheet.clock_in_location && (
-            <Card>
+        {/* GPS Location - Show before documents on mobile */}
+        {hasGPSConsent && timesheet.clock_in_location && (
+          <Card className="order-4 lg:col-span-2">
               <CardHeader className="border-b">
                 <CardTitle className="flex items-center gap-2">
                   <MapPin className="w-5 h-5" />
                   Location Verification
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
+              <CardContent className="p-3 sm:p-6">
                 <GPSDetails timesheet={timesheet} staff={staff} />
               </CardContent>
-            </Card>
-          )}
-        </div>
+          </Card>
+        )}
 
-        {/* Right Column - Financial & Actions */}
-        <div className="space-y-6">
-          {/* Staff Pay Display */}
-          {shift && (
+        {/* Staff Pay Display - Show early on mobile (after basic info) */}
+        {shift && (
+          <div className="order-2">
             <PayDisplay shift={shift} timesheet={timesheet} />
-          )}
+          </div>
+        )}
 
-          {/* Admin Financial Details */}
-          {isAdmin && workedHours > 0 && (
-            <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+        {/* Admin Financial Details - Show early on mobile */}
+        {isAdmin && workedHours > 0 && (
+          <Card className="order-2 bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
               <CardHeader className="border-b border-blue-200">
                 <CardTitle className="flex items-center gap-2 text-blue-900">
                   <DollarSign className="w-5 h-5" />
                   Agency Financial Details
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
+              <CardContent className="p-3 sm:p-6 space-y-4">
                 <div>
                   <p className="text-sm text-blue-700">Client Charge</p>
                   <p className="text-2xl font-bold text-blue-900">
@@ -1109,17 +1087,17 @@ export default function TimesheetDetail() {
                     {(((timesheet.client_charge_amount || 0) - (timesheet.staff_pay_amount || 0)) / (timesheet.client_charge_amount || 1) * 100).toFixed(1)}% margin
                   </p>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+            </CardContent>
+          </Card>
+        )}
 
-          {/* Actions */}
-          {isAdmin && timesheet.status === 'submitted' && (
-            <Card>
+        {/* Actions - Show after financial on mobile */}
+        {isAdmin && timesheet.status === 'submitted' && (
+          <Card className="order-3">
               <CardHeader className="border-b">
                 <CardTitle>Actions</CardTitle>
               </CardHeader>
-              <CardContent className="p-6 space-y-3">
+              <CardContent className="p-3 sm:p-6 space-y-3">
                 <Button
                   onClick={handleApprove}
                   className="w-full bg-green-600 hover:bg-green-700"
@@ -1137,17 +1115,17 @@ export default function TimesheetDetail() {
                   <XCircle className="w-4 h-4 mr-2" />
                   Reject Timesheet
                 </Button>
-              </CardContent>
-            </Card>
-          )}
+            </CardContent>
+          </Card>
+        )}
 
-          {/* NEW: Create Invoice Button for Approved Timesheets */}
-          {isAdmin && timesheet.status === 'approved' && !timesheet.invoice_id && (
-            <Card className="border-2 border-green-300 bg-gradient-to-br from-green-50 to-emerald-50">
+        {/* Create Invoice Button - Show after actions on mobile */}
+        {isAdmin && timesheet.status === 'approved' && !timesheet.invoice_id && (
+          <Card className="order-3 border-2 border-green-300 bg-gradient-to-br from-green-50 to-emerald-50">
               <CardHeader className="border-b border-green-200">
                 <CardTitle className="text-green-900">Ready to Invoice</CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
+              <CardContent className="p-3 sm:p-6">
                 <p className="text-sm text-green-800 mb-4">
                   This timesheet has been approved and is ready to be invoiced.
                 </p>
@@ -1162,16 +1140,16 @@ export default function TimesheetDetail() {
                   Will generate PDF invoice with VAT calculation
                 </p>
               </CardContent>
-            </Card>
-          )}
+          </Card>
+        )}
 
-          {/* Invoice Link if Already Invoiced */}
-          {timesheet.invoice_id && (
-            <Card className="border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-cyan-50">
+        {/* Invoice Link - Show after create invoice on mobile */}
+        {timesheet.invoice_id && (
+          <Card className="order-3 border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-cyan-50">
               <CardHeader className="border-b border-blue-200">
                 <CardTitle className="text-blue-900">Invoiced</CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
+              <CardContent className="p-3 sm:p-6">
                 <p className="text-sm text-blue-800 mb-4">
                   This timesheet has been included in an invoice.
                 </p>
@@ -1182,20 +1160,19 @@ export default function TimesheetDetail() {
                   <FileText className="w-4 h-4 mr-2" />
                   View Invoice
                 </Button>
-              </CardContent>
-            </Card>
-          )}
+            </CardContent>
+          </Card>
+        )}
 
-          {timesheet.rejection_reason && (
+        {timesheet.rejection_reason && (
             <Alert variant="destructive">
               <XCircle className="h-5 w-5" />
               <AlertDescription>
                 <strong>Rejection Reason:</strong>
                 <p className="mt-1">{timesheet.rejection_reason}</p>
               </AlertDescription>
-            </Alert>
-          )}
-        </div>
+          </Alert>
+        )}
       </div>
     </div>
   );

@@ -33,6 +33,10 @@ export default function Timesheets() {
     approving: new Set(),
     rejecting: new Set()
   });
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(50); // 50 timesheets per page
+  const [totalCount, setTotalCount] = useState(0);
 
   const queryClient = useQueryClient();
 
@@ -64,13 +68,19 @@ export default function Timesheets() {
   const isStaff = user?.user_type === 'staff_member';
 
   const { data: timesheets = [] } = useQuery({
-    queryKey: ['timesheets', user?.agency_id, user?.id, isStaff],
+    queryKey: ['timesheets', user?.agency_id, user?.id, isStaff, currentPage, pageSize],
     queryFn: async () => {
       if (!user) return [];
+
+      // Calculate range for pagination
+      const from = (currentPage - 1) * pageSize;
+      const to = from + pageSize - 1;
+
       let query = supabase
         .from('timesheets')
-        .select('*')
-        .order('created_date', { ascending: false });
+        .select('*', { count: 'exact' })
+        .order('created_date', { ascending: true })
+        .range(from, to);
 
       if (isStaff) {
         const { data: staffRecords, error } = await supabase
@@ -83,7 +93,7 @@ export default function Timesheets() {
           console.error('❌ Error fetching staff record for current user:', error);
           return [];
         }
-        
+
         if (staffRecords) {
           query = query.eq('staff_id', staffRecords.id);
         } else {
@@ -98,11 +108,16 @@ export default function Timesheets() {
         return [];
       }
 
-      const { data, error } = await query;
+      const { data, error, count } = await query;
 
       if (error) {
         console.error('❌ Error fetching timesheets:', error);
         return [];
+      }
+
+      // Update total count for pagination controls
+      if (count !== null) {
+        setTotalCount(count);
       }
 
       return data || [];
@@ -221,6 +236,9 @@ export default function Timesheets() {
   const uploadFileMutation = useMutation({
     mutationFn: async ({ timesheetId, fileUrl, notes }) => {
       const timesheet = timesheets.find(t => t.id === timesheetId);
+      if (!timesheet) {
+        throw new Error('Timesheet not found. Please refresh the page and try again.');
+      }
       const existingFiles = timesheet.uploaded_documents || [];
       const newDoc = {
         file_url: fileUrl,
@@ -1016,6 +1034,59 @@ export default function Timesheets() {
           })}
         </div>
       ) : null}
+
+      {/* Pagination Controls */}
+      {totalCount > pageSize && (
+        <Card className="mt-6">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Page Info */}
+              <div className="text-sm text-gray-600">
+                Showing {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalCount)} of {totalCount} timesheets
+              </div>
+
+              {/* Pagination Buttons */}
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                >
+                  First
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm font-medium px-4">
+                  Page {currentPage} of {Math.ceil(totalCount / pageSize)}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage >= Math.ceil(totalCount / pageSize)}
+                >
+                  Next
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCurrentPage(Math.ceil(totalCount / pageSize))}
+                  disabled={currentPage >= Math.ceil(totalCount / pageSize)}
+                >
+                  Last
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {filteredTimesheets.length === 0 && (
         <Card>

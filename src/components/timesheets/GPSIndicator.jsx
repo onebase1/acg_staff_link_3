@@ -97,7 +97,7 @@ export function GPSDetails({ timesheet }) {
               <img
                 src={timesheet.clock_in_photo}
                 alt="Clock-in location map"
-                className="w-full h-auto"
+                className="w-full h-auto max-h-64 sm:max-h-80 object-cover"
                 onError={(e) => {
                   e.target.style.display = 'none';
                   e.target.nextElementSibling.style.display = 'block';
@@ -154,7 +154,7 @@ export function GPSDetails({ timesheet }) {
                 <img
                   src={timesheet.clock_out_photo}
                   alt="Clock-out location map"
-                  className="w-full h-auto"
+                  className="w-full h-auto max-h-64 sm:max-h-80 object-cover"
                   onError={(e) => {
                     e.target.style.display = 'none';
                     e.target.nextElementSibling.style.display = 'block';
