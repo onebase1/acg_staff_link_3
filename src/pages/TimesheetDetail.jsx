@@ -32,6 +32,8 @@ export default function TimesheetDetail() {
   const [uploadError, setUploadError] = useState(null); // New state for upload error
   // State for OCR collapsible - default open on desktop (>= 768px), closed on mobile
   const [ocrExpanded, setOcrExpanded] = useState(() => window.innerWidth >= 768);
+  // State for tracking last OCR confidence (for re-upload guidance)
+  const [lastOcrConfidence, setLastOcrConfidence] = useState(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -257,6 +259,9 @@ export default function TimesheetDetail() {
         // Map OCR response for toast messages
         if (ocrResult.data?.success) {
           if (ocrResult.data.confidence_score) {
+            // Track confidence for re-upload guidance (Quick Fix 2)
+            setLastOcrConfidence(ocrResult.data.confidence_score);
+
             if (ocrResult.data.confidence_score >= 80) {
               toast.success(`✅ High confidence extraction (${ocrResult.data.confidence_score}%)`);
             } else if (ocrResult.data.confidence_score >= 60) {
@@ -290,11 +295,34 @@ export default function TimesheetDetail() {
 
         const existingDocs = timesheet.uploaded_documents || [];
 
+        // Quick Fix 3: Populate actual times from OCR extraction
+        const updateData = {
+          uploaded_documents: [...existingDocs, newDocument]
+        };
+
+        // Add actual times if OCR successfully extracted them
+        if (ocrResult.data?.success && ocrResult.data.extracted_data) {
+          const extracted = ocrResult.data.extracted_data;
+
+          if (extracted.start_time) {
+            updateData.actual_start_time = extracted.start_time;
+            console.log('✅ Set actual_start_time:', extracted.start_time);
+          }
+
+          if (extracted.end_time) {
+            updateData.actual_end_time = extracted.end_time;
+            console.log('✅ Set actual_end_time:', extracted.end_time);
+          }
+
+          if (extracted.break_minutes !== undefined && extracted.break_minutes !== null) {
+            updateData.break_duration_minutes = extracted.break_minutes;
+            console.log('✅ Set break_duration_minutes:', extracted.break_minutes);
+          }
+        }
+
         const { error: updateError } = await supabase
           .from('timesheets')
-          .update({
-            uploaded_documents: [...existingDocs, newDocument]
-          })
+          .update(updateData)
           .eq('id', timesheetId);
 
         // CRITICAL: Auto-trigger validation if discrepancies detected
@@ -614,6 +642,52 @@ export default function TimesheetDetail() {
                 acceptedFormats=".pdf,.jpg,.jpeg,.png"
                 maxSizeMB={10}
               />
+
+              {/* Quick Fix 2: Re-Upload Guidance for Low Confidence */}
+              {lastOcrConfidence !== null && lastOcrConfidence < 60 && (
+                <Alert className="mt-4 bg-yellow-50 border-yellow-300">
+                  <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                  <AlertDescription>
+                    <p className="font-bold text-yellow-900">Low Confidence ({lastOcrConfidence}%) - Action Needed</p>
+                    <p className="text-sm text-yellow-800 mt-1">
+                      The uploaded document quality is unclear (blurry, damaged, or poor lighting). Our AI had difficulty reading the text accurately.
+                    </p>
+                    <div className="mt-3 text-sm text-yellow-900">
+                      <p className="font-semibold mb-2">💡 How to improve accuracy:</p>
+                      <ul className="list-disc ml-5 space-y-1">
+                        <li>Take a new photo in <strong>good lighting</strong> (natural daylight works best)</li>
+                        <li>Ensure all text is <strong>clear and readable</strong></li>
+                        <li>Hold camera steady and <strong>flatten the paper</strong></li>
+                        <li>Avoid shadows, glare, or reflections</li>
+                        <li>Use landscape mode for better framing</li>
+                      </ul>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        size="sm"
+                        className="bg-yellow-600 hover:bg-yellow-700"
+                        onClick={() => {
+                          // Scroll to upload zone
+                          document.querySelector('input[type="file"]')?.click();
+                        }}
+                      >
+                        📸 Re-Upload Better Photo
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setLastOcrConfidence(null)}
+                        className="border-yellow-600 text-yellow-700 hover:bg-yellow-100"
+                      >
+                        Dismiss
+                      </Button>
+                    </div>
+                    <p className="text-xs text-yellow-700 mt-3">
+                      <strong>Note:</strong> Admins can still manually review and approve if the data is correct, but clearer photos speed up the process.
+                    </p>
+                  </AlertDescription>
+                </Alert>
+              )}
 
               {/* Show uploaded documents */}
               {timesheet.uploaded_documents && timesheet.uploaded_documents.length > 0 ? (
