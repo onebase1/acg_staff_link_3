@@ -58,7 +58,8 @@
       "Bash(./supabase.exe db query:*)",
       "Bash(python:*)",
       "Bash(./supabase.exe functions deploy:*)",
-      "Bash(deno run:*)"
+      "Bash(deno run:*)",
+      "Bash(/c/Users/gbase/superbasecli/supabase.exe db query:*)"
     ],
     "deny": [],
     "ask": []

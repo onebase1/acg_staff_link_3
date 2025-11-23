@@ -386,14 +386,15 @@ export default function Staff() {
 
   // ✅ NEW: Resend invitation mutation
   const resendInviteMutation = useMutation({
-    mutationFn: async (staffMember) => {
+    mutationFn: async ({ staffMember, agency }) => {
       console.log('📧 [Resend Invite] Resending invitation to:', staffMember.email);
 
       // Send invitation email via Edge Function
       const { error: emailError } = await supabase.functions.invoke('send-email', {
         body: {
           to: staffMember.email,
-          subject: `You're Invited to Join ${user?.agency_name || 'Our Agency'} on ACG StaffLink`,
+          subject: `You're Invited to Join ${agency?.name || 'Our Agency'} on ACG StaffLink`,
+          from_name: agency?.name || 'Agile Care Management',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); padding: 30px; text-align: center;">
@@ -404,7 +405,7 @@ export default function Staff() {
                 <p style="font-size: 16px; color: #374151;">Hi ${staffMember.first_name},</p>
 
                 <p style="font-size: 16px; color: #374151; line-height: 1.6;">
-                  You've been invited to join <strong>${user?.agency_name || 'our agency'}</strong> on ACG StaffLink - the UK's leading healthcare staffing platform.
+                  You've been invited to join <strong>${agency?.name || 'our agency'}</strong> on ACG StaffLink - the UK's leading healthcare staffing platform.
                 </p>
 
                 <div style="background: white; border-left: 4px solid #06b6d4; padding: 20px; margin: 20px 0;">
@@ -464,7 +465,11 @@ export default function Staff() {
   });
 
   const handleResendInvite = (staffMember) => {
-    resendInviteMutation.mutate(staffMember);
+    if (!agency) {
+      toast.error("Agency data not loaded yet. Please wait a moment and try again.");
+      return;
+    }
+    resendInviteMutation.mutate({ staffMember, agency });
   };
 
   const handleEdit = (staffMember) => {

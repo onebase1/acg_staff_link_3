@@ -23,7 +23,7 @@ OPENAI_API_KEY=[YOUR_OPENAI_API_KEY]
 # Email Service (Resend)
 RESEND_API_KEY=[YOUR_RESEND_API_KEY]
 RESEND_FROM_DOMAIN=your-domain.com
-RESEND_DEFAULT_FROM=noreply@your-domain.com
+RESEND_DEFAULT_FROM=noreply@agilecaremanagement.co.uk
 
 # SMS & WhatsApp (Twilio)
 TWILIO_ACCOUNT_SID=[YOUR_TWILIO_ACCOUNT_SID]
