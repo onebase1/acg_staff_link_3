@@ -1,6 +1,7 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MapPin, CheckCircle, XCircle, AlertTriangle, ExternalLink } from "lucide-react";
 
 export default function GPSIndicator({ timesheet, staff }) {
   // FIXED: Proper GPS consent checking
@@ -81,13 +82,43 @@ export function GPSDetails({ timesheet }) {
   };
 
   return (
-    <div className="space-y-3 text-sm">
+    <div className="space-y-4 text-sm">
       {/* Clock-in Location */}
-      <div className="p-3 bg-green-50 rounded border border-green-200">
-        <h4 className="font-semibold text-green-900 mb-2 flex items-center gap-2">
-          <MapPin className="w-4 h-4" />
+      <div className="p-4 bg-green-50 rounded-lg border-2 border-green-200">
+        <h4 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
+          <MapPin className="w-5 h-5" />
           Clock-In Location
         </h4>
+
+        {/* 🗺️ Mapbox Static Map Image */}
+        {timesheet.clock_in_photo && (
+          <div className="mb-4">
+            <div className="relative rounded-lg overflow-hidden border-2 border-green-300 shadow-md">
+              <img
+                src={timesheet.clock_in_photo}
+                alt="Clock-in location map"
+                className="w-full h-auto"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextElementSibling.style.display = 'block';
+                }}
+              />
+              <div className="hidden p-4 bg-yellow-50 border border-yellow-300 rounded text-center">
+                <p className="text-xs text-yellow-800">📍 Map image unavailable</p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full mt-2 text-green-700 border-green-300 hover:bg-green-100"
+              onClick={() => window.open(timesheet.clock_in_photo, '_blank')}
+            >
+              <ExternalLink className="w-3 h-3 mr-2" />
+              View Full Size Map
+            </Button>
+          </div>
+        )}
+
         <div className="space-y-1 text-green-800">
           <p>
             <strong>Coordinates:</strong>{' '}
@@ -110,11 +141,41 @@ export function GPSDetails({ timesheet }) {
 
       {/* Clock-out Location */}
       {timesheet.clock_out_location && (
-        <div className="p-3 bg-blue-50 rounded border border-blue-200">
-          <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
-            <MapPin className="w-4 h-4" />
+        <div className="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+          <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+            <MapPin className="w-5 h-5" />
             Clock-Out Location
           </h4>
+
+          {/* 🗺️ Mapbox Static Map Image */}
+          {timesheet.clock_out_photo && (
+            <div className="mb-4">
+              <div className="relative rounded-lg overflow-hidden border-2 border-blue-300 shadow-md">
+                <img
+                  src={timesheet.clock_out_photo}
+                  alt="Clock-out location map"
+                  className="w-full h-auto"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextElementSibling.style.display = 'block';
+                  }}
+                />
+                <div className="hidden p-4 bg-yellow-50 border border-yellow-300 rounded text-center">
+                  <p className="text-xs text-yellow-800">📍 Map image unavailable</p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full mt-2 text-blue-700 border-blue-300 hover:bg-blue-100"
+                onClick={() => window.open(timesheet.clock_out_photo, '_blank')}
+              >
+                <ExternalLink className="w-3 h-3 mr-2" />
+                View Full Size Map
+              </Button>
+            </div>
+          )}
+
           <div className="space-y-1 text-blue-800">
             <p>
               <strong>Coordinates:</strong>{' '}
@@ -124,6 +185,11 @@ export function GPSDetails({ timesheet }) {
             <p>
               <strong>Accuracy:</strong> ±{Math.round(timesheet.clock_out_location.accuracy || 0)}m
             </p>
+            {timesheet.clock_out_geofence_distance_meters !== undefined && (
+              <p>
+                <strong>Distance from site:</strong> {Math.round(timesheet.clock_out_geofence_distance_meters)}m
+              </p>
+            )}
             <p>
               <strong>Time:</strong> {formatTimestamp(timesheet.clock_out_location.timestamp)}
             </p>

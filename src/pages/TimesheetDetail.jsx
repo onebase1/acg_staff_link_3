@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import GPSIndicator from "../components/timesheets/GPSIndicator";
+import GPSIndicator, { GPSDetails } from "../components/timesheets/GPSIndicator";
 import PayDisplay from "../components/timesheets/PayDisplay";
 
 export default function TimesheetDetail() {
@@ -1067,7 +1067,7 @@ export default function TimesheetDetail() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                <GPSIndicator timesheet={timesheet} client={client} />
+                <GPSDetails timesheet={timesheet} staff={staff} />
               </CardContent>
             </Card>
           )}
