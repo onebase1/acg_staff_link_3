@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import MandatoryTrainingSection from "@/components/staff/MandatoryTrainingSection";
 import TrainingCertificateModal from "@/components/staff/TrainingCertificateModal";
+import ComplianceDocumentUpload from "@/components/staff/ComplianceDocumentUpload";
 
 
 export default function ProfileSetup() {
@@ -91,7 +92,7 @@ export default function ProfileSetup() {
     refetchOnMount: 'always'
   });
 
-  const { data: compliance = [] } = useQuery({
+  const { data: compliance = [], refetch: refetchCompliance } = useQuery({
     queryKey: ['compliance', user?.id],
     queryFn: async () => {
       if (!linkedStaff?.id) return [];
@@ -288,6 +289,87 @@ export default function ProfileSetup() {
         if (staffUpdateError) {
           console.error('❌ Error updating staff:', staffUpdateError);
           throw staffUpdateError;
+        }
+
+        // ✅ BIDIRECTIONAL SYNC: Sync training changes back to compliance table
+        try {
+          const mandatoryTraining = dataToUpdate.mandatory_training || {};
+
+          // Get all training certificates for this staff member from compliance
+          const { data: trainingCerts, error: certsError } = await supabase
+            .from('compliance')
+            .select('*')
+            .eq('staff_id', linkedStaff.id)
+            .eq('document_type', 'training_certificate');
+
+          if (!certsError && trainingCerts) {
+            // Sync core training
+            const coreTrainingMap = {
+              manual_handling: 'Manual Handling',
+              safeguarding_children: 'Safeguarding Children',
+              safeguarding_adults: 'Safeguarding Adults',
+              fire_safety: 'Fire Safety',
+              infection_control: 'Infection Control',
+              food_hygiene: 'Food Hygiene',
+              first_aid: 'First Aid',
+              health_and_safety: 'Health and Safety',
+              coshh: 'COSHH',
+              moving_and_handling: 'Moving and Handling'
+            };
+
+            for (const [key, displayName] of Object.entries(coreTrainingMap)) {
+              const trainingData = mandatoryTraining[key];
+              if (trainingData?.certificate_ids && trainingData.certificate_ids.length > 0) {
+                // Find matching compliance records by certificate_ids
+                for (const certId of trainingData.certificate_ids) {
+                  const cert = trainingCerts.find(c => c.id === certId);
+                  if (cert) {
+                    // Sync dates from staff.mandatory_training to compliance
+                    await supabase
+                      .from('compliance')
+                      .update({
+                        issue_date: trainingData.completed_date || cert.issue_date,
+                        expiry_date: trainingData.expiry_date || cert.expiry_date,
+                        reference_number: trainingData.certificate_ref || cert.reference_number
+                      })
+                      .eq('id', certId);
+
+                    console.log(`✅ Synced ${displayName} to compliance record ${certId}`);
+                  }
+                }
+              }
+            }
+
+            // Sync additional training
+            const additionalList = Array.isArray(mandatoryTraining.additional)
+              ? mandatoryTraining.additional
+              : [];
+
+            for (const additionalItem of additionalList) {
+              if (additionalItem.certificate_ids && additionalItem.certificate_ids.length > 0) {
+                for (const certId of additionalItem.certificate_ids) {
+                  const cert = trainingCerts.find(c => c.id === certId);
+                  if (cert) {
+                    await supabase
+                      .from('compliance')
+                      .update({
+                        document_name: additionalItem.name || cert.document_name,
+                        issue_date: additionalItem.completed_date || cert.issue_date,
+                        expiry_date: additionalItem.expiry_date || cert.expiry_date,
+                        reference_number: additionalItem.certificate_ref || cert.reference_number,
+                        issuing_authority: additionalItem.provider || cert.issuing_authority
+                      })
+                      .eq('id', certId);
+
+                    console.log(`✅ Synced additional training ${additionalItem.name} to compliance record ${certId}`);
+                  }
+                }
+              }
+            }
+          }
+        } catch (syncError) {
+          console.error('⚠️ Failed to sync training to compliance table:', syncError);
+          // Don't fail the main update if sync fails
         }
 
         // Send admin notification
@@ -1117,30 +1199,14 @@ export default function ProfileSetup() {
             </>
           )}
 
-          {/* Compliance Documents Link */}
-          {(user?.user_type === 'staff_member' || linkedStaff) && (
-            <Card className="border-2 border-purple-300 bg-purple-50">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <Upload className="w-6 h-6 text-purple-600 flex-shrink-0 mt-1" />
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-1">Need to Upload Documents?</h3>
-                    <p className="text-sm text-gray-700 mb-3">
-                      Upload DBS, Right to Work, and Training certificates in the Compliance section
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => navigate(createPageUrl('ComplianceTracker'))}
-                      className="w-full h-12 text-base"
-                    >
-                      <Upload className="w-5 h-5 mr-2" />
-                      Go to My Docs
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Compliance Documents Upload Section */}
+          {(user?.user_type === 'staff_member' || linkedStaff) && linkedStaff?.id && (
+            <ComplianceDocumentUpload
+              compliance={compliance}
+              staffId={linkedStaff.id}
+              agencyId={linkedStaff.agency_id || agency?.id}
+              onDocumentUploaded={refetchCompliance}
+            />
           )}
 
           {/* ✅ MOBILE-OPTIMIZED: Large save button */}

@@ -187,13 +187,110 @@ export default function ComplianceTracker() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
+    mutationFn: async ({ id, data, document }) => {
       const { error } = await supabase
         .from('compliance')
         .update(data)
         .eq('id', id);
 
       if (error) throw error;
+
+      // ✅ BIDIRECTIONAL SYNC: If updating a training certificate, sync to staff.mandatory_training
+      if (document?.document_type === 'training_certificate' && document?.staff_id) {
+        try {
+          const { data: staffData, error: staffError } = await supabase
+            .from('staff')
+            .select('mandatory_training')
+            .eq('id', document.staff_id)
+            .single();
+
+          if (!staffError && staffData) {
+            const mandatoryTraining = staffData.mandatory_training || {};
+
+            // Try to find matching training entry by document name
+            const docName = data.document_name || document.document_name;
+
+            // Update dates if provided
+            const updates = {};
+            if (data.issue_date) updates.completed_date = data.issue_date;
+            if (data.expiry_date) updates.expiry_date = data.expiry_date;
+            if (data.reference_number) updates.certificate_ref = data.reference_number;
+
+            // Try to match core training types
+            const coreTrainingMap = {
+              'Manual Handling': 'manual_handling',
+              'Safeguarding Children': 'safeguarding_children',
+              'Safeguarding Adults': 'safeguarding_adults',
+              'Fire Safety': 'fire_safety',
+              'Infection Control': 'infection_control',
+              'Food Hygiene': 'food_hygiene',
+              'First Aid': 'first_aid',
+              'Health and Safety': 'health_and_safety',
+              'COSHH': 'coshh',
+              'Moving and Handling': 'moving_and_handling'
+            };
+
+            let trainingKey = null;
+            for (const [name, key] of Object.entries(coreTrainingMap)) {
+              if (docName?.toLowerCase().includes(name.toLowerCase())) {
+                trainingKey = key;
+                break;
+              }
+            }
+
+            if (trainingKey && mandatoryTraining[trainingKey]) {
+              // Update core training
+              const { error: updateError } = await supabase
+                .from('staff')
+                .update({
+                  mandatory_training: {
+                    ...mandatoryTraining,
+                    [trainingKey]: {
+                      ...mandatoryTraining[trainingKey],
+                      ...updates
+                    }
+                  }
+                })
+                .eq('id', document.staff_id);
+
+              if (!updateError) {
+                console.log(`✅ Synced training certificate update to staff.mandatory_training.${trainingKey}`);
+              }
+            } else if (mandatoryTraining.additional) {
+              // Update additional training by finding matching certificate_ids
+              const additionalList = Array.isArray(mandatoryTraining.additional)
+                ? mandatoryTraining.additional
+                : [];
+
+              const updatedAdditional = additionalList.map(item => {
+                if (item.certificate_ids?.includes(id)) {
+                  return { ...item, ...updates };
+                }
+                return item;
+              });
+
+              if (JSON.stringify(additionalList) !== JSON.stringify(updatedAdditional)) {
+                const { error: updateError } = await supabase
+                  .from('staff')
+                  .update({
+                    mandatory_training: {
+                      ...mandatoryTraining,
+                      additional: updatedAdditional
+                    }
+                  })
+                  .eq('id', document.staff_id);
+
+                if (!updateError) {
+                  console.log('✅ Synced training certificate update to staff.mandatory_training.additional');
+                }
+              }
+            }
+          }
+        } catch (syncError) {
+          console.error('⚠️ Failed to sync to staff.mandatory_training:', syncError);
+          // Don't fail the main update if sync fails
+        }
+      }
     },
     onSuccess: async () => {
       await refetchCompliance();
@@ -345,6 +442,7 @@ export default function ComplianceTracker() {
 
     updateMutation.mutate({
       id: editingDoc.id,
+      document: editingDoc, // ✅ Pass full document for bidirectional sync
       data: {
         document_name: editingDoc.document_name,
         document_url: editingDoc.document_url, // ✅ Now updates file URL if changed
