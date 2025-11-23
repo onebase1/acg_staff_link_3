@@ -292,6 +292,28 @@ Please extract all data from the document and compare with expected values.`
           severity: 'high'
         });
       }
+
+      // 7. MULTI-ROW TIMESHEET DETECTION (Quick Fix 1)
+      // Detects when document shows significantly more hours than expected for single shift
+      if (expected_data.scheduled_hours && extractedData.total_hours > expected_data.scheduled_hours * 2) {
+        const hoursRatio = (extractedData.total_hours / expected_data.scheduled_hours).toFixed(1);
+
+        validation.warnings.push({
+          field: 'multi_row_timesheet',
+          message: `Document shows ${extractedData.total_hours}h total, but this shift expected only ${expected_data.scheduled_hours}h. This appears to be a multi-day timesheet with multiple rows (${hoursRatio}x expected hours). Please verify the document shows the correct date/row for this shift.`,
+          severity: 'high',
+          action_required: 'Admin: Check if timesheet contains multiple dates. Verify only the relevant row matches this shift.',
+          possible_cause: 'Staff using same physical timesheet for multiple consecutive shifts'
+        });
+
+        // Downgrade hours mismatch from critical to medium if multi-row detected
+        const hoursMismatch = validation.mismatches.find(m => m.field === 'hours');
+        if (hoursMismatch && hoursMismatch.severity === 'critical') {
+          hoursMismatch.severity = 'medium';
+          hoursMismatch.possible_reason = 'Multi-row timesheet detected - hours may include other shifts';
+          console.log('⚠️ Downgraded hours mismatch severity due to multi-row detection');
+        }
+      }
     }
 
     console.log('✅ Validation complete:', validation);
