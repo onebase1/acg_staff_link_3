@@ -11,14 +11,18 @@ import { Upload } from 'lucide-react';
 export default function ResponsiveUploadZone({
   onFileSelect,
   uploading = false,
+  disabled = false,
   acceptedFormats = '.pdf,.jpg,.jpeg,.png',
   maxSizeMB = 10
 }) {
   const [dragActive, setDragActive] = useState(false);
+  const isDisabled = uploading || disabled;
 
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isDisabled) return;
+
     if (e.type === 'dragenter' || e.type === 'dragover') {
       setDragActive(true);
     } else if (e.type === 'dragleave') {
@@ -30,6 +34,8 @@ export default function ResponsiveUploadZone({
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
+
+    if (isDisabled) return;
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       onFileSelect(e.dataTransfer.files[0]);
@@ -50,13 +56,13 @@ export default function ResponsiveUploadZone({
           <Button
             type="button"
             size="sm"
-            disabled={uploading}
+            disabled={isDisabled}
             className="w-full"
             asChild
           >
             <span className="flex items-center justify-center gap-2">
               <Upload className="w-4 h-4" />
-              {uploading ? 'Uploading...' : 'Upload Timesheet Document'}
+              {uploading ? 'Uploading...' : disabled ? 'Please confirm current upload' : 'Upload Timesheet Document'}
             </span>
           </Button>
           <input
@@ -64,7 +70,7 @@ export default function ResponsiveUploadZone({
             className="hidden"
             accept={acceptedFormats}
             onChange={handleFileChange}
-            disabled={uploading}
+            disabled={isDisabled}
           />
         </label>
         <p className="text-xs text-gray-500 text-center mt-2">
@@ -75,8 +81,10 @@ export default function ResponsiveUploadZone({
       {/* Desktop: Drag & Drop Zone */}
       <div
         className={`hidden md:block border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-          dragActive
+          dragActive && !isDisabled
             ? 'border-cyan-500 bg-cyan-50'
+            : isDisabled
+            ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-60'
             : 'border-gray-300 hover:border-cyan-400 hover:bg-gray-50'
         }`}
         onDragEnter={handleDrag}
@@ -84,18 +92,18 @@ export default function ResponsiveUploadZone({
         onDragOver={handleDrag}
         onDrop={handleDrop}
       >
-        <Upload className={`w-12 h-12 mx-auto mb-4 ${dragActive ? 'text-cyan-600' : 'text-gray-400'}`} />
+        <Upload className={`w-12 h-12 mx-auto mb-4 ${dragActive && !isDisabled ? 'text-cyan-600' : 'text-gray-400'}`} />
         <p className="text-sm font-semibold text-gray-700 mb-2">
-          {dragActive ? 'Drop file here' : 'Drag & drop timesheet document'}
+          {dragActive && !isDisabled ? 'Drop file here' : isDisabled && disabled ? 'Please confirm current upload' : 'Drag & drop timesheet document'}
         </p>
         <p className="text-xs text-gray-500 mb-4">
           or click to browse (PDF, JPG, PNG - max {maxSizeMB}MB)
         </p>
-        <label className="cursor-pointer">
+        <label className={isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}>
           <Button
             type="button"
             size="sm"
-            disabled={uploading}
+            disabled={isDisabled}
             asChild
           >
             <span>
@@ -108,7 +116,7 @@ export default function ResponsiveUploadZone({
             className="hidden"
             accept={acceptedFormats}
             onChange={handleFileChange}
-            disabled={uploading}
+            disabled={isDisabled}
           />
         </label>
       </div>

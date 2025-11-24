@@ -17,7 +17,7 @@ import {
   Clock, MapPin, FileText, CheckCircle, XCircle, DollarSign,
   AlertTriangle, User, Building2, Calendar, Eye, Download,
   Upload, ArrowLeft, Sun, Moon, Sunrise, TrendingUp, TrendingDown,
-  ChevronDown
+  ChevronDown, Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -541,6 +541,65 @@ export default function TimesheetDetail() {
     toast.info('📸 Please upload a better quality photo');
   };
 
+  // PHASE 2: Delete Document Handler
+  const handleDeleteDocument = async (documentIndex) => {
+    if (!window.confirm('Delete this document? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const existingDocs = timesheet.uploaded_documents || [];
+      const docToDelete = existingDocs[documentIndex];
+
+      // Remove from array
+      const updatedDocs = existingDocs.filter((_, idx) => idx !== documentIndex);
+
+      // Update database
+      const { error: updateError } = await supabase
+        .from('timesheets')
+        .update({ uploaded_documents: updatedDocs })
+        .eq('id', timesheetId);
+
+      if (updateError) {
+        console.error('❌ Failed to delete document:', updateError);
+        toast.error('Failed to delete document');
+        return;
+      }
+
+      // Optional: Delete from storage (permanent removal)
+      if (docToDelete.file_url) {
+        try {
+          // Extract file path from URL
+          const urlParts = docToDelete.file_url.split('/timesheets/');
+          if (urlParts.length > 1) {
+            const fileName = urlParts[1];
+            const { error: storageError } = await supabase.storage
+              .from('documents')
+              .remove([`timesheets/${fileName}`]);
+
+            if (storageError) {
+              console.warn('⚠️ Failed to delete from storage:', storageError);
+              // Don't fail the whole operation if storage delete fails
+            } else {
+              console.log('✅ File deleted from storage:', fileName);
+            }
+          }
+        } catch (storageError) {
+          console.warn('⚠️ Storage delete error:', storageError);
+          // Continue even if storage delete fails
+        }
+      }
+
+      toast.success('✅ Document deleted successfully');
+      queryClient.invalidateQueries(['timesheet', timesheetId]);
+      queryClient.invalidateQueries(['timesheets']);
+
+    } catch (error) {
+      console.error('❌ Delete document error:', error);
+      toast.error(`Failed to delete: ${error.message}`);
+    }
+  };
+
   const handleApprove = () => {
     updateMutation.mutate({
       id: timesheetId,
@@ -787,7 +846,8 @@ export default function TimesheetDetail() {
               {/* Responsive Upload Zone - Mobile: Compact button | Desktop: Drag & drop */}
               <ResponsiveUploadZone
                 onFileSelect={handleFileUpload}
-                uploading={uploadingDoc}
+                uploading={uploadingDoc || showConfirmModal}
+                disabled={showConfirmModal}
                 acceptedFormats=".pdf,.jpg,.jpeg,.png"
                 maxSizeMB={10}
               />
@@ -881,6 +941,14 @@ export default function TimesheetDetail() {
                               }}
                             >
                               <Download className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDeleteDocument(idx)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
                         </div>
