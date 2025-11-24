@@ -133,10 +133,25 @@ serve(async (req) => {
 
     const issues = [];
 
-    // 1. Check signatures
-    if (timesheet.staff_signature && timesheet.client_signature) {
+    // ✅ GPS VERIFICATION BYPASS: Skip signature checks if GPS has verified both clock-in and clock-out
+    // GPS verification confirms location and attendance, making signatures redundant
+    // Only skip signatures if shift is complete (clocked out) AND both clock-in and clock-out are GPS verified
+    const isGPSFullyVerified = 
+      timesheet.geofence_validated === true && 
+      timesheet.clock_in_location &&
+      timesheet.clock_out_time && // Shift must be completed (clocked out)
+      timesheet.clock_out_geofence_validated === true && 
+      timesheet.clock_out_location; // Both clock-in and clock-out GPS verified
+
+    // 1. Check signatures (skip if GPS fully verified)
+    if (isGPSFullyVerified) {
+      // GPS verified both clock-in and clock-out - signatures not required
+      validationResults.signatures_present = true;
+      console.log('✅ GPS fully verified - skipping signature requirement');
+    } else if (timesheet.staff_signature && timesheet.client_signature) {
       validationResults.signatures_present = true;
     } else {
+      // ROLLBACK: Original signature validation logic (restore if needed)
       issues.push({
         type: 'missing_signature',
         severity: 'high',

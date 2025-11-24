@@ -419,20 +419,34 @@ export default function Timesheets() {
       }
     }
 
-    if (!timesheet.staff_signature) {
-      issues.push({
-        type: 'missing_signature',
-        severity: 'high',
-        message: 'Staff signature missing'
-      });
-    }
+    // ✅ GPS VERIFICATION BYPASS: Skip signature checks if GPS has verified both clock-in and clock-out
+    // GPS verification confirms location and attendance, making signatures redundant
+    // Only skip signatures if shift is complete (clocked out) AND both clock-in and clock-out are GPS verified
+    const isGPSFullyVerified = 
+      timesheet.geofence_validated === true && 
+      timesheet.clock_in_location &&
+      timesheet.clock_out_time && // Shift must be completed (clocked out)
+      timesheet.clock_out_geofence_validated === true && 
+      timesheet.clock_out_location; // Both clock-in and clock-out GPS verified
 
-    if (!timesheet.client_signature) {
-      issues.push({
-        type: 'missing_signature',
-        severity: 'high',
-        message: 'Client/Supervisor signature missing'
-      });
+    // Only skip signatures if GPS fully verified (both clock-in AND clock-out if shift completed)
+    if (!isGPSFullyVerified) {
+      // ROLLBACK: Original signature validation logic (restore if needed)
+      if (!timesheet.staff_signature) {
+        issues.push({
+          type: 'missing_signature',
+          severity: 'high',
+          message: 'Staff signature missing'
+        });
+      }
+
+      if (!timesheet.client_signature) {
+        issues.push({
+          type: 'missing_signature',
+          severity: 'high',
+          message: 'Client/Supervisor signature missing'
+        });
+      }
     }
 
     if (timesheet.geofence_validated === false) {
