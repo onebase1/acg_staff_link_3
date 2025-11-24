@@ -4,6 +4,7 @@
  */
 
 import { extractShiftTypeFromRoleKey } from '../shiftHelpers';
+import { calculateFinancialSummary as centralizedCalc } from '../shiftCalculations';
 
 
 /**
@@ -167,8 +168,6 @@ export function groupShiftsByDate(shifts) {
  * Updated to use centralized calculation functions that account for break time
  */
 export function calculateFinancialSummary(shifts) {
-  // Import the centralized function
-  const { calculateFinancialSummary: centralizedCalc } = require('../shiftCalculations');
   return centralizedCalc(shifts);
 }
 
