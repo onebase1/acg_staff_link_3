@@ -12,7 +12,7 @@ import {
 import { format, subDays, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { toast } from "sonner";
 import NotificationService from "../components/notifications/NotificationService";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { calculateStaffEarnings, calculateClientCharge } from "../utils/shiftCalculations";
 import { Switch } from "@/components/ui/switch";
@@ -93,8 +93,14 @@ export default function Shifts() {
   const [showChannelSelector, setShowChannelSelector] = useState(false);
   const [pendingBroadcastShift, setPendingBroadcastShift] = useState(null);
 
+  // 🆕 NEWLY CREATED SHIFTS HIGHLIGHTING
+  const [highlightedShiftIds, setHighlightedShiftIds] = useState(new Set());
+  const highlightedShiftRefs = React.useRef(new Map());
+  const scrollPositionRef = React.useRef(null); // Store scroll position when highlighting
+
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const getDateRangeFilter = () => {
     const today = new Date();
@@ -202,6 +208,60 @@ export default function Shifts() {
 
     loadUser();
   }, []);
+
+  // 🆕 Read URL params on mount and apply filters for newly created shifts
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    
+    // Apply status filter
+    const statusParam = params.get('status');
+    if (statusParam && ['all', 'open', 'assigned', 'confirmed', 'in_progress', 'awaiting_admin_closure', 'completed', 'cancelled', 'no_show', 'disputed'].includes(statusParam)) {
+      setStatusFilter(statusParam);
+    }
+    
+    // Apply date range filter
+    const dateRangeParam = params.get('dateRange');
+    if (dateRangeParam && ['today', 'week', 'month', 'upcoming', 'last30', 'last90', 'custom', 'all'].includes(dateRangeParam)) {
+      setDateRange(dateRangeParam);
+    }
+    
+    // Apply client filter
+    const clientParam = params.get('client');
+    if (clientParam) {
+      setClientFilter(clientParam);
+    }
+    
+    // Store highlighted shift IDs
+    const highlightParam = params.get('highlight');
+    if (highlightParam) {
+      const ids = highlightParam.split(',').filter(id => id.trim());
+      setHighlightedShiftIds(new Set(ids));
+      
+      // Auto-remove highlight after 30 seconds (longer duration for better UX)
+      // But maintain scroll position even after highlight fades
+      const highlightTimeout = setTimeout(() => {
+        // Store current scroll position before removing highlight
+        scrollPositionRef.current = window.scrollY;
+        setHighlightedShiftIds(new Set());
+        
+        // Restore scroll position after a brief moment (prevents jump)
+        setTimeout(() => {
+          if (scrollPositionRef.current !== null) {
+            window.scrollTo({ top: scrollPositionRef.current, behavior: 'auto' });
+            scrollPositionRef.current = null;
+          }
+        }, 100);
+      }, 30000);
+      
+      // Cleanup timeout on unmount
+      return () => clearTimeout(highlightTimeout);
+    }
+    
+    // Clean URL params after processing (optional - keeps URL clean)
+    if (params.toString()) {
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.search, navigate, location.pathname]);
 
   const { data: shifts = [], isLoading: shiftsLoading } = useQuery({
     queryKey: ['shifts', currentAgency, dateRange, customStartDate, customEndDate],
@@ -1266,7 +1326,7 @@ export default function Shifts() {
   const filteredShifts = useMemo(() => {
     if (!shifts || shifts.length === 0) return [];
 
-    return shifts.filter(shift => {
+    let filtered = shifts.filter(shift => {
       if (!shift || !shift.id || !shift.date) return false;
 
       const statusMatch = statusFilter === 'all' || shift.status === statusFilter;
@@ -1274,7 +1334,45 @@ export default function Shifts() {
 
       return statusMatch && clientMatch;
     });
-  }, [shifts, statusFilter, clientFilter]);
+
+    // 🆕 Sort upcoming dates first when highlighting newly created shifts
+    if (highlightedShiftIds.size > 0) {
+      filtered.sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        // Sort by date ascending (upcoming first)
+        return dateA.getTime() - dateB.getTime();
+      });
+    } else {
+      // Default: sort by date descending (newest first)
+      filtered.sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateB.getTime() - dateA.getTime();
+      });
+    }
+
+    return filtered;
+  }, [shifts, statusFilter, clientFilter, highlightedShiftIds]);
+
+  // 🆕 Auto-scroll to first highlighted shift (must be after filteredShifts definition)
+  useEffect(() => {
+    if (highlightedShiftIds.size > 0 && filteredShifts.length > 0 && !shiftsLoading) {
+      // Find first highlighted shift in filtered list
+      const firstHighlighted = filteredShifts.find(shift => highlightedShiftIds.has(shift.id));
+      if (firstHighlighted) {
+        // Wait for refs to be set (they're set during render)
+        const scrollTimeout = setTimeout(() => {
+          const ref = highlightedShiftRefs.current.get(firstHighlighted.id);
+          if (ref) {
+            ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 500);
+        
+        return () => clearTimeout(scrollTimeout);
+      }
+    }
+  }, [highlightedShiftIds, filteredShifts, shiftsLoading]);
 
   const filterCounts = useMemo(() => {
     return {
@@ -1684,9 +1782,20 @@ export default function Shifts() {
                     const isEditingLocation = editingCell?.shiftId === shift.id && editingCell?.field === 'work_location_within_site';
                     const canRequest = canRequestTimesheet(shift);
                     const isSendingRequest = sendingTimesheetRequest.has(shift.id);
+                    const isHighlighted = highlightedShiftIds.has(shift.id);
 
                     return (
-                      <tr key={shift.id} className="hover:bg-gray-50">
+                      <tr 
+                        key={shift.id} 
+                        ref={isHighlighted ? (el) => {
+                          if (el && !highlightedShiftRefs.has(shift.id)) {
+                            highlightedShiftRefs.set(shift.id, el);
+                          }
+                        } : null}
+                        className={`hover:bg-gray-50 ${
+                          isHighlighted ? 'bg-cyan-50 border-l-4 border-l-cyan-500' : ''
+                        }`}
+                      >
                         <td className="px-4 py-3">
                           <div className="text-sm font-medium text-gray-900">
                             {formattedDate}
@@ -1886,8 +1995,22 @@ export default function Shifts() {
               console.error('Date formatting error:', shift.date, error);
             }
 
+            const isHighlighted = highlightedShiftIds.has(shift.id);
+            
             return (
-              <Card key={shift.id} className={`hover:shadow-lg transition-shadow ${isOrphaned ? 'border-red-300 border-2' : ''}`}>
+              <Card 
+                key={shift.id} 
+                ref={isHighlighted ? (el) => {
+                  if (el && !highlightedShiftRefs.current.has(shift.id)) {
+                    highlightedShiftRefs.current.set(shift.id, el);
+                  }
+                } : null}
+                className={`hover:shadow-lg transition-shadow ${
+                  isOrphaned ? 'border-red-300 border-2' : ''
+                } ${
+                  isHighlighted ? 'border-2 border-cyan-500 bg-cyan-50 shadow-lg' : ''
+                }`}
+              >
                 <CardContent className="p-6">
                   {isOrphaned && (
                     <Alert className="mb-4 border-red-300 bg-red-50">

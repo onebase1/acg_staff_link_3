@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,22 +103,26 @@ export default function Step2MultiRoleGrid({
     return roles;
   };
 
-  // Initialize active roles if not set
-  if (!formData.activeRoles || formData.activeRoles.length === 0) {
-    setFormData(prev => ({
-      ...prev,
-      activeRoles: initializeActiveRoles()
-    }));
-  }
+  // Initialize active roles if not set (moved to useEffect to avoid setState during render)
+  useEffect(() => {
+    if (!formData.activeRoles || formData.activeRoles.length === 0) {
+      setFormData(prev => ({
+        ...prev,
+        activeRoles: initializeActiveRoles()
+      }));
+    }
+  }, []); // Only run once on mount
 
-  // Initialize grid data if empty
-  if (!formData.gridData || Object.keys(formData.gridData).length === 0) {
-    const initialGrid = {};
-    dateArray.forEach(date => {
-      initialGrid[date] = {};
-    });
-    setFormData(prev => ({ ...prev, gridData: initialGrid }));
-  }
+  // Initialize grid data if empty (moved to useEffect to avoid setState during render)
+  useEffect(() => {
+    if (!formData.gridData || Object.keys(formData.gridData).length === 0) {
+      const initialGrid = {};
+      dateArray.forEach(date => {
+        initialGrid[date] = {};
+      });
+      setFormData(prev => ({ ...prev, gridData: initialGrid }));
+    }
+  }, [dateArray]); // Re-run if dateArray changes
 
   // Handle quantity change
   const handleQuantityChange = (date, roleKey, value) => {

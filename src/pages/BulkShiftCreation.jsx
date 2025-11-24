@@ -194,6 +194,7 @@ export default function BulkShiftCreation() {
       }
 
       let totalInserted = 0;
+      const createdShiftIds = []; // Collect all created shift IDs
 
       for (let i = 0; i < batches.length; i++) {
         const batch = batches[i];
@@ -208,6 +209,11 @@ export default function BulkShiftCreation() {
           throw new Error(`Failed to insert batch ${i + 1}: ${error.message}`);
         }
 
+        // Collect shift IDs from this batch
+        if (data && data.length > 0) {
+          createdShiftIds.push(...data.map(shift => shift.id));
+        }
+
         totalInserted += data.length;
         setCreationProgress(((i + 1) / batches.length) * 100);
       }
@@ -219,9 +225,18 @@ export default function BulkShiftCreation() {
 
       toast.success(`🎉 Successfully created ${totalInserted} shifts!`);
 
-      // Auto-redirect after 3 seconds
+      // Auto-redirect after 3 seconds with query params
       setTimeout(() => {
-        navigate(createPageUrl('Shifts'));
+        const params = new URLSearchParams();
+        params.set('status', 'open');
+        params.set('dateRange', 'upcoming');
+        if (createdShiftIds.length > 0) {
+          params.set('highlight', createdShiftIds.join(','));
+        }
+        if (formData.client_id) {
+          params.set('client', formData.client_id);
+        }
+        navigate(`${createPageUrl('Shifts')}?${params.toString()}`);
       }, 3000);
 
     } catch (error) {

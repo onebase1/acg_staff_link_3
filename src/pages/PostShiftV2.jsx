@@ -398,7 +398,17 @@ export default function PostShiftV2() {
         { duration: 6000 }
       );
       
-      navigate(createPageUrl('Shifts'));
+      // Redirect with query params for better UX
+      const params = new URLSearchParams();
+      params.set('status', 'open');
+      params.set('dateRange', 'upcoming');
+      if (data.newShift?.id) {
+        params.set('highlight', data.newShift.id);
+      }
+      if (formData.client_id) {
+        params.set('client', formData.client_id);
+      }
+      navigate(`${createPageUrl('Shifts')}?${params.toString()}`);
     }
   });
 

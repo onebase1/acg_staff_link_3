@@ -190,7 +190,7 @@ export const NotificationService = {
     const endTime = formatTime(shift.end_time);
 
     // ✅ SMS + WhatsApp (INSTANT)
-    const instantMessage = `📅 NEW SHIFT [${agencyName}]: ${client.name}${locationText} on ${new Date(shift.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}, ${startTime}-${endTime}. £${shift.pay_rate}/hr = £${((shift.pay_rate || 0) * (shift.duration_hours || 0)).toFixed(2)}. Reply to confirm.`;
+    const instantMessage = `📅 NEW SHIFT [${agencyName}]: ${client.name}${locationText} on ${new Date(shift.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}, ${startTime}-${endTime}. £${shift.pay_rate}/hr = £${((shift.pay_rate || 0) * (shift.duration_hours || 0)).toFixed(2)}. Confirm in Staff Portal.`;
 
     const results = {
       email: { success: false },
@@ -249,6 +249,8 @@ export const NotificationService = {
         { label: 'Pay Rate:', value: `£${shift.pay_rate}/hour` }
       ];
 
+      const portalUrl = `${window.location.origin}/staffportal?highlight=${shift.id}`;
+
       const html = EmailTemplates.baseWrapper({
         agencyName,
         agencyLogo: agency?.logo_url,
@@ -264,7 +266,7 @@ export const NotificationService = {
             body: `
               <p style="font-size: 16px; color: #374151; line-height: 1.6; margin: 0 0 20px 0;">
                 We're pleased to inform you that you have been assigned to a new shift. 
-                Please review the details below and confirm your availability.
+                Please review the details below and confirm your availability through your Staff Portal.
               </p>
               
               ${EmailTemplates.infoCard({
@@ -279,8 +281,20 @@ export const NotificationService = {
                 </p>
               ` : ''}
 
+              ${EmailTemplates.alertBox({
+                type: 'info',
+                title: '📋 Action Required',
+                message: 'Please confirm your availability as soon as possible by visiting your Staff Portal. You can view full shift details and confirm or decline the assignment there.'
+              })}
+
+              ${EmailTemplates.button({
+                text: 'View & Confirm in Staff Portal',
+                url: portalUrl,
+                bgColor: '#06b6d4'
+              })}
+
               <p style="font-size: 14px; color: #6b7280; line-height: 1.6; margin: 25px 0 0 0;">
-                Please confirm your availability as soon as possible through your portal or by contacting our office.
+                If you have any questions or need assistance, please contact our office directly.
               </p>
             `
           })}
