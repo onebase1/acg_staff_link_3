@@ -323,17 +323,16 @@ serve(async (req) => {
                         description: `${staff ? `${staff.first_name} ${staff.last_name}` : 'Staff'} - ${actualRole}`,
                         staff_name: staff ? `${staff.first_name} ${staff.last_name}` : 'Staff',
                         shift_date: t.shift_date,
+                        date: t.shift_date, // ✅ ALSO include as "date" for consistency
                         role: actualRole,
                         shift_type: shiftType, // ✅ NEW: Include shift_type in line item
                         hours: t.total_hours || 0,
                         rate: t.charge_rate || 0,
-                        amount: t.client_charge_amount || 0
+                        amount: t.client_charge_amount || 0,
+                        work_location_within_site: t.work_location_within_site || null, // ✅ ALWAYS include location if available
+                        start_time: t.actual_start_time || null,
+                        end_time: t.actual_end_time || null
                     };
-
-                    // ✅ FIX 2: Graceful location handling
-                    if (client.contract_terms?.require_location_specification) {
-                        lineItem.work_location_within_site = t.work_location_within_site || null;
-                    }
 
                     return lineItem;
                 }));

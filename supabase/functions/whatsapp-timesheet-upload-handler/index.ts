@@ -231,19 +231,25 @@ async function processTimesheetUpload(supabase: any, params: any) {
 
     console.log(`🔍 [Timesheet Upload] Running OCR extraction...`);
 
-    // Run OCR extraction
+    // Run OCR extraction with expected_data payload
     const { data: ocrResult, error: ocrError } = await supabase.functions.invoke('extract-timesheet-data', {
         body: {
             file_url,
-            expected_staff_name: `${staff.first_name} ${staff.last_name}`,
-            expected_client_name: shift.clients?.name,
-            expected_date: shift.date,
-            expected_hours: shift.duration_hours
-        }
+            expected_data: {
+                staff_name: `${staff.first_name} ${staff.last_name}`,
+                client_name: shift.clients?.name || null,
+                shift_date: shift.date || null,
+                scheduled_hours: shift.duration_hours || null,
+                // WhatsApp flow doesn't currently track exact expected start/end, so omit
+            },
+        },
     });
 
-    if (ocrError) {
-        console.error('❌ [Timesheet Upload] OCR error:', ocrError);
+    const isSuccess = ocrResult?.success === true;
+    const extractedData = ocrResult?.extracted_data || null;
+
+    if (ocrError || !ocrResult || !isSuccess || !extractedData) {
+        console.error('❌ [Timesheet Upload] OCR error or empty result:', ocrError || ocrResult);
         await sendWhatsAppResponse(supabase, phone,
             `⚠️ *OCR Processing Failed*\n\n` +
             `We couldn't extract data from your timesheet image.\n\n` +
@@ -257,13 +263,23 @@ async function processTimesheetUpload(supabase: any, params: any) {
         return { success: false, error: 'OCR extraction failed' };
     }
 
-    console.log(`📊 [Timesheet Upload] OCR Result:`, ocrResult.data);
+    console.log(`📊 [Timesheet Upload] OCR Result:`, extractedData);
 
-    const extractedData = ocrResult.data?.extracted_data || {};
-    const hoursWorked = extractedData.hours_worked || extractedData.total_hours || shift.duration_hours;
-    const breakMinutes = extractedData.break_duration_minutes || 30;
-    const confidenceScore = ocrResult.data?.confidence_score || 0;
-    const requiresReview = ocrResult.data?.requires_manual_review || confidenceScore < 80;
+    const hoursWorked =
+        extractedData.hours_worked ??
+        extractedData.total_hours ??
+        shift.duration_hours;
+    const breakMinutes =
+        extractedData.break_duration_minutes ??
+        extractedData.break_minutes ??
+        30;
+    const confidenceScore =
+        extractedData.confidence_score ??
+        extractedData.confidence?.overall ??
+        0;
+    const requiresReview =
+        extractedData.requires_manual_review ??
+        (confidenceScore < 80);
 
     // Check if timesheet already exists for this shift
     const { data: existingTimesheets } = await supabase

@@ -121,63 +121,118 @@ serve(async (req) => {
 
         const now = new Date();
 
-        // ✅ NEW STEP 0: LOCK ALL TIMESHEETS FINANCIALLY (moved from autoInvoiceGenerator)
+        // ✅ OPTIMIZED: BATCH LOCK ALL TIMESHEETS FINANCIALLY
         console.log('🔒 [Send Invoice] Locking timesheets financially...');
 
         const timesheetIds = invoice.line_items.map((item: any) => item.timesheet_id).filter(Boolean);
 
-        for (const timesheetId of timesheetIds) {
-            const { data: timesheets } = await supabase
-                .from("timesheets")
-                .select("*")
-                .eq("id", timesheetId);
-
-            const timesheet = timesheets?.[0];
-
-            if (!timesheet) {
-                console.warn(`⚠️ Timesheet ${timesheetId} not found - skipping`);
-                continue;
-            }
-
-            await supabase
-                .from("timesheets")
-                .update({
-                    status: 'invoiced',
-                    financial_locked: true,
-                    financial_locked_at: now.toISOString(),
-                    financial_locked_by: user.id,
-                    financial_snapshot: {
-                        total_hours: timesheet.total_hours,
-                        pay_rate: timesheet.pay_rate,
-                        charge_rate: timesheet.charge_rate,
-                        staff_pay_amount: timesheet.staff_pay_amount,
-                        client_charge_amount: timesheet.client_charge_amount,
-                        work_location_within_site: timesheet.work_location_within_site,
-                        locked_at: now.toISOString()
-                    }
-                })
-                .eq("id", timesheetId);
-
-            // 📝 Log financial lock to ChangeLog
-            await supabase
-                .from("change_logs")
-                .insert({
-                    agency_id: agency.id,
-                    change_type: 'timesheet_override',
-                    affected_entity_type: 'timesheet',
-                    affected_entity_id: timesheetId,
-                    old_value: 'approved',
-                    new_value: 'invoiced_and_locked',
-                    reason: `Timesheet financially locked - included in invoice ${invoice.invoice_number}`,
-                    changed_by: user.id,
-                    changed_by_email: user.email,
-                    changed_at: now.toISOString(),
-                    risk_level: 'high',
-                    flagged_for_review: false
-                });
+        if (timesheetIds.length === 0) {
+            console.warn('⚠️ No timesheets found in invoice line items');
+            return new Response(JSON.stringify({ 
+                error: 'No timesheets found in invoice' 
+            }), {
+                status: 400,
+                headers: { "Content-Type": "application/json" }
+            });
         }
 
-        console.log(`✅ [Send Invoice] Locked ${timesheetIds.length} timesheets`);
+        // Fetch all timesheets in one query
+        const { data: timesheets, error: fetchError } = await supabase
+            .from("timesheets")
+            .select("*")
+            .in("id", timesheetIds);
+
+        if (fetchError) {
+            console.error('❌ Error fetching timesheets:', fetchError);
+            throw fetchError;
+        }
+
+        if (!timesheets || timesheets.length === 0) {
+            console.error('❌ No timesheets found with provided IDs');
+            return new Response(JSON.stringify({ 
+                error: 'Timesheets not found' 
+            }), {
+                status: 404,
+                headers: { "Content-Type": "application/json" }
+            });
+        }
+
+        // BATCH UPDATE: Lock all timesheets in single query using PostgreSQL CASE statement
+        // Build financial_snapshot for each timesheet
+        const updateQuery = `
+            UPDATE timesheets
+            SET 
+                status = 'invoiced',
+                financial_locked = true,
+                financial_locked_at = $1,
+                financial_locked_by = $2,
+                financial_snapshot = (
+                    SELECT jsonb_build_object(
+                        'total_hours', total_hours,
+                        'pay_rate', pay_rate,
+                        'charge_rate', charge_rate,
+                        'staff_pay_amount', staff_pay_amount,
+                        'client_charge_amount', client_charge_amount,
+                        'work_location_within_site', work_location_within_site,
+                        'locked_at', $1
+                    )
+                    FROM timesheets t2
+                    WHERE t2.id = timesheets.id
+                )
+            WHERE id = ANY($3)
+        `;
+
+        const { error: updateError } = await supabase.rpc('exec_sql', {
+            sql: updateQuery,
+            params: [now.toISOString(), user.id, timesheetIds]
+        });
+
+        // Fallback to batch update using Supabase client if RPC not available
+        if (updateError || !supabase.rpc) {
+            console.log('📝 Using Supabase client batch update...');
+            
+            // Update each with its own snapshot (still faster than sequential)
+            await Promise.all(timesheets.map(async (timesheet) => {
+                return supabase
+                    .from("timesheets")
+                    .update({
+                        status: 'invoiced',
+                        financial_locked: true,
+                        financial_locked_at: now.toISOString(),
+                        financial_locked_by: user.id,
+                        financial_snapshot: {
+                            total_hours: timesheet.total_hours,
+                            pay_rate: timesheet.pay_rate,
+                            charge_rate: timesheet.charge_rate,
+                            staff_pay_amount: timesheet.staff_pay_amount,
+                            client_charge_amount: timesheet.client_charge_amount,
+                            work_location_within_site: timesheet.work_location_within_site,
+                            locked_at: now.toISOString()
+                        }
+                    })
+                    .eq("id", timesheet.id);
+            }));
+        }
+
+        // BATCH INSERT: Log all financial locks to ChangeLog in single query
+        const changeLogEntries = timesheets.map(timesheet => ({
+            agency_id: agency.id,
+            change_type: 'timesheet_override',
+            affected_entity_type: 'timesheet',
+            affected_entity_id: timesheet.id,
+            old_value: 'approved',
+            new_value: 'invoiced_and_locked',
+            reason: `Timesheet financially locked - included in invoice ${invoice.invoice_number}`,
+            changed_by: user.id,
+            changed_by_email: user.email,
+            changed_at: now.toISOString(),
+            risk_level: 'high',
+            flagged_for_review: false
+        }));
+
+        await supabase.from("change_logs").insert(changeLogEntries);
+
+        console.log(`✅ [Send Invoice] Locked ${timesheetIds.length} timesheets (batch operation)`);
 
         // ✅ STEP 1: Update invoice status and create immutable snapshot
         console.log('📝 [Send Invoice] Updating invoice status to "sent"...');
@@ -192,7 +247,7 @@ serve(async (req) => {
             agency_name: agency.name
         };
 
-        await supabase
+        const { error: invoiceUpdateError } = await supabase
             .from("invoices")
             .update({
                 status: 'sent',
@@ -200,6 +255,11 @@ serve(async (req) => {
                 immutable_sent_snapshot: immutableSnapshot
             })
             .eq("id", invoice.id);
+
+        if (invoiceUpdateError) {
+            console.error('❌ Error updating invoice status:', invoiceUpdateError);
+            throw invoiceUpdateError;
+        }
 
         console.log('✅ [Send Invoice] Invoice status updated to "sent"');
 

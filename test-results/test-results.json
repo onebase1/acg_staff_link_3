@@ -64,21 +64,21 @@
   },
   "suites": [
     {
-      "title": "visual-browser-test.spec.js",
-      "file": "visual-browser-test.spec.js",
+      "title": "ui\\critical-flows.spec.ts",
+      "file": "ui/critical-flows.spec.ts",
       "column": 0,
       "line": 0,
       "specs": [],
       "suites": [
         {
-          "title": "Multi-Channel Broadcast - Visual Browser Tests",
-          "file": "visual-browser-test.spec.js",
+          "title": "Dominion Agency Critical UI Flows",
+          "file": "ui/critical-flows.spec.ts",
           "line": 15,
           "column": 6,
           "specs": [
             {
-              "title": "1. Homepage loads correctly",
-              "ok": true,
+              "title": "Login Flow - Should authenticate and load dashboard",
+              "ok": false,
               "tags": [],
               "tests": [
                 {
@@ -91,296 +91,91 @@
                     {
                       "workerIndex": 0,
                       "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 5313,
-                      "errors": [],
-                      "stdout": [
+                      "status": "failed",
+                      "duration": 17925,
+                      "error": {
+                        "message": "TimeoutError: page.waitForURL: Timeout 15000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================",
+                        "stack": "TimeoutError: page.waitForURL: Timeout 15000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================\n    at C:\\Users\\gbase\\AiAgency\\ACG_BASE\\agc_latest3\\tests\\ui\\critical-flows.spec.ts:37:16",
+                        "location": {
+                          "file": "C:\\Users\\gbase\\AiAgency\\ACG_BASE\\agc_latest3\\tests\\ui\\critical-flows.spec.ts",
+                          "column": 16,
+                          "line": 37
+                        },
+                        "snippet": "  35 |     \n  36 |     // Wait for navigation and verify we're on dashboard\n> 37 |     await page.waitForURL(/dashboard/i, { timeout: TEST_CONFIG.timeouts.medium });\n     |                ^\n  38 |     \n  39 |     // Verify dashboard loaded successfully\n  40 |     await expect(page.locator('body')).toContainText(/dashboard|shifts|staff/i);"
+                      },
+                      "errors": [
                         {
-                          "text": "✅ Homepage loaded successfully\n"
+                          "location": {
+                            "file": "C:\\Users\\gbase\\AiAgency\\ACG_BASE\\agc_latest3\\tests\\ui\\critical-flows.spec.ts",
+                            "column": 16,
+                            "line": 37
+                          },
+                          "message": "TimeoutError: page.waitForURL: Timeout 15000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================\n\n  35 |     \n  36 |     // Wait for navigation and verify we're on dashboard\n> 37 |     await page.waitForURL(/dashboard/i, { timeout: TEST_CONFIG.timeouts.medium });\n     |                ^\n  38 |     \n  39 |     // Verify dashboard loaded successfully\n  40 |     await expect(page.locator('body')).toContainText(/dashboard|shifts|staff/i);\n    at C:\\Users\\gbase\\AiAgency\\ACG_BASE\\agc_latest3\\tests\\ui\\critical-flows.spec.ts:37:16"
                         }
                       ],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-11-21T19:31:39.183Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "84a30723e4732e795306-45b816528d969c8da67a",
-              "file": "visual-browser-test.spec.js",
-              "line": 17,
-              "column": 3
-            },
-            {
-              "title": "2. Login page renders correctly",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 60000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 2267,
-                      "errors": [],
                       "stdout": [
                         {
-                          "text": "✅ Login page renders correctly\n"
-                        }
-                      ],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-11-21T19:31:46.653Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "84a30723e4732e795306-625e504674fd013a19ac",
-              "file": "visual-browser-test.spec.js",
-              "line": 32,
-              "column": 3
-            },
-            {
-              "title": "3. Verify ChannelSelectorModal component structure",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 60000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1228,
-                      "errors": [],
-                      "stdout": [
-                        {
-                          "text": "✅ Component structure verified\n"
-                        }
-                      ],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-11-21T19:31:48.942Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "84a30723e4732e795306-8e1e7df191065c09082b",
-              "file": "visual-browser-test.spec.js",
-              "line": 50,
-              "column": 3
-            },
-            {
-              "title": "4. Check responsive design - Mobile view",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 60000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 2194,
-                      "errors": [],
-                      "stdout": [
-                        {
-                          "text": "✅ Mobile responsive design verified\n"
-                        }
-                      ],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-11-21T19:31:50.193Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "84a30723e4732e795306-8c80d935c168e7f9260f",
-              "file": "visual-browser-test.spec.js",
-              "line": 64,
-              "column": 3
-            },
-            {
-              "title": "5. Check responsive design - Tablet view",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 60000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 2049,
-                      "errors": [],
-                      "stdout": [
-                        {
-                          "text": "✅ Tablet responsive design verified\n"
-                        }
-                      ],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-11-21T19:31:52.410Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "84a30723e4732e795306-b8b3eb76a75fcf9bd085",
-              "file": "visual-browser-test.spec.js",
-              "line": 80,
-              "column": 3
-            },
-            {
-              "title": "6. Check responsive design - Desktop view",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 60000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 2322,
-                      "errors": [],
-                      "stdout": [
-                        {
-                          "text": "✅ Desktop responsive design verified\n"
-                        }
-                      ],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-11-21T19:31:54.479Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "84a30723e4732e795306-a9040af022845841518a",
-              "file": "visual-browser-test.spec.js",
-              "line": 96,
-              "column": 3
-            },
-            {
-              "title": "7. Verify no console errors on page load",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 60000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 4746,
-                      "errors": [],
-                      "stdout": [
-                        {
-                          "text": "✅ No critical console errors\n"
-                        }
-                      ],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-11-21T19:31:56.823Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "84a30723e4732e795306-b6258a6bbea428f67398",
-              "file": "visual-browser-test.spec.js",
-              "line": 112,
-              "column": 3
-            },
-            {
-              "title": "8. Verify page performance",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 60000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 2272,
-                      "errors": [],
-                      "stdout": [
-                        {
-                          "text": "⏱️ Page load time: 1703ms\n"
+                          "text": "[browser] debug: [vite] connecting...\n"
                         },
                         {
-                          "text": "✅ Page performance acceptable\n"
+                          "text": "[browser] debug: [vite] connected.\n"
+                        },
+                        {
+                          "text": "[browser] info: %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold\n"
+                        },
+                        {
+                          "text": "[browser] log: 📦 Version check: Current=1.0.0, Deployed=1.0.0-f74421b\n"
+                        },
+                        {
+                          "text": "[browser] log: 🆕 New version available! {current: 1.0.0, latest: 1.0.0-f74421b, buildTime: 11/23/2025, 7:37:45 PM}\n"
+                        },
+                        {
+                          "text": "[browser] log: 📦 Version check: Current=1.0.0, Deployed=1.0.0-f74421b\n"
+                        },
+                        {
+                          "text": "[browser] log: 🆕 New version available! {current: 1.0.0, latest: 1.0.0-f74421b, buildTime: 11/23/2025, 7:37:45 PM}\n"
+                        },
+                        {
+                          "text": "[browser] error: Failed to load resource: the server responded with a status of 400 ()\n"
+                        },
+                        {
+                          "text": "[browser] error: Error signing in: AuthApiError: Invalid login credentials\n    at handleError3 (http://localhost:5173/node_modules/.vite/deps/@supabase_supabase-js.js?v=2fb743de:6282:9)\n    at async _handleRequest3 (http://localhost:5173/node_modules/.vite/deps/@supabase_supabase-js.js?v=2fb743de:6323:5)\n    at async _request (http://localhost:5173/node_modules/.vite/deps/@supabase_supabase-js.js?v=2fb743de:6307:16)\n    at async SupabaseAuthClient.signInWithPassword (http://localhost:5173/node_modules/.vite/deps/@supabase_supabase-js.js?v=2fb743de:8038:15)\n    at async Object.signIn (http://localhost:5173/src/api/supabaseAuth.js:117:31)\n    at async handleSubmit (http://localhost:5173/src/pages/Login.jsx:46:7)\n"
                         }
                       ],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-11-21T19:32:01.587Z",
+                      "startTime": "2025-11-24T10:10:28.785Z",
                       "annotations": [],
-                      "attachments": []
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\gbase\\AiAgency\\ACG_BASE\\agc_latest3\\test-results\\ui-critical-flows-Dominion-e4c8d-enticate-and-load-dashboard-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Users\\gbase\\AiAgency\\ACG_BASE\\agc_latest3\\test-results\\ui-critical-flows-Dominion-e4c8d-enticate-and-load-dashboard-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\gbase\\AiAgency\\ACG_BASE\\agc_latest3\\test-results\\ui-critical-flows-Dominion-e4c8d-enticate-and-load-dashboard-chromium\\error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\gbase\\AiAgency\\ACG_BASE\\agc_latest3\\tests\\ui\\critical-flows.spec.ts",
+                        "column": 16,
+                        "line": 37
+                      }
                     }
                   ],
-                  "status": "expected"
+                  "status": "unexpected"
                 }
               ],
-              "id": "84a30723e4732e795306-79309452d367d05ac93e",
-              "file": "visual-browser-test.spec.js",
-              "line": 144,
+              "id": "61862533b24acd2bf042-d561183d7ae2bdc66b5d",
+              "file": "ui/critical-flows.spec.ts",
+              "line": 22,
               "column": 3
             }
           ]
@@ -390,11 +185,11 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2025-11-21T19:31:37.730Z",
-    "duration": 26545.803,
-    "expected": 8,
+    "startTime": "2025-11-24T10:10:27.216Z",
+    "duration": 22052.613,
+    "expected": 0,
     "skipped": 0,
-    "unexpected": 0,
+    "unexpected": 1,
     "flaky": 0
   }
 }

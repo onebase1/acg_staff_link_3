@@ -964,7 +964,9 @@ export default function StaffPortal() {
 
               {/* 💰 Earnings Display - Only show if NOT in progress */}
               {(() => {
-                const nextShiftTimesheet = myTimesheets.find(t => t.shift_id === nextShift.id);
+                // ✅ FIX: Find timesheet via booking_id (not shift_id) - same pattern as line 1302
+                const nextShiftBooking = myBookings.find(b => b.shift_id === nextShift.id);
+                const nextShiftTimesheet = nextShiftBooking ? myTimesheets.find(t => t.booking_id === nextShiftBooking.id) : null;
                 const isInProgress = nextShiftTimesheet?.clock_in_time && !nextShiftTimesheet?.clock_out_time;
                 const isCompleted = nextShiftTimesheet?.clock_out_time;
 
@@ -1006,7 +1008,9 @@ export default function StaffPortal() {
 
             {/* 🔵 Action Button - Changes based on shift state */}
             {isToday(new Date(nextShift.date)) && (() => {
-              const nextShiftTimesheet = myTimesheets.find(t => t.shift_id === nextShift.id);
+              // ✅ FIX: Find timesheet via booking_id (not shift_id) - same pattern as line 1302
+              const nextShiftBooking = myBookings.find(b => b.shift_id === nextShift.id);
+              const nextShiftTimesheet = nextShiftBooking ? myTimesheets.find(t => t.booking_id === nextShiftBooking.id) : null;
               const isInProgress = nextShiftTimesheet?.clock_in_time && !nextShiftTimesheet?.clock_out_time;
               const isCompleted = nextShiftTimesheet?.clock_out_time;
 
@@ -1047,6 +1051,8 @@ export default function StaffPortal() {
       )}
 
       {/* ✅ MOBILE-FIRST: Earnings Cards - Responsive grid */}
+      {/* 🚧 TEMPORARILY HIDDEN: Earnings cards - calculations preserved for future use */}
+      {/* 
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <Card className="bg-green-50 border-green-200">
           <CardContent className="p-3 sm:p-5">
@@ -1066,6 +1072,7 @@ export default function StaffPortal() {
           </CardContent>
         </Card>
       </div>
+      */}
 
       {/* ✅ MOBILE-FIRST: Advanced Shift Filters - Collapsible on mobile */}
       <Card className="border-2 border-purple-200">

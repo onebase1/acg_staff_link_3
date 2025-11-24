@@ -150,6 +150,8 @@ import SuperAdminAgencyOnboarding from "./SuperAdminAgencyOnboarding";
 
 import GPSAccuracyMonitoring from "./GPSAccuracyMonitoring";
 
+import AdminComplianceReview from "./AdminComplianceReview";
+
 import Login from "./Login";
 import ResetPassword from "./ResetPassword";
 
@@ -306,6 +308,8 @@ const PAGES = {
     SuperAdminAgencyOnboarding: SuperAdminAgencyOnboarding,
 
     GPSAccuracyMonitoring: GPSAccuracyMonitoring,
+
+    AdminComplianceReview: AdminComplianceReview,
 
     ResetPassword: ResetPassword,
 
@@ -488,6 +492,8 @@ function PagesContent() {
                 <Route path="/SuperAdminAgencyOnboarding" element={<SuperAdminAgencyOnboarding />} />
 
                 <Route path="/GPSAccuracyMonitoring" element={<GPSAccuracyMonitoring />} />
+
+                <Route path="/AdminComplianceReview" element={<AdminComplianceReview />} />
 
             </Routes>
         </Layout>

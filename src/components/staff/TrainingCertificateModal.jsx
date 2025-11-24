@@ -107,22 +107,63 @@ function TrainingCertificateModal({
     }
 
     try {
-      const { data, error } = await supabase
+      const certificateName = form.name || trainingLabel || "Training Certificate";
+
+      // Check if a certificate with this name already exists for this staff member
+      const { data: existingCerts, error: checkError } = await supabase
         .from("compliance")
-        .insert({
-          staff_id: staffId,
-          agency_id: agencyId || null,
-          document_type: "training_certificate",
-          document_name: form.name || trainingLabel || "Training Certificate",
-          issue_date: form.completed_date || null,
-          expiry_date: form.expiry_date || null,
-          document_url: documentUrl,
-          reference_number: form.certificate_ref || null,
-          issuing_authority: form.provider || null,
-          notes: form.notes || null,
-        })
-        .select()
-        .single();
+        .select("id")
+        .eq("staff_id", staffId)
+        .eq("document_type", "training_certificate")
+        .eq("document_name", certificateName)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+
+      let data, error;
+
+      if (existingCerts) {
+        // UPDATE existing certificate
+        const updateResult = await supabase
+          .from("compliance")
+          .update({
+            issue_date: form.completed_date || null,
+            expiry_date: form.expiry_date || null,
+            document_url: documentUrl,
+            reference_number: form.certificate_ref || null,
+            issuing_authority: form.provider || null,
+            notes: form.notes || null,
+            status: "pending", // Reset to pending when updated
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingCerts.id)
+          .select()
+          .single();
+
+        data = updateResult.data;
+        error = updateResult.error;
+      } else {
+        // INSERT new certificate
+        const insertResult = await supabase
+          .from("compliance")
+          .insert({
+            staff_id: staffId,
+            agency_id: agencyId || null,
+            document_type: "training_certificate",
+            document_name: certificateName,
+            issue_date: form.completed_date || null,
+            expiry_date: form.expiry_date || null,
+            document_url: documentUrl,
+            reference_number: form.certificate_ref || null,
+            issuing_authority: form.provider || null,
+            notes: form.notes || null,
+          })
+          .select()
+          .single();
+
+        data = insertResult.data;
+        error = insertResult.error;
+      }
 
       if (error) throw error;
 

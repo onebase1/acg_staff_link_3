@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   FileText, Building2, Calendar, DollarSign, AlertCircle, CheckCircle2,
   ArrowLeft, Loader2, Clock, User, AlertTriangle
@@ -20,6 +21,7 @@ export default function GenerateInvoices() {
   const [selectedTimesheets, setSelectedTimesheets] = useState([]);
   const [groupBy, setGroupBy] = useState('client');
   const [user, setUser] = useState(null); // ✅ FIX: Fetch real user
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -322,15 +324,13 @@ export default function GenerateInvoices() {
       return;
     }
 
-    const confirmMessage = invoiceCount === 1
-      ? `Generate 1 invoice for ${selectedTimesheets.length} timesheet(s)?`
-      : `Generate ${invoiceCount} invoices for ${selectedTimesheets.length} timesheet(s) across ${invoiceCount} clients?`;
+    // ✅ NEW: Show preview dialog instead of confirm()
+    setShowPreviewDialog(true);
+  };
 
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
-
-    console.log('🚀 [Generate Invoices] User confirmed, calling mutation once with all IDs');
+  const confirmGenerateInvoices = () => {
+    console.log('🚀 [Generate Invoices] User confirmed via preview, calling mutation once with all IDs');
+    setShowPreviewDialog(false);
     generateInvoicesMutation.mutate(selectedTimesheets);
   };
 
@@ -647,6 +647,156 @@ export default function GenerateInvoices() {
           </div>
         </>
       )}
+
+      {/* ✅ NEW: Invoice Preview Dialog */}
+      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+              <FileText className="w-6 h-6 text-blue-600" />
+              Invoice Generation Preview
+            </DialogTitle>
+            <DialogDescription>
+              Review the details before generating {invoiceCount} {invoiceCount === 1 ? 'invoice' : 'invoices'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-3 gap-4">
+              <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+                <CardContent className="p-4">
+                  <p className="text-sm text-blue-700 font-medium">Invoices</p>
+                  <p className="text-3xl font-bold text-blue-900">{invoiceCount}</p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    {invoiceCount === 1 ? 'for 1 client' : `across ${invoiceCount} clients`}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+                <CardContent className="p-4">
+                  <p className="text-sm text-purple-700 font-medium">Timesheets</p>
+                  <p className="text-3xl font-bold text-purple-900">{selectedTimesheets.length}</p>
+                  <p className="text-xs text-purple-600 mt-1">shifts to invoice</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+                <CardContent className="p-4">
+                  <p className="text-sm text-green-700 font-medium">Total Value</p>
+                  <p className="text-3xl font-bold text-green-900">
+                    £{selectedTotals.totalValue.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-green-600 mt-1">
+                    {selectedTotals.totalHours.toFixed(1)} hours
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Client Breakdown */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <Building2 className="w-5 h-5" />
+                Breakdown by Client
+              </h3>
+              {Object.entries(timesheetsByClient)
+                .filter(([_, timesheetsForClient]) => 
+                  timesheetsForClient.some(t => selectedTimesheets.includes(t.id))
+                )
+                .map(([clientId, clientTimesheets]) => {
+                  const selectedClientTimesheets = clientTimesheets.filter(t => 
+                    selectedTimesheets.includes(t.id)
+                  );
+                  const clientTotal = selectedClientTimesheets.reduce(
+                    (sum, t) => sum + (parseFloat(t.client_charge_amount) || 0), 0
+                  );
+                  const clientHours = selectedClientTimesheets.reduce(
+                    (sum, t) => sum + (parseFloat(t.total_hours) || 0), 0
+                  );
+
+                  return (
+                    <Card key={clientId} className="border-l-4 border-l-blue-500">
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-lg">
+                              {selectedClientTimesheets[0]?.clients?.name || 'Unknown Client'}
+                            </h4>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {selectedClientTimesheets.length} timesheet{selectedClientTimesheets.length !== 1 ? 's' : ''} • {clientHours.toFixed(1)} hours
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-2xl font-bold text-green-700">
+                              £{clientTotal.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Line Item Preview */}
+                        <div className="mt-3 space-y-1">
+                          {selectedClientTimesheets.map((timesheet) => (
+                            <div key={timesheet.id} className="flex justify-between text-sm py-1 px-2 bg-gray-50 rounded">
+                              <span className="text-gray-700">
+                                {format(new Date(timesheet.shift_date), 'MMM dd, yyyy')} • {timesheet.staff?.first_name} {timesheet.staff?.last_name}
+                              </span>
+                              <span className="font-medium">
+                                {parseFloat(timesheet.total_hours).toFixed(1)}h • £{parseFloat(timesheet.client_charge_amount).toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+            </div>
+
+            {/* Important Notes */}
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <p className="font-semibold mb-2">⚠️ Important:</p>
+                <ul className="text-sm space-y-1 ml-4 list-disc">
+                  <li>Invoices will be created as <strong>DRAFT</strong> status</li>
+                  <li>You can review and edit drafts before sending</li>
+                  <li>Financial locking only happens when you <strong>send</strong> the invoice</li>
+                  <li>Draft invoices can be deleted without consequences</li>
+                </ul>
+              </AlertDescription>
+            </Alert>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowPreviewDialog(false)}
+              disabled={generateInvoicesMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmGenerateInvoices}
+              disabled={generateInvoicesMutation.isPending}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            >
+              {generateInvoicesMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Generate {invoiceCount} {invoiceCount === 1 ? 'Invoice' : 'Invoices'}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -254,20 +254,36 @@ export default function TimesheetDetail() {
         console.log('✅ File uploaded:', file_url);
 
         console.log('🔍 Extracting timesheet data with OCR...');
+        // Derive scheduled hours as scheduled duration minus scheduled break, so 12h - 1h break = 11h expected
+        const scheduledFromShift =
+          shift && typeof shift.duration_hours === 'number'
+            ? shift.duration_hours - (shift.break_duration_minutes || 0) / 60
+            : null;
+
         const { data: ocrResult, error: ocrError } = await supabase.functions.invoke('extract-timesheet-data', {
           body: {
             file_url,
-            expected_staff_name: staff ? `${staff.first_name} ${staff.last_name}` : null,
-            expected_client_name: client?.name,
-            expected_date: timesheet?.shift_date,
-            expected_hours: timesheet?.total_hours
-          }
+            expected_data: {
+              staff_name: staff ? `${staff.first_name} ${staff.last_name}` : null,
+              client_name: client?.name || null,
+              shift_date: timesheet?.shift_date || null,
+              scheduled_hours: scheduledFromShift ?? timesheet?.total_hours ?? null,
+              expected_start: shift?.start_time || null,
+              expected_end: shift?.end_time || null,
+            },
+          },
         });
 
-        // FIX: Handle null ocrResult from failed invocation
-        if (!ocrResult || ocrError) {
-          console.error('❌ OCR invocation failed:', ocrError);
-          const errorMsg = ocrError?.message || 'OCR extraction service unavailable';
+        // Normalise OCR payload shape
+        const isSuccess = ocrResult?.success === true;
+        const extracted = ocrResult?.extracted_data || null;
+
+        // Handle failed invocation or unsuccessful response
+        if (ocrError || !ocrResult || !isSuccess || !extracted) {
+          console.error('❌ OCR invocation failed or returned no data:', ocrError || ocrResult);
+          const errorMsg =
+            ocrError?.message ||
+            (typeof ocrResult?.error === 'string' ? ocrResult.error : 'OCR extraction service unavailable');
           toast.error(`Failed to extract timesheet data: ${errorMsg}`);
 
           // Save document without OCR data
@@ -279,7 +295,7 @@ export default function TimesheetDetail() {
             file_type: file.type,
             file_size: file.size,
             notes: `OCR failed: ${errorMsg}`,
-            extracted_data: null
+            extracted_data: null,
           };
 
           const existingDocs = timesheet.uploaded_documents || [];
@@ -287,42 +303,51 @@ export default function TimesheetDetail() {
             .from('timesheets')
             .update({
               uploaded_documents: [...existingDocs, newDocument],
-              status: 'pending_admin_review'
+              status: 'pending_admin_review',
             })
             .eq('id', timesheetId);
 
           if (updateError) throw updateError;
 
+          // Link shift to timesheet for reporting, if we know the shift
+          if (shift?.id) {
+            await supabase
+              .from('shifts')
+              .update({
+                timesheet_id: timesheetId,
+                timesheet_received: true,
+                timesheet_received_at: new Date().toISOString(),
+              })
+              .eq('id', shift.id);
+          }
+
           toast.warning('⚠️ Document saved, but OCR extraction failed. Admin review required.');
           return file_url;
         }
 
-        console.log('📊 OCR Result:', ocrResult.data);
+        console.log('📊 OCR Result:', extracted);
 
         // Map OCR response for toast messages
-        if (ocrResult.data?.success) {
-          if (ocrResult.data.confidence_score) {
-            // Track confidence for re-upload guidance (Quick Fix 2)
-            setLastOcrConfidence(ocrResult.data.confidence_score);
+        const confidenceFromExtractor = extracted.confidence_score ?? extracted.confidence?.overall;
+        if (typeof confidenceFromExtractor === 'number') {
+          // Track confidence for re-upload guidance (Quick Fix 2)
+          setLastOcrConfidence(confidenceFromExtractor);
 
-            if (ocrResult.data.confidence_score >= 80) {
-              toast.success(`✅ High confidence extraction (${ocrResult.data.confidence_score}%)`);
-            } else if (ocrResult.data.confidence_score >= 60) {
-              toast.warning(`⚠️ Medium confidence extraction (${ocrResult.data.confidence_score}%) - Please review`);
-            } else {
-              toast.error(`❌ Low confidence extraction (${ocrResult.data.confidence_score}%) - Manual review required`);
-            }
+          if (confidenceFromExtractor >= 80) {
+            toast.success(`✅ High confidence extraction (${confidenceFromExtractor}%)`);
+          } else if (confidenceFromExtractor >= 60) {
+            toast.warning(`⚠️ Medium confidence extraction (${confidenceFromExtractor}%) - Please review`);
+          } else {
+            toast.error(`❌ Low confidence extraction (${confidenceFromExtractor}%) - Manual review required`);
           }
+        }
 
-          if (ocrResult.data.discrepancies && ocrResult.data.discrepancies.length > 0) {
-            const critical = ocrResult.data.discrepancies.filter(m => m.severity === 'critical');
-            if (critical.length > 0) {
-              toast.error(`🚨 Critical discrepancies detected! Manual review required.`);
-            }
+        const discrepancies = extracted.discrepancies || extracted.mismatches;
+        if (Array.isArray(discrepancies) && discrepancies.length > 0) {
+          const critical = discrepancies.filter(m => m.severity === 'critical');
+          if (critical.length > 0) {
+            toast.error('🚨 Critical discrepancies detected! Manual review required.');
           }
-        } else {
-          console.log('⚠️ OCR extraction failed:', ocrResult.data);
-          toast.warning('Document uploaded, but OCR extraction failed. File is still saved.');
         }
 
         const newDocument = {
@@ -332,14 +357,14 @@ export default function TimesheetDetail() {
           file_name: file.name,
           file_type: file.type,
           file_size: file.size,
-          notes: `OCR Status: ${ocrResult.data?.status || 'failed'}`,
-          extracted_data: ocrResult.data
+          notes: `OCR Status: ${isSuccess ? 'ok' : 'failed'}`,
+          extracted_data: extracted,
         };
 
         // PHASE 2: Instead of immediately saving, show confirmation modal
-        if (ocrResult.data?.success && ocrResult.data.extracted_data) {
+        if (isSuccess && extracted) {
           console.log('✅ OCR succeeded - showing confirmation modal');
-          setPendingOcrData(ocrResult.data.extracted_data);
+          setPendingOcrData(extracted);
           setPendingDocument(newDocument);
           setPendingFile(file);
           setShowConfirmModal(true);
@@ -396,7 +421,7 @@ export default function TimesheetDetail() {
   };
 
   // PHASE 2: Staff Confirmation Handlers
-  const handleConfirmOCR = async () => {
+  const handleConfirmOCR = async (staffNote) => {
     if (!pendingOcrData || !pendingDocument) return;
 
     setConfirming(true);
@@ -431,9 +456,36 @@ export default function TimesheetDetail() {
           extracted.matched_row_info ? `(from matched row ${extracted.matched_row_info.date})` : '');
       }
 
-      if (extracted.hours_worked !== undefined) {
-        updateData.hours_worked = extracted.hours_worked;
-        console.log('✅ Set hours_worked:', extracted.hours_worked);
+      // Hours: prefer matched row hours for this shift, fall back to overall hours_worked / total_hours
+      const ocrHours =
+        extracted.matched_row_info?.hours ??
+        extracted.hours_worked ??
+        extracted.total_hours ??
+        null;
+
+      if (ocrHours !== null && ocrHours !== undefined) {
+        updateData.hours_worked = ocrHours;
+        updateData.total_hours = ocrHours;
+        console.log('✅ Set hours_worked/total_hours from OCR:', ocrHours);
+      }
+
+      // Preserve raw_total_hours if the extractor provided it (multi-day sheets)
+      if (typeof extracted.raw_total_hours === 'number') {
+        updateData.raw_total_hours = extracted.raw_total_hours;
+      }
+
+      // Signature fields so admin UI no longer shows "missing signature"
+      if (extracted.staff_signature) {
+        updateData.staff_signature = `ocr_present_${new Date().toISOString()}`;
+      }
+      if (extracted.supervisor_signature || extracted.client_signature) {
+        updateData.client_signature = `ocr_present_${new Date().toISOString()}`;
+      }
+
+      // Optional staff note appended to existing notes
+      if (staffNote && staffNote.trim()) {
+        const note = staffNote.trim();
+        updateData.notes = `${timesheet.notes || ''}\n[Staff note from OCR confirmation]: ${note}`;
       }
 
       // AUTO-APPROVAL LOGIC
@@ -461,6 +513,18 @@ export default function TimesheetDetail() {
 
       if (updateError) throw updateError;
 
+      // Ensure associated shift knows it has a timesheet
+      if (shift?.id) {
+        await supabase
+          .from('shifts')
+          .update({
+            timesheet_id: timesheetId,
+            timesheet_received: true,
+            timesheet_received_at: new Date().toISOString(),
+          })
+          .eq('id', shift.id);
+      }
+
       // Invalidate queries to refresh UI
       queryClient.invalidateQueries(['timesheet', timesheetId]);
       queryClient.invalidateQueries(['timesheets']);
@@ -486,11 +550,22 @@ export default function TimesheetDetail() {
     }
   };
 
-  const handleRejectOCR = async () => {
+  const handleRejectOCR = async (staffNote) => {
     if (!pendingDocument) return;
 
     setRejecting(true);
     try {
+      // 📝 Save staff note if provided (consistency with confirmation flow)
+      if (staffNote && staffNote.trim()) {
+        const note = staffNote.trim();
+        await supabase
+          .from('timesheets')
+          .update({
+            notes: `${timesheet.notes || ''}\n[Staff note from OCR rejection]: ${note}`
+          })
+          .eq('id', timesheetId);
+      }
+
       const existingDocs = timesheet.uploaded_documents || [];
 
       const { error: updateError } = await supabase
@@ -504,6 +579,18 @@ export default function TimesheetDetail() {
         .eq('id', timesheetId);
 
       if (updateError) throw updateError;
+
+      // Also mark shift as having received a timesheet
+      if (shift?.id) {
+        await supabase
+          .from('shifts')
+          .update({
+            timesheet_id: timesheetId,
+            timesheet_received: true,
+            timesheet_received_at: new Date().toISOString(),
+          })
+          .eq('id', shift.id);
+      }
 
       queryClient.invalidateQueries(['timesheet', timesheetId]);
       queryClient.invalidateQueries(['timesheets']);
@@ -543,6 +630,45 @@ export default function TimesheetDetail() {
 
   // PHASE 2: Delete Document Handler
   const handleDeleteDocument = async (documentIndex) => {
+    // Business rule: staff cannot delete documents once the shift is completed
+    const isStaffUser = user?.user_type === 'staff_member';
+    if (isStaffUser && shift?.status === 'completed') {
+      toast.error('You cannot delete documents for completed shifts. Please contact your agency.');
+
+      // Best-effort notification to agency via email (may be blocked by RLS for staff)
+      try {
+        if (timesheet?.agency_id) {
+          const { data: agency, error: agencyError } = await supabase
+            .from('agencies')
+            .select('email,billing_email')
+            .eq('id', timesheet.agency_id)
+            .single();
+
+          if (!agencyError && agency) {
+            const agencyEmail = agency.billing_email || agency.email;
+            if (agencyEmail) {
+              await supabase.functions.invoke('send-email', {
+                body: {
+                  to: agencyEmail,
+                  subject: 'Staff attempted to delete document for completed shift',
+                  html: `
+                    <p>A staff user attempted to delete a timesheet document for a completed shift.</p>
+                    <p><strong>Timesheet ID:</strong> ${timesheetId}</p>
+                    <p><strong>Shift date:</strong> ${timesheet?.shift_date}</p>
+                    <p><strong>Staff:</strong> ${staff ? `${staff.first_name} ${staff.last_name}` : 'Unknown'}</p>
+                  `,
+                },
+              });
+            }
+          }
+        }
+      } catch (emailError) {
+        console.warn('⚠️ Failed to notify agency about blocked delete:', emailError);
+      }
+
+      return;
+    }
+
     if (!window.confirm('Delete this document? This action cannot be undone.')) {
       return;
     }
@@ -717,7 +843,7 @@ export default function TimesheetDetail() {
   ) : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -843,6 +969,16 @@ export default function TimesheetDetail() {
               </div>
             </CardHeader>
             <CardContent className="p-3 sm:p-6">
+              {/* Inline status while upload + OCR are running */}
+              {uploadingDoc && !showConfirmModal && (
+                <Alert className="mb-4 bg-blue-50 border-blue-200">
+                  <AlertTriangle className="w-5 h-5 text-blue-600" />
+                  <AlertDescription className="text-blue-900 text-sm">
+                    Extracting timesheet data with AI. This can take a few seconds – please keep this page open.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Responsive Upload Zone - Mobile: Compact button | Desktop: Drag & drop */}
               <ResponsiveUploadZone
                 onFileSelect={handleFileUpload}
@@ -1475,7 +1611,11 @@ export default function TimesheetDetail() {
           staff_name: staff ? `${staff.first_name} ${staff.last_name}` : null,
           client_name: client?.name,
           shift_date: timesheet?.shift_date,
-          scheduled_hours: timesheet?.total_hours
+          // Show the same scheduled hours we passed into OCR (duration minus break)
+          scheduled_hours:
+            (shift && typeof shift.duration_hours === 'number'
+              ? shift.duration_hours - (shift.break_duration_minutes || 0) / 60
+              : timesheet?.total_hours) || null,
         }}
         onConfirm={handleConfirmOCR}
         onReject={handleRejectOCR}
@@ -1483,6 +1623,24 @@ export default function TimesheetDetail() {
         confirming={confirming}
         rejecting={rejecting}
       />
+
+      {/* Global blocking overlay while upload + OCR are running */}
+      {uploadingDoc && !showConfirmModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl px-6 py-5 max-w-sm mx-4 text-center space-y-3">
+            <div className="flex justify-center">
+              <div className="h-10 w-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+            <p className="text-sm font-semibold text-gray-900">
+              Processing your timesheet with AI…
+            </p>
+            <p className="text-xs text-gray-600">
+              This usually takes a few seconds. Please keep this page open until the confirmation
+              screen appears so your timesheet can be saved correctly.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

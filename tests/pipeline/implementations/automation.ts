@@ -33,14 +33,14 @@ export async function testDailyShiftClosure(ctx: TestContext): Promise<TestResul
       .eq('shift_id', shift.id)
       .eq('type', 'shift_verification');
     
-    const hasWorkflow = workflows && workflows.length > 0;
+    const hasWorkflow = !!(workflows && workflows.length > 0);
     
     return {
       testId: 'auto-001',
       action: 'Daily shift closure engine',
-      passed: result.success || hasWorkflow,
+      passed: (result.success ?? false) || hasWorkflow,
       duration: (Date.now() - startTime) / 1000,
-      details: { functionInvoked: result.success, workflowCreated: hasWorkflow },
+      details: { functionInvoked: result.success ?? false, workflowCreated: hasWorkflow },
       error: result.error || undefined,
       timestamp: new Date().toISOString()
     };
@@ -90,14 +90,14 @@ export async function testNoShowDetection(ctx: TestContext): Promise<TestResult>
       .eq('shift_id', shift.id)
       .eq('type', 'no_show');
     
-    const hasWorkflow = workflows && workflows.length > 0;
+    const hasWorkflow = !!(workflows && workflows.length > 0);
     
     return {
       testId: 'auto-002',
       action: 'No-show detection',
-      passed: result.success || hasWorkflow,
+      passed: (result.success ?? false) || hasWorkflow,
       duration: (Date.now() - startTime) / 1000,
-      details: { functionInvoked: result.success, workflowCreated: hasWorkflow },
+      details: { functionInvoked: result.success ?? false, workflowCreated: hasWorkflow },
       error: result.error || undefined,
       timestamp: new Date().toISOString()
     };

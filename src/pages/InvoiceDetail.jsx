@@ -367,7 +367,7 @@ export default function InvoiceDetail() {
                     <th className="text-left py-3 px-2 text-xs font-semibold text-gray-700 uppercase">Date</th>
                     <th className="text-left py-3 px-2 text-xs font-semibold text-gray-700 uppercase">Staff Member</th>
                     <th className="text-left py-3 px-2 text-xs font-semibold text-gray-700 uppercase">Role</th>
-                    {client?.contract_terms?.require_location_specification && (
+                    {(client?.contract_terms?.require_location_specification || invoice.line_items?.some(item => item.work_location_within_site)) && (
                       <th className="text-left py-3 px-2 text-xs font-semibold text-gray-700 uppercase">Location</th>
                     )}
                     <th className="text-center py-3 px-2 text-xs font-semibold text-gray-700 uppercase">Shift Type</th>
@@ -380,7 +380,7 @@ export default function InvoiceDetail() {
                   {invoice.line_items?.map((item, index) => (
                     <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
                       <td className="py-3 px-2 text-sm text-gray-700">
-                        {format(new Date(item.shift_date), 'MMM d, yyyy')}
+                        {item.date ? format(new Date(item.date), 'MMM d, yyyy') : 'N/A'}
                       </td>
                       <td className="py-3 px-2 text-sm text-gray-900 font-medium">
                         {item.staff_name}
@@ -391,16 +391,16 @@ export default function InvoiceDetail() {
                           {item.role || 'Care Staff'}
                         </span>
                       </td>
-                      {client?.contract_terms?.require_location_specification && (
+                      {(client?.contract_terms?.require_location_specification || invoice.line_items?.some(item => item.work_location_within_site)) && (
                         <td className="py-3 px-2 text-sm">
-                          {/* ✅ FIX 2: Graceful location display */}
+                          {/* ✅ Dynamic location display - only shows if data exists OR client requires it */}
                           {item.work_location_within_site ? (
                             <span className="font-semibold text-cyan-700">
                               {item.work_location_within_site}
                             </span>
                           ) : (
-                            <span className="text-amber-600 italic text-xs">
-                              ⚠️ Not Specified
+                            <span className="text-gray-400 italic text-xs">
+                              —
                             </span>
                           )}
                         </td>

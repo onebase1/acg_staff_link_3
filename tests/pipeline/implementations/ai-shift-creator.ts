@@ -184,7 +184,8 @@ User input: ${naturalLanguageInput}`;
       const parsed = typeof responseText === 'string' ? JSON.parse(responseText) : responseText;
       extractedShifts = parsed.shifts || [];
     } catch (e) {
-      throw new Error(`Failed to parse AI response: ${e.message}`);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      throw new Error(`Failed to parse AI response: ${errorMessage}`);
     }
 
     if (!extractedShifts || extractedShifts.length === 0) {
@@ -339,7 +340,8 @@ User input: ${naturalLanguageInput}`;
       const parsed = typeof responseText === 'string' ? JSON.parse(responseText) : responseText;
       extractedShifts = parsed.shifts || [];
     } catch (e) {
-      throw new Error(`Failed to parse AI response: ${e.message}`);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      throw new Error(`Failed to parse AI response: ${errorMessage}`);
     }
 
     const hasOvernightShift = extractedShifts.some((s: any) =>
@@ -442,7 +444,8 @@ Return each shift as a separate object with client_name, date, start_time, end_t
       const parsed = typeof responseText === 'string' ? JSON.parse(responseText) : responseText;
       extractedShifts = parsed.shifts || [];
     } catch (e) {
-      throw new Error(`Failed to parse AI response: ${e.message}`);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      throw new Error(`Failed to parse AI response: ${errorMessage}`);
     }
 
     console.log(`📊 Extracted ${extractedShifts.length} shifts`);

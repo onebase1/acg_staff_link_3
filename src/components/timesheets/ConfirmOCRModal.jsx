@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -47,6 +47,8 @@ export default function ConfirmOCRModal({
   rejecting = false,
 }) {
   if (!extractedData) return null;
+
+  const [staffNote, setStaffNote] = useState('');
 
   const confidence = extractedData.confidence?.overall || 0;
   const hasHighConfidence = confidence >= 80;
@@ -168,7 +170,7 @@ export default function ConfirmOCRModal({
             <DataField
               icon={<Calendar className="w-5 h-5" />}
               label="Date"
-              value={extractedData.date || matchedRow?.date}
+              value={matchedRow?.date || extractedData.date}
               expected={expectedData?.shift_date}
               mismatch={extractedData.mismatches?.find(m => m.field === 'date')}
             />
@@ -287,6 +289,22 @@ export default function ConfirmOCRModal({
           )}
         </div>
 
+        {/* Optional staff note to help admins on review */}
+        <div className="mt-4">
+          <label className="text-xs font-medium text-gray-700 block mb-1">
+            Add a note for your agency (optional)
+          </label>
+          <textarea
+            className="w-full min-h-[64px] rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 resize-y"
+            placeholder="Explain any mismatches (e.g. wrong client name on sheet, shared timesheet, special circumstances)..."
+            value={staffNote}
+            onChange={(e) => setStaffNote(e.target.value)}
+          />
+          <p className="mt-1 text-[11px] text-gray-500">
+            This note will be visible to your agency when they review this timesheet.
+          </p>
+        </div>
+
         <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-6">
           {/* Re-Upload Button (Mobile: Full Width) */}
           <Button
@@ -304,7 +322,7 @@ export default function ConfirmOCRModal({
           <Button
             type="button"
             variant="outline"
-            onClick={onReject}
+            onClick={() => onReject(staffNote)}
             disabled={confirming || rejecting}
             className="w-full sm:w-auto order-2 sm:order-2"
           >
@@ -321,7 +339,7 @@ export default function ConfirmOCRModal({
           {/* Confirm Button */}
           <Button
             type="button"
-            onClick={onConfirm}
+            onClick={() => onConfirm(staffNote)}
             disabled={confirming || rejecting}
             className="w-full sm:w-auto bg-green-600 hover:bg-green-700 order-1 sm:order-3"
           >

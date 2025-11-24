@@ -23,14 +23,14 @@ export async function testEmailWebhookReceipt(ctx: TestContext): Promise<TestRes
       .order('created_at', { ascending: false })
       .limit(1);
     
-    const hasWorkflow = workflows.data && workflows.data.length > 0;
+    const hasWorkflow = !!(workflows.data && workflows.data.length > 0);
     
     return {
       testId: 'sj-001',
       action: 'Receive care home email',
-      passed: result.success || hasWorkflow,
+      passed: (result.success ?? false) || hasWorkflow,
       duration: (Date.now() - startTime) / 1000,
-      details: { functionExists: result.success, workflowCreated: hasWorkflow },
+      details: { functionExists: result.success ?? false, workflowCreated: hasWorkflow },
       error: result.error || undefined,
       timestamp: new Date().toISOString()
     };

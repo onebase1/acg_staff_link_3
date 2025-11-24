@@ -75,7 +75,7 @@ export async function testTimesheetAnalytics(ctx: TestContext): Promise<TestResu
       .select('*')
       .eq('agency_id', agencyId);
     
-    const hasData = timesheets && timesheets.length > 0;
+    const hasData = !!(timesheets && timesheets.length > 0);
     
     return {
       testId: 'data-003',

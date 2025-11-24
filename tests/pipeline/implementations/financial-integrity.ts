@@ -103,7 +103,7 @@ export async function testChangeLogCreation(ctx: TestContext): Promise<TestResul
       .eq('entity_id', shift.id)
       .eq('entity_type', 'shift');
     
-    const hasLog = changeLogs && changeLogs.length > 0;
+    const hasLog = !!(changeLogs && changeLogs.length > 0);
     
     return {
       testId: 'fin-003',
@@ -167,7 +167,7 @@ export async function testRateCardValidation(ctx: TestContext): Promise<TestResu
       .select('*')
       .eq('agency_id', agencyId);
     
-    const hasRateCards = rateCards && rateCards.length > 0;
+    const hasRateCards = !!(rateCards && rateCards.length > 0);
     
     return {
       testId: 'fin-005',
@@ -200,7 +200,7 @@ export async function testWorkLocationValidation(ctx: TestContext): Promise<Test
       .select('*')
       .eq('agency_id', agencyId);
     
-    const hasLocations = locations && locations.length > 0;
+    const hasLocations = !!(locations && locations.length > 0);
     
     return {
       testId: 'fin-006',

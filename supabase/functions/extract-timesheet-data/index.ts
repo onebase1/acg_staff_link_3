@@ -51,7 +51,24 @@ serve(async (req) => {
       );
     }
 
-    const { file_url, expected_data } = await req.json();
+    // Parse request body (support both new and legacy callers)
+    const body = await req.json();
+    const { file_url } = body;
+
+    // Preferred shape (Phase 2+): { file_url, expected_data: { ... } }
+    let expected_data = body.expected_data;
+
+    // Backwards compatibility: legacy callers send individual expected_* fields
+    if (!expected_data) {
+      expected_data = {
+        staff_name: body.expected_staff_name || body.staff_name,
+        client_name: body.expected_client_name || body.client_name,
+        shift_date: body.expected_date || body.shift_date,
+        scheduled_hours: body.expected_hours || body.scheduled_hours,
+        expected_start: body.expected_start || body.expected_start_time,
+        expected_end: body.expected_end || body.expected_end_time,
+      };
+    }
 
     if (!file_url) {
       return new Response(
@@ -216,21 +233,32 @@ Please extract all data from the document and compare with expected values.`
 
         if (matchedRow) {
           console.log(`✅ Found matching row for date ${expected_data.shift_date}:`, matchedRow);
-          // Use matched row data for validation
-          extractedData.matched_row_hours = matchedRow.hours;
-          extractedData.matched_row_date = matchedRow.date;
         } else {
           console.log(`⚠️ No row matches expected date ${expected_data.shift_date}`);
           // Use first row as fallback
           matchedRow = extractedData.rows[0];
-          extractedData.matched_row_hours = matchedRow.hours;
-          extractedData.matched_row_date = matchedRow.date;
         }
       } else {
         // No expected date, use first row
         matchedRow = extractedData.rows[0];
+      }
+
+      // Canonicalise primary fields to the matched row so validation + UI stay in sync
+      if (matchedRow) {
         extractedData.matched_row_hours = matchedRow.hours;
         extractedData.matched_row_date = matchedRow.date;
+
+        // Override top-level fields to always represent "this shift" rather than the first row
+        extractedData.date = matchedRow.date;
+        extractedData.start_time = matchedRow.start_time;
+        extractedData.end_time = matchedRow.end_time;
+        extractedData.break_minutes = matchedRow.break_minutes;
+
+        // Preserve original aggregate hours (if present) separately so admins can still see them
+        if (typeof extractedData.total_hours === 'number') {
+          extractedData.raw_total_hours = extractedData.total_hours;
+        }
+        extractedData.total_hours = matchedRow.hours;
       }
 
       // Add multi-row info to warnings if multiple rows detected
@@ -240,6 +268,47 @@ Please extract all data from the document and compare with expected values.`
         console.log(`📋 Multi-row timesheet: ${extractedData.rows.length} rows extracted`);
       }
     }
+
+    // Helper: basic fuzzy name matching (tolerant to small typos and extra words)
+    const normalizeName = (name: string | undefined | null) =>
+      (name || '')
+        .toLowerCase()
+        .replace(/[^a-z\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const namesRoughMatch = (expectedRaw: string, actualRaw: string) => {
+      const expected = normalizeName(expectedRaw);
+      const actual = normalizeName(actualRaw);
+      if (!expected || !actual) return false;
+
+      // Straight substring match either way
+      if (actual.includes(expected) || expected.includes(actual)) return true;
+
+      const eParts = expected.split(' ');
+      const aParts = actual.split(' ');
+      const eLast = eParts[eParts.length - 1];
+      const aLast = aParts[aParts.length - 1];
+
+      // Require same surname for a fuzzy match
+      if (!eLast || !aLast || eLast !== aLast) return false;
+
+      const eFirst = eParts[0];
+      const aFirst = aParts[0];
+      if (!eFirst || !aFirst) return true;
+
+      // Same first initial?
+      if (eFirst[0] !== aFirst[0]) return false;
+
+      // Simple character-level similarity for first name (tolerate small typos)
+      const maxLen = Math.max(eFirst.length, aFirst.length);
+      let diff = 0;
+      for (let i = 0; i < maxLen; i++) {
+        if (eFirst[i] !== aFirst[i]) diff++;
+      }
+      const similarity = 1 - diff / maxLen;
+      return similarity >= 0.6;
+    };
 
     // VALIDATION: Compare with expected data
     const validation = {
@@ -290,10 +359,9 @@ Please extract all data from the document and compare with expected values.`
         }
       }
 
-      // 2. STAFF NAME VALIDATION
+      // 2. STAFF NAME VALIDATION (fuzzy: small typos allowed, surname+initial must match)
       if (expected_data.staff_name && extractedData.employee_name) {
-        const nameMatch = extractedData.employee_name.toLowerCase().includes(expected_data.staff_name.toLowerCase()) ||
-                          expected_data.staff_name.toLowerCase().includes(extractedData.employee_name.toLowerCase());
+        const nameMatch = namesRoughMatch(expected_data.staff_name, extractedData.employee_name);
         if (!nameMatch) {
           validation.validation_status = 'mismatch';
           validation.mismatches.push({
@@ -321,13 +389,16 @@ Please extract all data from the document and compare with expected values.`
       }
 
       // 4. DATE VALIDATION
-      if (expected_data.shift_date && extractedData.date) {
-        if (expected_data.shift_date !== extractedData.date) {
+      // Use matched row date if available (multi-row sheets), otherwise fallback to top-level date
+      const dateToValidate = matchedRow?.date || extractedData.date;
+
+      if (expected_data.shift_date && dateToValidate) {
+        if (expected_data.shift_date !== dateToValidate) {
           validation.validation_status = 'mismatch';
           validation.mismatches.push({
             field: 'date',
             expected: expected_data.shift_date,
-            actual: extractedData.date,
+            actual: dateToValidate,
             severity: 'critical'
           });
         }

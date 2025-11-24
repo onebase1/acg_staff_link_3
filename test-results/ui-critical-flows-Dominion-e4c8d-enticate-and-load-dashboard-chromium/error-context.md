@@ -1,0 +1,75 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - alert [ref=e4]:
+    - img [ref=e5]
+    - generic [ref=e7]:
+      - generic [ref=e9]:
+        - paragraph [ref=e10]: 🆕 New Version Available!
+        - paragraph [ref=e11]: Version 1.0.0-f74421b is now available.Refresh to get the latest features and fixes.
+      - generic [ref=e12]:
+        - button "Refresh Now" [ref=e13] [cursor=pointer]:
+          - img
+          - text: Refresh Now
+        - button [ref=e14] [cursor=pointer]:
+          - img
+  - generic [ref=e16]:
+    - complementary [ref=e17]:
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - img "Agile Care Management" [ref=e21]
+          - text: Agile Care Management
+        - heading "Simplifying care home staffing with smart technology." [level=1] [ref=e22]
+        - paragraph [ref=e23]: Manage shifts, compliance, and timesheets in one place. GPS clock-in, instant notifications, and automated workflows designed for care professionals.
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - heading "Easy Shift Management" [level=3] [ref=e26]
+          - paragraph [ref=e27]: Accept shifts instantly, view your schedule, and get reminders before each shift.
+        - generic [ref=e28]:
+          - heading "GPS Clock-In/Out" [level=3] [ref=e29]
+          - paragraph [ref=e30]: Clock in when you arrive at the care home. Automatic timesheet generation and approval.
+        - generic [ref=e31]:
+          - heading "Compliance Made Simple" [level=3] [ref=e32]
+          - paragraph [ref=e33]: Upload certificates once, get reminders before expiry. Stay compliant effortlessly.
+      - generic [ref=e34]:
+        - text: Need help or have questions?
+        - link "support@agilecaremanagement.co.uk" [ref=e35] [cursor=pointer]:
+          - /url: mailto:support@agilecaremanagement.co.uk
+    - main [ref=e36]:
+      - generic [ref=e38]:
+        - generic [ref=e39]:
+          - heading "Sign in to Agile Care Management" [level=3] [ref=e40]
+          - generic [ref=e41]: Secure access for admins, agencies, and staff portals.
+        - generic [ref=e42]:
+          - generic [ref=e43]:
+            - tablist [ref=e44]:
+              - tab "Sign in" [selected] [ref=e45] [cursor=pointer]
+              - tab "Sign up" [ref=e46] [cursor=pointer]
+              - tab "Forgot" [ref=e47] [cursor=pointer]
+            - tabpanel "Sign in" [ref=e48]:
+              - generic [ref=e49]:
+                - generic [ref=e50]:
+                  - text: Work email
+                  - textbox "Work email" [ref=e51]:
+                    - /placeholder: you@agilecaremanagement.co.uk
+                    - text: info@agilecaremanagement.co.uk
+                - generic [ref=e52]:
+                  - text: Password
+                  - textbox "Password" [ref=e53]:
+                    - /placeholder: ••••••••
+                    - text: Dominion#2025
+                - generic [ref=e54]:
+                  - generic [ref=e55]:
+                    - checkbox "Remember this device" [checked] [ref=e56] [cursor=pointer]:
+                      - generic:
+                        - img
+                    - checkbox [checked]
+                    - text: Remember this device
+                  - button "Forgot password?" [ref=e57] [cursor=pointer]
+                - button "Sign in" [ref=e58] [cursor=pointer]
+          - generic [ref=e59]:
+            - generic [ref=e62]: "Platform uptime: 99.982%"
+            - generic [ref=e65]: ISO 27001 · AES-256 · RLS
+  - region "Notifications alt+T"
+```

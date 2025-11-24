@@ -904,15 +904,30 @@ export default function Shifts() {
         if (timesheets && timesheets.length > 0) {
           const timesheet = timesheets[0];
           
+          // 💰 CRITICAL FIX: Apply break rule for billable hours calculation
+          // Industry standard: Shifts >= 10 hours get 1 hour unpaid break
+          const rawHours = actualData.actual_hours_worked;
+          const breakMinutes = rawHours >= 10 ? 60 : 0;
+          const billableHours = rawHours - (breakMinutes / 60);
+          
+          console.log('💰 [Admin Completion] Financial calculation:', {
+            raw_hours: rawHours,
+            break_minutes: breakMinutes,
+            billable_hours: billableHours,
+            staff_pay: billableHours * timesheet.pay_rate,
+            client_charge: billableHours * timesheet.charge_rate
+          });
+          
           const { error: timesheetUpdateError } = await supabase
             .from('timesheets')
             .update({
               actual_start_time: actualData.actual_start_time,
               actual_end_time: actualData.actual_end_time,
-              total_hours: actualData.actual_hours_worked,
-              staff_pay_amount: actualData.actual_hours_worked * timesheet.pay_rate,
-              client_charge_amount: actualData.actual_hours_worked * timesheet.charge_rate,
-              notes: (timesheet.notes || '') + `\n[Admin Completion] ${actualData.completion_notes || 'Shift completed as planned'}`
+              total_hours: billableHours,  // ✅ Use billable hours (with break deducted)
+              break_duration_minutes: breakMinutes,  // ✅ Store break duration
+              staff_pay_amount: billableHours * timesheet.pay_rate,  // ✅ Pay for billable hours only
+              client_charge_amount: billableHours * timesheet.charge_rate,  // ✅ Charge for billable hours only
+              notes: (timesheet.notes || '') + `\n[Admin Completion] ${actualData.completion_notes || 'Shift completed as planned'}. Break: ${breakMinutes} min. Billable: ${billableHours}h`
             })
             .eq('id', shift.timesheet_id);
           

@@ -49,22 +49,32 @@ export function useAppVersion() {
       const deployedVersion = data.version;
       const buildTime = data.buildTime;
 
-      console.log(`📦 Version check: Current=${currentVersion}, Deployed=${deployedVersion}`);
-
+      // Update latest version and last checked time
       setLatestVersion(deployedVersion);
       setLastChecked(new Date());
 
-      // Check if versions are different
-      if (deployedVersion !== currentVersion) {
-        console.log('🆕 New version available!', {
-          current: currentVersion,
-          latest: deployedVersion,
-          buildTime: new Date(buildTime).toLocaleString()
-        });
-        setHasUpdate(true);
-      } else {
-        setHasUpdate(false);
-      }
+      // Use functional update to get the latest currentVersion value and compare
+      setCurrentVersion((prevCurrentVersion) => {
+        console.log(`📦 Version check: Current=${prevCurrentVersion}, Deployed=${deployedVersion}`);
+
+        // Check if versions are different
+        if (deployedVersion !== prevCurrentVersion) {
+          console.log('🆕 New version available!', {
+            current: prevCurrentVersion,
+            latest: deployedVersion,
+            buildTime: new Date(buildTime).toLocaleString()
+          });
+          setHasUpdate(true);
+          return prevCurrentVersion; // Don't update currentVersion if there's an update available
+        } else {
+          // Versions match - sync currentVersion to ensure accuracy and clear update flag
+          setHasUpdate(false);
+          // Update currentVersion to match deployedVersion to prevent false positives after refresh
+          // This ensures that after a page reload, if versions match, the banner disappears
+          console.log('✅ Versions match - synced currentVersion to deployed version');
+          return deployedVersion; // Sync to deployed version
+        }
+      });
 
     } catch (error) {
       console.error('❌ Error checking for updates:', error);
@@ -72,7 +82,7 @@ export function useAppVersion() {
     } finally {
       setIsChecking(false);
     }
-  }, [currentVersion]);
+  }, []); // Remove currentVersion from dependencies to prevent recreation loops
 
   const reload = useCallback(() => {
     console.log('🔄 Reloading app for new version...');

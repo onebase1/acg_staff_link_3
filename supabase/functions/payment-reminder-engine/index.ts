@@ -2,15 +2,16 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
- * 🧪 TESTING MODE: Payment Reminder Engine
+ * 💳 PRODUCTION MODE: Payment Reminder Engine
  *
- * INTERVALS CHANGED FOR TESTING:
- * - 10 minutes overdue = First reminder (WhatsApp)
- * - 20 minutes overdue = Formal email reminder
- * - 30 minutes overdue = Urgent SMS + email
- * - 40 minutes overdue = Admin workflow creation
+ * PRODUCTION INTERVALS (Industry Standard):
+ * - 7 days overdue = First gentle reminder (Email)
+ * - 14 days overdue = Formal reminder (Email + SMS)
+ * - 21 days overdue = Final notice (Email + SMS + WhatsApp)
+ * - 28 days overdue = Escalation to admin workflow (Collections)
  *
- * ⚠️ REMEMBER TO REVERT TO PRODUCTION AFTER TESTING!
+ * TESTING INTERVALS (for dev/staging):
+ * - Set TESTING_MODE=true to use: 10min, 20min, 30min, 40min intervals
  */
 
 serve(async (req) => {
@@ -21,13 +22,34 @@ serve(async (req) => {
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
         );
 
-        console.log('💳 [Payment Reminder Engine - TESTING MODE] Starting run...');
+        // ✅ CONFIGURABLE: Testing vs Production intervals
+        const TESTING_MODE = Deno.env.get("PAYMENT_REMINDER_TESTING_MODE") === "true";
+        
+        const intervals = TESTING_MODE ? {
+            first_reminder: 2 * 60 * 1000,       // 2 minutes (RAPID testing)
+            second_reminder: 4 * 60 * 1000,      // 4 minutes (RAPID testing)
+            final_notice: 6 * 60 * 1000,         // 6 minutes (RAPID testing)
+            admin_escalation: 8 * 60 * 1000,     // 8 minutes (RAPID testing)
+        } : {
+            first_reminder: 7 * 24 * 60 * 60 * 1000,   // 7 days (production)
+            second_reminder: 14 * 24 * 60 * 60 * 1000,  // 14 days (production)
+            final_notice: 21 * 24 * 60 * 60 * 1000,    // 21 days (production)
+            admin_escalation: 28 * 24 * 60 * 60 * 1000, // 28 days (production)
+        };
+
+        console.log(`💳 [Payment Reminder Engine - ${TESTING_MODE ? 'TESTING' : 'PRODUCTION'} MODE] Starting run...`);
+        console.log('📅 Intervals:', {
+            first: TESTING_MODE ? '2 min' : '7 days',
+            second: TESTING_MODE ? '4 min' : '14 days',
+            final: TESTING_MODE ? '6 min' : '21 days',
+            escalation: TESTING_MODE ? '8 min' : '28 days',
+        });
 
         const results = {
             checked: 0,
-            reminders_10min: 0,
-            reminders_20min: 0,
-            reminders_30min: 0,
+            first_reminders: 0,
+            second_reminders: 0,
+            final_notices: 0,
             workflows_created: 0,
             errors: [],
         };
@@ -49,12 +71,15 @@ serve(async (req) => {
 
             try {
                 const dueDate = new Date(invoice.due_date);
-                const minutesOverdue = Math.floor((now - dueDate) / (1000 * 60));
+                const msOverdue = now - dueDate;
 
                 // Skip if not overdue yet
-                if (minutesOverdue < 0) continue;
+                if (msOverdue < 0) continue;
 
-                console.log(`📋 [Invoice ${invoice.invoice_number}] ${minutesOverdue} minutes overdue`);
+                const daysOverdue = Math.floor(msOverdue / (24 * 60 * 60 * 1000));
+                const minutesOverdue = Math.floor(msOverdue / (60 * 1000));
+                
+                console.log(`📋 [Invoice ${invoice.invoice_number}] ${TESTING_MODE ? minutesOverdue + ' minutes' : daysOverdue + ' days'} overdue`);
 
                 // Get client and agency details
                 const { data: client, error: clientError } = await supabase
@@ -88,18 +113,31 @@ serve(async (req) => {
                 const contactEmail = clientInfo.billing_email || clientInfo.contact_person?.email;
                 const contactPhone = clientInfo.contact_person?.phone;
 
-                // REMINDER 1: 10 minutes overdue - Friendly WhatsApp
-                if (minutesOverdue >= 10 && minutesOverdue < 20 && invoice.reminder_sent_count === 0) {
-                    console.log(`📱 [Invoice ${invoice.invoice_number}] Sending 10-min WhatsApp reminder`);
+                // REMINDER 1: First gentle reminder (Email)
+                if (msOverdue >= intervals.first_reminder && msOverdue < intervals.second_reminder && invoice.reminder_sent_count === 0) {
+                    console.log(`📧 [Invoice ${invoice.invoice_number}] Sending first reminder (${TESTING_MODE ? '10 min' : '7 days'})`);
 
-                    if (contactPhone) {
-                        const message = `Hi ${clientInfo.contact_person?.name || clientInfo.name},\n\n🧪 TEST REMINDER (10 minutes overdue):\n\nInvoice ${invoice.invoice_number} for £${invoice.total.toFixed(2)} is now overdue.\n\nIf you've already paid, please disregard this message.\n\nThank you!\n${agencyInfo.name}`;
+                    if (contactEmail) {
+                        const subject = `Gentle Reminder: Invoice ${invoice.invoice_number} Payment Due`;
+                        const message = `
+                            <p>Dear ${clientInfo.contact_person?.name || clientInfo.name},</p>
+                            
+                            <p>This is a gentle reminder that Invoice ${invoice.invoice_number} for <strong>£${invoice.total.toFixed(2)}</strong> 
+                            was due on ${format(dueDate, 'MMM dd, yyyy')} and remains unpaid.</p>
+                            
+                            <p>If you've already processed this payment, please disregard this message. Otherwise, please process payment at your earliest convenience.</p>
+                            
+                            <p>If you have any questions or concerns, please don't hesitate to contact us.</p>
+                            
+                            <p>Thank you,<br/>${agencyInfo.name}</p>
+                        `;
 
                         try {
-                            await supabase.functions.invoke('send-whatsapp', {
+                            await supabase.functions.invoke('send-email', {
                                 body: {
-                                    to: contactPhone,
-                                    message: message
+                                    to: contactEmail,
+                                    subject: subject,
+                                    html: message
                                 }
                             });
 
@@ -111,8 +149,8 @@ serve(async (req) => {
                                 })
                                 .eq("id", invoice.id);
 
-                            results.reminders_10min++;
-                            console.log(`✅ [Invoice ${invoice.invoice_number}] 10-min WhatsApp sent`);
+                            results.first_reminders++;
+                            console.log(`✅ [Invoice ${invoice.invoice_number}] First reminder email sent`);
                         } catch (error) {
                             console.error(`❌ [Invoice ${invoice.invoice_number}] WhatsApp failed:`, error.message);
                             results.errors.push({
@@ -125,31 +163,31 @@ serve(async (req) => {
                     }
                 }
 
-                // REMINDER 2: 20 minutes overdue - Formal Email
-                if (minutesOverdue >= 20 && minutesOverdue < 30 && invoice.reminder_sent_count === 1) {
-                    console.log(`📧 [Invoice ${invoice.invoice_number}] Sending 20-min formal email`);
+                // REMINDER 2: Second reminder (Email)
+                if (msOverdue >= intervals.second_reminder && msOverdue < intervals.final_notice && invoice.reminder_sent_count === 1) {
+                    console.log(`📧 [Invoice ${invoice.invoice_number}] Sending second reminder (${TESTING_MODE ? '4 min' : '14 days'})`);
 
                     if (contactEmail) {
                         try {
                             await supabase.functions.invoke('send-email', {
                                 body: {
                                     to: contactEmail,
-                                    subject: `🧪 TEST: Payment Reminder - Invoice ${invoice.invoice_number} (20 mins overdue)`,
+                                    subject: `🧪 TEST: Payment Reminder #2 - Invoice ${invoice.invoice_number} (4 mins overdue)`,
                                     html: `
                                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                                         <div style="background: #f59e0b; padding: 30px; text-align: center;">
-                                            <h1 style="color: white; margin: 0;">⚠️ Payment Reminder (TEST)</h1>
+                                            <h1 style="color: white; margin: 0;">⚠️ Payment Reminder #2 (TEST)</h1>
                                         </div>
                                         <div style="padding: 30px; background: #fffbeb;">
                                             <p style="font-size: 16px; color: #1f2937;">Dear ${clientInfo.contact_person?.name || 'Finance Team'},</p>
-                                            <p style="font-size: 16px; color: #1f2937;">This is a <strong>TEST reminder</strong> that invoice ${invoice.invoice_number} is now <strong>20 minutes overdue</strong>.</p>
+                                            <p style="font-size: 16px; color: #1f2937;">This is <strong>TEST reminder #2</strong> that invoice ${invoice.invoice_number} is now <strong>4 minutes overdue</strong>.</p>
 
                                             <div style="background: white; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0;">
                                                 <p style="margin: 10px 0;"><strong>Invoice Number:</strong> ${invoice.invoice_number}</p>
                                                 <p style="margin: 10px 0;"><strong>Invoice Date:</strong> ${invoice.invoice_date}</p>
                                                 <p style="margin: 10px 0;"><strong>Due Date:</strong> ${invoice.due_date}</p>
                                                 <p style="margin: 10px 0;"><strong>Amount Due:</strong> £${invoice.balance_due.toFixed(2)}</p>
-                                                <p style="margin: 10px 0; color: #dc2626;"><strong>Test Mode:</strong> 20 minutes overdue</p>
+                                                <p style="margin: 10px 0; color: #dc2626;"><strong>Test Mode:</strong> 4 minutes overdue (14 days in production)</p>
                                             </div>
 
                                             <p style="font-size: 14px; color: #78716c;">
@@ -192,9 +230,9 @@ serve(async (req) => {
                     }
                 }
 
-                // REMINDER 3: 30 minutes overdue - Urgent SMS + Email
-                if (minutesOverdue >= 30 && minutesOverdue < 40 && invoice.reminder_sent_count === 2) {
-                    console.log(`🚨 [Invoice ${invoice.invoice_number}] Sending 30-min urgent reminder`);
+                // REMINDER 3: Final notice (Urgent Email + SMS)
+                if (msOverdue >= intervals.final_notice && msOverdue < intervals.admin_escalation && invoice.reminder_sent_count === 2) {
+                    console.log(`🚨 [Invoice ${invoice.invoice_number}] Sending final notice (${TESTING_MODE ? '6 min' : '21 days'})`);
 
                     // Send email
                     if (contactEmail) {
@@ -202,21 +240,21 @@ serve(async (req) => {
                             await supabase.functions.invoke('send-email', {
                                 body: {
                                     to: contactEmail,
-                                    subject: `🚨 URGENT TEST: Invoice ${invoice.invoice_number} - 30 Minutes Overdue - Immediate Action Required`,
+                                    subject: `🚨 URGENT TEST: Reminder #3 - Invoice ${invoice.invoice_number} - 6 Minutes Overdue - Immediate Action Required`,
                                     html: `
                                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                                         <div style="background: #dc2626; padding: 30px; text-align: center;">
-                                            <h1 style="color: white; margin: 0;">🚨 URGENT PAYMENT REQUEST (TEST)</h1>
+                                            <h1 style="color: white; margin: 0;">🚨 URGENT PAYMENT REQUEST #3 (TEST)</h1>
                                         </div>
                                         <div style="padding: 30px; background: #fef2f2;">
                                             <p style="font-size: 16px; color: #1f2937;">Dear ${clientInfo.contact_person?.name || 'Finance Team'},</p>
-                                            <p style="font-size: 18px; color: #dc2626; font-weight: bold;">URGENT TEST: Invoice ${invoice.invoice_number} is now <strong>30 minutes overdue</strong>.</p>
+                                            <p style="font-size: 18px; color: #dc2626; font-weight: bold;">URGENT TEST REMINDER #3: Invoice ${invoice.invoice_number} is now <strong>6 minutes overdue</strong>.</p>
 
                                             <div style="background: white; border-left: 4px solid #dc2626; padding: 20px; margin: 20px 0;">
                                                 <p style="margin: 10px 0;"><strong>Invoice Number:</strong> ${invoice.invoice_number}</p>
                                                 <p style="margin: 10px 0;"><strong>Due Date:</strong> ${invoice.due_date}</p>
                                                 <p style="margin: 10px 0; color: #dc2626; font-size: 20px;"><strong>Amount Due:</strong> £${invoice.balance_due.toFixed(2)}</p>
-                                                <p style="margin: 10px 0; color: #dc2626; font-size: 18px;"><strong>Test Mode:</strong> 30 minutes overdue</p>
+                                                <p style="margin: 10px 0; color: #dc2626; font-size: 18px;"><strong>Test Mode:</strong> 6 minutes overdue (21 days in production)</p>
                                             </div>
 
                                             <div style="background: #fee2e2; border: 2px solid #dc2626; padding: 20px; margin: 20px 0; border-radius: 8px;">
@@ -248,7 +286,7 @@ serve(async (req) => {
                             await supabase.functions.invoke('send-sms', {
                                 body: {
                                     to: contactPhone,
-                                    message: `🧪 TEST: 🚨 URGENT: Invoice ${invoice.invoice_number} for £${invoice.balance_due.toFixed(2)} is now 30 minutes overdue. IMMEDIATE PAYMENT REQUIRED. Contact: ${agencyInfo.contact_phone}`
+                                    message: `🧪 TEST: 🚨 URGENT REMINDER #3: Invoice ${invoice.invoice_number} for £${invoice.balance_due.toFixed(2)} is now 6 minutes overdue. IMMEDIATE PAYMENT REQUIRED. Contact: ${agencyInfo.contact_phone}`
                                 }
                             });
                             console.log(`✅ [Invoice ${invoice.invoice_number}] 30-min urgent SMS sent`);
@@ -268,9 +306,9 @@ serve(async (req) => {
                     results.reminders_30min++;
                 }
 
-                // ESCALATION: 40 minutes overdue - Create Admin Workflow
-                if (minutesOverdue >= 40 && invoice.reminder_sent_count === 3) {
-                    console.log(`📋 [Invoice ${invoice.invoice_number}] Creating admin workflow for 40-min overdue (TEST)`);
+                // ESCALATION: Admin workflow for critical overdue
+                if (msOverdue >= intervals.admin_escalation && invoice.reminder_sent_count === 3) {
+                    console.log(`📋 [Invoice ${invoice.invoice_number}] Creating admin workflow for critical overdue (${TESTING_MODE ? '8 min' : '28 days'})`);
 
                     await supabase
                         .from("admin_workflows")
@@ -279,8 +317,8 @@ serve(async (req) => {
                             type: 'payment_issue',
                             priority: 'critical',
                             status: 'pending',
-                            title: `🧪 TEST: CRITICAL - Invoice ${invoice.invoice_number} - 40 Minutes Overdue - £${invoice.balance_due.toFixed(2)}`,
-                            description: `[TEST MODE] Invoice is critically overdue (40 minutes in test, would be 28 days in production). Client: ${clientInfo.name}. All automatic reminders sent. Manual intervention required.`,
+                            title: `🧪 TEST: CRITICAL - Reminder #4 - Invoice ${invoice.invoice_number} - 8 Minutes Overdue - £${invoice.balance_due.toFixed(2)}`,
+                            description: `[TEST MODE] Invoice is critically overdue (8 minutes in test, would be 28 days in production). Client: ${clientInfo.name}. All 3 automatic reminders sent. Manual intervention required.`,
                             related_entity: {
                                 entity_type: 'invoice',
                                 entity_id: invoice.id
@@ -318,7 +356,7 @@ serve(async (req) => {
                 test_mode: true,
                 timestamp: new Date().toISOString(),
                 results: results,
-                note: '🧪 TESTING MODE: Using 10-minute intervals instead of days. Remember to revert!'
+                note: '🧪 RAPID TESTING MODE: Using 2-minute intervals (2min, 4min, 6min, 8min) instead of days. Remember to revert!'
             }),
             { headers: { "Content-Type": "application/json" } }
         );
