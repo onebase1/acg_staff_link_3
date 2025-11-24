@@ -967,8 +967,13 @@ export default function StaffPortal() {
                 // ✅ FIX: Find timesheet via booking_id (not shift_id) - same pattern as line 1302
                 const nextShiftBooking = myBookings.find(b => b.shift_id === nextShift.id);
                 const nextShiftTimesheet = nextShiftBooking ? myTimesheets.find(t => t.booking_id === nextShiftBooking.id) : null;
-                const isInProgress = nextShiftTimesheet?.clock_in_time && !nextShiftTimesheet?.clock_out_time;
-                const isCompleted = nextShiftTimesheet?.clock_out_time;
+                const isTimesheetInProgress = !!(nextShiftTimesheet?.clock_in_time && !nextShiftTimesheet?.clock_out_time);
+                const isTimesheetCompleted = !!nextShiftTimesheet?.clock_out_time;
+                const isShiftInProgress = nextShift.status === 'in_progress';
+                const isShiftCompleted = nextShift.status === 'completed';
+
+                const isInProgress = isTimesheetInProgress || isShiftInProgress;
+                const isCompleted = isTimesheetCompleted || isShiftCompleted;
 
                 if (isCompleted) {
                   // Show actual earnings after clock-out
@@ -1011,8 +1016,13 @@ export default function StaffPortal() {
               // ✅ FIX: Find timesheet via booking_id (not shift_id) - same pattern as line 1302
               const nextShiftBooking = myBookings.find(b => b.shift_id === nextShift.id);
               const nextShiftTimesheet = nextShiftBooking ? myTimesheets.find(t => t.booking_id === nextShiftBooking.id) : null;
-              const isInProgress = nextShiftTimesheet?.clock_in_time && !nextShiftTimesheet?.clock_out_time;
-              const isCompleted = nextShiftTimesheet?.clock_out_time;
+              const isTimesheetInProgress = !!(nextShiftTimesheet?.clock_in_time && !nextShiftTimesheet?.clock_out_time);
+              const isTimesheetCompleted = !!nextShiftTimesheet?.clock_out_time;
+              const isShiftInProgress = nextShift.status === 'in_progress';
+              const isShiftCompleted = nextShift.status === 'completed';
+
+              const isInProgress = isTimesheetInProgress || isShiftInProgress;
+              const isCompleted = isTimesheetCompleted || isShiftCompleted;
 
               if (isCompleted) {
                 // Shift complete - show gray disabled button
