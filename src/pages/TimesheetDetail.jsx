@@ -264,6 +264,39 @@ export default function TimesheetDetail() {
           }
         });
 
+        // FIX: Handle null ocrResult from failed invocation
+        if (!ocrResult || ocrError) {
+          console.error('❌ OCR invocation failed:', ocrError);
+          const errorMsg = ocrError?.message || 'OCR extraction service unavailable';
+          toast.error(`Failed to extract timesheet data: ${errorMsg}`);
+
+          // Save document without OCR data
+          const newDocument = {
+            file_url,
+            uploaded_at: new Date().toISOString(),
+            uploaded_by: user?.email || 'unknown',
+            file_name: file.name,
+            file_type: file.type,
+            file_size: file.size,
+            notes: `OCR failed: ${errorMsg}`,
+            extracted_data: null
+          };
+
+          const existingDocs = timesheet.uploaded_documents || [];
+          const { error: updateError } = await supabase
+            .from('timesheets')
+            .update({
+              uploaded_documents: [...existingDocs, newDocument],
+              status: 'pending_admin_review'
+            })
+            .eq('id', timesheetId);
+
+          if (updateError) throw updateError;
+
+          toast.warning('⚠️ Document saved, but OCR extraction failed. Admin review required.');
+          return file_url;
+        }
+
         console.log('📊 OCR Result:', ocrResult.data);
 
         // Map OCR response for toast messages
