@@ -169,7 +169,7 @@ export default function Shifts() {
       try {
         // Get authenticated user
         const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-        
+
         if (authError || !authUser) {
           console.error('❌ [Shifts] Not authenticated:', authError);
           setUserLoading(false);
@@ -212,38 +212,38 @@ export default function Shifts() {
   // 🆕 Read URL params on mount and apply filters for newly created shifts
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    
+
     // Apply status filter
     const statusParam = params.get('status');
     if (statusParam && ['all', 'open', 'assigned', 'confirmed', 'in_progress', 'awaiting_admin_closure', 'completed', 'cancelled', 'no_show', 'disputed'].includes(statusParam)) {
       setStatusFilter(statusParam);
     }
-    
+
     // Apply date range filter
     const dateRangeParam = params.get('dateRange');
     if (dateRangeParam && ['today', 'week', 'month', 'upcoming', 'last30', 'last90', 'custom', 'all'].includes(dateRangeParam)) {
       setDateRange(dateRangeParam);
     }
-    
+
     // Apply client filter
     const clientParam = params.get('client');
     if (clientParam) {
       setClientFilter(clientParam);
     }
-    
+
     // Store highlighted shift IDs
     const highlightParam = params.get('highlight');
     if (highlightParam) {
       const ids = highlightParam.split(',').filter(id => id.trim());
       setHighlightedShiftIds(new Set(ids));
-      
+
       // Auto-remove highlight after 30 seconds (longer duration for better UX)
       // But maintain scroll position even after highlight fades
       const highlightTimeout = setTimeout(() => {
         // Store current scroll position before removing highlight
         scrollPositionRef.current = window.scrollY;
         setHighlightedShiftIds(new Set());
-        
+
         // Restore scroll position after a brief moment (prevents jump)
         setTimeout(() => {
           if (scrollPositionRef.current !== null) {
@@ -252,11 +252,11 @@ export default function Shifts() {
           }
         }, 100);
       }, 30000);
-      
+
       // Cleanup timeout on unmount
       return () => clearTimeout(highlightTimeout);
     }
-    
+
     // Clean URL params after processing (optional - keeps URL clean)
     if (params.toString()) {
       navigate(location.pathname, { replace: true });
@@ -277,21 +277,21 @@ export default function Shifts() {
       console.log('📅 [Shifts Query] Date filter:', dateFilter);
 
       let query = supabase.from('shifts').select('*');
-      
+
       // Filter by agency
       if (currentAgency) {
         query = query.eq('agency_id', currentAgency);
       }
-      
+
       // Filter by date range
       if (dateFilter) {
         query = query.gte('date', dateFilter.start).lte('date', dateFilter.end);
       }
-      
+
       query = query.order('date', { ascending: false }).limit(200);
-      
+
       const { data, error } = await query;
-      
+
       if (error) {
         console.error('❌ [Shifts Query] Error:', error);
         return [];
@@ -308,18 +308,18 @@ export default function Shifts() {
     queryKey: ['clients', currentAgency],
     queryFn: async () => {
       let query = supabase.from('clients').select('*').order('name', { ascending: true });
-      
+
       if (currentAgency) {
         query = query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
-      
+
       if (error) {
         console.error('❌ Error fetching clients:', error);
         return [];
       }
-      
+
       return data || [];
     },
     enabled: !!currentAgency,
@@ -330,18 +330,18 @@ export default function Shifts() {
     queryKey: ['staff', currentAgency],
     queryFn: async () => {
       let query = supabase.from('staff').select('*').order('first_name', { ascending: true });
-      
+
       if (currentAgency) {
         query = query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
-      
+
       if (error) {
         console.error('❌ Error fetching staff:', error);
         return [];
       }
-      
+
       return data || [];
     },
     enabled: !!currentAgency,
@@ -352,12 +352,12 @@ export default function Shifts() {
     queryKey: ['agencies'],
     queryFn: async () => {
       const { data, error } = await supabase.from('agencies').select('*').order('name', { ascending: true });
-      
+
       if (error) {
         console.error('❌ Error fetching agencies:', error);
         return [];
       }
-      
+
       return data || [];
     },
     enabled: !!currentAgency,
@@ -416,7 +416,7 @@ export default function Shifts() {
     },
     onSuccess: async ({ updated, originalShift, staffReassigned, oldStaffId, newStaffId }) => {
       queryClient.invalidateQueries({ queryKey: ['shifts'], exact: false });
-      
+
       // Invalidate bookings if status or assignment changed
       if (originalShift.status !== updated.status || originalShift.assigned_staff_id !== updated.assigned_staff_id) {
         queryClient.invalidateQueries({ queryKey: ['bookings'], exact: false });
@@ -432,7 +432,7 @@ export default function Shifts() {
       if (staffReassigned && oldStaffId && newStaffId) {
         const oldStaff = staff.find(s => s.id === oldStaffId);
         const newStaff = staff.find(s => s.id === newStaffId);
-        
+
         if (oldStaff?.email) {
           supabase.functions.invoke('critical-change-notifier', {
             body: {
@@ -480,7 +480,7 @@ export default function Shifts() {
               new_value
             }
           }).catch(console.error);
-          
+
           toast.warning(`Sent shift update notification to ${staffMember.first_name}.`);
         }
       }
@@ -616,7 +616,7 @@ export default function Shifts() {
             agency_id: shift.agency_id
           }
         });
-        
+
         if (timesheetError) throw timesheetError;
 
         if (timesheetResponse.data?.success) {
@@ -929,9 +929,9 @@ export default function Shifts() {
   const completeShiftMutation = useMutation({
     mutationFn: async ({ shiftId, actualData }) => {
       const shift = shifts.find(s => s.id === shiftId);
-      
+
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      
+
       const { error } = await supabase
         .from('shifts')
         .update({
@@ -950,7 +950,7 @@ export default function Shifts() {
           ]
         })
         .eq('id', shiftId);
-      
+
       if (error) throw error;
 
       if (shift.timesheet_id) {
@@ -958,18 +958,18 @@ export default function Shifts() {
           .from('timesheets')
           .select('*')
           .eq('id', shift.timesheet_id);
-        
+
         if (timesheetFetchError) throw timesheetFetchError;
-        
+
         if (timesheets && timesheets.length > 0) {
           const timesheet = timesheets[0];
-          
+
           // 💰 CRITICAL FIX: Apply break rule for billable hours calculation
           // Industry standard: Shifts >= 10 hours get 1 hour unpaid break
           const rawHours = actualData.actual_hours_worked;
           const breakMinutes = rawHours >= 10 ? 60 : 0;
           const billableHours = rawHours - (breakMinutes / 60);
-          
+
           console.log('💰 [Admin Completion] Financial calculation:', {
             raw_hours: rawHours,
             break_minutes: breakMinutes,
@@ -977,7 +977,7 @@ export default function Shifts() {
             staff_pay: billableHours * timesheet.pay_rate,
             client_charge: billableHours * timesheet.charge_rate
           });
-          
+
           const { error: timesheetUpdateError } = await supabase
             .from('timesheets')
             .update({
@@ -990,7 +990,7 @@ export default function Shifts() {
               notes: (timesheet.notes || '') + `\n[Admin Completion] ${actualData.completion_notes || 'Shift completed as planned'}. Break: ${breakMinutes} min. Billable: ${billableHours}h`
             })
             .eq('id', shift.timesheet_id);
-          
+
           if (timesheetUpdateError) throw timesheetUpdateError;
         }
       }
@@ -1014,28 +1014,28 @@ export default function Shifts() {
     mutationFn: async (shiftId) => {
       console.log('📋 [Request Timesheet] Sending request for shift:', shiftId);
       toast.info('📤 Sending timesheet request...');
-      
+
       const { data, error } = await supabase.functions.invoke('post-shift-timesheet-reminder', {
         body: {
           shift_id: shiftId
         }
       });
-      
+
       if (error) throw error;
       return data;
     },
     onSuccess: (data, shiftId) => {
       queryClient.invalidateQueries(['shifts']);
-      
+
       const shift = shifts.find(s => s.id === shiftId);
       const staffName = shift ? getStaffName(shift.assigned_staff_id) : 'staff';
-      
+
       if (data.result) {
         const { whatsapp, email } = data.result;
         const channels = [];
         if (whatsapp?.success) channels.push('WhatsApp');
         if (email?.success) channels.push('Email');
-        
+
         if (channels.length > 0) {
           toast.success(
             `✅ Timesheet request sent to ${staffName}`,
@@ -1047,7 +1047,7 @@ export default function Shifts() {
       } else {
         toast.success(`✅ Timesheet request sent to ${staffName}`);
       }
-      
+
       setSendingTimesheetRequest(prev => {
         const next = new Set(prev);
         next.delete(shiftId);
@@ -1057,7 +1057,7 @@ export default function Shifts() {
     onError: (error, shiftId) => {
       console.error('❌ [Request Timesheet] Error:', error);
       toast.error(`Failed to send request: ${error.message}`);
-      
+
       setSendingTimesheetRequest(prev => {
         const next = new Set(prev);
         next.delete(shiftId);
@@ -1072,14 +1072,14 @@ export default function Shifts() {
       toast.error('No staff assigned to this shift');
       return;
     }
-    
+
     // Check if shift has ended
     const shiftEndDateTime = new Date(`${shift.date}T${shift.end_time}`);
     if (shiftEndDateTime > new Date()) {
       toast.error('Cannot request timesheet - shift has not ended yet');
       return;
     }
-    
+
     setSendingTimesheetRequest(prev => new Set([...prev, shift.id]));
     requestTimesheetMutation.mutate(shift.id);
   };
@@ -1296,14 +1296,14 @@ export default function Shifts() {
         headers.map(header => {
           let value = row[header];
           if (value === null || value === undefined) {
-              value = '';
+            value = '';
           }
           if (typeof value === 'string') {
-              if (value.includes(',') || value.includes('\n') || value.includes('"')) {
-                  return `"${value.replace(/"/g, '""')}"`;
-              }
-              return value;
+            if (value.includes(',') || value.includes('\n') || value.includes('"')) {
+              return `"${value.replace(/"/g, '""')}"`;
             }
+            return value;
+          }
           return value;
         }).join(',')
       )
@@ -1329,22 +1329,43 @@ export default function Shifts() {
     let filtered = shifts.filter(shift => {
       if (!shift || !shift.id || !shift.date) return false;
 
-      const statusMatch = statusFilter === 'all' || shift.status === statusFilter;
+      let statusMatch = false;
+      if (statusFilter === 'all') {
+        statusMatch = true;
+      } else if (statusFilter === 'open') {
+        // ✅ OPEN = Status is open AND NOT in marketplace
+        statusMatch = shift.status === 'open' && !shift.marketplace_visible;
+      } else if (statusFilter === 'marketplace') {
+        // ✅ MARKETPLACE = Status is open AND IS in marketplace
+        statusMatch = shift.status === 'open' && shift.marketplace_visible;
+      } else {
+        statusMatch = shift.status === statusFilter;
+      }
+
       const clientMatch = clientFilter === 'all' || shift.client_id === clientFilter;
 
       return statusMatch && clientMatch;
     });
 
-    // 🆕 Sort upcoming dates first when highlighting newly created shifts
-    if (highlightedShiftIds.size > 0) {
+    // 🆕 Sorting logic: Open/Marketplace shifts by created_date, others by shift date
+    if (statusFilter === 'open' || statusFilter === 'marketplace') {
+      // Sort open/marketplace shifts by created_date descending (most recent created at top)
+      // This groups shifts created together (e.g., from bulk creation)
+      filtered.sort((a, b) => {
+        const createdA = a.created_date ? new Date(a.created_date).getTime() : 0;
+        const createdB = b.created_date ? new Date(b.created_date).getTime() : 0;
+        // Most recent created first (descending)
+        return createdB - createdA;
+      });
+    } else if (highlightedShiftIds.size > 0) {
+      // When highlighting newly created shifts, sort by date ascending (upcoming first)
       filtered.sort((a, b) => {
         const dateA = new Date(a.date);
         const dateB = new Date(b.date);
-        // Sort by date ascending (upcoming first)
         return dateA.getTime() - dateB.getTime();
       });
     } else {
-      // Default: sort by date descending (newest first)
+      // Default: sort by shift date descending (newest shift date first)
       filtered.sort((a, b) => {
         const dateA = new Date(a.date);
         const dateB = new Date(b.date);
@@ -1368,7 +1389,7 @@ export default function Shifts() {
             ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         }, 500);
-        
+
         return () => clearTimeout(scrollTimeout);
       }
     }
@@ -1377,7 +1398,8 @@ export default function Shifts() {
   const filterCounts = useMemo(() => {
     return {
       all: shifts.length,
-      open: shifts.filter(s => s.status === 'open').length,
+      open: shifts.filter(s => s.status === 'open' && !s.marketplace_visible).length,
+      marketplace: shifts.filter(s => s.status === 'open' && s.marketplace_visible).length,
       assigned: shifts.filter(s => s.status === 'assigned').length,
       confirmed: shifts.filter(s => s.status === 'confirmed').length,
       in_progress: shifts.filter(s => s.status === 'in_progress').length,
@@ -1426,14 +1448,14 @@ export default function Shifts() {
   // ✅ NEW: Helper to check if shift can have timesheet requested
   const canRequestTimesheet = (shift) => {
     if (!shift.assigned_staff_id) return false;
-    
+
     const shiftEndDateTime = new Date(`${shift.date}T${shift.end_time}`);
     const hasEnded = shiftEndDateTime <= new Date();
-    
+
     // Can request if: shift ended, in awaiting_admin_closure, in_progress or confirmed status, and no timesheet received yet
-    return hasEnded && 
-           (shift.status === 'awaiting_admin_closure' || shift.status === 'in_progress' || shift.status === 'confirmed') &&
-           !shift.timesheet_received;
+    return hasEnded &&
+      (shift.status === 'awaiting_admin_closure' || shift.status === 'in_progress' || shift.status === 'confirmed') &&
+      !shift.timesheet_received;
   };
 
   if (userLoading || shiftsLoading || clientsLoading || staffLoading) {
@@ -1492,10 +1514,10 @@ export default function Shifts() {
                       <CalendarIcon className="w-4 h-4" />
                       <span className="capitalize">
                         {dateRange === 'month' ? 'This Month' :
-                         dateRange === 'upcoming' ? 'Next 30 Days' :
-                         dateRange === 'last30' ? 'Last 30 Days' :
-                         dateRange === 'last90' ? 'Last 3 Months' :
-                         dateRange.replace('_', ' ')}
+                          dateRange === 'upcoming' ? 'Next 30 Days' :
+                            dateRange === 'last30' ? 'Last 30 Days' :
+                              dateRange === 'last90' ? 'Last 3 Months' :
+                                dateRange.replace('_', ' ')}
                       </span>
                     </div>
                     <Badge className="ml-2">{shifts.length}</Badge>
@@ -1785,16 +1807,15 @@ export default function Shifts() {
                     const isHighlighted = highlightedShiftIds.has(shift.id);
 
                     return (
-                      <tr 
-                        key={shift.id} 
+                      <tr
+                        key={shift.id}
                         ref={isHighlighted ? (el) => {
                           if (el && !highlightedShiftRefs.has(shift.id)) {
                             highlightedShiftRefs.set(shift.id, el);
                           }
                         } : null}
-                        className={`hover:bg-gray-50 ${
-                          isHighlighted ? 'bg-cyan-50 border-l-4 border-l-cyan-500' : ''
-                        }`}
+                        className={`hover:bg-gray-50 ${isHighlighted ? 'bg-cyan-50 border-l-4 border-l-cyan-500' : ''
+                          }`}
                       >
                         <td className="px-4 py-3">
                           <div className="text-sm font-medium text-gray-900">
@@ -1878,89 +1899,89 @@ export default function Shifts() {
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
-                           {shift.urgency && shift.urgency !== 'normal' ? (
-                             <Badge {...urgencyBadge}>
-                               {shift.urgency?.toUpperCase()}
-                             </Badge>
-                           ) : (
+                          {shift.urgency && shift.urgency !== 'normal' ? (
+                            <Badge {...urgencyBadge}>
+                              {shift.urgency?.toUpperCase()}
+                            </Badge>
+                          ) : (
                             <Badge variant="outline" className="text-gray-500 text-xs">
                               Normal
                             </Badge>
-                           )}
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                           <div className="flex justify-end gap-1">
-                               <Button
-                                 size="sm"
-                                 variant="ghost"
-                                 className="h-8 w-8 p-0"
-                                 onClick={() => handleEditShift(shift)}
-                                 title="Edit Shift"
-                               >
-                                 <Edit2 className="w-4 h-4 text-blue-600" />
-                               </Button>
-                               {shift.status === 'open' && (
-                                 <>
-                                   <Button
-                                     size="sm"
-                                     variant="ghost"
-                                     className="h-8 w-8 p-0"
-                                     onClick={() => setAssigningShift(shift)}
-                                     title="Confirm Staff"
-                                   >
-                                     <UserPlus className="w-4 h-4 text-green-600" />
-                                   </Button>
-                                   {(shift.urgency === 'urgent' || shift.urgency === 'critical') && (
-                                     <Button
-                                       size="sm"
-                                       variant="ghost"
-                                       className="h-8 w-8 p-0"
-                                       onClick={() => initiateUrgentBroadcast(shift)}
-                                       disabled={isBroadcasting}
-                                       title="Broadcast Urgent Shift"
-                                     >
-                                       {isBroadcasting ? (
-                                         <RefreshCw className="w-4 h-4 text-green-600 animate-spin" />
-                                       ) : (
-                                         <Zap className="w-4 h-4 text-red-600" />
-                                       )}
-                                     </Button>
-                                   )}
-                                 </>
-                               )}
-                               {shift.status === 'awaiting_admin_closure' && (
-                                 <Button
-                                   size="sm"
-                                   variant="ghost"
-                                   className="h-8 px-2"
-                                   onClick={() => handleCompleteShift(shift)}
-                                   title="Mark as Completed"
-                                 >
-                                   <CheckCircle className="w-4 h-4 text-green-600 mr-1" />
-                                   <span className="text-xs">Complete</span>
-                                 </Button>
-                               )}
-                               {/* ✅ NEW: Request Timesheet button */}
-                               {canRequest && (
-                                 <Button
-                                   size="sm"
-                                   variant="ghost"
-                                   className="h-8 px-2"
-                                   onClick={() => handleRequestTimesheet(shift)}
-                                   disabled={isSendingRequest}
-                                   title="Request Timesheet Upload"
-                                 >
-                                   {isSendingRequest ? (
-                                     <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                                   ) : (
-                                     <>
-                                       <Mail className="w-4 h-4 text-blue-600 mr-1" />
-                                       <span className="text-xs">Request</span>
-                                     </>
-                                   )}
-                                 </Button>
-                               )}
-                             </div>
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleEditShift(shift)}
+                              title="Edit Shift"
+                            >
+                              <Edit2 className="w-4 h-4 text-blue-600" />
+                            </Button>
+                            {shift.status === 'open' && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => setAssigningShift(shift)}
+                                  title="Confirm Staff"
+                                >
+                                  <UserPlus className="w-4 h-4 text-green-600" />
+                                </Button>
+                                {(shift.urgency === 'urgent' || shift.urgency === 'critical') && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => initiateUrgentBroadcast(shift)}
+                                    disabled={isBroadcasting}
+                                    title="Broadcast Urgent Shift"
+                                  >
+                                    {isBroadcasting ? (
+                                      <RefreshCw className="w-4 h-4 text-green-600 animate-spin" />
+                                    ) : (
+                                      <Zap className="w-4 h-4 text-red-600" />
+                                    )}
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                            {shift.status === 'awaiting_admin_closure' && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 px-2"
+                                onClick={() => handleCompleteShift(shift)}
+                                title="Mark as Completed"
+                              >
+                                <CheckCircle className="w-4 h-4 text-green-600 mr-1" />
+                                <span className="text-xs">Complete</span>
+                              </Button>
+                            )}
+                            {/* ✅ NEW: Request Timesheet button */}
+                            {canRequest && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 px-2"
+                                onClick={() => handleRequestTimesheet(shift)}
+                                disabled={isSendingRequest}
+                                title="Request Timesheet Upload"
+                              >
+                                {isSendingRequest ? (
+                                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                                ) : (
+                                  <>
+                                    <Mail className="w-4 h-4 text-blue-600 mr-1" />
+                                    <span className="text-xs">Request</span>
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1996,20 +2017,18 @@ export default function Shifts() {
             }
 
             const isHighlighted = highlightedShiftIds.has(shift.id);
-            
+
             return (
-              <Card 
-                key={shift.id} 
+              <Card
+                key={shift.id}
                 ref={isHighlighted ? (el) => {
                   if (el && !highlightedShiftRefs.current.has(shift.id)) {
                     highlightedShiftRefs.current.set(shift.id, el);
                   }
                 } : null}
-                className={`hover:shadow-lg transition-shadow ${
-                  isOrphaned ? 'border-red-300 border-2' : ''
-                } ${
-                  isHighlighted ? 'border-2 border-cyan-500 bg-cyan-50 shadow-lg' : ''
-                }`}
+                className={`hover:shadow-lg transition-shadow ${isOrphaned ? 'border-red-300 border-2' : ''
+                  } ${isHighlighted ? 'border-2 border-cyan-500 bg-cyan-50 shadow-lg' : ''
+                  }`}
               >
                 <CardContent className="p-6">
                   {isOrphaned && (
@@ -2125,9 +2144,9 @@ export default function Shifts() {
                               onClick={() => initiateUrgentBroadcast(shift)}
                               disabled={isBroadcasting}
                               className={
-                                isBroadcasting ? "bg-green-600" : 
-                                alreadyBroadcast ? "bg-orange-600 hover:bg-orange-700" : 
-                                "bg-red-600 hover:bg-red-700"
+                                isBroadcasting ? "bg-green-600" :
+                                  alreadyBroadcast ? "bg-orange-600 hover:bg-orange-700" :
+                                    "bg-red-600 hover:bg-red-700"
                               }
                             >
                               {isBroadcasting ? (
@@ -2156,8 +2175,8 @@ export default function Shifts() {
                         </div>
                       )}
                       {shift.status === 'awaiting_admin_closure' && (
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           onClick={() => handleCompleteShift(shift)}
                           className="bg-green-600 hover:bg-green-700"
                         >
@@ -2351,7 +2370,7 @@ export default function Shifts() {
                       <Label htmlFor="edit-status">Shift Status</Label>
                       <Select
                         value={editFormData.status}
-                        onValueChange={(value) => setEditFormData({...editFormData, status: value})}
+                        onValueChange={(value) => setEditFormData({ ...editFormData, status: value })}
                       >
                         <SelectTrigger id="edit-status">
                           <SelectValue />
@@ -2384,7 +2403,7 @@ export default function Shifts() {
                               id="actual-start"
                               type="time"
                               value={editFormData.actual_start_time || ''}
-                              onChange={(e) => setEditFormData({...editFormData, actual_start_time: e.target.value})}
+                              onChange={(e) => setEditFormData({ ...editFormData, actual_start_time: e.target.value })}
                               className="text-sm"
                             />
                           </div>
@@ -2394,7 +2413,7 @@ export default function Shifts() {
                               id="actual-end"
                               type="time"
                               value={editFormData.actual_end_time || ''}
-                              onChange={(e) => setEditFormData({...editFormData, actual_end_time: e.target.value})}
+                              onChange={(e) => setEditFormData({ ...editFormData, actual_end_time: e.target.value })}
                               className="text-sm"
                             />
                           </div>
@@ -2440,7 +2459,7 @@ export default function Shifts() {
                       <Textarea
                         id="edit-notes"
                         value={editFormData.notes || ''}
-                        onChange={(e) => setEditFormData({...editFormData, notes: e.target.value})}
+                        onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
                         placeholder="Add any notes about this shift..."
                         rows={3}
                       />

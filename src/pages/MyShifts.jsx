@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -73,11 +73,12 @@ export default function MyShifts() {
   }, [navigate]);
 
   // Fetch all shifts for current month
+  // ⚡ OPTIMIZATION: Key by MONTH, not selected date, to prevent refetch on day click
   const { data: allShifts = [], isLoading: shiftsLoading } = useQuery({
-    queryKey: ['myShifts', staffRecord?.id, selectedDate],
+    queryKey: ['myShifts', staffRecord?.id, format(currentMonth, 'yyyy-MM')],
     queryFn: async () => {
-      const monthStart = startOfMonth(selectedDate);
-      const monthEnd = endOfMonth(selectedDate);
+      const monthStart = startOfMonth(currentMonth);
+      const monthEnd = endOfMonth(currentMonth);
 
       const { data, error } = await supabase
         .from('shifts')
@@ -95,6 +96,7 @@ export default function MyShifts() {
       return data || [];
     },
     enabled: !!staffRecord?.id,
+    placeholderData: keepPreviousData, // Keep showing previous month while loading next
   });
 
   // Fetch timesheets
@@ -362,10 +364,10 @@ export default function MyShifts() {
             </CardHeader>
             <CardContent className="p-3">
               <style>{`
-                /* FULL WIDTH CALENDAR - Force 100% */
+                /* FULL WIDTH CALENDAR */
                 .staff-calendar-container {
                   width: 100%;
-                  overflow: hidden;
+                  padding: 10px;
                 }
 
                 .staff-calendar-container .rdp {
@@ -374,61 +376,128 @@ export default function MyShifts() {
                   margin: 0 !important;
                 }
 
-                .staff-calendar-container .rdp-months {
-                  width: 100% !important;
-                }
-
-                .staff-calendar-container .rdp-month {
-                  width: 100% !important;
-                }
-
-                .staff-calendar-container .rdp-table {
-                  width: 100% !important;
-                  max-width: 100% !important;
-                }
-
+                .staff-calendar-container .rdp-months,
+                .staff-calendar-container .rdp-month,
+                .staff-calendar-container .rdp-table,
                 .staff-calendar-container .rdp-head,
                 .staff-calendar-container .rdp-tbody {
                   width: 100% !important;
                 }
 
-                /* Make all buttons circular by default */
+                .staff-calendar-container .rdp-table {
+                  max-width: 100% !important;
+                  border-collapse: collapse;
+                }
+
+                /* BASE BUTTON STYLES */
                 .staff-calendar-container .rdp-button {
                   border-radius: 50% !important;
                   width: 40px !important;
                   height: 40px !important;
-                  transition: all 0.2s ease !important;
+                  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                  border: 2px solid transparent;
                 }
 
-                /* RED RING for today - High priority, no background override */
+                /* --- STATUS BACKGROUNDS (Normal State) --- */
+                
+                .staff-calendar-container .rdp-button.status-issue {
+                  background-color: #ef4444 !important;
+                  color: white !important;
+                  font-weight: 700 !important;
+                }
+
+                .staff-calendar-container .rdp-button.status-needsTimesheet {
+                  background-color: #f97316 !important;
+                  color: white !important;
+                  font-weight: 700 !important;
+                }
+
+                .staff-calendar-container .rdp-button.status-needsConfirmation {
+                  background-color: #eab308 !important;
+                  color: white !important;
+                  font-weight: 700 !important;
+                }
+
+                .staff-calendar-container .rdp-button.status-confirmed {
+                  background-color: #10b981 !important;
+                  color: white !important;
+                  font-weight: 700 !important;
+                }
+
+                .staff-calendar-container .rdp-button.status-completed {
+                  background-color: #6ee7b7 !important;
+                  color: #065f46 !important;
+                  font-weight: 700 !important;
+                }
+
+                /* --- SELECTED STATE FOR STATUS ITEMS (Keep Color + Add Ring) --- */
+                /* We explicitly target each one to ensure specificity wins over default selection */
+
+                .staff-calendar-container .rdp-button.status-issue[aria-selected="true"] {
+                  background-color: #ef4444 !important;
+                  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #1e3a8a, 0 10px 15px -3px rgba(0, 0, 0, 0.2) !important;
+                  transform: scale(1.2) !important;
+                  z-index: 20;
+                  opacity: 1 !important;
+                }
+
+                .staff-calendar-container .rdp-button.status-needsTimesheet[aria-selected="true"] {
+                  background-color: #f97316 !important;
+                  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #1e3a8a, 0 10px 15px -3px rgba(0, 0, 0, 0.2) !important;
+                  transform: scale(1.2) !important;
+                  z-index: 20;
+                  opacity: 1 !important;
+                }
+
+                .staff-calendar-container .rdp-button.status-needsConfirmation[aria-selected="true"] {
+                  background-color: #eab308 !important;
+                  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #1e3a8a, 0 10px 15px -3px rgba(0, 0, 0, 0.2) !important;
+                  transform: scale(1.2) !important;
+                  z-index: 20;
+                  opacity: 1 !important;
+                }
+
+                .staff-calendar-container .rdp-button.status-confirmed[aria-selected="true"] {
+                  background-color: #10b981 !important;
+                  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #1e3a8a, 0 10px 15px -3px rgba(0, 0, 0, 0.2) !important;
+                  transform: scale(1.2) !important;
+                  z-index: 20;
+                  opacity: 1 !important;
+                }
+
+                .staff-calendar-container .rdp-button.status-completed[aria-selected="true"] {
+                  background-color: #6ee7b7 !important;
+                  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #1e3a8a, 0 10px 15px -3px rgba(0, 0, 0, 0.2) !important;
+                  transform: scale(1.2) !important;
+                  z-index: 20;
+                  opacity: 1 !important;
+                }
+
+                /* --- DEFAULT SELECTED STATE (No Status) --- */
+                /* Target buttons that are selected BUT do NOT have any status class */
+                .staff-calendar-container .rdp-button[aria-selected="true"]:not(.status-issue):not(.status-needsTimesheet):not(.status-needsConfirmation):not(.status-confirmed):not(.status-completed) {
+                  background-color: #1e3a8a !important;
+                  color: white !important;
+                  transform: scale(1.2) !important;
+                  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #1e3a8a, 0 10px 15px -3px rgba(0, 0, 0, 0.2) !important;
+                  z-index: 20;
+                }
+
+                /* --- TODAY STATE --- */
                 .staff-calendar-container .rdp-day_today .rdp-button {
-                  border: 3px solid #ef4444 !important;
-                  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
-                }
-
-                /* NAVY RING for selected date (preserves underlying color) */
-                .staff-calendar-container .rdp-day_selected .rdp-button {
-                  border: 3px solid #1e3a8a !important;  /* Navy blue ring */
-                  box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.25) !important;  /* Navy glow */
-                  font-weight: 700 !important;
-                }
-
-                /* Today + Selected = Double ring effect */
-                .staff-calendar-container .rdp-day_today.rdp-day_selected .rdp-button {
-                  border: 3px solid #1e3a8a !important;  /* Navy inner ring */
-                  box-shadow: 0 0 0 1px #ef4444, 0 0 0 3px rgba(239, 68, 68, 0.3) !important;  /* Red outer glow */
-                  font-weight: 700 !important;
+                  border-color: #ef4444 !important;
                 }
 
                 /* Hover effects */
-                .staff-calendar-container .rdp-button:hover:not(.rdp-day_selected .rdp-button) {
-                  transform: scale(1.08) !important;
-                  opacity: 0.9 !important;
+                .staff-calendar-container .rdp-button:hover:not([aria-selected="true"]) {
+                  transform: scale(1.1) !important;
+                  background-color: rgba(0,0,0,0.05);
+                  z-index: 10;
                 }
 
-                /* Accessibility - focus states */
+                /* Accessibility */
                 .staff-calendar-container .rdp-button:focus-visible {
-                  outline: 3px solid #3b82f6 !important;
+                  outline: 2px solid #3b82f6 !important;
                   outline-offset: 2px !important;
                 }
               `}</style>
@@ -446,40 +515,16 @@ export default function MyShifts() {
                     confirmed: datesConfirmed,
                     completed: datesCompleted,
                   }}
-                  modifiersStyles={{
-                    hasIssue: {
-                      backgroundColor: '#ef4444',  // Red for issues (no_show, disputed)
-                      color: 'white',
-                      fontWeight: 'bold',
-                      borderRadius: '50%',
-                    },
-                    needsTimesheet: {
-                      backgroundColor: '#f97316',  // Orange for timesheet needed
-                      color: 'white',
-                      fontWeight: 'bold',
-                      borderRadius: '50%',
-                    },
-                    needsConfirmation: {
-                      backgroundColor: '#eab308',  // Yellow for confirmation needed
-                      color: 'white',
-                      fontWeight: 'bold',
-                      borderRadius: '50%',
-                    },
-                    confirmed: {
-                      backgroundColor: '#10b981',  // Green for confirmed shifts
-                      color: 'white',
-                      fontWeight: 'bold',
-                      borderRadius: '50%',
-                    },
-                    completed: {
-                      backgroundColor: '#6ee7b7',  // Light green for completed
-                      color: '#065f46',  // Dark green text
-                      fontWeight: 'bold',
-                      borderRadius: '50%',
-                    }
+                  modifiersClassNames={{
+                    hasIssue: 'status-issue',
+                    needsTimesheet: 'status-needsTimesheet',
+                    needsConfirmation: 'status-needsConfirmation',
+                    confirmed: 'status-confirmed',
+                    completed: 'status-completed',
                   }}
                   classNames={{
-                    day: "h-10 w-10 p-0 font-normal aria-selected:opacity-100 rounded-full transition-all",
+                    day: "h-10 w-10 p-0 font-normal aria-selected:opacity-100 rounded-full transition-all relative flex items-center justify-center",
+                    day_selected: "bg-transparent text-foreground hover:bg-transparent focus:bg-transparent", /* Remove default blue bg so our CSS wins */
                   }}
                 />
               </div>
@@ -498,7 +543,7 @@ export default function MyShifts() {
                         {/* Red - Issues */}
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
-                            <span className="text-white text-xs font-bold">22</span>
+                            <span className="text-white text-xs font-bold">{datesWithIssues.length}</span>
                           </div>
                           <span className="text-xs text-gray-700 font-medium">Issue (No-show, Disputed)</span>
                         </div>
@@ -506,7 +551,7 @@ export default function MyShifts() {
                         {/* Orange - Needs Timesheet */}
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center flex-shrink-0">
-                            <span className="text-white text-xs font-bold">15</span>
+                            <span className="text-white text-xs font-bold">{datesNeedingTimesheet.length}</span>
                           </div>
                           <span className="text-xs text-gray-700 font-medium">Upload Timesheet</span>
                         </div>
@@ -514,7 +559,7 @@ export default function MyShifts() {
                         {/* Yellow - Needs Confirmation */}
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center flex-shrink-0">
-                            <span className="text-white text-xs font-bold">10</span>
+                            <span className="text-white text-xs font-bold">{datesNeedingConfirmation.length}</span>
                           </div>
                           <span className="text-xs text-gray-700 font-medium">Confirm Shift</span>
                         </div>
@@ -522,7 +567,7 @@ export default function MyShifts() {
                         {/* Green - Confirmed */}
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                            <span className="text-white text-xs font-bold">5</span>
+                            <span className="text-white text-xs font-bold">{datesConfirmed.length}</span>
                           </div>
                           <span className="text-xs text-gray-700 font-medium">Confirmed & Ready</span>
                         </div>
@@ -530,7 +575,7 @@ export default function MyShifts() {
                         {/* Light Green - Completed */}
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-full bg-emerald-300 flex items-center justify-center flex-shrink-0">
-                            <span className="text-emerald-900 text-xs font-bold">3</span>
+                            <span className="text-emerald-900 text-xs font-bold">{datesCompleted.length}</span>
                           </div>
                           <span className="text-xs text-gray-700 font-medium">Completed</span>
                         </div>
@@ -540,16 +585,16 @@ export default function MyShifts() {
 
                         {/* Today */}
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full border-3 border-red-500 flex items-center justify-center flex-shrink-0" style={{borderWidth: '3px'}}>
-                            <span className="text-gray-700 text-xs font-bold">22</span>
+                          <div className="w-6 h-6 rounded-full border-2 border-red-500 flex items-center justify-center flex-shrink-0" style={{ borderWidth: '2px' }}>
+                            <span className="text-gray-700 text-xs font-bold">{format(new Date(), 'd')}</span>
                           </div>
                           <span className="text-xs text-gray-700 font-medium">Today (Red ring)</span>
                         </div>
 
                         {/* Selected */}
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full border-3 border-blue-900 flex items-center justify-center flex-shrink-0" style={{borderWidth: '3px'}}>
-                            <span className="text-gray-700 text-xs font-bold">15</span>
+                          <div className="w-6 h-6 rounded-full border-2 border-blue-900 flex items-center justify-center flex-shrink-0" style={{ borderWidth: '2px' }}>
+                            <span className="text-gray-700 text-xs font-bold">{format(selectedDate, 'd')}</span>
                           </div>
                           <span className="text-xs text-gray-700 font-medium">Selected (Navy ring)</span>
                         </div>
