@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { calculateDurationHours, calculateBillableHoursWithRule } from "@/utils/shiftCalculations";
 import GPSIndicator, { GPSDetails } from "../components/timesheets/GPSIndicator";
 import PayDisplay from "../components/timesheets/PayDisplay";
 import ResponsiveUploadZone from "../components/timesheets/ResponsiveUploadZone";
@@ -80,13 +81,13 @@ export default function TimesheetDetail() {
     queryKey: ['timesheet', timesheetId],
     queryFn: async () => {
       if (!timesheetId) return null;
-      
+
       const { data, error } = await supabase
         .from('timesheets')
         .select('*')
         .eq('id', timesheetId)
         .single();
-      
+
       if (error) {
         console.error('❌ Error fetching timesheet:', error);
         return null;
@@ -102,13 +103,13 @@ export default function TimesheetDetail() {
     queryKey: ['staff', timesheet?.staff_id],
     queryFn: async () => {
       if (!timesheet?.staff_id) return null;
-      
+
       const { data, error } = await supabase
         .from('staff')
         .select('*')
         .eq('id', timesheet.staff_id)
         .single();
-      
+
       if (error) {
         console.error('❌ Error fetching staff:', error);
         return null;
@@ -123,13 +124,13 @@ export default function TimesheetDetail() {
     queryKey: ['client', timesheet?.client_id],
     queryFn: async () => {
       if (!timesheet?.client_id) return null;
-      
+
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .eq('id', timesheet.client_id)
         .single();
-      
+
       if (error) {
         console.error('❌ Error fetching client:', error);
         return null;
@@ -149,14 +150,14 @@ export default function TimesheetDetail() {
           .select('*')
           .eq('id', timesheet.booking_id)
           .single();
-        
+
         if (!bookingError && bookings?.shift_id) {
           const { data: shifts, error: shiftError } = await supabase
             .from('shifts')
             .select('*')
             .eq('id', bookings.shift_id)
             .single();
-          
+
           if (!shiftError && shifts) {
             return shifts;
           }
@@ -166,12 +167,12 @@ export default function TimesheetDetail() {
       const { data: allShifts, error } = await supabase
         .from('shifts')
         .select('*');
-      
+
       if (error) {
         console.error('❌ Error fetching shifts:', error);
         return null;
       }
-      
+
       const matchingShift = allShifts?.find(s =>
         s.date === timesheet.shift_date &&
         s.client_id === timesheet.client_id &&
@@ -191,7 +192,7 @@ export default function TimesheetDetail() {
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return updated;
     },
@@ -240,16 +241,16 @@ export default function TimesheetDetail() {
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('documents')
           .upload(fileName, file);
-        
+
         if (uploadError) {
           console.error('❌ Upload error:', uploadError);
           throw uploadError;
         }
-        
+
         const { data: { publicUrl } } = supabase.storage
           .from('documents')
           .getPublicUrl(fileName);
-        
+
         const file_url = publicUrl;
         console.log('✅ File uploaded:', file_url);
 
@@ -421,7 +422,7 @@ export default function TimesheetDetail() {
   };
 
   // PHASE 2: Staff Confirmation Handlers
-  const handleConfirmOCR = async (staffNote) => {
+  const handleConfirmOCR = async (staffNote, overrideRowData) => {
     if (!pendingOcrData || !pendingDocument) return;
 
     setConfirming(true);
@@ -430,7 +431,11 @@ export default function TimesheetDetail() {
       const existingDocs = timesheet.uploaded_documents || [];
 
       // Prepare update data with actual times from OCR
-      const rowData = extracted.matched_row_info || extracted;
+      // PRIORITIZE USER SELECTION (overrideRowData) -> then Auto-Match -> then Raw Extraction
+      const rowData = overrideRowData || extracted.matched_row_info || extracted;
+
+      console.log('✅ Confirming with Row Data:', rowData);
+
       const updateData = {
         uploaded_documents: [...existingDocs, pendingDocument],
         staff_confirmed: true,
@@ -440,33 +445,50 @@ export default function TimesheetDetail() {
       // Populate actual times from OCR
       if (rowData.start_time) {
         updateData.actual_start_time = rowData.start_time;
-        console.log('✅ Set actual_start_time:', rowData.start_time,
-          extracted.matched_row_info ? `(from matched row ${extracted.matched_row_info.date})` : '');
+        console.log('✅ Set actual_start_time:', rowData.start_time);
       }
 
       if (rowData.end_time) {
         updateData.actual_end_time = rowData.end_time;
-        console.log('✅ Set actual_end_time:', rowData.end_time,
-          extracted.matched_row_info ? `(from matched row ${extracted.matched_row_info.date})` : '');
+        console.log('✅ Set actual_end_time:', rowData.end_time);
       }
 
       if (rowData.break_minutes !== undefined && rowData.break_minutes !== null) {
         updateData.break_duration_minutes = rowData.break_minutes;
-        console.log('✅ Set break_duration_minutes:', rowData.break_minutes,
-          extracted.matched_row_info ? `(from matched row ${extracted.matched_row_info.date})` : '');
+        console.log('✅ Set break_duration_minutes:', rowData.break_minutes);
       }
 
-      // Hours: prefer matched row hours for this shift, fall back to overall hours_worked / total_hours
-      const ocrHours =
-        extracted.matched_row_info?.hours ??
-        extracted.hours_worked ??
-        extracted.total_hours ??
-        null;
+      // Hours: Calculate from Start/End times if available (One Source of Truth)
+      // This enforces the rule: "remove break 60mins if and only if total hours >= 10"
+      let calculatedHours = null;
+      let calculatedBreakMinutes = 0;
 
-      if (ocrHours !== null && ocrHours !== undefined) {
-        updateData.hours_worked = ocrHours;
-        updateData.total_hours = ocrHours;
-        console.log('✅ Set hours_worked/total_hours from OCR:', ocrHours);
+      if (updateData.actual_start_time && updateData.actual_end_time) {
+        const rawDuration = calculateDurationHours(updateData.actual_start_time, updateData.actual_end_time);
+        calculatedHours = calculateBillableHoursWithRule(rawDuration);
+
+        // Set break minutes based on the rule used in calculation
+        calculatedBreakMinutes = rawDuration >= 10 ? 60 : 0;
+
+        console.log(`✅ Calculated Hours from Times: ${updateData.actual_start_time}-${updateData.actual_end_time}`);
+        console.log(`   Raw Duration: ${rawDuration}h, Break: ${calculatedBreakMinutes}m, Billable: ${calculatedHours}h`);
+
+        updateData.hours_worked = calculatedHours;
+        updateData.total_hours = calculatedHours;
+        updateData.break_duration_minutes = calculatedBreakMinutes;
+      } else {
+        // Fallback to OCR/User provided hours if start/end times are missing
+        const ocrHours =
+          rowData.hours ??
+          rowData.hours_worked ??
+          extracted.total_hours ??
+          null;
+
+        if (ocrHours !== null && ocrHours !== undefined) {
+          updateData.hours_worked = ocrHours;
+          updateData.total_hours = ocrHours;
+          console.log('⚠️ Start/End times missing. Using OCR hours:', ocrHours);
+        }
       }
 
       // Preserve raw_total_hours if the extractor provided it (multi-day sheets)
@@ -885,275 +907,270 @@ export default function TimesheetDetail() {
       <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6">
         {/* Basic Info - Always first */}
         <Card className="order-1 lg:col-span-2">
-            <CardHeader className="border-b">
-              <CardTitle>Basic Information</CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6 space-y-4">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="flex items-start gap-3">
-                  <User className="w-5 h-5 text-gray-400 mt-1" />
-                  <div>
-                    <p className="text-sm text-gray-600">Staff Member</p>
-                    <p className="font-semibold text-gray-900">
-                      {staff ? `${staff.first_name} ${staff.last_name}` : 'Loading...'}
-                    </p>
-                    {staff?.role && (
-                      <p className="text-sm text-gray-500 capitalize">{staff.role.replace('_', ' ')}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <Building2 className="w-5 h-5 text-gray-400 mt-1" />
-                  <div>
-                    <p className="text-sm text-gray-600">Client</p>
-                    <p className="font-semibold text-gray-900">{client?.name || 'Loading...'}</p>
-                    {client?.type && (
-                      <p className="text-sm text-gray-500 capitalize">{client.type.replace('_', ' ')}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-5 h-5 text-gray-400 mt-1" />
-                  <div>
-                    <p className="text-sm text-gray-600">Shift Date</p>
-                    <p className="font-semibold text-gray-900">
-                      {format(new Date(timesheet.shift_date), 'EEEE, MMMM d, yyyy')}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <ShiftTypeIcon className={`w-5 h-5 ${shiftType.color} mt-1`} />
-                  <div>
-                    <p className="text-sm text-gray-600">Shift Type</p>
-                    <p className={`font-semibold ${shiftType.color}`}>{shiftType.label}</p>
-                    {shift && (
-                      <p className="text-sm text-gray-500">
-                        {shift.start_time} - {shift.end_time} ({scheduledHours}h)
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <Clock className="w-5 h-5 text-gray-400 mt-1" />
-                  <div>
-                    <p className="text-sm text-gray-600">Hours</p>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-900 text-lg">
-                        {workedHours > 0 ? `${workedHours}h` : '--'}
-                      </p>
-                      {workedHours > 0 && Math.abs(hoursDifference) > 0.25 && (
-                        <Badge className={hoursDifference > 0 ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}>
-                          {hoursDifference > 0 ? '+' : ''}{hoursDifference.toFixed(1)}h
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-500">Scheduled: {scheduledHours}h</p>
-                  </div>
+          <CardHeader className="border-b">
+            <CardTitle>Basic Information</CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 sm:p-6 space-y-4">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="flex items-start gap-3">
+                <User className="w-5 h-5 text-gray-400 mt-1" />
+                <div>
+                  <p className="text-sm text-gray-600">Staff Member</p>
+                  <p className="font-semibold text-gray-900">
+                    {staff ? `${staff.first_name} ${staff.last_name}` : 'Loading...'}
+                  </p>
+                  {staff?.role && (
+                    <p className="text-sm text-gray-500 capitalize">{staff.role.replace('_', ' ')}</p>
+                  )}
                 </div>
               </div>
-            </CardContent>
+
+              <div className="flex items-start gap-3">
+                <Building2 className="w-5 h-5 text-gray-400 mt-1" />
+                <div>
+                  <p className="text-sm text-gray-600">Client</p>
+                  <p className="font-semibold text-gray-900">{client?.name || 'Loading...'}</p>
+                  {client?.type && (
+                    <p className="text-sm text-gray-500 capitalize">{client.type.replace('_', ' ')}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Calendar className="w-5 h-5 text-gray-400 mt-1" />
+                <div>
+                  <p className="text-sm text-gray-600">Shift Date</p>
+                  <p className="font-semibold text-gray-900">
+                    {format(new Date(timesheet.shift_date), 'EEEE, MMMM d, yyyy')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <ShiftTypeIcon className={`w-5 h-5 ${shiftType.color} mt-1`} />
+                <div>
+                  <p className="text-sm text-gray-600">Shift Type</p>
+                  <p className={`font-semibold ${shiftType.color}`}>{shiftType.label}</p>
+                  {shift && (
+                    <p className="text-sm text-gray-500">
+                      {shift.start_time} - {shift.end_time} ({scheduledHours}h)
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Clock className="w-5 h-5 text-gray-400 mt-1" />
+                <div>
+                  <p className="text-sm text-gray-600">Hours</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-900 text-lg">
+                      {workedHours > 0 ? `${workedHours}h` : '--'}
+                    </p>
+                    {workedHours > 0 && Math.abs(hoursDifference) > 0.25 && (
+                      <Badge className={hoursDifference > 0 ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}>
+                        {hoursDifference > 0 ? '+' : ''}{hoursDifference.toFixed(1)}h
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500">Scheduled: {scheduledHours}h</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
         </Card>
 
         {/* Uploaded Documents - Show after financial on mobile */}
         <Card className="order-5 lg:col-span-2">
-            <CardHeader className="border-b">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  Supporting Documents
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6">
-              {/* Inline status while upload + OCR are running */}
-              {uploadingDoc && !showConfirmModal && (
-                <Alert className="mb-4 bg-blue-50 border-blue-200">
-                  <AlertTriangle className="w-5 h-5 text-blue-600" />
-                  <AlertDescription className="text-blue-900 text-sm">
-                    Extracting timesheet data with AI. This can take a few seconds – please keep this page open.
-                  </AlertDescription>
-                </Alert>
-              )}
+          <CardHeader className="border-b">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Supporting Documents
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="p-3 sm:p-6">
+            {/* Inline status while upload + OCR are running */}
+            {uploadingDoc && !showConfirmModal && (
+              <Alert className="mb-4 bg-blue-50 border-blue-200">
+                <AlertTriangle className="w-5 h-5 text-blue-600" />
+                <AlertDescription className="text-blue-900 text-sm">
+                  Extracting timesheet data with AI. This can take a few seconds – please keep this page open.
+                </AlertDescription>
+              </Alert>
+            )}
 
-              {/* Responsive Upload Zone - Mobile: Compact button | Desktop: Drag & drop */}
-              <ResponsiveUploadZone
-                onFileSelect={handleFileUpload}
-                uploading={uploadingDoc || showConfirmModal}
-                disabled={showConfirmModal}
-                acceptedFormats=".pdf,.jpg,.jpeg,.png"
-                maxSizeMB={10}
-              />
+            {/* Responsive Upload Zone - Mobile: Compact button | Desktop: Drag & drop */}
+            <ResponsiveUploadZone
+              onFileSelect={handleFileUpload}
+              uploading={uploadingDoc || showConfirmModal}
+              disabled={showConfirmModal}
+              acceptedFormats=".pdf,.jpg,.jpeg,.png"
+              maxSizeMB={10}
+            />
 
-              {/* Quick Fix 2: Re-Upload Guidance for Low Confidence */}
-              {lastOcrConfidence !== null && lastOcrConfidence < 60 && (
-                <Alert className="mt-4 bg-yellow-50 border-yellow-300">
-                  <AlertTriangle className="w-5 h-5 text-yellow-600" />
-                  <AlertDescription>
-                    <p className="font-bold text-yellow-900">Low Confidence ({lastOcrConfidence}%) - Action Needed</p>
-                    <p className="text-sm text-yellow-800 mt-1">
-                      The uploaded document quality is unclear (blurry, damaged, or poor lighting). Our AI had difficulty reading the text accurately.
-                    </p>
-                    <div className="mt-3 text-sm text-yellow-900">
-                      <p className="font-semibold mb-2">💡 How to improve accuracy:</p>
-                      <ul className="list-disc ml-5 space-y-1">
-                        <li>Take a new photo in <strong>good lighting</strong> (natural daylight works best)</li>
-                        <li>Ensure all text is <strong>clear and readable</strong></li>
-                        <li>Hold camera steady and <strong>flatten the paper</strong></li>
-                        <li>Avoid shadows, glare, or reflections</li>
-                        <li>Use landscape mode for better framing</li>
-                      </ul>
-                    </div>
-                    <div className="mt-3 flex gap-2">
-                      <Button
-                        size="sm"
-                        className="bg-yellow-600 hover:bg-yellow-700"
-                        onClick={() => {
-                          // Scroll to upload zone
-                          document.querySelector('input[type="file"]')?.click();
-                        }}
-                      >
-                        📸 Re-Upload Better Photo
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setLastOcrConfidence(null)}
-                        className="border-yellow-600 text-yellow-700 hover:bg-yellow-100"
-                      >
-                        Dismiss
-                      </Button>
-                    </div>
-                    <p className="text-xs text-yellow-700 mt-3">
-                      <strong>Note:</strong> Admins can still manually review and approve if the data is correct, but clearer photos speed up the process.
-                    </p>
-                  </AlertDescription>
-                </Alert>
-              )}
+            {/* Quick Fix 2: Re-Upload Guidance for Low Confidence */}
+            {lastOcrConfidence !== null && lastOcrConfidence < 60 && (
+              <Alert className="mt-4 bg-yellow-50 border-yellow-300">
+                <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                <AlertDescription>
+                  <p className="font-bold text-yellow-900">Low Confidence ({lastOcrConfidence}%) - Action Needed</p>
+                  <p className="text-sm text-yellow-800 mt-1">
+                    The uploaded document quality is unclear (blurry, damaged, or poor lighting). Our AI had difficulty reading the text accurately.
+                  </p>
+                  <div className="mt-3 text-sm text-yellow-900">
+                    <p className="font-semibold mb-2">💡 How to improve accuracy:</p>
+                    <ul className="list-disc ml-5 space-y-1">
+                      <li>Take a new photo in <strong>good lighting</strong> (natural daylight works best)</li>
+                      <li>Ensure all text is <strong>clear and readable</strong></li>
+                      <li>Hold camera steady and <strong>flatten the paper</strong></li>
+                      <li>Avoid shadows, glare, or reflections</li>
+                      <li>Use landscape mode for better framing</li>
+                    </ul>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      size="sm"
+                      className="bg-yellow-600 hover:bg-yellow-700"
+                      onClick={() => {
+                        // Scroll to upload zone
+                        document.querySelector('input[type="file"]')?.click();
+                      }}
+                    >
+                      📸 Re-Upload Better Photo
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setLastOcrConfidence(null)}
+                      className="border-yellow-600 text-yellow-700 hover:bg-yellow-100"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                  <p className="text-xs text-yellow-700 mt-3">
+                    <strong>Note:</strong> Admins can still manually review and approve if the data is correct, but clearer photos speed up the process.
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
 
-              {/* Show uploaded documents */}
-              {timesheet.uploaded_documents && timesheet.uploaded_documents.length > 0 ? (
-                <div className="mt-6 space-y-4">
-                  {timesheet.uploaded_documents.map((doc, idx) => (
-                    <div key={idx} className="border-2 border-gray-200 rounded-xl overflow-hidden">
-                      {/* Document Header */}
-                      <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-200">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <CheckCircle className="w-5 h-5 text-green-600" />
-                              <p className="text-sm font-bold text-green-900">
-                                {doc.file_name || `Document ${idx + 1}`}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-4 text-xs text-gray-600">
-                              <span>📅 {format(new Date(doc.uploaded_at), 'MMM d, yyyy HH:mm')}</span>
-                              <span>👤 {doc.uploaded_by}</span>
-                              {doc.file_size && (
-                                <span>📦 {(doc.file_size / 1024).toFixed(1)} KB</span>
-                              )}
-                            </div>
+            {/* Show uploaded documents */}
+            {timesheet.uploaded_documents && timesheet.uploaded_documents.length > 0 ? (
+              <div className="mt-6 space-y-4">
+                {timesheet.uploaded_documents.map((doc, idx) => (
+                  <div key={idx} className="border-2 border-gray-200 rounded-xl overflow-hidden">
+                    {/* Document Header */}
+                    <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-200">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <CheckCircle className="w-5 h-5 text-green-600" />
+                            <p className="text-sm font-bold text-green-900">
+                              {doc.file_name || `Document ${idx + 1}`}
+                            </p>
                           </div>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => window.open(doc.file_url, '_blank')}
-                              className="bg-blue-600 hover:bg-blue-700"
-                            >
-                              <Eye className="w-4 h-4 mr-2" />
-                              View
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                const link = document.createElement('a');
-                                link.href = doc.file_url;
-                                link.download = doc.file_name || `timesheet-doc-${idx + 1}`;
-                                link.click();
-                              }}
-                            >
-                              <Download className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleDeleteDocument(idx)}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                          <div className="flex items-center gap-4 text-xs text-gray-600">
+                            <span>📅 {format(new Date(doc.uploaded_at), 'MMM d, yyyy HH:mm')}</span>
+                            <span>👤 {doc.uploaded_by}</span>
+                            {doc.file_size && (
+                              <span>📦 {(doc.file_size / 1024).toFixed(1)} KB</span>
+                            )}
                           </div>
                         </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => window.open(doc.file_url, '_blank')}
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            View
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const link = document.createElement('a');
+                              link.href = doc.file_url;
+                              link.download = doc.file_name || `timesheet-doc-${idx + 1}`;
+                              link.click();
+                            }}
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeleteDocument(idx)}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
+                    </div>
 
-                      {/* ✅ ENHANCED: OCR Validation Results Canvas */}
-                      {doc.extracted_data && (
-                        <Collapsible
-                          open={ocrExpanded}
-                          onOpenChange={setOcrExpanded}
-                          className="p-4 bg-white"
-                        >
-                          {/* Collapsible Trigger - Summary Header */}
-                          <CollapsibleTrigger className="w-full">
-                            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border-2 border-purple-200 hover:border-purple-400 transition-colors mb-4">
-                              <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
-                                  doc.extracted_data.confidence_score >= 80 ? 'bg-green-500' :
-                                  doc.extracted_data.confidence_score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                    {/* ✅ ENHANCED: OCR Validation Results Canvas */}
+                    {doc.extracted_data && (
+                      <Collapsible
+                        open={ocrExpanded}
+                        onOpenChange={setOcrExpanded}
+                        className="p-4 bg-white"
+                      >
+                        {/* Collapsible Trigger - Summary Header */}
+                        <CollapsibleTrigger className="w-full">
+                          <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border-2 border-purple-200 hover:border-purple-400 transition-colors mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${doc.extracted_data.confidence_score >= 80 ? 'bg-green-500' :
+                                doc.extracted_data.confidence_score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
                                 }`}>
-                                  {doc.extracted_data.confidence_score}%
-                                </div>
-                                <div className="text-left">
-                                  <p className="text-sm font-bold text-purple-900">AI Data Extraction</p>
-                                  <p className="text-xs text-purple-700">
-                                    {doc.extracted_data.validation_status === 'match'
-                                      ? '✅ Validated' : '⚠️ Review Required'}
-                                    {' • '}
-                                    {ocrExpanded ? 'Click to collapse' : 'Click to expand'}
-                                  </p>
-                                </div>
+                                {doc.extracted_data.confidence_score}%
                               </div>
-                              <ChevronDown className={`w-5 h-5 text-purple-600 transition-transform ${ocrExpanded ? 'rotate-180' : ''}`} />
+                              <div className="text-left">
+                                <p className="text-sm font-bold text-purple-900">AI Data Extraction</p>
+                                <p className="text-xs text-purple-700">
+                                  {doc.extracted_data.validation_status === 'match'
+                                    ? '✅ Validated' : '⚠️ Review Required'}
+                                  {' • '}
+                                  {ocrExpanded ? 'Click to collapse' : 'Click to expand'}
+                                </p>
+                              </div>
                             </div>
-                          </CollapsibleTrigger>
+                            <ChevronDown className={`w-5 h-5 text-purple-600 transition-transform ${ocrExpanded ? 'rotate-180' : ''}`} />
+                          </div>
+                        </CollapsibleTrigger>
 
-                          <CollapsibleContent>
+                        <CollapsibleContent>
                           {/* Confidence Score Banner */}
                           {doc.extracted_data.confidence_score !== undefined && (
-                            <div className={`p-4 rounded-lg mb-4 ${
-                              doc.extracted_data.confidence_score >= 80
-                                ? 'bg-green-100 border-2 border-green-400'
-                                : doc.extracted_data.confidence_score >= 60
+                            <div className={`p-4 rounded-lg mb-4 ${doc.extracted_data.confidence_score >= 80
+                              ? 'bg-green-100 border-2 border-green-400'
+                              : doc.extracted_data.confidence_score >= 60
                                 ? 'bg-yellow-100 border-2 border-yellow-400'
                                 : 'bg-red-100 border-2 border-red-400'
-                            }`}>
+                              }`}>
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <p className={`text-sm font-bold ${
-                                    doc.extracted_data.confidence_score >= 80 ? 'text-green-900' :
+                                  <p className={`text-sm font-bold ${doc.extracted_data.confidence_score >= 80 ? 'text-green-900' :
                                     doc.extracted_data.confidence_score >= 60 ? 'text-yellow-900' : 'text-red-900'
-                                  }`}>
+                                    }`}>
                                     🤖 AI Confidence Score
                                   </p>
-                                  <p className={`text-xs mt-1 ${
-                                    doc.extracted_data.confidence_score >= 80 ? 'text-green-700' :
+                                  <p className={`text-xs mt-1 ${doc.extracted_data.confidence_score >= 80 ? 'text-green-700' :
                                     doc.extracted_data.confidence_score >= 60 ? 'text-yellow-700' : 'text-red-700'
-                                  }`}>
+                                    }`}>
                                     {doc.extracted_data.confidence_score >= 80
                                       ? '✅ High confidence - data looks reliable'
                                       : doc.extracted_data.confidence_score >= 60
-                                      ? '⚠️ Medium confidence - please review carefully'
-                                      : '❌ Low confidence - manual verification required'}
+                                        ? '⚠️ Medium confidence - please review carefully'
+                                        : '❌ Low confidence - manual verification required'}
                                   </p>
                                 </div>
-                                <div className={`text-4xl font-black ${
-                                  doc.extracted_data.confidence_score >= 80 ? 'text-green-600' :
+                                <div className={`text-4xl font-black ${doc.extracted_data.confidence_score >= 80 ? 'text-green-600' :
                                   doc.extracted_data.confidence_score >= 60 ? 'text-yellow-600' : 'text-red-600'
-                                }`}>
+                                  }`}>
                                   {doc.extracted_data.confidence_score}%
                                 </div>
                               </div>
@@ -1162,14 +1179,12 @@ export default function TimesheetDetail() {
 
                           {/* Validation Status */}
                           {doc.extracted_data.validation_status && (
-                            <div className={`p-3 rounded-lg mb-4 ${
-                              doc.extracted_data.validation_status === 'match'
-                                ? 'bg-green-50 border-2 border-green-300'
-                                : 'bg-orange-50 border-2 border-orange-300'
-                            }`}>
-                              <p className={`text-sm font-bold ${
-                                doc.extracted_data.validation_status === 'match' ? 'text-green-900' : 'text-orange-900'
+                            <div className={`p-3 rounded-lg mb-4 ${doc.extracted_data.validation_status === 'match'
+                              ? 'bg-green-50 border-2 border-green-300'
+                              : 'bg-orange-50 border-2 border-orange-300'
                               }`}>
+                              <p className={`text-sm font-bold ${doc.extracted_data.validation_status === 'match' ? 'text-green-900' : 'text-orange-900'
+                                }`}>
                                 {doc.extracted_data.validation_status === 'match'
                                   ? '✅ All Data Matches Expected Values'
                                   : '⚠️ Discrepancies Detected - Review Required'}
@@ -1222,27 +1237,23 @@ export default function TimesheetDetail() {
 
                             {/* Signatures */}
                             <div className="grid grid-cols-2 gap-3 pt-2">
-                              <div className={`p-2 rounded border ${
-                                doc.extracted_data.staff_signature
-                                  ? 'bg-green-50 border-green-300'
-                                  : 'bg-red-50 border-red-300'
-                              }`}>
-                                <p className="text-xs text-gray-600 mb-1">Staff Signature</p>
-                                <p className={`text-xs font-bold ${
-                                  doc.extracted_data.staff_signature ? 'text-green-700' : 'text-red-700'
+                              <div className={`p-2 rounded border ${doc.extracted_data.staff_signature
+                                ? 'bg-green-50 border-green-300'
+                                : 'bg-red-50 border-red-300'
                                 }`}>
+                                <p className="text-xs text-gray-600 mb-1">Staff Signature</p>
+                                <p className={`text-xs font-bold ${doc.extracted_data.staff_signature ? 'text-green-700' : 'text-red-700'
+                                  }`}>
                                   {doc.extracted_data.staff_signature ? '✓ Present' : '✗ Missing'}
                                 </p>
                               </div>
-                              <div className={`p-2 rounded border ${
-                                doc.extracted_data.supervisor_signature || doc.extracted_data.client_signature
-                                  ? 'bg-green-50 border-green-300'
-                                  : 'bg-red-50 border-red-300'
-                              }`}>
-                                <p className="text-xs text-gray-600 mb-1">Supervisor Signature</p>
-                                <p className={`text-xs font-bold ${
-                                  doc.extracted_data.supervisor_signature || doc.extracted_data.client_signature ? 'text-green-700' : 'text-red-700'
+                              <div className={`p-2 rounded border ${doc.extracted_data.supervisor_signature || doc.extracted_data.client_signature
+                                ? 'bg-green-50 border-green-300'
+                                : 'bg-red-50 border-red-300'
                                 }`}>
+                                <p className="text-xs text-gray-600 mb-1">Supervisor Signature</p>
+                                <p className={`text-xs font-bold ${doc.extracted_data.supervisor_signature || doc.extracted_data.client_signature ? 'text-green-700' : 'text-red-700'
+                                  }`}>
                                   {doc.extracted_data.supervisor_signature || doc.extracted_data.client_signature ? '✓ Present' : '✗ Missing'}
                                 </p>
                               </div>
@@ -1268,19 +1279,17 @@ export default function TimesheetDetail() {
                                 {doc.extracted_data.discrepancies.map((mismatch, i) => (
                                   <div key={i} className="p-3 bg-white rounded border border-red-200">
                                     <div className="flex items-start gap-2">
-                                      <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-                                        mismatch.severity === 'critical' ? 'bg-red-600' :
+                                      <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${mismatch.severity === 'critical' ? 'bg-red-600' :
                                         mismatch.severity === 'high' ? 'bg-orange-600' : 'bg-yellow-600'
-                                      }`}></div>
+                                        }`}></div>
                                       <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
                                           <p className="text-xs font-bold text-gray-900 uppercase">
                                             {mismatch.field?.replace('_', ' ')}
                                           </p>
-                                          <Badge className={`text-xs ${
-                                            mismatch.severity === 'critical' ? 'bg-red-600 text-white' :
+                                          <Badge className={`text-xs ${mismatch.severity === 'critical' ? 'bg-red-600 text-white' :
                                             mismatch.severity === 'high' ? 'bg-orange-600 text-white' : 'bg-yellow-600 text-white'
-                                          }`}>
+                                            }`}>
                                             {mismatch.severity}
                                           </Badge>
                                         </div>
@@ -1431,50 +1440,50 @@ export default function TimesheetDetail() {
                               </pre>
                             </details>
                           )}
-                          </CollapsibleContent>
-                        </Collapsible>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-6 text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
-                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                  <h3 className="text-sm font-semibold text-gray-700">No documents uploaded yet</h3>
-                  <p className="text-xs text-gray-500 mt-2 max-w-md mx-auto">
-                    Upload paper timesheets, signatures, or supporting documents
-                  </p>
-                  <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200 max-w-lg mx-auto">
-                    <p className="text-xs text-blue-900 font-semibold mb-2">
-                      💡 AI-Powered Document Scanning
-                    </p>
-                    <p className="text-xs text-blue-700">
-                      Our AI will automatically:
-                    </p>
-                    <ul className="text-xs text-blue-700 mt-2 space-y-1 text-left">
-                      <li>• Extract hours worked, signatures, and dates</li>
-                      <li>• Validate data against expected values</li>
-                      <li>• Flag discrepancies for your review</li>
-                      <li>• Assign confidence scores to extracted data</li>
-                    </ul>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
                   </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-6 text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <h3 className="text-sm font-semibold text-gray-700">No documents uploaded yet</h3>
+                <p className="text-xs text-gray-500 mt-2 max-w-md mx-auto">
+                  Upload paper timesheets, signatures, or supporting documents
+                </p>
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200 max-w-lg mx-auto">
+                  <p className="text-xs text-blue-900 font-semibold mb-2">
+                    💡 AI-Powered Document Scanning
+                  </p>
+                  <p className="text-xs text-blue-700">
+                    Our AI will automatically:
+                  </p>
+                  <ul className="text-xs text-blue-700 mt-2 space-y-1 text-left">
+                    <li>• Extract hours worked, signatures, and dates</li>
+                    <li>• Validate data against expected values</li>
+                    <li>• Flag discrepancies for your review</li>
+                    <li>• Assign confidence scores to extracted data</li>
+                  </ul>
                 </div>
-              )}
-            </CardContent>
+              </div>
+            )}
+          </CardContent>
         </Card>
 
         {/* GPS Location - Show before documents on mobile */}
         {hasGPSConsent && timesheet.clock_in_location && (
           <Card className="order-4 lg:col-span-2">
-              <CardHeader className="border-b">
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5" />
-                  Location Verification
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 sm:p-6">
-                <GPSDetails timesheet={timesheet} staff={staff} />
-              </CardContent>
+            <CardHeader className="border-b">
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="w-5 h-5" />
+                Location Verification
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <GPSDetails timesheet={timesheet} staff={staff} />
+            </CardContent>
           </Card>
         )}
 
@@ -1488,32 +1497,32 @@ export default function TimesheetDetail() {
         {/* Admin Financial Details - Show early on mobile */}
         {isAdmin && workedHours > 0 && (
           <Card className="order-2 bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
-              <CardHeader className="border-b border-blue-200">
-                <CardTitle className="flex items-center gap-2 text-blue-900">
-                  <DollarSign className="w-5 h-5" />
-                  Agency Financial Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 sm:p-6 space-y-4">
-                <div>
-                  <p className="text-sm text-blue-700">Client Charge</p>
-                  <p className="text-2xl font-bold text-blue-900">
-                    £{(timesheet.client_charge_amount || 0).toFixed(2)}
-                  </p>
-                  <p className="text-xs text-blue-600">
-                    £{timesheet.charge_rate}/hr × {workedHours}h
-                  </p>
-                </div>
+            <CardHeader className="border-b border-blue-200">
+              <CardTitle className="flex items-center gap-2 text-blue-900">
+                <DollarSign className="w-5 h-5" />
+                Agency Financial Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6 space-y-4">
+              <div>
+                <p className="text-sm text-blue-700">Client Charge</p>
+                <p className="text-2xl font-bold text-blue-900">
+                  £{(timesheet.client_charge_amount || 0).toFixed(2)}
+                </p>
+                <p className="text-xs text-blue-600">
+                  £{timesheet.charge_rate}/hr × {workedHours}h
+                </p>
+              </div>
 
-                <div className="pt-4 border-t border-blue-200">
-                  <p className="text-sm text-blue-700">Agency Margin</p>
-                  <p className="text-2xl font-bold text-blue-900">
-                    £{((timesheet.client_charge_amount || 0) - (timesheet.staff_pay_amount || 0)).toFixed(2)}
-                  </p>
-                  <p className="text-xs text-blue-600">
-                    {(((timesheet.client_charge_amount || 0) - (timesheet.staff_pay_amount || 0)) / (timesheet.client_charge_amount || 1) * 100).toFixed(1)}% margin
-                  </p>
-                </div>
+              <div className="pt-4 border-t border-blue-200">
+                <p className="text-sm text-blue-700">Agency Margin</p>
+                <p className="text-2xl font-bold text-blue-900">
+                  £{((timesheet.client_charge_amount || 0) - (timesheet.staff_pay_amount || 0)).toFixed(2)}
+                </p>
+                <p className="text-xs text-blue-600">
+                  {(((timesheet.client_charge_amount || 0) - (timesheet.staff_pay_amount || 0)) / (timesheet.client_charge_amount || 1) * 100).toFixed(1)}% margin
+                </p>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -1521,27 +1530,27 @@ export default function TimesheetDetail() {
         {/* Actions - Show after financial on mobile */}
         {isAdmin && timesheet.status === 'submitted' && (
           <Card className="order-3">
-              <CardHeader className="border-b">
-                <CardTitle>Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 sm:p-6 space-y-3">
-                <Button
-                  onClick={handleApprove}
-                  className="w-full bg-green-600 hover:bg-green-700"
-                  disabled={updateMutation.isPending}
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Approve Timesheet
-                </Button>
-                <Button
-                  onClick={handleReject}
-                  variant="outline"
-                  className="w-full text-red-600 border-red-600 hover:bg-red-50"
-                  disabled={updateMutation.isPending}
-                >
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Reject Timesheet
-                </Button>
+            <CardHeader className="border-b">
+              <CardTitle>Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6 space-y-3">
+              <Button
+                onClick={handleApprove}
+                className="w-full bg-green-600 hover:bg-green-700"
+                disabled={updateMutation.isPending}
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Approve Timesheet
+              </Button>
+              <Button
+                onClick={handleReject}
+                variant="outline"
+                className="w-full text-red-600 border-red-600 hover:bg-red-50"
+                disabled={updateMutation.isPending}
+              >
+                <XCircle className="w-4 h-4 mr-2" />
+                Reject Timesheet
+              </Button>
             </CardContent>
           </Card>
         )}
@@ -1549,55 +1558,55 @@ export default function TimesheetDetail() {
         {/* Create Invoice Button - Show after actions on mobile */}
         {isAdmin && timesheet.status === 'approved' && !timesheet.invoice_id && (
           <Card className="order-3 border-2 border-green-300 bg-gradient-to-br from-green-50 to-emerald-50">
-              <CardHeader className="border-b border-green-200">
-                <CardTitle className="text-green-900">Ready to Invoice</CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 sm:p-6">
-                <p className="text-sm text-green-800 mb-4">
-                  This timesheet has been approved and is ready to be invoiced.
-                </p>
-                <Button
-                  onClick={handleCreateInvoice}
-                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Create Invoice
-                </Button>
-                <p className="text-xs text-green-700 mt-2 text-center">
-                  Will generate PDF invoice with VAT calculation
-                </p>
-              </CardContent>
+            <CardHeader className="border-b border-green-200">
+              <CardTitle className="text-green-900">Ready to Invoice</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <p className="text-sm text-green-800 mb-4">
+                This timesheet has been approved and is ready to be invoiced.
+              </p>
+              <Button
+                onClick={handleCreateInvoice}
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Create Invoice
+              </Button>
+              <p className="text-xs text-green-700 mt-2 text-center">
+                Will generate PDF invoice with VAT calculation
+              </p>
+            </CardContent>
           </Card>
         )}
 
         {/* Invoice Link - Show after create invoice on mobile */}
         {timesheet.invoice_id && (
           <Card className="order-3 border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-cyan-50">
-              <CardHeader className="border-b border-blue-200">
-                <CardTitle className="text-blue-900">Invoiced</CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 sm:p-6">
-                <p className="text-sm text-blue-800 mb-4">
-                  This timesheet has been included in an invoice.
-                </p>
-                <Button
-                  onClick={() => navigate(`${createPageUrl('InvoiceDetail')}?id=${timesheet.invoice_id}`)}
-                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  View Invoice
-                </Button>
+            <CardHeader className="border-b border-blue-200">
+              <CardTitle className="text-blue-900">Invoiced</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <p className="text-sm text-blue-800 mb-4">
+                This timesheet has been included in an invoice.
+              </p>
+              <Button
+                onClick={() => navigate(`${createPageUrl('InvoiceDetail')}?id=${timesheet.invoice_id}`)}
+                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                View Invoice
+              </Button>
             </CardContent>
           </Card>
         )}
 
         {timesheet.rejection_reason && (
-            <Alert variant="destructive">
-              <XCircle className="h-5 w-5" />
-              <AlertDescription>
-                <strong>Rejection Reason:</strong>
-                <p className="mt-1">{timesheet.rejection_reason}</p>
-              </AlertDescription>
+          <Alert variant="destructive">
+            <XCircle className="h-5 w-5" />
+            <AlertDescription>
+              <strong>Rejection Reason:</strong>
+              <p className="mt-1">{timesheet.rejection_reason}</p>
+            </AlertDescription>
           </Alert>
         )}
       </div>

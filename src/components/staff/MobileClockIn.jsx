@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { 
-  MapPin, Clock, AlertTriangle, CheckCircle, Loader2, 
+import {
+  MapPin, Clock, AlertTriangle, CheckCircle, Loader2,
   Navigation, Shield, Info, XCircle, Building2
 } from "lucide-react";
 import { toast } from "sonner";
@@ -124,7 +124,7 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
 
   const requestGPSConsent = async () => {
     if (!staff) return;
-    
+
     try {
       const { error } = await supabase
         .from('staff')
@@ -133,7 +133,7 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
           gps_consent_date: new Date().toISOString()
         })
         .eq('id', staff.id);
-      
+
       if (error) throw error;
       setStaff({ ...staff, gps_consent: true });
       toast.success('✅ GPS consent granted');
@@ -357,7 +357,8 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
             agency_id: shift.agency_id, booking_id: booking.id, staff_id: staff.id,
             client_id: shift.client_id, shift_date: shift.date, clock_in_time: new Date().toISOString(),
             clock_in_location: capturedLocation, pay_rate: shift.pay_rate, charge_rate: shift.charge_rate,
-            status: 'draft', geofence_validated: validation.validated, geofence_distance_meters: validation.distance_meters
+            status: 'draft', geofence_validated: validation.validated, geofence_distance_meters: validation.distance_meters,
+            shift_id: shift.id // ✅ FIX: Link timesheet to shift to prevent duplicates
           })
           .select().single();
         if (timesheetError) throw new Error(`Failed to create timesheet: ${timesheetError.message}`);
@@ -622,7 +623,7 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 space-y-4">
-          
+
           {/* Shift Details */}
           {client && (
             <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-2">
@@ -648,7 +649,7 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
               </Alert>
             )}
 
-            <Button 
+            <Button
               onClick={handleClockOut}
               disabled={loading || isClockingIn}
               className={`w-full py-6 text-lg bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700 disabled:bg-gray-400`}
@@ -709,7 +710,7 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6 space-y-4">
-        
+
         {/* Shift Details */}
         {client && (
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
@@ -826,7 +827,7 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
               Check My Location
             </Button>
 
-            <Button 
+            <Button
               onClick={handleClockIn}
               disabled={loading || isClockingIn || isLoadingLocation}
               className={`w-full py-6 text-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed`}

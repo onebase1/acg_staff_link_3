@@ -25,13 +25,14 @@ export default function GenerateInvoices() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // ✅ FIX: Fetch authenticated user
+  // ✅ FIX: Fetch authenticated user & Enforce RBAC
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
         if (authError || !authUser) {
           console.error('❌ Not authenticated:', authError);
+          navigate('/login');
           return;
         }
 
@@ -46,15 +47,24 @@ export default function GenerateInvoices() {
           return;
         }
 
+        // 🔒 RBAC CHECK: Only Admins and Managers allowed
+        const allowedRoles = ['agency_admin', 'manager'];
+        if (!allowedRoles.includes(profile.user_type)) {
+          console.warn(`⛔ Access Denied: User role '${profile.user_type}' is not authorized.`);
+          toast.error('⛔ Access Denied: You do not have permission to view this page.');
+          navigate('/Dashboard'); // Redirect to safe page
+          return;
+        }
+
         setUser(profile);
-        console.log('✅ [Generate Invoices] User loaded:', profile.email, 'Agency:', profile.agency_id);
+        console.log('✅ [Generate Invoices] User loaded & authorized:', profile.email);
       } catch (error) {
         console.error('❌ [Generate Invoices] Auth error:', error);
         toast.error('Failed to load user data');
       }
     };
     fetchUser();
-  }, []);
+  }, [navigate]);
 
   // ✅ FIX: Fetch agency with proper error handling
   const { data: agency, isLoading: agencyLoading, error: agencyError } = useQuery({
@@ -71,12 +81,12 @@ export default function GenerateInvoices() {
         .select('*')
         .eq('id', user.agency_id)
         .single();
-      
+
       if (agencyError) {
         console.error('❌ Error fetching agency:', agencyError);
         return null;
       }
-      
+
       if (!userAgency) {
         console.error('❌ [Generate Invoices] Agency not found:', user.agency_id);
         return null;
@@ -84,7 +94,7 @@ export default function GenerateInvoices() {
 
       console.log('✅ [Generate Invoices] Agency loaded:', userAgency.name);
       console.log('🏦 [Generate Invoices] Bank details:', userAgency.bank_details);
-      
+
       return userAgency;
     },
     enabled: !!user?.agency_id,
@@ -123,7 +133,7 @@ export default function GenerateInvoices() {
         .eq('status', 'approved')
         .is('invoice_id', null)
         .order('shift_date', { ascending: false });
-      
+
       if (error) {
         console.error('❌ Error fetching timesheets:', error);
         return [];
@@ -139,7 +149,7 @@ export default function GenerateInvoices() {
       const { data, error } = await supabase
         .from('clients')
         .select('*');
-      
+
       if (error) {
         console.error('❌ Error fetching clients:', error);
         return [];
@@ -155,7 +165,7 @@ export default function GenerateInvoices() {
       const { data, error } = await supabase
         .from('staff')
         .select('*');
-      
+
       if (error) {
         console.error('❌ Error fetching staff:', error);
         return [];
@@ -185,7 +195,7 @@ export default function GenerateInvoices() {
 
   const getInvoiceCount = () => {
     if (selectedTimesheets.length === 0) return 0;
-    
+
     const selectedTimesheetObjects = timesheets.filter(t => selectedTimesheets.includes(t.id));
     const uniqueClients = new Set(selectedTimesheetObjects.map(t => t.client_id));
     return uniqueClients.size;
@@ -197,7 +207,7 @@ export default function GenerateInvoices() {
     mutationFn: async (timesheetIds) => {
       console.log('🔄 [Generate Invoices] Starting with', timesheetIds.length, 'timesheets');
       console.log('📋 [Generate Invoices] Timesheet IDs:', timesheetIds);
-      
+
       if (!hasBankDetails) {
         throw new Error('🚫 BLOCKED: Bank details must be configured before generating invoices. Go to Agency Settings → Bank Details.');
       }
@@ -216,7 +226,7 @@ export default function GenerateInvoices() {
       queryClient.invalidateQueries(['approved-timesheets']);
       queryClient.invalidateQueries(['timesheets']);
       queryClient.invalidateQueries(['invoices']);
-      
+
       setSelectedTimesheets([]);
 
       if (data.validation_errors && data.validation_errors.length > 0) {
@@ -248,7 +258,7 @@ export default function GenerateInvoices() {
           }
         });
       }
-      
+
       if (data.invoices_created > 0) {
         toast.success(
           <div>
@@ -586,8 +596,8 @@ export default function GenerateInvoices() {
                             {getClientName(clientId)}
                           </CardTitle>
                           <p className="text-sm text-gray-600 mt-1">
-                            {clientTimesheets.length} timesheet{clientTimesheets.length > 1 ? 's' : ''} • 
-                            {' '}{clientTotals.totalHours.toFixed(1)}h • 
+                            {clientTimesheets.length} timesheet{clientTimesheets.length > 1 ? 's' : ''} •
+                            {' '}{clientTotals.totalHours.toFixed(1)}h •
                             {' '}£{clientTotals.totalValue.toFixed(2)}
                           </p>
                         </div>
@@ -599,9 +609,8 @@ export default function GenerateInvoices() {
                       {clientTimesheets.map((timesheet) => (
                         <div
                           key={timesheet.id}
-                          className={`p-4 hover:bg-gray-50 transition-colors ${
-                            selectedTimesheets.includes(timesheet.id) ? 'bg-cyan-50' : ''
-                          }`}
+                          className={`p-4 hover:bg-gray-50 transition-colors ${selectedTimesheets.includes(timesheet.id) ? 'bg-cyan-50' : ''
+                            }`}
                         >
                           <div className="flex items-start gap-3">
                             <Checkbox
@@ -702,11 +711,11 @@ export default function GenerateInvoices() {
                 Breakdown by Client
               </h3>
               {Object.entries(timesheetsByClient)
-                .filter(([_, timesheetsForClient]) => 
+                .filter(([_, timesheetsForClient]) =>
                   timesheetsForClient.some(t => selectedTimesheets.includes(t.id))
                 )
                 .map(([clientId, clientTimesheets]) => {
-                  const selectedClientTimesheets = clientTimesheets.filter(t => 
+                  const selectedClientTimesheets = clientTimesheets.filter(t =>
                     selectedTimesheets.includes(t.id)
                   );
                   const clientTotal = selectedClientTimesheets.reduce(
@@ -734,7 +743,7 @@ export default function GenerateInvoices() {
                             </p>
                           </div>
                         </div>
-                        
+
                         {/* Line Item Preview */}
                         <div className="mt-3 space-y-1">
                           {selectedClientTimesheets.map((timesheet) => (
@@ -770,14 +779,14 @@ export default function GenerateInvoices() {
           </div>
 
           <DialogFooter className="gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setShowPreviewDialog(false)}
               disabled={generateInvoicesMutation.isPending}
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={confirmGenerateInvoices}
               disabled={generateInvoicesMutation.isPending}
               className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"

@@ -215,7 +215,7 @@ export default function Shifts() {
 
     // Apply status filter
     const statusParam = params.get('status');
-    if (statusParam && ['all', 'open', 'assigned', 'confirmed', 'in_progress', 'awaiting_admin_closure', 'completed', 'cancelled', 'no_show', 'disputed'].includes(statusParam)) {
+    if (statusParam && ['all', 'open', 'marketplace', 'assigned', 'confirmed', 'in_progress', 'awaiting_admin_closure', 'completed', 'cancelled', 'no_show', 'disputed'].includes(statusParam)) {
       setStatusFilter(statusParam);
     }
 
@@ -1654,6 +1654,14 @@ export default function Shifts() {
                   className={statusFilter === 'open' ? 'bg-red-600 text-white' : ''}
                 >
                   Open ({filterCounts.open})
+                </Button>
+                <Button
+                  variant={statusFilter === 'marketplace' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter('marketplace')}
+                  className={statusFilter === 'marketplace' ? 'bg-purple-600 text-white' : ''}
+                >
+                  Marketplace ({filterCounts.marketplace})
                 </Button>
                 <Button
                   variant={statusFilter === 'assigned' ? 'default' : 'outline'}

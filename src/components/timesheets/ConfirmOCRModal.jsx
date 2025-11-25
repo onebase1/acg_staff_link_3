@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,9 @@ import {
   User,
   Building2,
   Coffee,
+  MousePointerClick,
 } from 'lucide-react';
+import { format } from 'date-fns';
 
 /**
  * 🔍 CONFIRM OCR MODAL
@@ -31,9 +33,10 @@ import {
  * Features:
  * - Visual confidence score indicator
  * - Mismatch highlighting
- * - Multi-row timesheet support
+ * - Multi-row timesheet support with INTERACTIVE SELECTION
  * - Auto-approval logic guidance
  * - Re-upload option
+ * - Locked state (prevents accidental closure)
  */
 export default function ConfirmOCRModal({
   isOpen,
@@ -49,11 +52,24 @@ export default function ConfirmOCRModal({
   if (!extractedData) return null;
 
   const [staffNote, setStaffNote] = useState('');
+  // State to track which row is currently selected (defaults to auto-matched row)
+  const [activeRow, setActiveRow] = useState(null);
+
+  // Initialize active row when data loads
+  useEffect(() => {
+    if (extractedData?.matched_row_info) {
+      setActiveRow(extractedData.matched_row_info);
+    } else if (extractedData?.rows && extractedData.rows.length > 0) {
+      // Fallback to first row if no match found but rows exist
+      setActiveRow(extractedData.rows[0]);
+    } else {
+      setActiveRow(null);
+    }
+  }, [extractedData]);
 
   const confidence = extractedData.confidence?.overall || 0;
   const hasHighConfidence = confidence >= 80;
   const hasLowConfidence = confidence < 60;
-  const hasMediumConfidence = confidence >= 60 && confidence < 80;
 
   const canAutoApprove = (
     hasHighConfidence &&
@@ -82,17 +98,88 @@ export default function ConfirmOCRModal({
 
   // Multi-row detection
   const hasMultipleRows = extractedData.rows && extractedData.rows.length > 1;
-  const matchedRow = extractedData.matched_row_info;
+
+  // Handler for row selection
+  const handleRowSelect = (row) => {
+    console.log('👆 User selected row:', row);
+    setActiveRow(row);
+  };
+
+  // Handler for confirm - injects the selected row data
+  const handleConfirmWrapper = () => {
+    // If user selected a different row, we need to pass that info back
+    // We can attach it to the extractedData or pass it as a separate argument
+    // For now, we'll modify the extractedData object in place before passing it back (or rely on parent to use activeRow if we passed it)
+
+    // Actually, the parent `handleConfirmOCR` uses `pendingOcrData`. 
+    // We should probably pass the activeRow to the onConfirm callback.
+    // But `onConfirm` currently only takes `staffNote`.
+
+    // Let's modify `onConfirm` in the parent to accept an override object, 
+    // OR we update the `extractedData` in the parent context.
+    // Since we can't easily change the parent's state from here without a setter, 
+    // we will pass the `activeRow` as a second argument to `onConfirm`.
+
+    // Wait, `onConfirm` signature in parent is `(staffNote)`. 
+    // We need to update the parent to handle this. 
+    // For now, let's assume we can pass it.
+
+    // BETTER APPROACH: The parent uses `pendingOcrData`. 
+    // We can't mutate that safely.
+    // Let's pass `{ ...extractedData, matched_row_info: activeRow }` to onConfirm?
+    // No, `onConfirm` doesn't take data.
+
+    // Let's pass it as a second arg: onConfirm(staffNote, activeRow)
+    onConfirm(staffNote, activeRow);
+  };
+
+  // Helper to format display values based on Active Row or Global Data
+  const getDisplayValue = (field) => {
+    if (activeRow) {
+      if (field === 'date') return activeRow.date;
+      if (field === 'time') return `${activeRow.start_time || '??:??'} - ${activeRow.end_time || '??:??'}`;
+      if (field === 'break') return `${activeRow.break_minutes || 0} minutes`;
+      if (field === 'hours') return `${activeRow.hours || 0}h`;
+    }
+    // Fallback to global extracted data
+    if (field === 'date') return extractedData.date;
+    if (field === 'time') return `${extractedData.start_time || '??:??'} - ${extractedData.end_time || '??:??'}`;
+    if (field === 'break') return `${extractedData.break_minutes || 0} minutes`;
+    if (field === 'hours') return `${extractedData.hours_worked || extractedData.total_hours || 0}h`;
+    return 'N/A';
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      // 🔒 PREVENT ACCIDENTAL CLOSURE
+      // Only allow closing if explicitly calling onClose (which usually happens via buttons)
+      // We block the default "click outside" or "escape" closing by not calling onClose(false) here
+      // unless we really want to. 
+      // Actually, onOpenChange is called by the library. We should just ignore false if we want to lock it.
+      // But we need to allow the parent to close it.
+      // The best way in Radix UI / shadcn is to use onInteractOutside and onEscapeKeyDown on Content.
+      if (!open) {
+        // Do nothing here to prevent close. The buttons will call onClose directly if needed.
+        // Or better, we just don't pass onOpenChange to Dialog if we want to fully control it?
+        // No, we need it for the close button (X) if it exists.
+        // Let's rely on the Content props below.
+      }
+    }}>
+      <DialogContent
+        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        // 🔒 LOCK MODAL: Prevent closing by clicking outside or pressing Escape
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        // Hide the default close button (X) to force user to choose an action
+        hideCloseButton={true}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             🔍 Review Extracted Data
           </DialogTitle>
           <DialogDescription>
-            Please verify the information extracted from your timesheet
+            Please verify the information extracted from your timesheet.
+            {hasMultipleRows && " Select the correct shift if multiple are detected."}
           </DialogDescription>
         </DialogHeader>
 
@@ -144,6 +231,63 @@ export default function ConfirmOCRModal({
             </Alert>
           )}
 
+          {/* Multi-Row Timesheet Display - MOVED UP for better visibility */}
+          {hasMultipleRows && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-2 mb-3">
+                <MousePointerClick className="w-5 h-5 text-blue-600 mt-0.5" />
+                <div>
+                  <p className="font-bold text-blue-900">📋 Multi-Day Timesheet Detected</p>
+                  <p className="text-sm text-blue-700">
+                    We found {extractedData.rows.length} shifts.
+                    <strong> Click the correct row</strong> to use its data.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2 mt-3">
+                {extractedData.rows.map((row, idx) => {
+                  const isSelected = row.date === activeRow?.date; // Use activeRow for selection state
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => handleRowSelect(row)}
+                      className={`p-3 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md ${isSelected
+                          ? 'bg-green-50 border-green-500 ring-1 ring-green-500'
+                          : 'bg-white border-gray-200 hover:border-blue-300'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {isSelected ? (
+                            <CheckCircle2 className="w-5 h-5 text-green-600" />
+                          ) : (
+                            <div className="w-5 h-5 rounded-full border-2 border-gray-300" />
+                          )}
+                          <span className={`font-medium ${isSelected ? 'text-green-900' : 'text-gray-700'}`}>
+                            {row.date}
+                          </span>
+                          {isSelected && (
+                            <Badge className="bg-green-600 text-white hover:bg-green-700">SELECTED</Badge>
+                          )}
+                        </div>
+                        <span className={`font-bold ${isSelected ? 'text-green-900' : 'text-gray-600'}`}>
+                          {row.hours}h
+                        </span>
+                      </div>
+                      {row.start_time && row.end_time && (
+                        <p className={`text-sm mt-1 ml-7 ${isSelected ? 'text-green-700' : 'text-gray-500'}`}>
+                          {row.start_time} - {row.end_time}
+                          {row.break_minutes > 0 && ` (${row.break_minutes}min break)`}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Extracted Data Fields */}
           <div className="space-y-3 border rounded-lg p-4 bg-white">
             <h3 className="font-semibold text-gray-900 mb-3">Extracted Information</h3>
@@ -170,7 +314,7 @@ export default function ConfirmOCRModal({
             <DataField
               icon={<Calendar className="w-5 h-5" />}
               label="Date"
-              value={matchedRow?.date || extractedData.date}
+              value={getDisplayValue('date')}
               expected={expectedData?.shift_date}
               mismatch={extractedData.mismatches?.find(m => m.field === 'date')}
             />
@@ -179,78 +323,25 @@ export default function ConfirmOCRModal({
             <DataField
               icon={<Clock className="w-5 h-5" />}
               label="Time"
-              value={`${extractedData.start_time || matchedRow?.start_time || '??:??'} - ${extractedData.end_time || matchedRow?.end_time || '??:??'}`}
+              value={getDisplayValue('time')}
             />
 
             {/* Break */}
             <DataField
               icon={<Coffee className="w-5 h-5" />}
               label="Break"
-              value={`${extractedData.break_minutes || matchedRow?.break_minutes || 0} minutes`}
+              value={getDisplayValue('break')}
             />
 
             {/* Hours Worked */}
             <DataField
               icon={<Clock className="w-5 h-5" />}
               label="Hours Worked"
-              value={`${extractedData.hours_worked || matchedRow?.hours || extractedData.total_hours || 0}h`}
+              value={getDisplayValue('hours')}
               expected={expectedData?.scheduled_hours ? `${expectedData.scheduled_hours}h` : null}
               mismatch={extractedData.mismatches?.find(m => m.field === 'hours')}
             />
           </div>
-
-          {/* Multi-Row Timesheet Display */}
-          {hasMultipleRows && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start gap-2 mb-3">
-                <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5" />
-                <div>
-                  <p className="font-bold text-blue-900">📋 Multi-Day Timesheet Detected</p>
-                  <p className="text-sm text-blue-700">
-                    This timesheet contains {extractedData.rows.length} shifts.
-                    We're using the data for <strong>{matchedRow?.date || 'the first date'}</strong>.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2 mt-3">
-                {extractedData.rows.map((row, idx) => {
-                  const isMatched = row.date === matchedRow?.date;
-                  return (
-                    <div
-                      key={idx}
-                      className={`p-3 rounded-lg border-2 transition-all ${
-                        isMatched
-                          ? 'bg-green-50 border-green-500'
-                          : 'bg-gray-50 border-gray-200 opacity-60'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {isMatched && <CheckCircle2 className="w-5 h-5 text-green-600" />}
-                          <span className={`font-medium ${isMatched ? 'text-green-900' : 'text-gray-600'}`}>
-                            {row.date}
-                          </span>
-                          {isMatched && (
-                            <Badge className="bg-green-600 text-white">THIS SHIFT</Badge>
-                          )}
-                        </div>
-                        <span className={`font-bold ${isMatched ? 'text-green-900' : 'text-gray-500'}`}>
-                          {row.hours}h
-                        </span>
-                      </div>
-                      {row.start_time && row.end_time && (
-                        <p className={`text-sm mt-1 ${isMatched ? 'text-green-700' : 'text-gray-500'}`}>
-                          {row.start_time} - {row.end_time}
-                          {row.break_minutes > 0 && ` (${row.break_minutes}min break)`}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
           {/* Mismatches Alert */}
           {extractedData.mismatches && extractedData.mismatches.length > 0 && (
@@ -339,7 +430,7 @@ export default function ConfirmOCRModal({
           {/* Confirm Button */}
           <Button
             type="button"
-            onClick={() => onConfirm(staffNote)}
+            onClick={handleConfirmWrapper}
             disabled={confirming || rejecting}
             className="w-full sm:w-auto bg-green-600 hover:bg-green-700 order-1 sm:order-3"
           >
@@ -362,34 +453,41 @@ export default function ConfirmOCRModal({
  * DataField Component - Shows a single extracted field with optional mismatch
  */
 function DataField({ icon, label, value, expected, mismatch }) {
-  const hasMismatch = !!mismatch;
+  // 🧹 NORMALIZE VALUES FOR COMPARISON
+  // This fixes the "2025-01-17" vs "2025-01-17" mismatch bug caused by type/whitespace
+  const normalize = (val) => String(val || '').trim().toLowerCase();
+
+  // Check if mismatch is real (ignoring case and whitespace)
+  const isRealMismatch = mismatch && normalize(mismatch.actual) !== normalize(mismatch.expected);
+
+  // Also check if the current 'value' matches 'expected' (for dynamic row updates)
+  const matchesExpected = expected && normalize(value) === normalize(expected);
 
   return (
-    <div className={`flex items-start gap-3 p-3 rounded-lg ${
-      hasMismatch ? 'bg-red-50 border border-red-200' : 'bg-gray-50'
-    }`}>
-      <div className={hasMismatch ? 'text-red-600' : 'text-gray-600'}>
+    <div className={`flex items-start gap-3 p-3 rounded-lg ${isRealMismatch ? 'bg-red-50 border border-red-200' : 'bg-gray-50'
+      }`}>
+      <div className={isRealMismatch ? 'text-red-600' : 'text-gray-600'}>
         {icon}
       </div>
       <div className="flex-1">
         <p className="text-xs font-medium text-gray-600 mb-1">{label}</p>
-        <p className={`font-semibold ${hasMismatch ? 'text-red-900' : 'text-gray-900'}`}>
+        <p className={`font-semibold ${isRealMismatch ? 'text-red-900' : 'text-gray-900'}`}>
           {value || 'Not found'}
         </p>
-        {expected && !hasMismatch && (
+        {expected && !isRealMismatch && matchesExpected && (
           <p className="text-xs text-green-600 mt-1">
             ✅ Matches expected: {expected}
           </p>
         )}
-        {hasMismatch && (
+        {isRealMismatch && (
           <p className="text-xs text-red-700 mt-1">
             ⚠️ Expected: {mismatch.expected}
           </p>
         )}
       </div>
-      {hasMismatch ? (
+      {isRealMismatch ? (
         <XCircle className="w-5 h-5 text-red-600" />
-      ) : expected ? (
+      ) : (expected && matchesExpected) ? (
         <CheckCircle2 className="w-5 h-5 text-green-600" />
       ) : null}
     </div>

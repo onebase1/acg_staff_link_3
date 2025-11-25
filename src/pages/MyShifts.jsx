@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -31,6 +31,8 @@ export default function MyShifts() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [confirmingShifts, setConfirmingShifts] = useState(new Set());
 
   // Get current user and staff record
   useEffect(() => {
@@ -115,6 +117,200 @@ export default function MyShifts() {
       return data || [];
     },
     enabled: !!staffRecord?.id,
+  });
+
+  // Fetch bookings (needed for confirmation logic)
+  const { data: myBookings = [] } = useQuery({
+    queryKey: ['my-bookings', staffRecord?.id],
+    queryFn: async () => {
+      if (!staffRecord) return [];
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('staff_id', staffRecord.id);
+
+      if (error) {
+        console.error('❌ Error fetching bookings:', error);
+        return [];
+      }
+      return data || [];
+    },
+    enabled: !!staffRecord,
+  });
+
+  const confirmShiftMutation = useMutation({
+    mutationFn: async (shiftId) => {
+      console.log('✅ [Staff Confirmation] Confirming shift:', shiftId);
+
+      const shift = allShifts.find(s => s.id === shiftId);
+      if (!shift) {
+        throw new Error('Shift not found in local cache.');
+      }
+
+      // Update shift status to confirmed
+      const { error: shiftUpdateError } = await supabase
+        .from('shifts')
+        .update({
+          status: 'confirmed',
+          shift_journey_log: [
+            ...(shift.shift_journey_log || []),
+            {
+              state: 'confirmed',
+              timestamp: new Date().toISOString(),
+              user_id: user?.id,
+              staff_id: staffRecord?.id,
+              method: 'app',
+              notes: 'Staff confirmed attendance via My Shifts'
+            }
+          ]
+        })
+        .eq('id', shiftId);
+
+      if (shiftUpdateError) throw shiftUpdateError;
+
+      // Create or update booking
+      const existingBooking = myBookings.find(b => b.shift_id === shiftId && b.staff_id === staffRecord?.id);
+
+      let bookingId = null;
+
+      if (existingBooking) {
+        const { error: bookingUpdateError } = await supabase
+          .from('bookings')
+          .update({
+            status: 'confirmed',
+            confirmed_by_staff_at: new Date().toISOString()
+          })
+          .eq('id', existingBooking.id);
+
+        if (bookingUpdateError) throw bookingUpdateError;
+        bookingId = existingBooking.id;
+      } else {
+        // If booking doesn't exist, create it.
+        const { data: newBooking, error: bookingCreateError } = await supabase
+          .from('bookings')
+          .insert({
+            agency_id: shift.agency_id,
+            shift_id: shiftId,
+            staff_id: staffRecord.id,
+            client_id: shift.client_id,
+            status: 'confirmed',
+            booking_date: new Date().toISOString(),
+            shift_date: shift.date,
+            start_time: shift.start_time,
+            end_time: shift.end_time,
+            confirmation_method: 'app',
+            confirmed_by_staff_at: new Date().toISOString(),
+            created_date: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (bookingCreateError) throw bookingCreateError;
+        bookingId = newBooking?.id;
+      }
+
+      // Create timesheet
+      let timesheetId = null;
+      try {
+        if (bookingId) {
+          console.log('✅ [Timesheet Creation] Creating timesheet for booking:', bookingId);
+
+          const { data: timesheetResponse, error: timesheetError } = await supabase.functions.invoke('auto-timesheet-creator', {
+            body: {
+              booking_id: bookingId,
+              shift_id: shiftId,
+              staff_id: staffRecord.id,
+              client_id: shift.client_id,
+              agency_id: shift.agency_id
+            }
+          });
+
+          if (timesheetError) {
+            console.error('❌ [Timesheet Creation] Failed:', timesheetError);
+          } else if (timesheetResponse?.success) {
+            timesheetId = timesheetResponse.timesheet_id;
+            if (timesheetResponse.duplicate) {
+              console.log('ℹ️ [Timesheet Creation] Timesheet already exists (ID: ' + timesheetId + '), skipping creation');
+            } else {
+              console.log('✅ [Timesheet Creation] Success! Timesheet ID:', timesheetId);
+            }
+          } else {
+            console.warn('⚠️ [Timesheet Creation] Unexpected response:', timesheetResponse);
+          }
+        }
+      } catch (timesheetError) {
+        console.error('❌ [Timesheet Creation] Exception:', timesheetError);
+      }
+
+      return { shiftId, timesheetId };
+    },
+    onMutate: (shiftId) => {
+      setConfirmingShifts(prev => new Set([...prev, shiftId]));
+    },
+    onSuccess: (data, shiftId) => {
+      setConfirmingShifts(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(shiftId);
+        return newSet;
+      });
+
+      queryClient.invalidateQueries(['myShifts']);
+      queryClient.invalidateQueries(['myTimesheets']);
+      queryClient.invalidateQueries(['my-bookings']);
+      // Invalidate other related queries for app-wide consistency
+      queryClient.invalidateQueries(['my-shifts']);
+      queryClient.invalidateQueries(['shifts']);
+      queryClient.invalidateQueries(['bookings']);
+
+      const confirmedShift = allShifts.find(s => s.id === shiftId);
+      const shiftDateFormatted = confirmedShift ? format(new Date(confirmedShift.date), 'EEE, MMM d') : 'your shift';
+
+      toast.success('✅ Shift Confirmed!', {
+        description: `You've confirmed attendance for ${shiftDateFormatted}. See you there!`,
+        duration: 5000
+      });
+
+      // Notify Admin
+      if (confirmedShift && staffRecord) {
+        const clientName = confirmedShift.clients?.name || 'Care Home';
+        const subject = `✅ Staff Confirmed: ${staffRecord.first_name} ${staffRecord.last_name} for ${clientName}`;
+        const body_html = `
+          <p><strong>${staffRecord.first_name} ${staffRecord.last_name}</strong> has confirmed their attendance for a shift.</p>
+          <ul>
+            <li><strong>Client:</strong> ${clientName}</li>
+            <li><strong>Shift Date:</strong> ${confirmedShift.date}</li>
+            <li><strong>Shift Time:</strong> ${confirmedShift.start_time} - ${confirmedShift.end_time}</li>
+            <li><strong>Role:</strong> ${confirmedShift.role_required}</li>
+          </ul>
+          <p>No action is required. This is an automated confirmation.</p>
+        `;
+
+        supabase.functions.invoke('internal-admin-notifier', {
+          body: { subject, body_html, change_type: 'staff_shift_confirmation' }
+        }).catch(error => console.error("Failed to send admin notification:", error));
+
+        // Notify Client
+        supabase.functions.invoke('shift-verification-chain', {
+          body: {
+            shift_id: confirmedShift.id,
+            trigger_point: 'staff_confirmed_shift'
+          }
+        }).catch(error => console.error("Failed to send client confirmation notification:", error));
+      }
+    },
+    onError: (error, shiftId) => {
+      setConfirmingShifts(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(shiftId);
+        return newSet;
+      });
+
+      console.error('❌ [Staff Confirmation] Error:', error);
+      toast.error('Failed to confirm shift', {
+        description: error.message
+      });
+    }
   });
 
   // Get shifts for selected date (no filtering by status - staff sees everything for the date)
@@ -677,9 +873,20 @@ export default function MyShifts() {
                         <Button
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 font-semibold shadow-md w-full sm:w-auto"
+                          onClick={() => confirmShiftMutation.mutate(shift.id)}
+                          disabled={confirmingShifts.has(shift.id)}
                         >
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Confirm Shift
+                          {confirmingShifts.has(shift.id) ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Confirming...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Confirm Shift
+                            </>
+                          )}
                         </Button>
                       )}
                     </div>

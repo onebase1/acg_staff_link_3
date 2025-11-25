@@ -35,7 +35,7 @@ export function calculateBillableHours(shift) {
 
   const breakHours = (shift.break_duration_minutes || 60) / 60;
   const billableHours = shift.duration_hours - breakHours;
-  
+
   // Ensure we never return negative hours
   return Math.max(0, billableHours);
 }
@@ -63,7 +63,7 @@ export function calculateStaffEarnings(shift) {
 
   const billableHours = calculateBillableHours(shift);
   const payRate = shift.pay_rate || 0;
-  
+
   return billableHours * payRate;
 }
 
@@ -90,7 +90,7 @@ export function calculateClientCharge(shift) {
 
   const billableHours = calculateBillableHours(shift);
   const chargeRate = shift.charge_rate || 0;
-  
+
   return billableHours * chargeRate;
 }
 
@@ -110,7 +110,7 @@ export function calculateClientCharge(shift) {
 export function calculateShiftMargin(shift) {
   const clientCharge = calculateClientCharge(shift);
   const staffEarnings = calculateStaffEarnings(shift);
-  
+
   return clientCharge - staffEarnings;
 }
 
@@ -129,11 +129,11 @@ export function calculateShiftMargin(shift) {
  */
 export function calculateShiftMarginPercentage(shift) {
   const clientCharge = calculateClientCharge(shift);
-  
+
   if (clientCharge === 0) {
     return 0;
   }
-  
+
   const margin = calculateShiftMargin(shift);
   return (margin / clientCharge) * 100;
 }
@@ -181,3 +181,43 @@ export function calculateFinancialSummary(shifts) {
   };
 }
 
+/**
+ * Calculate duration in hours between two time strings (HH:MM)
+ * Handles overnight shifts (e.g., 22:00 to 06:00)
+ * 
+ * @param {string} startTime - Start time in "HH:MM" format
+ * @param {string} endTime - End time in "HH:MM" format
+ * @returns {number} Duration in hours
+ */
+export function calculateDurationHours(startTime, endTime) {
+  if (!startTime || !endTime) return 0;
+
+  const [startH, startM] = startTime.split(':').map(Number);
+  const [endH, endM] = endTime.split(':').map(Number);
+
+  let duration = (endH + endM / 60) - (startH + startM / 60);
+
+  // Handle overnight shifts (end time is next day)
+  if (duration < 0) {
+    duration += 24;
+  }
+
+  return Number(duration.toFixed(2));
+}
+
+/**
+ * Calculate billable hours applying the "10-hour rule"
+ * Rule: Deduct 60 minutes break IF AND ONLY IF total duration >= 10 hours.
+ * Otherwise, no break deduction.
+ * 
+ * @param {number} durationHours - Total raw duration in hours
+ * @returns {number} Billable hours
+ */
+export function calculateBillableHoursWithRule(durationHours) {
+  if (!durationHours || durationHours < 0) return 0;
+
+  // Rule: Remove 60 mins (1 hour) if total hours >= 10
+  const breakDeduction = durationHours >= 10 ? 1 : 0;
+
+  return Math.max(0, durationHours - breakDeduction);
+}
