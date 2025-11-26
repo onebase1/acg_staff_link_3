@@ -232,7 +232,7 @@ export default function ProfileSetup() {
     if (allStaff.length > 0 || agencies.length > 0) {
       initSetup();
     } else if (allStaff.length === 0 && agencies.length === 0) {
-       initSetup();
+      initSetup();
     }
 
   }, [allStaff, agencies]);
@@ -810,7 +810,7 @@ export default function ProfileSetup() {
                 <Input
                   id="full_name"
                   value={formData.full_name}
-                  onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                   className="h-12 text-base"
                   required
                 />
@@ -833,7 +833,7 @@ export default function ProfileSetup() {
                   id="phone"
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   className="h-12 text-base"
                   placeholder="+44..."
                   required
@@ -848,7 +848,7 @@ export default function ProfileSetup() {
                     id="date_of_birth"
                     type="date"
                     value={formData.date_of_birth}
-                    onChange={(e) => setFormData({...formData, date_of_birth: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
                     className="h-12 text-base"
                     required
                   />
@@ -859,276 +859,276 @@ export default function ProfileSetup() {
 
           {/* ✅ RBAC: Only show Address for staff members */}
           {(user?.user_type === 'staff_member' || linkedStaff) && (
-          <Card>
-            <CardHeader className="bg-gray-50">
-              <CardTitle className="text-lg">Address *</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              <div>
-                <Label htmlFor="address_line1">Address Line 1 *</Label>
-                <Input
-                  id="address_line1"
-                  value={formData.address.line1}
-                  onChange={(e) => setFormData({...formData, address: {...formData.address, line1: e.target.value}})}
-                  className="h-12 text-base"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="address_line2">Address Line 2</Label>
-                <Input
-                  id="address_line2"
-                  value={formData.address.line2}
-                  onChange={(e) => setFormData({...formData, address: {...formData.address, line2: e.target.value}})}
-                  className="h-12 text-base"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+            <Card>
+              <CardHeader className="bg-gray-50">
+                <CardTitle className="text-lg">Address *</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-4">
                 <div>
-                  <Label htmlFor="address_city">City *</Label>
+                  <Label htmlFor="address_line1">Address Line 1 *</Label>
                   <Input
-                    id="address_city"
-                    value={formData.address.city}
-                    onChange={(e) => setFormData({...formData, address: {...formData.address, city: e.target.value}})}
+                    id="address_line1"
+                    value={formData.address.line1}
+                    onChange={(e) => setFormData({ ...formData, address: { ...formData.address, line1: e.target.value } })}
                     className="h-12 text-base"
                     required
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="address_postcode">Postcode *</Label>
+                  <Label htmlFor="address_line2">Address Line 2</Label>
                   <Input
-                    id="address_postcode"
-                    value={formData.address.postcode}
-                    onChange={(e) => setFormData({...formData, address: {...formData.address, postcode: e.target.value}})}
+                    id="address_line2"
+                    value={formData.address.line2}
+                    onChange={(e) => setFormData({ ...formData, address: { ...formData.address, line2: e.target.value } })}
                     className="h-12 text-base"
-                    placeholder="TS28 5EN"
-                    required
                   />
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="address_city">City *</Label>
+                    <Input
+                      id="address_city"
+                      value={formData.address.city}
+                      onChange={(e) => setFormData({ ...formData, address: { ...formData.address, city: e.target.value } })}
+                      className="h-12 text-base"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="address_postcode">Postcode *</Label>
+                    <Input
+                      id="address_postcode"
+                      value={formData.address.postcode}
+                      onChange={(e) => setFormData({ ...formData, address: { ...formData.address, postcode: e.target.value } })}
+                      className="h-12 text-base"
+                      placeholder="TS28 5EN"
+                      required
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* ✅ RBAC: Only show Emergency Contact for staff members */}
           {(user?.user_type === 'staff_member' || linkedStaff) && (
-          <Card>
-            <CardHeader className="bg-gray-50">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Heart className="w-5 h-5 text-red-600" />
-                Emergency Contact *
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              <div>
-                <Label htmlFor="emergency_name">Contact Name *</Label>
-                <Input
-                  id="emergency_name"
-                  value={formData.emergency_contact.name}
-                  onChange={(e) => setFormData({...formData, emergency_contact: {...formData.emergency_contact, name: e.target.value}})}
-                  className="h-12 text-base"
-                  required
-                />
-              </div>
+            <Card>
+              <CardHeader className="bg-gray-50">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Heart className="w-5 h-5 text-red-600" />
+                  Emergency Contact *
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-4">
+                <div>
+                  <Label htmlFor="emergency_name">Contact Name *</Label>
+                  <Input
+                    id="emergency_name"
+                    value={formData.emergency_contact.name}
+                    onChange={(e) => setFormData({ ...formData, emergency_contact: { ...formData.emergency_contact, name: e.target.value } })}
+                    className="h-12 text-base"
+                    required
+                  />
+                </div>
 
-              <div>
-                <Label htmlFor="emergency_phone">Contact Phone *</Label>
-                <Input
-                  id="emergency_phone"
-                  type="tel"
-                  value={formData.emergency_contact.phone}
-                  onChange={(e) => setFormData({...formData, emergency_contact: {...formData.emergency_contact, phone: e.target.value}})}
-                  className="h-12 text-base"
-                  placeholder="+44..."
-                  required
-                />
-              </div>
+                <div>
+                  <Label htmlFor="emergency_phone">Contact Phone *</Label>
+                  <Input
+                    id="emergency_phone"
+                    type="tel"
+                    value={formData.emergency_contact.phone}
+                    onChange={(e) => setFormData({ ...formData, emergency_contact: { ...formData.emergency_contact, phone: e.target.value } })}
+                    className="h-12 text-base"
+                    placeholder="+44..."
+                    required
+                  />
+                </div>
 
-              <div>
-                <Label htmlFor="emergency_relationship">Relationship *</Label>
-                <Input
-                  id="emergency_relationship"
-                  value={formData.emergency_contact.relationship}
-                  onChange={(e) => setFormData({...formData, emergency_contact: {...formData.emergency_contact, relationship: e.target.value}})}
-                  className="h-12 text-base"
-                  placeholder="e.g., Spouse, Parent, Sibling"
-                  required
-                />
-              </div>
-            </CardContent>
-          </Card>
+                <div>
+                  <Label htmlFor="emergency_relationship">Relationship *</Label>
+                  <Input
+                    id="emergency_relationship"
+                    value={formData.emergency_contact.relationship}
+                    onChange={(e) => setFormData({ ...formData, emergency_contact: { ...formData.emergency_contact, relationship: e.target.value } })}
+                    className="h-12 text-base"
+                    placeholder="e.g., Spouse, Parent, Sibling"
+                    required
+                  />
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* ✅ RBAC: Only show References for staff members */}
           {(user?.user_type === 'staff_member' || linkedStaff) && (
-          <Card>
-            <CardHeader className="bg-gray-50">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  References (Optional - Recommended 2)
-                </CardTitle>
-                <Badge className={formData.references.length >= 2 ? 'bg-green-600' : 'bg-yellow-600'}>
-                  {formData.references.length}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              {formData.references.map((ref, idx) => (
-                <Card key={idx} className="border-2">
-                  <CardContent className="p-3 space-y-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold text-sm">Reference {idx + 1}</h4>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeReference(idx)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </Button>
-                    </div>
+            <Card>
+              <CardHeader className="bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    References (Optional - Recommended 2)
+                  </CardTitle>
+                  <Badge className={formData.references.length >= 2 ? 'bg-green-600' : 'bg-yellow-600'}>
+                    {formData.references.length}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 space-y-4">
+                {formData.references.map((ref, idx) => (
+                  <Card key={idx} className="border-2">
+                    <CardContent className="p-3 space-y-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-sm">Reference {idx + 1}</h4>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeReference(idx)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </Button>
+                      </div>
 
-                    <Input
-                      placeholder="Referee Name"
-                      value={ref.referee_name}
-                      onChange={(e) => updateReference(idx, 'referee_name', e.target.value)}
-                      className="h-11 text-base"
-                    />
-                    <Input
-                      placeholder="Position/Job Title"
-                      value={ref.referee_position}
-                      onChange={(e) => updateReference(idx, 'referee_position', e.target.value)}
-                      className="h-11 text-base"
-                    />
-                    <Input
-                      placeholder="Company"
-                      value={ref.referee_company}
-                      onChange={(e) => updateReference(idx, 'referee_company', e.target.value)}
-                      className="h-11 text-base"
-                    />
-                    <Input
-                      placeholder="Email"
-                      type="email"
-                      value={ref.referee_email}
-                      onChange={(e) => updateReference(idx, 'referee_email', e.target.value)}
-                      className="h-11 text-base"
-                    />
-                    <Input
-                      placeholder="Phone"
-                      type="tel"
-                      value={ref.referee_phone}
-                      onChange={(e) => updateReference(idx, 'referee_phone', e.target.value)}
-                      className="h-11 text-base"
-                    />
-                  </CardContent>
-                </Card>
-              ))}
+                      <Input
+                        placeholder="Referee Name"
+                        value={ref.referee_name}
+                        onChange={(e) => updateReference(idx, 'referee_name', e.target.value)}
+                        className="h-11 text-base"
+                      />
+                      <Input
+                        placeholder="Position/Job Title"
+                        value={ref.referee_position}
+                        onChange={(e) => updateReference(idx, 'referee_position', e.target.value)}
+                        className="h-11 text-base"
+                      />
+                      <Input
+                        placeholder="Company"
+                        value={ref.referee_company}
+                        onChange={(e) => updateReference(idx, 'referee_company', e.target.value)}
+                        className="h-11 text-base"
+                      />
+                      <Input
+                        placeholder="Email"
+                        type="email"
+                        value={ref.referee_email}
+                        onChange={(e) => updateReference(idx, 'referee_email', e.target.value)}
+                        className="h-11 text-base"
+                      />
+                      <Input
+                        placeholder="Phone"
+                        type="tel"
+                        value={ref.referee_phone}
+                        onChange={(e) => updateReference(idx, 'referee_phone', e.target.value)}
+                        className="h-11 text-base"
+                      />
+                    </CardContent>
+                  </Card>
+                ))}
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addReference}
-                className="w-full h-12 text-base"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Add Reference
-              </Button>
-            </CardContent>
-          </Card>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addReference}
+                  className="w-full h-12 text-base"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Add Reference
+                </Button>
+              </CardContent>
+            </Card>
           )}
 
           {/* ✅ RBAC: Only show Employment History for staff members */}
           {(user?.user_type === 'staff_member' || linkedStaff) && (
-          <Card>
-            <CardHeader className="bg-gray-50">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Briefcase className="w-5 h-5" />
-                  Employment History *
-                </CardTitle>
-                <Badge className={formData.employment_history.length > 0 ? 'bg-green-600' : 'bg-red-600'}>
-                  {formData.employment_history.length}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              {formData.employment_history.map((emp, idx) => (
-                <Card key={idx} className="border-2">
-                  <CardContent className="p-3 space-y-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold text-sm">Job {idx + 1}</h4>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeEmployment(idx)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </Button>
-                    </div>
-
-                    <Input
-                      placeholder="Employer Name *"
-                      value={emp.employer}
-                      onChange={(e) => updateEmployment(idx, 'employer', e.target.value)}
-                      className="h-11 text-base"
-                      required
-                    />
-                    <Input
-                      placeholder="Position/Job Title *"
-                      value={emp.position}
-                      onChange={(e) => updateEmployment(idx, 'position', e.target.value)}
-                      className="h-11 text-base"
-                      required
-                    />
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <Label className="text-xs">Start Date</Label>
-                        <Input
-                          type="date"
-                          value={emp.start_date}
-                          onChange={(e) => updateEmployment(idx, 'start_date', e.target.value)}
-                          className="h-11 text-base"
-                        />
+            <Card>
+              <CardHeader className="bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Briefcase className="w-5 h-5" />
+                    Employment History *
+                  </CardTitle>
+                  <Badge className={formData.employment_history.length > 0 ? 'bg-green-600' : 'bg-red-600'}>
+                    {formData.employment_history.length}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 space-y-4">
+                {formData.employment_history.map((emp, idx) => (
+                  <Card key={idx} className="border-2">
+                    <CardContent className="p-3 space-y-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-sm">Job {idx + 1}</h4>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeEmployment(idx)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </Button>
                       </div>
-                      <div>
-                        <Label className="text-xs">End Date</Label>
-                        <Input
-                          type="date"
-                          value={emp.end_date}
-                          onChange={(e) => updateEmployment(idx, 'end_date', e.target.value)}
-                          className="h-11 text-base"
-                        />
-                      </div>
-                    </div>
-                    <Textarea
-                      placeholder="Key Responsibilities"
-                      value={emp.responsibilities}
-                      onChange={(e) => updateEmployment(idx, 'responsibilities', e.target.value)}
-                      className="text-base"
-                      rows={2}
-                    />
-                  </CardContent>
-                </Card>
-              ))}
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addEmployment}
-                className="w-full h-12 text-base"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Add Employment
-              </Button>
-            </CardContent>
-          </Card>
+                      <Input
+                        placeholder="Employer Name *"
+                        value={emp.employer}
+                        onChange={(e) => updateEmployment(idx, 'employer', e.target.value)}
+                        className="h-11 text-base"
+                        required
+                      />
+                      <Input
+                        placeholder="Position/Job Title *"
+                        value={emp.position}
+                        onChange={(e) => updateEmployment(idx, 'position', e.target.value)}
+                        className="h-11 text-base"
+                        required
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">Start Date</Label>
+                          <Input
+                            type="date"
+                            value={emp.start_date}
+                            onChange={(e) => updateEmployment(idx, 'start_date', e.target.value)}
+                            className="h-11 text-base"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">End Date</Label>
+                          <Input
+                            type="date"
+                            value={emp.end_date}
+                            onChange={(e) => updateEmployment(idx, 'end_date', e.target.value)}
+                            className="h-11 text-base"
+                          />
+                        </div>
+                      </div>
+                      <Textarea
+                        placeholder="Key Responsibilities"
+                        value={emp.responsibilities}
+                        onChange={(e) => updateEmployment(idx, 'responsibilities', e.target.value)}
+                        className="text-base"
+                        rows={2}
+                      />
+                    </CardContent>
+                  </Card>
+                ))}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addEmployment}
+                  className="w-full h-12 text-base"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Add Employment
+                </Button>
+              </CardContent>
+            </Card>
           )}
 
           {/* ✅ RBAC: Only show Occupational Health & Training for staff members */}
@@ -1214,12 +1214,15 @@ export default function ProfileSetup() {
             <Button
               type="submit"
               className="w-full h-14 text-lg bg-gradient-to-r from-cyan-500 to-blue-600"
-              disabled={updateMutation.isPending || isPendingUser}
+              disabled={updateMutation.isPending}
             >
               {updateMutation.isPending ? (
                 'Saving...'
               ) : isPendingUser ? (
-                '⏳ Awaiting Approval'
+                <>
+                  <Save className="w-5 h-5 mr-2" />
+                  Save & Await Approval
+                </>
               ) : needsOnboarding && !isSuperAdmin ? (
                 <>
                   <Save className="w-5 h-5 mr-2" />

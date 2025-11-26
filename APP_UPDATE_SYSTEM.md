@@ -124,11 +124,23 @@ if (hasUpdate) {
   onRefresh={function}         // Called when user clicks refresh
   autoRefreshAfter={number}    // Optional: Auto-refresh after X seconds
 />
+  autoRefreshAfter={number}    // Optional: Auto-refresh after X seconds
+/>
 ```
+
+### **4. Sidebar Version Display**
+
+**File**: `src/pages/Layout.jsx`
+
+**What it does**:
+- Shows current version (e.g., `v1.0.0-f74421b`) at the bottom of the sidebar
+- **Click to Check**: Clicking the version number manually triggers an update check
+- **Visual Feedback**: Icon spins while checking
+- Gives users confidence they are on the latest version
 
 ---
 
-### **4. App Integration**
+### **5. App Integration**
 
 **File**: `src/App.jsx`
 
@@ -153,6 +165,30 @@ function App() {
       {/* Rest of your app */}
     </>
   )
+}
+```
+
+---
+
+### **5. Sidebar Version Display**
+
+**File**: `src/components/Sidebar.jsx`
+
+**Integration**:
+```javascript
+import { useAppVersion } from "@/hooks/useAppVersion";
+
+function Sidebar() {
+  const { currentVersion } = useAppVersion();
+
+  return (
+    <aside>
+      {/* ... other sidebar content ... */}
+      <div className="text-xs text-gray-500 mt-4">
+        Version: {currentVersion}
+      </div>
+    </aside>
+  );
 }
 ```
 

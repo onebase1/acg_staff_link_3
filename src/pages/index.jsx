@@ -147,6 +147,7 @@ import FunctionsAudit from "./FunctionsAudit";
 import ShiftJourneyDiagram from "./ShiftJourneyDiagram";
 
 import SuperAdminAgencyOnboarding from "./SuperAdminAgencyOnboarding";
+import SuperAdminAgencyManagement from "./SuperAdminAgencyManagement";
 
 import GPSAccuracyMonitoring from "./GPSAccuracyMonitoring";
 
@@ -158,154 +159,156 @@ import ResetPassword from "./ResetPassword";
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 const PAGES = {
-    
+
     Home: Home,
-    
+
     Dashboard: Dashboard,
-    
+
     Staff: Staff,
-    
+
     Clients: Clients,
-    
+
     Shifts: Shifts,
-    
+
     Bookings: Bookings,
-    
+
     Timesheets: Timesheets,
-    
+
     Invoices: Invoices,
-    
+
     Payslips: Payslips,
-    
+
     Groups: Groups,
-    
+
     ProfileSetup: ProfileSetup,
-    
+
     HelpCenter: HelpCenter,
-    
+
     StaffPortal: StaffPortal,
-    
+
     ClientPortal: ClientPortal,
-    
+
     ShiftMarketplace: ShiftMarketplace,
-    
+
     AdminDashboard: AdminDashboard,
-    
+
     ComplianceTracker: ComplianceTracker,
-    
+
     PerformanceAnalytics: PerformanceAnalytics,
-    
+
     Phase2Planning: Phase2Planning,
-    
+
     InvoiceDetail: InvoiceDetail,
-    
+
     StaffProfile: StaffProfile,
-    
+
     TestNotifications: TestNotifications,
-    
+
     TestingTracker: TestingTracker,
-    
+
     WhatsAppAgentDemo: WhatsAppAgentDemo,
-    
+
     StakeholderPresentation: StakeholderPresentation,
-    
+
     AdminWorkflows: AdminWorkflows,
-    
+
     AgencySettings: AgencySettings,
-    
+
     BulkShiftCreation: BulkShiftCreation,
 
     AIShiftPaste: AIShiftPaste,
 
     Phase2Implementation: Phase2Implementation,
-    
+
     ShiftCalendar: ShiftCalendar,
-    
+
     StaffAvailability: StaffAvailability,
-    
+
     QuickActions: QuickActions,
-    
+
     LiveShiftMap: LiveShiftMap,
-    
+
     StaffGPSConsent: StaffGPSConsent,
-    
+
     BulkDataImport: BulkDataImport,
-    
+
     TimesheetDetail: TimesheetDetail,
-    
+
     CapabilitiesMatrix: CapabilitiesMatrix,
-    
+
     TestUserCredentials: TestUserCredentials,
-    
+
     DayOneReadiness: DayOneReadiness,
-    
+
     UATTesterGuide: UATTesterGuide,
-    
+
     StaffProfileSimulation: StaffProfileSimulation,
-    
+
     DisputeResolution: DisputeResolution,
-    
+
     OperationalCosts: OperationalCosts,
-    
+
     PostShiftV2: PostShiftV2,
 
     PostShiftV3: PostShiftV3,
 
     NaturalLanguageTests: NaturalLanguageTests,
-    
+
     WhatsAppTimesheetGuide: WhatsAppTimesheetGuide,
-    
+
     Phase2Tracker: Phase2Tracker,
-    
+
     ValidationMatrix: ValidationMatrix,
-    
+
     CleanSlate: CleanSlate,
-    
+
     EmailNotificationTester: EmailNotificationTester,
-    
+
     DailyShiftVerification: DailyShiftVerification,
-    
+
     CFODashboard: CFODashboard,
-    
+
     NaturalLanguageShiftCreator: NaturalLanguageShiftCreator,
-    
+
     GenerateInvoices: GenerateInvoices,
-    
+
     DataSimulationTools: DataSimulationTools,
-    
+
     WhatsAppSetup: WhatsAppSetup,
-    
+
     MyAvailability: MyAvailability,
 
     MyShifts: MyShifts,
 
     DominionPresentation: DominionPresentation,
-    
+
     AdminTrainingHub: AdminTrainingHub,
-    
+
     QuickStartGuide: QuickStartGuide,
-    
+
     TroubleshootingGuide: TroubleshootingGuide,
-    
+
     OnboardClient: OnboardClient,
-    
+
     PhoneDiagnostic: PhoneDiagnostic,
-    
+
     NotificationMonitor: NotificationMonitor,
-    
+
     TestShiftReminders: TestShiftReminders,
 
     TestWhatsAppN8N: TestWhatsAppN8N,
 
     GeneratePayslips: GeneratePayslips,
-    
+
     TimesheetAnalytics: TimesheetAnalytics,
-    
+
     FunctionsAudit: FunctionsAudit,
-    
+
     ShiftJourneyDiagram: ShiftJourneyDiagram,
-    
+
     SuperAdminAgencyOnboarding: SuperAdminAgencyOnboarding,
+
+    SuperAdminAgencyManagement: SuperAdminAgencyManagement,
 
     GPSAccuracyMonitoring: GPSAccuracyMonitoring,
 
@@ -332,164 +335,166 @@ function _getCurrentPage(url) {
 function PagesContent() {
     const location = useLocation();
     const currentPage = _getCurrentPage(location.pathname);
-    
+
     return (
         <Layout currentPageName={currentPage}>
-            <Routes>            
-                
-                    <Route path="/" element={<Home />} />
-                
+            <Routes>
+
+                <Route path="/" element={<Home />} />
+
                 <Route path="/login" element={<Login />} />
                 <Route path="/Login" element={<Login />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
-                
+
                 <Route path="/Home" element={<Home />} />
-                
+
                 <Route path="/Dashboard" element={<Dashboard />} />
-                
+
                 <Route path="/Staff" element={<Staff />} />
-                
+
                 <Route path="/Clients" element={<Clients />} />
-                
+
                 <Route path="/Shifts" element={<Shifts />} />
-                
+
                 <Route path="/Bookings" element={<Bookings />} />
-                
+
                 <Route path="/Timesheets" element={<Timesheets />} />
-                
+
                 <Route path="/Invoices" element={<Invoices />} />
-                
+
                 <Route path="/Payslips" element={<Payslips />} />
-                
+
                 <Route path="/Groups" element={<Groups />} />
-                
+
                 <Route path="/ProfileSetup" element={<ProfileSetup />} />
-                
+
                 <Route path="/HelpCenter" element={<HelpCenter />} />
-                
+
                 <Route path="/StaffPortal" element={<StaffPortal />} />
-                
+
                 <Route path="/ClientPortal" element={<ClientPortal />} />
-                
+
                 <Route path="/ShiftMarketplace" element={<ShiftMarketplace />} />
-                
+
                 <Route path="/AdminDashboard" element={<AdminDashboard />} />
-                
+
                 <Route path="/ComplianceTracker" element={<ComplianceTracker />} />
-                
+
                 <Route path="/PerformanceAnalytics" element={<PerformanceAnalytics />} />
-                
+
                 <Route path="/Phase2Planning" element={<Phase2Planning />} />
-                
+
                 <Route path="/InvoiceDetail" element={<InvoiceDetail />} />
-                
+
                 <Route path="/StaffProfile" element={<StaffProfile />} />
-                
+
                 <Route path="/TestNotifications" element={<TestNotifications />} />
-                
+
                 <Route path="/TestingTracker" element={<TestingTracker />} />
-                
+
                 <Route path="/WhatsAppAgentDemo" element={<WhatsAppAgentDemo />} />
-                
+
                 <Route path="/StakeholderPresentation" element={<StakeholderPresentation />} />
-                
+
                 <Route path="/AdminWorkflows" element={<AdminWorkflows />} />
-                
+
                 <Route path="/AgencySettings" element={<AgencySettings />} />
-                
+
                 <Route path="/BulkShiftCreation" element={<BulkShiftCreation />} />
 
                 <Route path="/AIShiftPaste" element={<AIShiftPaste />} />
 
                 <Route path="/Phase2Implementation" element={<Phase2Implementation />} />
-                
+
                 <Route path="/ShiftCalendar" element={<ShiftCalendar />} />
-                
+
                 <Route path="/StaffAvailability" element={<StaffAvailability />} />
-                
+
                 <Route path="/QuickActions" element={<QuickActions />} />
-                
+
                 <Route path="/LiveShiftMap" element={<LiveShiftMap />} />
-                
+
                 <Route path="/StaffGPSConsent" element={<StaffGPSConsent />} />
-                
+
                 <Route path="/BulkDataImport" element={<BulkDataImport />} />
-                
+
                 <Route path="/TimesheetDetail" element={<TimesheetDetail />} />
-                
+
                 <Route path="/CapabilitiesMatrix" element={<CapabilitiesMatrix />} />
-                
+
                 <Route path="/TestUserCredentials" element={<TestUserCredentials />} />
-                
+
                 <Route path="/DayOneReadiness" element={<DayOneReadiness />} />
-                
+
                 <Route path="/UATTesterGuide" element={<UATTesterGuide />} />
-                
+
                 <Route path="/StaffProfileSimulation" element={<StaffProfileSimulation />} />
-                
+
                 <Route path="/DisputeResolution" element={<DisputeResolution />} />
-                
+
                 <Route path="/OperationalCosts" element={<OperationalCosts />} />
-                
+
                 <Route path="/PostShiftV2" element={<PostShiftV2 />} />
 
                 <Route path="/PostShiftV3" element={<PostShiftV3 />} />
 
                 <Route path="/NaturalLanguageTests" element={<NaturalLanguageTests />} />
-                
+
                 <Route path="/WhatsAppTimesheetGuide" element={<WhatsAppTimesheetGuide />} />
-                
+
                 <Route path="/Phase2Tracker" element={<Phase2Tracker />} />
-                
+
                 <Route path="/ValidationMatrix" element={<ValidationMatrix />} />
-                
+
                 <Route path="/CleanSlate" element={<CleanSlate />} />
-                
+
                 <Route path="/EmailNotificationTester" element={<EmailNotificationTester />} />
-                
+
                 <Route path="/DailyShiftVerification" element={<DailyShiftVerification />} />
-                
+
                 <Route path="/CFODashboard" element={<CFODashboard />} />
-                
+
                 <Route path="/NaturalLanguageShiftCreator" element={<NaturalLanguageShiftCreator />} />
-                
+
                 <Route path="/GenerateInvoices" element={<GenerateInvoices />} />
-                
+
                 <Route path="/DataSimulationTools" element={<DataSimulationTools />} />
-                
+
                 <Route path="/WhatsAppSetup" element={<WhatsAppSetup />} />
-                
+
                 <Route path="/MyAvailability" element={<MyAvailability />} />
 
                 <Route path="/MyShifts" element={<MyShifts />} />
 
                 <Route path="/DominionPresentation" element={<DominionPresentation />} />
-                
+
                 <Route path="/AdminTrainingHub" element={<AdminTrainingHub />} />
-                
+
                 <Route path="/QuickStartGuide" element={<QuickStartGuide />} />
-                
+
                 <Route path="/TroubleshootingGuide" element={<TroubleshootingGuide />} />
-                
+
                 <Route path="/OnboardClient" element={<OnboardClient />} />
-                
+
                 <Route path="/PhoneDiagnostic" element={<PhoneDiagnostic />} />
-                
+
                 <Route path="/NotificationMonitor" element={<NotificationMonitor />} />
-                
+
                 <Route path="/TestShiftReminders" element={<TestShiftReminders />} />
 
                 <Route path="/TestWhatsAppN8N" element={<TestWhatsAppN8N />} />
 
                 <Route path="/GeneratePayslips" element={<GeneratePayslips />} />
-                
+
                 <Route path="/TimesheetAnalytics" element={<TimesheetAnalytics />} />
-                
+
                 <Route path="/FunctionsAudit" element={<FunctionsAudit />} />
-                
+
                 <Route path="/ShiftJourneyDiagram" element={<ShiftJourneyDiagram />} />
-                
+
                 <Route path="/SuperAdminAgencyOnboarding" element={<SuperAdminAgencyOnboarding />} />
+
+                <Route path="/SuperAdminAgencyManagement" element={<SuperAdminAgencyManagement />} />
 
                 <Route path="/GPSAccuracyMonitoring" element={<GPSAccuracyMonitoring />} />
 

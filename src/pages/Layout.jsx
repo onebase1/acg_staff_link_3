@@ -10,6 +10,7 @@ import {
   CheckSquare, Rocket, DollarSign, Trash2, Mail, Shuffle, MessageCircle, CheckCircle, BookOpen,
   Phone, GitBranch // ✅ Added GitBranch icon for Shift Journey
 } from "lucide-react";
+import { useAppVersion } from "@/hooks/useAppVersion";
 import { supabaseAuth } from "@/api/supabaseAuth";
 import { Agency } from "@/api/supabaseEntities";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,7 @@ const navigationStructure = [
       { title: "Performance Analytics", url: createPageUrl("PerformanceAnalytics"), icon: TrendingUp, adminOnly: true },
       { title: "Timesheet Analytics", url: createPageUrl("TimesheetAnalytics"), icon: BarChart3, adminOnly: true },
       { title: "Operational Costs", url: createPageUrl("OperationalCosts"), icon: DollarSign, adminOnly: true },
-      { title: "CFO Dashboard", url: createPageUrl("CFODashboard"), icon: Shield, adminOnly: true }, 
+      { title: "CFO Dashboard", url: createPageUrl("CFODashboard"), icon: Shield, adminOnly: true },
       { title: "Dispute Resolution", url: createPageUrl("DisputeResolution"), icon: Shield, adminOnly: true },
     ]
   },
@@ -106,6 +107,7 @@ const clientPortalItems = [
 // Super admin only items
 const superAdminItems = [
   { title: "Agency Onboarding", url: createPageUrl("SuperAdminAgencyOnboarding"), icon: Building2 },
+  { title: "Agency Management", url: createPageUrl("SuperAdminAgencyManagement"), icon: Users }, // ✅ ADDED: Manage existing agencies/admins
   { title: "Platform Analytics", url: createPageUrl("PerformanceAnalytics"), icon: TrendingUp }, // ✅ QUICK CONNECT: Platform-wide analytics
   { title: "Timesheet Analytics", url: createPageUrl("TimesheetAnalytics"), icon: BarChart3 }, // ✅ QUICK CONNECT: Auto-approval metrics
   { title: "CFO Dashboard", url: createPageUrl("CFODashboard"), icon: DollarSign }, // ✅ QUICK CONNECT: Financial monitoring
@@ -132,6 +134,7 @@ const superAdminItems = [
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { checkForUpdate, isChecking, currentVersion } = useAppVersion();
   const authPaths = ['/login', '/reset-password'];
   const isAuthRoute = authPaths.some((path) => location.pathname.toLowerCase().startsWith(path));
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -140,17 +143,17 @@ export default function Layout({ children, currentPageName }) {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [expandedSections, setExpandedSections] = useState(['OPERATIONS']);
-  
+
   // ✅ NEW: Authentication state
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
+
   // ✅ NEW: Notification dropdown state
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const notificationRef = useRef(null);
-  
+
   // ✅ NEW: Prevent repeated auth checks with ref
   const authCheckInProgress = useRef(false);
   const authChecked = useRef(false);
@@ -162,7 +165,7 @@ export default function Layout({ children, currentPageName }) {
         setShowNotifications(false);
       }
     };
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -182,7 +185,7 @@ export default function Layout({ children, currentPageName }) {
             agency_id: user.agency_id,
             status: 'pending'
           });
-          
+
           notifs = workflows.slice(0, 10).map(w => ({
             id: w.id,
             type: 'workflow',
@@ -193,23 +196,23 @@ export default function Layout({ children, currentPageName }) {
             url: createPageUrl('AdminWorkflows')
           }));
         }
-        
+
         // Staff notifications
         else if (user.user_type === 'staff_member') {
           const { Staff, Shift } = await import('@/api/supabaseEntities');
           const staffRecords = await Staff.filter({
             user_id: user.id
           });
-          
+
           if (staffRecords.length > 0) {
             const staffId = staffRecords[0].id;
-            
+
             // Get assigned shifts awaiting confirmation
             const shifts = await Shift.filter({
               assigned_staff_id: staffId,
               status: 'assigned'
             });
-            
+
             notifs = shifts.slice(0, 10).map(s => ({
               id: s.id,
               type: 'shift_assignment',
@@ -258,7 +261,7 @@ export default function Layout({ children, currentPageName }) {
         // ✅ CRITICAL: Check authentication FIRST
         console.log('🔒 [Layout] Checking authentication...');
         const authStatus = await supabaseAuth.isAuthenticated();
-        
+
         if (!authStatus) {
           console.log('❌ [Layout] User not authenticated - redirecting to login');
           setIsCheckingAuth(false);
@@ -275,7 +278,7 @@ export default function Layout({ children, currentPageName }) {
         const currentUser = await supabaseAuth.me();
         setUser(currentUser);
         setIsAuthenticated(true);
-        
+
         const superAdminEmail = 'g.basera@yahoo.com';
         const isSuper = currentUser.email === superAdminEmail;
         setIsSuperAdmin(isSuper);
@@ -326,8 +329,8 @@ export default function Layout({ children, currentPageName }) {
   };
 
   const toggleSection = (section) => {
-    setExpandedSections(prev => 
-      prev.includes(section) 
+    setExpandedSections(prev =>
+      prev.includes(section)
         ? prev.filter(s => s !== section)
         : [...prev, section]
     );
@@ -358,7 +361,7 @@ export default function Layout({ children, currentPageName }) {
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
-    
+
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
@@ -487,8 +490,8 @@ export default function Layout({ children, currentPageName }) {
         <div className="p-4 border-b border-gray-200 bg-white">
           <div className="flex items-center gap-3">
             {agency?.logo_url ? (
-              <img 
-                src={agency.logo_url} 
+              <img
+                src={agency.logo_url}
                 alt={agency.name}
                 className="w-12 h-12 rounded-lg object-contain"
               />
@@ -550,19 +553,18 @@ export default function Layout({ children, currentPageName }) {
             <>
               {navigationStructure.map((section) => (
                 <div key={section.section} className="mb-2">
-                  <div 
+                  <div
                     className="section-header"
                     onClick={() => toggleSection(section.section)}
                   >
                     <section.icon className={`w-4 h-4 ${section.color} mr-2`} />
                     <span className="flex-1">{section.section}</span>
-                    <ChevronRight 
-                      className={`w-4 h-4 transition-transform ${
-                        expandedSections.includes(section.section) ? 'rotate-90' : ''
-                      }`}
+                    <ChevronRight
+                      className={`w-4 h-4 transition-transform ${expandedSections.includes(section.section) ? 'rotate-90' : ''
+                        }`}
                     />
                   </div>
-                  
+
                   {expandedSections.includes(section.section) && (
                     <div className="ml-2">
                       {section.items
@@ -627,6 +629,19 @@ export default function Layout({ children, currentPageName }) {
             </div>
           )}
         </nav>
+
+        {/* Version Footer */}
+        <div className="p-4 border-t border-gray-200 mt-auto">
+          <button
+            onClick={checkForUpdate}
+            disabled={isChecking}
+            className="w-full flex items-center justify-center gap-2 text-xs text-gray-400 hover:text-cyan-600 transition-colors py-2 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-wait"
+            title="Click to check for updates"
+          >
+            <Zap className={`w-3 h-3 ${isChecking ? 'animate-spin text-cyan-600' : ''}`} />
+            <span>v{currentVersion || import.meta.env.VITE_APP_VERSION || '1.0.0'}</span>
+          </button>
+        </div>
       </div>
 
       <div className="main-content">
@@ -652,7 +667,7 @@ export default function Layout({ children, currentPageName }) {
 
               {/* ✅ IMPROVED: Functional notification bell */}
               <div className="relative" ref={notificationRef}>
-                <button 
+                <button
                   onClick={() => setShowNotifications(!showNotifications)}
                   className="relative text-gray-600 hover:text-gray-900 flex-shrink-0"
                 >
@@ -722,7 +737,7 @@ export default function Layout({ children, currentPageName }) {
                       <div className="p-3 border-t bg-gray-50">
                         <a
                           href={
-                            user?.user_type === 'staff_member' 
+                            user?.user_type === 'staff_member'
                               ? createPageUrl('StaffPortal')
                               : createPageUrl('AdminWorkflows')
                           }
@@ -742,9 +757,9 @@ export default function Layout({ children, currentPageName }) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center gap-2 flex-shrink-0">
                     {user?.profile_photo_url ? (
-                      <img 
-                        src={user.profile_photo_url} 
-                        alt={user.full_name || 'User'} 
+                      <img
+                        src={user.profile_photo_url}
+                        alt={user.full_name || 'User'}
                         className="w-8 h-8 rounded-full object-cover border-2 border-cyan-500"
                       />
                     ) : (

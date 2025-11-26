@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -51,98 +51,171 @@ export default function SuperAdminAgencyManagement() {
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [newAdminName, setNewAdminName] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [debugInfo, setDebugInfo] = useState(null);
 
   const isSuperAdmin = useMemo(
     () => !!user && (user.email === "g.basera@yahoo.com" || user.user_type === "super_admin"),
     [user]
   );
 
-  // Fetch agencies
-  const { data: agencies = [], isLoading: agenciesLoading } = useQuery({
-    queryKey: ["super-admin-agencies-full"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("agencies")
-        .select("*")
-        .order("name", { ascending: true });
-
-      if (error) {
-        console.error("Error fetching agencies:", error);
-        return [];
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data, error } = await supabase.rpc('debug_auth');
+        if (error) console.error('Debug auth error:', error);
+        setDebugInfo(data);
+      } catch (e) {
+        console.error('Debug auth exception:', e);
       }
+    };
+    if (isSuperAdmin) {
+      checkAuth();
+    }
+  }, [isSuperAdmin]);
 
-      return data || [];
-    },
-    enabled: isSuperAdmin,
-    initialData: [],
+  console.log("DEBUG: SuperAdminAgencyManagement render", {
+    userEmail: user?.email,
+    userType: user?.user_type,
+    isSuperAdmin,
+    fullUserObject: user
   });
 
-  // Fetch all agency admins
-  const { data: agencyAdmins = [], isLoading: adminsLoading } = useQuery({
-    queryKey: ["super-admin-all-agency-admins"],
+  // Fetch all data via SAAS Owner View
+  const { data: saasData, isLoading: saasLoading, error: saasError } = useQuery({
+    queryKey: ["saas-owner-view"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, email, full_name, user_type, agency_id, created_at")
-        .eq("user_type", "agency_admin")
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.rpc('get_saas_owner_view');
 
       if (error) {
-        console.error("Error fetching agency admins:", error);
-        return [];
+        console.error("Error fetching SAAS view:", error);
+        throw error;
       }
 
-      return data || [];
+      return data || { agencies: [], admins: [], invitations: [] };
     },
     enabled: isSuperAdmin,
-    initialData: [],
   });
 
-  // Fetch pending invitations
-  const { data: invitations = [], isLoading: invitationsLoading } = useQuery({
-    queryKey: ["agency-admin-invitations"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("agency_admin_invitations")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error fetching invitations:", error);
-        return [];
-      }
-
-      return data || [];
-    },
-    enabled: isSuperAdmin,
-    initialData: [],
-  });
+  const agencies = saasData?.agencies || [];
+  const agencyAdmins = saasData?.admins || [];
+  const invitations = saasData?.invitations || [];
+  const agenciesLoading = saasLoading;
+  const adminsLoading = saasLoading;
+  const invitationsLoading = saasLoading;
 
   // Add admin mutation
   const addAdminMutation = useMutation({
     mutationFn: async ({ agencyId, adminEmail, adminName }) => {
-      const { data, error } = await supabase.functions.invoke("add-additional-agency-admin", {
+      // 1. Create the invitation record directly in the DB
+      // We rely on the "SAAS Owner Insert" policy we just added
+      const { data: invitation, error: inviteError } = await supabase
+        .from("agency_admin_invitations")
+        .insert({
+          agency_id: agencyId,
+          email: adminEmail,
+          status: "pending",
+          admin_name: adminName,
+        })
+        .select()
+        .single();
+
+      if (inviteError) {
+        console.error("DB Insert Error:", inviteError);
+        throw new Error("Failed to create invitation record: " + inviteError.message);
+      }
+
+      // 2. Fetch agency details for the email
+      const { data: agency } = await supabase
+        .from("agencies")
+        .select("name")
+        .eq("id", agencyId)
+        .single();
+
+      const agencyName = agency?.name || "Agile Care";
+      // Use the origin from window location for the setup link
+      const setupUrl = `${window.location.origin}/login?view=sign-up&email=${encodeURIComponent(adminEmail)}`;
+
+      // 3. Send email using the generic 'send-email' function (same as Staff.jsx)
+      const { error: emailError } = await supabase.functions.invoke("send-email", {
         body: {
-          agencyId,
-          adminEmail,
-          adminName,
+          to: adminEmail,
+          subject: `Invitation to manage ${agencyName}`,
+          from_name: "Agile Care Admin",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%); padding: 30px; text-align: center;">
+                <h1 style="color: white; margin: 0;">Welcome to ACG StaffLink</h1>
+              </div>
+              <div style="padding: 30px; background: #f9fafb;">
+                <p style="font-size: 16px; color: #1f2937;">Hi ${adminName},</p>
+                <p style="font-size: 16px; color: #1f2937;">
+                  You've been invited to be an administrator for <strong>${agencyName}</strong> on ACG StaffLink.
+                </p>
+
+                <div style="background: white; border-left: 4px solid #06b6d4; padding: 20px; margin: 20px 0;">
+                  <p style="margin: 10px 0;"><strong>Role:</strong> Agency Administrator</p>
+                  <p style="margin: 10px 0;"><strong>Your Email:</strong> ${adminEmail}</p>
+                  <p style="margin: 10px 0;"><strong>Next Steps:</strong></p>
+                  <ol style="margin: 10px 0; padding-left: 20px;">
+                    <li>Create your account using the email above</li>
+                    <li>Set up your agency profile</li>
+                    <li>Start managing staff and shifts</li>
+                  </ol>
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${setupUrl}" style="background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">
+                    Create Your Account
+                  </a>
+                </div>
+
+                <div style="background: #e0f2fe; border-left: 44px solid #0284c7; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                  <p style="margin: 0; color: #0c4a6e; font-size: 14px; font-weight: 600;">📝 How to Sign Up:</p>
+                  <p style="margin: 10px 0 0 0; color: #0c4a6e; font-size: 13px; line-height: 1.6;">
+                    1️⃣ Click "Create Your Account" above<br>
+                    2️⃣ Enter your email: <strong>${adminEmail}</strong><br>
+                    3️⃣ Create a secure password<br>
+                    4️⃣ We'll recognize your invitation automatically!
+                  </p>
+                </div>
+
+                <p style="font-size: 14px; color: #6b7280;">
+                  This invitation expires in 7 days.
+                </p>
+              </div>
+              <div style="background: #e5e7eb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280;">
+                <p>© ${new Date().getFullYear()} ${agencyName}. All rights reserved.</p>
+                <p style="margin-top: 5px;">Powered by ACG StaffLink</p>
+              </div>
+            </div>
+          `
         },
       });
 
-      if (error) throw error;
-      return data;
+      if (emailError) {
+        console.error("Email Edge Function Error:", emailError);
+        throw emailError;
+      }
+
+      return { invitation };
     },
     onSuccess: () => {
-      toast.success("Admin invitation sent successfully!");
-      queryClient.invalidateQueries({ queryKey: ["super-admin-all-agency-admins"] });
-      queryClient.invalidateQueries({ queryKey: ["agency-admin-invitations"] });
+      queryClient.invalidateQueries(["super-admin-all-agency-admins"]);
+      queryClient.invalidateQueries(["agency-admin-invitations"]);
+      queryClient.invalidateQueries(["saas-owner-view"]); // Refresh the main view
       setIsDialogOpen(false);
       setNewAdminEmail("");
       setNewAdminName("");
-      setSelectedAgencyForAdmin("");
+      toast.success("Invitation Sent", {
+        description: `An invitation has been sent to ${newAdminEmail}.`,
+        className: "bg-green-600 text-white border-none",
+      });
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to add admin");
+      console.error("Mutation error:", error);
+      toast.error("Error", {
+        description: error.message || "Failed to send invitation. Please try again.",
+      });
     },
   });
 
@@ -330,18 +403,20 @@ export default function SuperAdminAgencyManagement() {
             <div className="text-3xl font-bold">{agencyAdmins.length}</div>
           </CardContent>
         </Card>
-      </div>
+      </div >
 
       {/* Agencies without admins warning */}
-      {agenciesWithoutAdmins.length > 0 && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-5 w-5" />
-          <AlertDescription>
-            <strong>{agenciesWithoutAdmins.length} agencies have no administrators:</strong>{" "}
-            {agenciesWithoutAdmins.map((a) => a.name).join(", ")}
-          </AlertDescription>
-        </Alert>
-      )}
+      {
+        agenciesWithoutAdmins.length > 0 && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-5 w-5" />
+            <AlertDescription>
+              <strong>{agenciesWithoutAdmins.length} agencies have no administrators:</strong>{" "}
+              {agenciesWithoutAdmins.map((a) => a.name).join(", ")}
+            </AlertDescription>
+          </Alert>
+        )
+      }
 
       {/* Agencies List */}
       <Card>
@@ -364,9 +439,8 @@ export default function SuperAdminAgencyManagement() {
                   onOpenChange={() => toggleAgency(agency.id)}
                 >
                   <div
-                    className={`p-4 hover:bg-gray-50 ${
-                      hasNoAdmins ? "bg-red-50 border-l-4 border-red-500" : ""
-                    }`}
+                    className={`p-4 hover:bg-gray-50 ${hasNoAdmins ? "bg-red-50 border-l-4 border-red-500" : ""
+                      }`}
                   >
                     <CollapsibleTrigger className="w-full">
                       <div className="flex items-center justify-between">
@@ -505,6 +579,6 @@ export default function SuperAdminAgencyManagement() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </div >
   );
 }
