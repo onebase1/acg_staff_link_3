@@ -39,9 +39,17 @@ export default function ClientGPSSetup({ client, onComplete }) {
     client.address ? `${client.address.line1 || ''}, ${client.address.city || ''}, ${client.address.postcode || ''}` : ''
   );
   const [searchingAddress, setSearchingAddress] = useState(false);
-  const [coordinates, setCoordinates] = useState(
-    client.location_coordinates || { latitude: 54.7191, longitude: -1.3539 }
-  );
+  const [coordinates, setCoordinates] = useState(() => {
+    const coords = client.location_coordinates;
+    // Check if coords exists and has valid numbers for latitude and longitude
+    if (coords &&
+      typeof coords.latitude === 'number' &&
+      typeof coords.longitude === 'number') {
+      return coords;
+    }
+    // Default to UK center if no valid coords found
+    return { latitude: 54.7191, longitude: -1.3539 };
+  });
   const [radius, setRadius] = useState(
     client?.geofence_radius_meters || 100
   );
@@ -90,17 +98,17 @@ export default function ClientGPSSetup({ client, onComplete }) {
     }
 
     setSearchingAddress(true);
-    
+
     try {
       const postcodeMatch = searchAddress.match(/([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i);
-      
+
       if (postcodeMatch) {
         const postcode = postcodeMatch[0].replace(/\s/g, '').toUpperCase();
-        
+
         try {
           const postcodeResponse = await fetch(`https://api.postcodes.io/postcodes/${postcode}`);
           const postcodeData = await postcodeResponse.json();
-          
+
           if (postcodeData.status === 200 && postcodeData.result) {
             setCoordinates({
               latitude: postcodeData.result.latitude,
@@ -115,28 +123,28 @@ export default function ClientGPSSetup({ client, onComplete }) {
         }
       }
 
-      const nominatimUrl = `https://nominatim.openstreetmap.org/search?` + 
+      const nominatimUrl = `https://nominatim.openstreetmap.org/search?` +
         `q=${encodeURIComponent(searchAddress)}&` +
         `countrycodes=gb&` +
         `format=json&` +
         `limit=1`;
-      
+
       const response = await fetch(nominatimUrl, {
         headers: {
           'User-Agent': 'ACG-StaffLink/1.0'
         }
       });
-      
+
       const data = await response.json();
 
       if (data && data.length > 0) {
         const result = data[0];
-        
+
         setCoordinates({
           latitude: parseFloat(result.lat),
           longitude: parseFloat(result.lon)
         });
-        
+
         toast.success(`✅ Found: ${result.display_name}`);
       } else {
         toast.error('❌ Address not found. Try entering just the postcode (e.g., TS28 5EN) or click on the map.');
@@ -153,7 +161,7 @@ export default function ClientGPSSetup({ client, onComplete }) {
     if (!window.confirm('Remove GPS location for this client? Geofencing will be disabled.')) {
       return;
     }
-    
+
     updateClientMutation.mutate(
       {
         location_coordinates: null,
@@ -224,7 +232,7 @@ export default function ClientGPSSetup({ client, onComplete }) {
         <Alert className="border-blue-300 bg-blue-50">
           <MapPin className="h-5 w-5 text-blue-600" />
           <AlertDescription className="text-blue-900">
-            <strong>📍 UK Address Lookup:</strong> Enter the postcode (e.g., TS28 5EN) or full address below, 
+            <strong>📍 UK Address Lookup:</strong> Enter the postcode (e.g., TS28 5EN) or full address below,
             OR click directly on the map to set the location manually.
           </AlertDescription>
         </Alert>
@@ -379,7 +387,7 @@ export default function ClientGPSSetup({ client, onComplete }) {
               Remove GPS
             </Button>
           )}
-          
+
           <Button
             onClick={handleSave}
             disabled={updateClientMutation.isPending || !coordinates.latitude || !coordinates.longitude}
