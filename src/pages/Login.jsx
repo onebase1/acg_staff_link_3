@@ -105,8 +105,7 @@ function SignUpForm({ onSuccess }) {
   const urlParams = new URLSearchParams(location.search);
   const prefilledEmail = urlParams.get('email') || ""; // Get email from invitation link
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  // Name fields removed - will be populated from staff record
   const [email, setEmail] = useState(prefilledEmail);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -141,13 +140,9 @@ function SignUpForm({ onSuccess }) {
     try {
       setLoading(true);
 
-      // ✅ SIMPLE! Just create account with first/last name
-      // Database trigger handles EVERYTHING:
-      // - Check if email in staff/agencies/clients tables
-      // - Auto-assign correct user_type
-      // - Link to agency_id
-      // - Send notification if uninvited
-      const fullName = `${firstName.trim()} ${lastName.trim()}`;
+      // ✅ SIMPLE! Just create account with email/password
+      // Name will be populated from staff record during Profile Setup
+      const fullName = ""; // Empty initially
 
       const { user, session } = await supabaseAuth.signUp(
         email.trim(),
@@ -167,7 +162,7 @@ function SignUpForm({ onSuccess }) {
 
       if (session) {
         // User was invited (instant access)
-        toast.success(`Welcome ${fullName}! Your account is ready.`);
+        toast.success(fullName ? `Welcome ${fullName}! Your account is ready.` : "Welcome! Your account is ready.");
         onSuccess();
       } else {
         // Email confirmation required
@@ -200,32 +195,7 @@ function SignUpForm({ onSuccess }) {
         </Alert>
       )}
 
-      {/* Name fields */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="signup-first-name">First Name</Label>
-          <Input
-            id="signup-first-name"
-            autoComplete="given-name"
-            placeholder="John"
-            value={firstName}
-            onChange={(event) => setFirstName(event.target.value)}
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="signup-last-name">Last Name</Label>
-          <Input
-            id="signup-last-name"
-            autoComplete="family-name"
-            placeholder="Smith"
-            value={lastName}
-            onChange={(event) => setLastName(event.target.value)}
-            required
-          />
-        </div>
-      </div>
+      {/* Name fields removed - populated from staff record or profile setup */}
 
       {/* Email field */}
       <div className="space-y-2">
@@ -410,7 +380,13 @@ export default function Login() {
       if (isSuperAdmin) {
         navigate("/QuickActions", { replace: true });
       } else if (currentUser.user_type === 'staff_member') {
-        navigate("/StaffPortal", { replace: true });
+        // ✅ CHECK: If staff member hasn't uploaded a photo, send to Profile Setup
+        if (!currentUser.profile_photo_url) {
+          console.log('⚠️ Staff member missing photo - redirecting to Profile Setup');
+          navigate("/ProfileSetup", { replace: true });
+        } else {
+          navigate("/StaffPortal", { replace: true });
+        }
       } else if (currentUser.user_type === 'client_user') {
         navigate("/ClientPortal", { replace: true });
       } else if (currentUser.user_type === 'agency_admin' || currentUser.user_type === 'manager') {

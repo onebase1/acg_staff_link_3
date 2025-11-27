@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input"; // Import Input component
+import Papa from 'papaparse';
 
 export default function BulkDataImport() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -107,12 +108,12 @@ export default function BulkDataImport() {
     queryKey: ['staff', currentAgency],
     queryFn: async () => {
       if (!currentAgency) return [];
-      
+
       const { data, error } = await supabase
         .from('staff')
         .select('*')
         .eq('agency_id', currentAgency);
-      
+
       if (error) {
         console.error('❌ Error fetching staff:', error);
         return [];
@@ -127,12 +128,12 @@ export default function BulkDataImport() {
     queryKey: ['clients', currentAgency],
     queryFn: async () => {
       if (!currentAgency) return [];
-      
+
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .eq('agency_id', currentAgency);
-      
+
       if (error) {
         console.error('❌ Error fetching clients:', error);
         return [];
@@ -149,7 +150,7 @@ export default function BulkDataImport() {
       const { data, error } = await supabase
         .from('agencies')
         .select('*');
-      
+
       if (error) {
         console.error('❌ Error fetching agencies:', error);
         return [];
@@ -163,13 +164,13 @@ export default function BulkDataImport() {
     queryKey: ['agencyDetails', currentAgency],
     queryFn: async () => {
       if (!currentAgency) return null;
-      
+
       const { data, error } = await supabase
         .from('agencies')
         .select('*')
         .eq('id', currentAgency)
         .single();
-      
+
       if (error) {
         console.error('❌ Error fetching agency details:', error);
         return null;
@@ -233,12 +234,12 @@ export default function BulkDataImport() {
         .from('shifts')
         .insert(enrichedShifts)
         .select();
-      
+
       if (shiftsError) {
         console.error('❌ Error creating shifts:', shiftsError);
         throw shiftsError;
       }
-      
+
       console.log('✅ [Bulk Import] Created', createdShifts?.length || 0, 'shifts');
 
       const results = {
@@ -269,15 +270,15 @@ export default function BulkDataImport() {
             .insert({
               agency_id: shift.agency_id,
               shift_id: shift.id,
-            staff_id: shift.assigned_staff_id,
-            client_id: shift.client_id,
-            status: 'confirmed',
-            booking_date: new Date().toISOString(),
-            shift_date: shift.date,
-            start_time: shift.start_time,
-            end_time: shift.end_time,
-            confirmation_method: 'bulk_import'
-          });
+              staff_id: shift.assigned_staff_id,
+              client_id: shift.client_id,
+              status: 'confirmed',
+              booking_date: new Date().toISOString(),
+              shift_date: shift.date,
+              start_time: shift.start_time,
+              end_time: shift.end_time,
+              confirmation_method: 'bulk_import'
+            });
           results.bookings_created++;
           console.log(`✅ [Bulk Import] Booking created: ${booking.id.substring(0, 8)}`);
 
@@ -305,13 +306,13 @@ export default function BulkDataImport() {
           } catch (tsError) {
             console.error(`❌ [Bulk Import] Timesheet error for shift ${shift.id.substring(0, 8)}:`, tsError.message);
             results.errors.push({
-                shift_id: shift.id.substring(0, 8),
-                error: `Timesheet: ${tsError.message}`
+              shift_id: shift.id.substring(0, 8),
+              error: `Timesheet: ${tsError.message}`
             });
           }
 
           const shouldSendNotifications = true;
-          
+
           if (shouldSendNotifications) {
             try {
               const staffMember = staff.find(s => s.id === shift.assigned_staff_id);
@@ -418,6 +419,74 @@ export default function BulkDataImport() {
     }
   });
 
+  // ✅ NEW: Staff Import Mutation
+  const importStaffMutation = useMutation({
+    mutationFn: async (staffRows) => {
+      console.log('🚀 [Bulk Import] Importing', staffRows.length, 'staff members');
+
+      const staffData = staffRows.map(row => ({
+        first_name: row.first_name,
+        last_name: row.last_name,
+        email: row.email,
+        role: row.role,
+        phone: row.phone_number,
+        status: row.status || 'active',
+        agency_id: row.agency_id || currentAgency,
+        address: {
+          line1: row.address || '',
+          city: '',
+          postcode: row.postcode || ''
+        },
+        emergency_contact: {
+          name: row.emergency_contact_name || '',
+          phone: row.emergency_contact_phone || '',
+          relationship: row.emergency_contact_relationship || ''
+        },
+        // ✅ NEW: Map financial details
+        ni_number: row.national_insurance || '',
+        bank_details: {
+          bank_name: row.bank_name || '',
+          sort_code: row.bank_sort_code || '',
+          account_number: row.bank_account_number || '',
+          account_name: `${row.first_name} ${row.last_name}` // Default to staff name
+        },
+        // ✅ NEW: Map remaining fields
+        employment_type: row.employment_type || 'temporary',
+        date_of_birth: row.date_of_birth || null,
+        skills: row.skills ? row.skills.split(',').map(s => s.trim()) : [],
+        months_of_experience: row.months_of_experience ? parseInt(row.months_of_experience) : 0,
+        availability: { notes: row.availability_notes || '' },
+
+        created_date: row.created_date || new Date().toISOString(),
+        updated_date: new Date().toISOString(),
+        // Ensure we don't try to insert the _rowIndex
+      }));
+
+      const { data, error } = await supabase
+        .from('staff')
+        .insert(staffData)
+        .select();
+
+      if (error) throw error;
+      return { staff_created: data.length, errors: [] };
+    },
+    onSuccess: (results) => {
+      queryClient.invalidateQueries(['staff']);
+      toast.success(`✅ Successfully imported ${results.staff_created} staff members`);
+
+      setTimeout(() => {
+        setPreviewData([]);
+        setSelectedFile(null);
+        setValidationReport(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }, 3000);
+    },
+    onError: (error) => {
+      console.error('❌ [Bulk Import] Staff import failed:', error);
+      toast.error(`Import failed: ${error.message}`);
+    }
+  });
+
   // ✅ NOW SAFE: useEffect can access importShiftsMutation.status
   useEffect(() => {
     if (importShiftsMutation.status === 'pending') {
@@ -437,7 +506,7 @@ export default function BulkDataImport() {
   const validateImportData = async (rows) => {
     setIsValidating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('validate-bulk-import', {
+      const { data, error } = await supabase.functions.invoke('validate-bulk-import-v2', {
         body: {
           rows,
           import_type: importType,
@@ -454,7 +523,7 @@ export default function BulkDataImport() {
           console.log(`✅ [Validation] Updated preview data with ${data.validation.auto_converted_dates} auto-converted UK dates`);
         }
       }
-      
+
       setValidationReport(data);
       return data;
     } catch (error) {
@@ -473,38 +542,50 @@ export default function BulkDataImport() {
 
     setSelectedFile(file);
     setValidationReport(null);
-    
+
     const reader = new FileReader();
     reader.onload = async (event) => {
       const text = event.target.result;
-      const rows = text.split('\n').map(row => row.split(','));
-      
-      if (rows.length < 2) {
-        toast.error('CSV file must contain headers and at least one data row');
-        if (fileInputRef.current) fileInputRef.current.value = ''; // Clear file input
-        setSelectedFile(null); // Clear selected file
-        setPreviewData([]); // Clear preview data
-        return;
-      }
 
-      const headers = rows[0].map(h => h.trim());
-      // Filter out completely empty rows, but keep rows with some content
-      const dataRows = rows.slice(1).filter(row => row.some(cell => cell.trim()));
+      Papa.parse(text, {
+        skipEmptyLines: true,
+        complete: async (results) => {
+          const rows = results.data;
 
-      const parsedData = dataRows.map((row, idx) => {
-        const obj = {};
-        headers.forEach((header, i) => {
-          obj[header.toLowerCase().replace(/ /g, '_')] = row[i]?.trim() || '';
-        });
-        obj._rowIndex = idx + 2; // +2 because of header row and 0-based index
-        return obj;
+          if (rows.length < 2) {
+            toast.error('CSV file must contain headers and at least one data row');
+            if (fileInputRef.current) fileInputRef.current.value = ''; // Clear file input
+            setSelectedFile(null); // Clear selected file
+            setPreviewData([]); // Clear preview data
+            return;
+          }
+
+          const headers = rows[0].map(h => h.trim());
+          // Filter out completely empty rows (PapaParse skipEmptyLines handles most, but double check)
+          const dataRows = rows.slice(1).filter(row => row.some(cell => cell && cell.trim()));
+
+          const parsedData = dataRows.map((row, idx) => {
+            const obj = {};
+            headers.forEach((header, i) => {
+              // Handle potential mismatch in row length vs header length
+              const value = row[i] ? row[i].trim() : '';
+              obj[header.toLowerCase().replace(/ /g, '_')] = value;
+            });
+            obj._rowIndex = idx + 2; // +2 because of header row and 0-based index
+            return obj;
+          });
+
+          // Initially set previewData, it will be updated by validateImportData with auto-converted dates
+          setPreviewData(parsedData);
+
+          // Run enterprise validation
+          await validateImportData(parsedData);
+        },
+        error: (error) => {
+          console.error('CSV Parse Error:', error);
+          toast.error('Failed to parse CSV file: ' + error.message);
+        }
       });
-
-      // Initially set previewData, it will be updated by validateImportData with auto-converted dates
-      setPreviewData(parsedData); 
-
-      // Run enterprise validation
-      await validateImportData(parsedData);
     };
 
     reader.readAsText(file);
@@ -514,9 +595,9 @@ export default function BulkDataImport() {
   const applyAutoFix = (fix) => {
     // Deep copy the validationReport to ensure immutability with nested objects
     const updatedReport = JSON.parse(JSON.stringify(validationReport));
-    
-    updatedReport.validation.auto_fixes = updatedReport.validation.auto_fixes.filter(f => 
-        !(f.row === fix.row && f.field === fix.field && f.original === fix.original)
+
+    updatedReport.validation.auto_fixes = updatedReport.validation.auto_fixes.filter(f =>
+      !(f.row === fix.row && f.field === fix.field && f.original === fix.original)
     );
     updatedReport.validation.auto_fixable = (updatedReport.validation.auto_fixable || 0) - 1;
     updatedReport.validation.clean_rows = (updatedReport.validation.clean_rows || 0) + 1;
@@ -604,12 +685,14 @@ export default function BulkDataImport() {
 
     if (importType === 'shifts') {
       importShiftsMutation.mutate(previewData);
+    } else if (importType === 'staff') {
+      importStaffMutation.mutate(previewData);
     }
   };
 
   const downloadTemplate = () => {
     let csvContent = '';
-    
+
     if (importType === 'shifts') {
       // 🇬🇧 UK DATE FORMAT in template
       csvContent = 'client_name,role_required,date,start_time,end_time,duration_hours,work_location_within_site,shift_type,pay_rate,charge_rate,break_duration_minutes,urgency,notes,requirements,assigned_staff_email\n';
@@ -634,7 +717,7 @@ export default function BulkDataImport() {
       csvContent = 'client_name,role,pay_rate,charge_rate,payment_terms\n';
       csvContent += 'Divine Care Centre,care_worker,14.75,19.18,net_30\n';
     }
-    
+
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -646,52 +729,52 @@ export default function BulkDataImport() {
   };
 
   const importTypes = [
-    { 
-      value: 'clients', 
-      icon: Building2, 
-      label: 'Clients / Care Homes', 
+    {
+      value: 'clients',
+      icon: Building2,
+      label: 'Clients / Care Homes',
       description: 'Import client facilities and contract details',
       priority: 1
     },
-    { 
-      value: 'staff', 
-      icon: Users, 
-      label: 'Staff Members', 
+    {
+      value: 'staff',
+      icon: Users,
+      label: 'Staff Members',
       description: 'Import staff profiles, roles, and contact details',
       priority: 2
     },
-    { 
-      value: 'staff_availability', 
-      icon: Clock, 
-      label: 'Staff Availability', 
+    {
+      value: 'staff_availability',
+      icon: Clock,
+      label: 'Staff Availability',
       description: 'Import staff availability schedules and shift preferences',
       priority: 3
     },
-    { 
-      value: 'client_rates', 
-      icon: FileText, 
-      label: 'Client Contract Rates', 
+    {
+      value: 'client_rates',
+      icon: FileText,
+      label: 'Client Contract Rates',
       description: 'Import client-specific rates by role',
       priority: 4
     },
-    { 
-      value: 'compliance', 
-      icon: Shield, 
-      label: 'Compliance Documents', 
+    {
+      value: 'compliance',
+      icon: Shield,
+      label: 'Compliance Documents',
       description: 'Import compliance document records and expiry dates',
       priority: 5
     },
-    { 
-      value: 'shifts', 
-      icon: Calendar, 
-      label: 'Shifts', 
+    {
+      value: 'shifts',
+      icon: Calendar,
+      label: 'Shifts',
       description: 'Import shift schedules with dates and times',
       priority: 6
     },
-    { 
-      value: 'timesheets', 
-      icon: Clock, 
-      label: 'Historical Timesheets', 
+    {
+      value: 'timesheets',
+      icon: Clock,
+      label: 'Historical Timesheets',
       description: 'Import historical timesheet data (last 3-6 months)',
       priority: 7
     }
@@ -726,17 +809,15 @@ export default function BulkDataImport() {
                     setEditingCell(null); // Clear any active cell editing
                     setCellEditValue(''); // Clear cell edit value
                   }}
-                  className={`relative p-6 border-2 rounded-xl text-left transition-all ${
-                    importType === type.value
-                      ? 'border-cyan-500 bg-cyan-50 shadow-lg'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                  className={`relative p-6 border-2 rounded-xl text-left transition-all ${importType === type.value
+                    ? 'border-cyan-500 bg-cyan-50 shadow-lg'
+                    : 'border-gray-200 hover:border-gray-300'
+                    }`}
                 >
-                  <div className={`absolute top-2 right-2 w-6 h-6 rounded-full bg-gradient-to-r ${
-                    type.priority <= 2 ? 'from-green-500 to-emerald-600' :
+                  <div className={`absolute top-2 right-2 w-6 h-6 rounded-full bg-gradient-to-r ${type.priority <= 2 ? 'from-green-500 to-emerald-600' :
                     type.priority <= 4 ? 'from-blue-500 to-cyan-600' :
-                    'from-purple-500 to-pink-600'
-                  } flex items-center justify-center text-white text-xs font-bold`}>
+                      'from-purple-500 to-pink-600'
+                    } flex items-center justify-center text-white text-xs font-bold`}>
                     {type.priority}
                   </div>
                   <Icon className={`w-8 h-8 mb-3 ${importType === type.value ? 'text-cyan-600' : 'text-gray-400'}`} />
@@ -896,20 +977,19 @@ export default function BulkDataImport() {
 
                   <Alert className={
                     validationReport.validation.critical_errors > 0 ? 'border-red-300 bg-red-50' :
-                    validationReport.validation.issues.length > 0 ? 'border-orange-300 bg-orange-50' : // If issues, even if not critical, it requires review
-                    validationReport.validation.auto_fixable > 0 ? 'border-blue-300 bg-blue-50' :
-                    'border-green-300 bg-green-50'
+                      validationReport.validation.issues.length > 0 ? 'border-orange-300 bg-orange-50' : // If issues, even if not critical, it requires review
+                        validationReport.validation.auto_fixable > 0 ? 'border-blue-300 bg-blue-50' :
+                          'border-green-300 bg-green-50'
                   }>
                     {validationReport.validation.critical_errors > 0 || validationReport.validation.issues.length > 0 ? <AlertCircle className="h-5 w-5 text-red-600" /> :
-                     validationReport.validation.auto_fixable > 0 ? <Zap className="h-5 w-5 text-blue-600" /> :
-                     <CheckCircle className="h-5 w-5 text-green-600" />}
+                      validationReport.validation.auto_fixable > 0 ? <Zap className="h-5 w-5 text-blue-600" /> :
+                        <CheckCircle className="h-5 w-5 text-green-600" />}
                     <AlertDescription>
-                      <p className={`font-semibold ${
-                        validationReport.validation.critical_errors > 0 ? 'text-red-900' :
+                      <p className={`font-semibold ${validationReport.validation.critical_errors > 0 ? 'text-red-900' :
                         validationReport.validation.issues.length > 0 ? 'text-orange-900' :
-                        validationReport.validation.auto_fixable > 0 ? 'text-blue-900' :
-                        'text-green-900'
-                      }`}>
+                          validationReport.validation.auto_fixable > 0 ? 'text-blue-900' :
+                            'text-green-900'
+                        }`}>
                         {validationReport.recommendation}
                       </p>
                     </AlertDescription>
@@ -917,7 +997,7 @@ export default function BulkDataImport() {
 
                   {validationReport.validation.auto_fixes.length > 0 && (
                     <Card className="border-2 border-blue-300">
-                      <CardHeader 
+                      <CardHeader
                         className="cursor-pointer bg-blue-50 hover:bg-blue-100 transition-colors"
                         onClick={() => setExpandedSections(prev => ({ ...prev, autoFixes: !prev.autoFixes }))}
                       >
@@ -961,8 +1041,8 @@ export default function BulkDataImport() {
                                   </div>
                                 </div>
                                 {fix.auto_apply && (
-                                  <Button 
-                                    size="sm" 
+                                  <Button
+                                    size="sm"
                                     className="bg-blue-600 hover:bg-blue-700"
                                     onClick={() => applyAutoFix(fix)}
                                   >
@@ -981,7 +1061,7 @@ export default function BulkDataImport() {
                   {/* ✅ MODIFIED: Critical Issues with inline editing */}
                   {validationReport.validation.issues.length > 0 && (
                     <Card className="border-2 border-red-300">
-                      <CardHeader 
+                      <CardHeader
                         className="cursor-pointer bg-red-50 hover:bg-red-100 transition-colors"
                         onClick={() => setExpandedSections(prev => ({ ...prev, issues: !prev.issues }))}
                       >
@@ -1007,8 +1087,8 @@ export default function BulkDataImport() {
                                     <Badge variant="outline">{issue.field}</Badge>
                                     <Badge className={
                                       issue.severity === 'critical' ? 'bg-red-600 text-white' :
-                                      issue.severity === 'high' ? 'bg-orange-500 text-white' :
-                                      'bg-yellow-100 text-yellow-800'
+                                        issue.severity === 'high' ? 'bg-orange-500 text-white' :
+                                          'bg-yellow-100 text-yellow-800'
                                     }>
                                       {issue.severity}
                                     </Badge>
@@ -1020,7 +1100,7 @@ export default function BulkDataImport() {
                                   {issue.suggestion && (
                                     <p className="text-xs text-blue-600 mt-1">💡 Suggestion: {issue.suggestion}</p>
                                   )}
-                                  
+
                                   {/* ✅ NEW: Inline editing UI */}
                                   {issue.fixable_inline && issue.available_options && (
                                     <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
@@ -1052,8 +1132,8 @@ export default function BulkDataImport() {
                                           </div>
                                         </div>
                                       ) : (
-                                        <Button 
-                                          size="sm" 
+                                        <Button
+                                          size="sm"
                                           variant="outline"
                                           onClick={() => handleQuickFix(issue)}
                                           className="text-blue-700 border-blue-300 hover:bg-blue-100"
@@ -1075,7 +1155,7 @@ export default function BulkDataImport() {
 
                   {validationReport.validation.suggestions.length > 0 && (
                     <Card className="border-2 border-gray-300">
-                      <CardHeader 
+                      <CardHeader
                         className="cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
                         onClick={() => setExpandedSections(prev => ({ ...prev, suggestions: !prev.suggestions }))}
                       >
@@ -1144,8 +1224,8 @@ export default function BulkDataImport() {
                             const isEditing = editingCell?.rowIndex === rowIdx && editingCell?.field === key;
 
                             return (
-                              <td 
-                                key={key} 
+                              <td
+                                key={key}
                                 className={`px-4 py-3 text-gray-700 ${!isEditing ? 'cursor-pointer hover:bg-blue-50 transition-colors' : ''}`}
                                 onClick={() => !isEditing && handleCellEdit(rowIdx, key)}
                               >
@@ -1214,14 +1294,14 @@ export default function BulkDataImport() {
                 </Button>
                 <Button
                   onClick={handleImport}
-                  disabled={!validationReport || !validationReport.ready_to_import || importShiftsMutation.status === 'pending'}
+                  disabled={!validationReport || !validationReport.ready_to_import || importShiftsMutation.status === 'pending' || importStaffMutation.status === 'pending'}
                   className={
-                    validationReport && validationReport.ready_to_import 
-                      ? 'bg-green-600 hover:bg-green-700' 
+                    validationReport && validationReport.ready_to_import
+                      ? 'bg-green-600 hover:bg-green-700'
                       : 'bg-gray-400'
                   }
                 >
-                  {importShiftsMutation.status === 'pending' ? (
+                  {importShiftsMutation.status === 'pending' || importStaffMutation.status === 'pending' ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       {loadingText}...

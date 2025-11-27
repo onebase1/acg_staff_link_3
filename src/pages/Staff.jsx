@@ -36,7 +36,7 @@ export default function Staff() {
       try {
         // Get authenticated user
         const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-        
+
         if (authError || !authUser) {
           console.error('❌ Not authenticated:', authError);
           navigate(createPageUrl('Home'));
@@ -66,7 +66,7 @@ export default function Staff() {
           full_name: profile.full_name,
           phone: profile.phone,
         };
-        
+
         setUser(currentUser);
 
         // Block staff members from accessing this page
@@ -100,12 +100,12 @@ export default function Staff() {
         .select('*')
         .eq('agency_id', currentAgency)
         .order('created_date', { ascending: false });
-      
+
       if (error) {
         console.error('❌ Error fetching staff:', error);
         return [];
       }
-      
+
       console.log('✅ Loaded staff count:', data?.length || 0);
       return data || [];
     },
@@ -121,12 +121,12 @@ export default function Staff() {
         .select('*')
         .eq('id', currentAgency)
         .single();
-      
+
       if (error) {
         console.error('❌ Error fetching agency:', error);
         return null;
       }
-      
+
       return data;
     },
     enabled: !!currentAgency,
@@ -141,7 +141,7 @@ export default function Staff() {
         .insert(data)
         .select()
         .single();
-      
+
       if (error) throw error;
       return result;
     },
@@ -165,9 +165,9 @@ export default function Staff() {
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
-      
+
       // Send notification email about role change if role was changed
       // Assumes updates object contains first_name and email from the form
       if (updates.role) {
@@ -198,7 +198,7 @@ export default function Staff() {
           console.error('Failed to send role change notification:', emailError);
         }
       }
-      
+
       return updatedStaff;
     },
     onSuccess: () => {
@@ -280,7 +280,7 @@ export default function Staff() {
         })
         .select()
         .single();
-      
+
       if (createError) throw createError;
 
       // ✅ FIXED: Fetch agency name for email branding
@@ -370,7 +370,7 @@ export default function Staff() {
 
   const handleSubmit = async (data) => {
     console.log('📝 [Staff] handleSubmit called with data:', data);
-    
+
     if (editingStaff) {
       console.log('✏️ [Staff] Updating existing staff:', editingStaff.id);
       await updateMutation.mutateAsync({ id: editingStaff.id, updates: data });
@@ -492,8 +492,8 @@ export default function Staff() {
 
   const filteredStaff = staff.filter(s => {
     const matchesSearch = s.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          s.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          s.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      s.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -539,12 +539,12 @@ export default function Staff() {
     const headers = Object.keys(csvData[0]); // Use keys from the first object as headers
     const csvContent = [
       headers.join(','),
-      ...csvData.map(row => 
+      ...csvData.map(row =>
         headers.map(header => {
           const value = row[header];
           // Handle values that might contain commas or double quotes
           if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-            return `"${value.replace(/"/g, '""')}"`; 
+            return `"${value.replace(/"/g, '""')}"`;
           }
           return value;
         }).join(',')
@@ -560,7 +560,7 @@ export default function Staff() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     toast.success(`✅ Exported ${csvData.length} staff records to CSV`);
   };
 
@@ -570,14 +570,14 @@ export default function Staff() {
 
   const handleGeneratePIN = async (staffMember) => {
     const pin = generatePIN();
-    
+
     try {
       // ✅ FIXED: Update using direct Supabase
       const { error } = await supabase
         .from('staff')
         .update({ whatsapp_pin: pin })
         .eq('id', staffMember.id);
-      
+
       if (error) throw error;
 
       // Send PIN via email
@@ -692,8 +692,8 @@ export default function Staff() {
             <Download className="w-4 h-4" />
             Export CSV
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => setShowInviteModal(true)}
             className="gap-2"
           >
@@ -853,9 +853,9 @@ export default function Staff() {
                   </div>
                 )}
 
-                {/* ✅ NEW: Resend Invitation button for onboarding staff without user_id */}
-                {staffMember.status === 'onboarding' && !staffMember.user_id && (
-                  <div className="pt-4 border-t">
+                {/* ✅ NEW: Send/Resend Invitation button for staff without user_id */}
+                {!staffMember.user_id && (
+                  <div className="pt-4 border-t space-y-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -866,6 +866,11 @@ export default function Staff() {
                       <RefreshCw className={`w-4 h-4 mr-2 ${resendInviteMutation.isPending ? 'animate-spin' : ''}`} />
                       {resendInviteMutation.isPending ? 'Sending...' : 'Resend Invitation'}
                     </Button>
+                    {staffMember.last_invited_at && (
+                      <p className="text-xs text-center text-gray-500">
+                        Last sent: {new Date(staffMember.last_invited_at).toLocaleDateString()} at {new Date(staffMember.last_invited_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    )}
                   </div>
                 )}
 

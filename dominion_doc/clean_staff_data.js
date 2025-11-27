@@ -15,20 +15,22 @@
  *   node dominion_doc/clean_staff_data.js
  */
 
-const fs = require('fs');
-const Papa = require('papaparse');
+import fs from 'fs';
+import Papa from 'papaparse';
 
 // Configuration
-const INPUT_FILE = 'dominion_doc/DHCS - STAFF NAME  SORTED.csv';
-const OUTPUT_FILE = 'dominion_doc/DHCS_CLEANED.csv';
+const INPUT_FILE = 'dominion_doc/dom_staff_test.csv';
+const OUTPUT_FILE = 'dominion_doc/dom_staff_test_CLEANED.csv';
 const DUPLICATES_FILE = 'dominion_doc/DUPLICATES_REVIEW.txt';
-const DOMINION_AGENCY_ID = '[REPLACE_WITH_ACTUAL_AGENCY_ID]'; // Get from database
+const DOMINION_AGENCY_ID = 'c8e84c94-8233-4084-b4c3-63ad9dc81c16'; // Dominion Healthcare Services Ltd
 
 console.log('🧹 Starting Dominion Staff Data Cleaning...\n');
 
 // Read CSV
 const csvData = fs.readFileSync(INPUT_FILE, 'utf8');
 const parsed = Papa.parse(csvData, { header: true, skipEmptyLines: true });
+// Filter out rows with no email (handles comma-only lines)
+parsed.data = parsed.data.filter(row => row.email && row.email.trim() !== '');
 
 console.log(`📄 Loaded ${parsed.data.length} staff records\n`);
 
@@ -91,7 +93,7 @@ const cleaned = parsed.data.map((row, index) => {
   if (phone) {
     // Remove spaces and hyphens
     phone = phone.replace(/[\s-]/g, '');
-    
+
     // Add +44 if missing
     if (phone.length === 10 && phone.startsWith('7')) {
       phone = '+44' + phone;
@@ -142,31 +144,31 @@ const cleaned = parsed.data.map((row, index) => {
     employment_type: employment_type,
     status: status,
     hourly_rate: parseFloat(row['Hourly Rate']) || 12.21,
-    
+
     // Agency assignment
     agency_id: DOMINION_AGENCY_ID,
-    
+
     // Personal details
     date_of_birth: row.date_of_birth?.trim() || '', // Validator will convert UK dates
     address: row.address?.trim() || '',
     postcode: row.postcode?.trim() || '',
     national_insurance: row['N.I']?.trim() || '',
-    
+
     // Bank details
     bank_name: row['Bank Name']?.trim() || '',
     bank_sort_code: row.bank_sort_code?.trim() || '',
     bank_account_number: row.bank_account_number?.trim() || '',
-    
+
     // Emergency contact
     emergency_contact_name: row.emergency_contact_name?.trim() || '',
     emergency_contact_phone: row.emergency_contact_phone?.trim() || '',
     emergency_contact_relationship: row.emergency_contact_relationship?.trim() || '',
-    
+
     // Additional fields
     skills: row.skills?.trim() || '',
     months_of_experience: row.months_of_experience?.trim() || '',
     availability_notes: row.availability_notes?.trim() || '',
-    
+
     // Timestamps
     created_date: created_date,
     updated_date: created_date
@@ -179,7 +181,7 @@ fs.writeFileSync(OUTPUT_FILE, cleanedCsv);
 
 // Write duplicates report
 let duplicatesReport = '🚨 DUPLICATES FOUND - MANUAL REVIEW REQUIRED\n\n';
-duplicatesReport += '=' .repeat(60) + '\n\n';
+duplicatesReport += '='.repeat(60) + '\n\n';
 
 if (issues.duplicateEmails.length > 0) {
   duplicatesReport += '📧 DUPLICATE EMAILS:\n\n';
@@ -207,11 +209,11 @@ fs.writeFileSync(DUPLICATES_FILE, duplicatesReport);
 
 // Print summary
 console.log('✅ CLEANING COMPLETE\n');
-console.log('=' .repeat(60));
+console.log('='.repeat(60));
 console.log(`📄 Input:  ${INPUT_FILE}`);
 console.log(`📄 Output: ${OUTPUT_FILE}`);
 console.log(`📄 Duplicates Report: ${DUPLICATES_FILE}`);
-console.log('=' .repeat(60));
+console.log('='.repeat(60));
 console.log('\n📊 SUMMARY:\n');
 console.log(`Total records processed: ${cleaned.length}`);
 console.log(`Phone numbers fixed: ${issues.phoneFixed}`);

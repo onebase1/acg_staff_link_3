@@ -57,23 +57,35 @@ export default function ProfileSetup() {
       cleared_to_work: false,
       restrictions: ''
     },
+    ni_number: '',
+    bank_details: {
+      account_name: '',
+      sort_code: '',
+      account_number: '',
+      bank_name: ''
+    },
     mandatory_training: {}
   });
 
-  const { data: allStaff = [] } = useQuery({
-    queryKey: ['all-staff-for-linking'],
+  // ✅ FIXED: Use RPC to securely find and link staff record
+  const { data: linkedStaffRecord, isLoading: isLinking } = useQuery({
+    queryKey: ['link-staff-record'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('staff')
-        .select('*');
+      const { data, error } = await supabase.rpc('link_user_to_staff_by_email');
 
       if (error) {
-        console.error('❌ Error fetching staff:', error);
-        return [];
+        console.error('❌ Error linking staff record:', error);
+        return null;
       }
-      return data || [];
+
+      if (data) {
+        console.log('✅ Successfully linked to staff record:', data.id);
+        return data;
+      }
+
+      return null;
     },
-    refetchOnMount: 'always'
+    retry: false
   });
 
   const { data: agencies = [] } = useQuery({
@@ -159,10 +171,8 @@ export default function ProfileSetup() {
         const isSuper = currentUser.email === superAdminEmail;
         setIsSuperAdmin(isSuper);
 
-        const matchingStaff = allStaff.find(s =>
-          s.user_id === currentUser.id ||
-          s.email?.toLowerCase() === currentUser.email?.toLowerCase()
-        );
+        // Use the RPC result if available
+        const matchingStaff = linkedStaffRecord;
 
         if (matchingStaff) {
           console.log('✅ [ProfileSetup] Auto-linked to staff record:', matchingStaff.id);
@@ -179,8 +189,24 @@ export default function ProfileSetup() {
             agency_id: matchingStaff.agency_id || '',
             profile_photo_url: photoUrl,
             date_of_birth: matchingStaff.date_of_birth || '',
-            address: matchingStaff.address || { line1: '', line2: '', city: '', postcode: '' },
-            emergency_contact: matchingStaff.emergency_contact || { name: '', phone: '', relationship: '' },
+            address: {
+              line1: matchingStaff.address?.line1 || '',
+              line2: matchingStaff.address?.line2 || '',
+              city: matchingStaff.address?.city || '',
+              postcode: matchingStaff.address?.postcode || ''
+            },
+            emergency_contact: {
+              name: matchingStaff.emergency_contact?.name || '',
+              phone: matchingStaff.emergency_contact?.phone || '',
+              relationship: matchingStaff.emergency_contact?.relationship || ''
+            },
+            ni_number: matchingStaff.ni_number || '',
+            bank_details: {
+              account_name: matchingStaff.bank_details?.account_name || '',
+              sort_code: matchingStaff.bank_details?.sort_code || '',
+              account_number: matchingStaff.bank_details?.account_number || '',
+              bank_name: matchingStaff.bank_details?.bank_name || ''
+            },
             references: matchingStaff.references || [],
             employment_history: matchingStaff.employment_history || [],
             occupational_health: matchingStaff.occupational_health || { cleared_to_work: false, restrictions: '' },
@@ -229,13 +255,11 @@ export default function ProfileSetup() {
       }
     };
 
-    if (allStaff.length > 0 || agencies.length > 0) {
-      initSetup();
-    } else if (allStaff.length === 0 && agencies.length === 0) {
+    if (!isLinking) {
       initSetup();
     }
 
-  }, [allStaff, agencies]);
+  }, [linkedStaffRecord, isLinking, agencies]);
 
   const updateMutation = useMutation({
     mutationFn: async (dataToUpdate) => {
@@ -270,6 +294,8 @@ export default function ProfileSetup() {
           date_of_birth: dataToUpdate.date_of_birth,
           address: dataToUpdate.address,
           emergency_contact: dataToUpdate.emergency_contact,
+          ni_number: dataToUpdate.ni_number,
+          bank_details: dataToUpdate.bank_details,
           references: dataToUpdate.references,
           employment_history: dataToUpdate.employment_history,
           occupational_health: dataToUpdate.occupational_health,
@@ -541,7 +567,7 @@ export default function ProfileSetup() {
     if (!linkedStaff || user?.user_type !== "staff_member") return 100;
 
     let completed = 0;
-    const total = 10;
+    const total = 12; // Increased total for new fields
 
     if (formData.profile_photo_url || linkedStaff.profile_photo_url) completed++;
     if (formData.references.length >= 2) completed++;
@@ -550,6 +576,8 @@ export default function ProfileSetup() {
     if (formData.date_of_birth) completed++;
     if (formData.address.postcode) completed++;
     if (formData.emergency_contact.phone) completed++;
+    if (formData.ni_number) completed++;
+    if (formData.bank_details.account_number) completed++;
 
     const dbsCheck = compliance.find((c) => c.document_type === "dbs_check");
     if (dbsCheck) completed++;
@@ -795,6 +823,76 @@ export default function ProfileSetup() {
                 <p className="text-xs text-gray-600 text-center">
                   Clear, recent photo. JPG or PNG, max 5MB
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ✅ NEW: Financial Information */}
+          <Card className="border-2 border-emerald-200">
+            <CardHeader className="bg-emerald-50">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Briefcase className="w-5 h-5" />
+                Financial Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 space-y-4">
+              <div className="space-y-2">
+                <Label>National Insurance Number</Label>
+                <Input
+                  value={formData.ni_number}
+                  onChange={(e) => setFormData({ ...formData, ni_number: e.target.value.toUpperCase() })}
+                  placeholder="QQ 12 34 56 A"
+                />
+              </div>
+
+              <div className="space-y-4 pt-4 border-t">
+                <h4 className="font-semibold text-sm text-gray-700">Bank Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Account Name</Label>
+                    <Input
+                      value={formData.bank_details.account_name}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        bank_details: { ...formData.bank_details, account_name: e.target.value }
+                      })}
+                      placeholder="Mr J Smith"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Bank Name</Label>
+                    <Input
+                      value={formData.bank_details.bank_name}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        bank_details: { ...formData.bank_details, bank_name: e.target.value }
+                      })}
+                      placeholder="Barclays"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Sort Code</Label>
+                    <Input
+                      value={formData.bank_details.sort_code}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        bank_details: { ...formData.bank_details, sort_code: e.target.value }
+                      })}
+                      placeholder="20-40-60"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Account Number</Label>
+                    <Input
+                      value={formData.bank_details.account_number}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        bank_details: { ...formData.bank_details, account_number: e.target.value }
+                      })}
+                      placeholder="12345678"
+                    />
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
