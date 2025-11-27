@@ -1,9 +1,10 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getDominionWelcomeEmail } from "@/utils/emailTemplates";
+import Papa from 'papaparse';
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link, useNavigate } from "react-router-dom";
@@ -389,13 +390,19 @@ export default function Staff() {
     mutationFn: async ({ staffMember, agency }) => {
       console.log('📧 [Resend Invite] Resending invitation to:', staffMember.email);
 
-      // Send invitation email via Edge Function
-      const { error: emailError } = await supabase.functions.invoke('send-email', {
-        body: {
-          to: staffMember.email,
-          subject: `You're Invited to Join ${agency?.name || 'Our Agency'} on ACG StaffLink`,
-          from_name: agency?.name || 'Agile Care Management',
-          html: `
+      // Check if this is Dominion Agency
+      const DOMINION_AGENCY_ID = 'c8e84c94-8233-4084-b4c3-63ad9dc81c16';
+      const isDominion = agency?.id === DOMINION_AGENCY_ID;
+
+      let emailSubject = `You're Invited to Join ${agency?.name || 'Our Agency'} on ACG StaffLink`;
+      let emailHtml = '';
+
+      if (isDominion) {
+        emailSubject = 'Welcome to ACG StaffLink - Your Account is Ready';
+        emailHtml = getDominionWelcomeEmail(staffMember, window.location.origin);
+      } else {
+        // Standard Invite Template
+        emailHtml = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); padding: 30px; text-align: center;">
                 <h1 style="color: white; margin: 0;">Welcome to ACG StaffLink</h1>
@@ -438,7 +445,16 @@ export default function Staff() {
                 </p>
               </div>
             </div>
-          `
+          `;
+      }
+
+      // Send invitation email via Edge Function
+      const { error: emailError } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: staffMember.email,
+          subject: emailSubject,
+          from_name: agency?.name || 'Agile Care Management',
+          html: emailHtml
         }
       });
 
@@ -864,7 +880,7 @@ export default function Staff() {
                       disabled={resendInviteMutation.isPending}
                     >
                       <RefreshCw className={`w-4 h-4 mr-2 ${resendInviteMutation.isPending ? 'animate-spin' : ''}`} />
-                      {resendInviteMutation.isPending ? 'Sending...' : 'Resend Invitation'}
+                      {resendInviteMutation.isPending ? 'Sending...' : (agency?.id === 'c8e84c94-8233-4084-b4c3-63ad9dc81c16' ? 'Send Welcome Email' : 'Resend Invitation')}
                     </Button>
                     {staffMember.last_invited_at && (
                       <p className="text-xs text-center text-gray-500">

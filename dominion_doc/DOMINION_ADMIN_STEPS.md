@@ -23,3 +23,17 @@ Your staff members have been imported.
 - They are set to **Active** status.
 - They will **NOT** receive spam emails immediately.
 - You can now send the "Welcome Email" when you are ready.
+
+## 📧 Step 6: Send Welcome Emails
+
+Once you are ready for staff to log in:
+
+1. Go to the **Staff** page.
+2. Find the staff member (or use the search).
+3. Click the **Send Welcome Email** button (this replaces the standard "Resend Invite" for Dominion staff).
+4. The staff member will receive an email with a link to **Activate Your Account**.
+5. They will be guided to:
+   - Create a password.
+   - Confirm their details (pre-filled from your import).
+   - Upload their profile photo.
+   - Access the Staff Portal.

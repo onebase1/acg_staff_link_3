@@ -487,6 +487,70 @@ export default function BulkDataImport() {
     }
   });
 
+  // ✅ NEW: Client Import Mutation
+  const importClientsMutation = useMutation({
+    mutationFn: async (clientRows) => {
+      console.log('🚀 [Bulk Import] Importing', clientRows.length, 'clients');
+
+      const clientData = clientRows.map(row => {
+        // Helper to safely parse JSON if it's a string, or return object if already object
+        const safeParse = (val, defaultVal) => {
+          if (!val) return defaultVal;
+          if (typeof val === 'object') return val;
+          try {
+            return JSON.parse(val);
+          } catch (e) {
+            console.warn('Failed to parse JSON field:', val);
+            return defaultVal;
+          }
+        };
+
+        return {
+          name: row.name,
+          type: row.type || 'care_home',
+          status: row.status || 'active',
+          agency_id: row.agency_id || currentAgency,
+          email: row.email || '',
+          phone: row.phone || '',
+          notes: row.notes || '',
+          cqc_rating: row.cqc_rating || '',
+          bed_capacity: row.bed_capacity ? parseInt(row.bed_capacity) : 0,
+
+          // JSONB fields - parse if string (from CSV)
+          address: safeParse(row.address, { line1: '', city: '', postcode: '' }),
+          contact_person: safeParse(row.contact_person, { name: '', role: '', email: '', phone: '' }),
+          payment_terms: safeParse(row.payment_terms, { days: 30 }),
+
+          created_date: new Date().toISOString(),
+          updated_date: new Date().toISOString()
+        };
+      });
+
+      const { data, error } = await supabase
+        .from('clients')
+        .insert(clientData)
+        .select();
+
+      if (error) throw error;
+      return { clients_created: data.length, errors: [] };
+    },
+    onSuccess: (results) => {
+      queryClient.invalidateQueries(['clients']);
+      toast.success(`✅ Successfully imported ${results.clients_created} clients`);
+
+      setTimeout(() => {
+        setPreviewData([]);
+        setSelectedFile(null);
+        setValidationReport(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }, 3000);
+    },
+    onError: (error) => {
+      console.error('❌ [Bulk Import] Client import failed:', error);
+      toast.error(`Import failed: ${error.message}`);
+    }
+  });
+
   // ✅ NOW SAFE: useEffect can access importShiftsMutation.status
   useEffect(() => {
     if (importShiftsMutation.status === 'pending') {
@@ -687,6 +751,8 @@ export default function BulkDataImport() {
       importShiftsMutation.mutate(previewData);
     } else if (importType === 'staff') {
       importStaffMutation.mutate(previewData);
+    } else if (importType === 'clients') {
+      importClientsMutation.mutate(previewData);
     }
   };
 

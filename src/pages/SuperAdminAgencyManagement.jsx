@@ -51,34 +51,12 @@ export default function SuperAdminAgencyManagement() {
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [newAdminName, setNewAdminName] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [debugInfo, setDebugInfo] = useState(null);
 
   const isSuperAdmin = useMemo(
     () => !!user && (user.email === "g.basera@yahoo.com" || user.user_type === "super_admin"),
     [user]
   );
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data, error } = await supabase.rpc('debug_auth');
-        if (error) console.error('Debug auth error:', error);
-        setDebugInfo(data);
-      } catch (e) {
-        console.error('Debug auth exception:', e);
-      }
-    };
-    if (isSuperAdmin) {
-      checkAuth();
-    }
-  }, [isSuperAdmin]);
-
-  console.log("DEBUG: SuperAdminAgencyManagement render", {
-    userEmail: user?.email,
-    userType: user?.user_type,
-    isSuperAdmin,
-    fullUserObject: user
-  });
 
   // Fetch all data via SAAS Owner View
   const { data: saasData, isLoading: saasLoading, error: saasError } = useQuery({
