@@ -1,0 +1,82 @@
+Unsupported compiler options in "file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/deno.json".
+  The following options were ignored:
+    allowJs
+Check file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts
+TS18046 [ERROR]: 'shifts' is of type 'unknown'.
+                            const shiftsWithClients = await Promise.all(shifts.map(async (shift) => {
+                                                                        ~~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:88:73
+
+TS7006 [ERROR]: Parameter 'shift' implicitly has an 'any' type.
+                            const shiftsWithClients = await Promise.all(shifts.map(async (shift) => {
+                                                                                          ~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:88:91
+
+TS7006 [ERROR]: Parameter 's' implicitly has an 'any' type.
+                            const shiftList = shiftsWithClients.map(s => `
+                                                                    ^
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:97:69
+
+TS18046 [ERROR]: 'shifts' is of type 'unknown'.
+                                    subject: `­ƒîà Good Morning! You have ${shifts.length} shift${shifts.length > 1 ? 's' : ''} today`,
+                                                                          ~~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:109:75
+
+TS18046 [ERROR]: 'shifts' is of type 'unknown'.
+                                    subject: `­ƒîà Good Morning! You have ${shifts.length} shift${shifts.length > 1 ? 's' : ''} today`,
+                                                                                                ~~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:109:97
+
+TS18046 [ERROR]: 'staffError' is of type 'unknown'.
+                            console.error(`ÔØî Error sending digest to staff ${staffId}:`, staffError.message);
+                                                                                         ~~~~~~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:137:90
+
+TS2345 [ERROR]: Argument of type '{ staff_id: string; error: any; }' is not assignable to parameter of type 'never'.
+                            results.errors.push({ staff_id: staffId, error: staffError.message });
+                                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:138:49
+
+TS18046 [ERROR]: 'staffError' is of type 'unknown'.
+                            results.errors.push({ staff_id: staffId, error: staffError.message });
+                                                                            ~~~~~~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:138:77
+
+TS18046 [ERROR]: 'agencyError' is of type 'unknown'.
+                    console.error(`ÔØî Error processing agency ${agency.id}:`, agencyError.message);
+                                                                             ~~~~~~~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:143:78
+
+TS2345 [ERROR]: Argument of type '{ agency_id: any; error: any; }' is not assignable to parameter of type 'never'.
+                    results.errors.push({ agency_id: agency.id, error: agencyError.message });
+                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:144:41
+
+TS18046 [ERROR]: 'agencyError' is of type 'unknown'.
+                    results.errors.push({ agency_id: agency.id, error: agencyError.message });
+                                                                       ~~~~~~~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:144:72
+
+TS18046 [ERROR]: 'agencyError' is of type 'unknown'.
+                    console.error(`ÔØî Error sending weekly summary for agency ${agency.id}:`, agencyError.message);
+                                                                                             ~~~~~~~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:271:94
+
+TS2345 [ERROR]: Argument of type '{ agency_id: any; error: any; }' is not assignable to parameter of type 'never'.
+                    results.errors.push({ agency_id: agency.id, error: agencyError.message });
+                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:272:41
+
+TS18046 [ERROR]: 'agencyError' is of type 'unknown'.
+                    results.errors.push({ agency_id: agency.id, error: agencyError.message });
+                                                                       ~~~~~~~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:272:72
+
+TS18046 [ERROR]: 'error' is of type 'unknown'.
+                error: error.message
+                       ~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:293:24
+
+Found 15 errors.
+
+error: Type checking failed.

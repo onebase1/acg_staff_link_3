@@ -1,0 +1,31 @@
+Unsupported compiler options in "file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/deno.json".
+  The following options were ignored:
+    allowJs
+Check file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts
+TS2339 [ERROR]: Property 'users' does not exist on type '{ admin_workflow: { Row: { created_at: string; id: string; metadata: Json; priority: string | null; status: string; type: string; }; Insert: { created_at?: string | undefined; id?: string | undefined; metadata?: Json | undefined; priority?: string | ... 1 more ... | undefined; status: string; type: string; }; Update...'.
+type User = Database['public']['Tables']['users']['Row'];
+                                         ~~~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:24:42
+
+TS2769 [ERROR]: No overload matches this call.
+  Overload 1 of 2, '(relation: "agencies" | "profiles" | "blog_users" | "blog_posts" | "shifts" | "staff" | "invoices" | "clients" | "admin_workflow" | "admin_workflows" | "agency_admin_invitations" | ... 12 more ... | "timesheets"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"users"' is not assignable to parameter of type '"agencies" | "profiles" | "blog_users" | "blog_posts" | "shifts" | "staff" | "invoices" | "clients" | "admin_workflow" | "admin_workflows" | "agency_admin_invitations" | "blog_comments" | ... 11 more ... | "timesheets"'.
+  Overload 2 of 2, '(relation: "shifts_formatted" | "cron_job_runs" | "cron_job_status"): PostgrestQueryBuilder<{ PostgrestVersion: "13.0.5"; }, { Tables: { admin_workflow: { Row: { created_at: string; id: string; metadata: Json; priority: string | null; status: string; type: string; }; Insert: { ...; }; Update: { ...; }; Relationships: []; }; ... 22 more ...; timesheets: { ...; }; }; Views: { ...; }; Functions: { ...; }; Enums: {}; CompositeTypes: {}; }, { ...; } | ... 1 more ... | { ...; }, "shifts_formatted" | ... 1 more ... | "cron_job_status", []>', gave the following error.
+    Argument of type '"users"' is not assignable to parameter of type '"shifts_formatted" | "cron_job_runs" | "cron_job_status"'.
+                        .from("users")
+                              ~~~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:217:31
+
+TS2339 [ERROR]: Property 'email' does not exist on type '{ address: Json; auto_approve_timesheets: boolean | null; auto_generate_invoices: boolean | null; bank_details: Json; billing_email: string | null; company_number: string | null; ... 25 more ...; whatsapp_notifications: boolean | null; } | ... 22 more ... | { ...; }'.
+  Property 'email' does not exist on type '{ actual_staff_id: string | null; admin_closed_at: string | null; admin_closed_by: string | null; admin_closure_outcome: string | null; admin_closure_required: boolean | null; ... 63 more ...; work_location_within_site: string | null; }'.
+                                to: admin.email,
+                                          ~~~~~
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:229:43
+
+TS2339 [ERROR]: Property 'email' does not exist on type '{ address: Json; auto_approve_timesheets: boolean | null; auto_generate_invoices: boolean | null; bank_details: Json; billing_email: string | null; company_number: string | null; ... 25 more ...; whatsapp_notifications: boolean | null; } | ... 22 more ... | { ...; }'.
+  Property 'email' does not exist on type '{ actual_staff_id: string | null; admin_closed_at: string | null; admin_closed_by: string | null; admin_closure_outcome: string | null; admin_closure_required: boolean | null; ... 63 more ...; work_location_within_site: string | null; }'.
+    at file:///C:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/supabase/functions/email-automation-engine/index.ts:269:133
+
+Found 4 errors.
+
+error: Type checking failed.

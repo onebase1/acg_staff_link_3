@@ -180,7 +180,7 @@ SELECT COUNT(*) FROM staff WHERE agency_id = '[DOMINION_AGENCY_ID]';
 ## 📞 SUPPORT & ESCALATION
 
 **Migration Lead:** [Your Name]  
-**Technical Support:** support@acg-stafflink.com  
+**Technical Support:** info@dhcservicesltd.co.uk  
 **Dominion Contact:** [Dominion Admin Name/Email]
 
 **Escalation Path:**

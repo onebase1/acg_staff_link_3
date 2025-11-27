@@ -130,10 +130,10 @@ export const getDominionWelcomeEmail = (staffMember, baseUrl = 'https://agilecar
                 </p>
                 <ul style="margin: 0; padding-left: 20px; color: #374151; font-size: 14px;">
                     <li style="margin-bottom: 5px;">
-                        Email: <a href="mailto:support@acg-stafflink.com" style="color: #0891b2;">support@acg-stafflink.com</a>
+                        Email: <a href="mailto:info@dhcservicesltd.co.uk" style="color: #0891b2;">info@dhcservicesltd.co.uk</a>
                     </li>
                     <li style="margin-bottom: 5px;">
-                        Phone: <a href="tel:+441234567890" style="color: #0891b2;">+44 1234 567890</a>
+                        Phone: <a href="tel:+441234567890" style="color: #0891b2;">++447414756101</a>
                     </li>
                     <li style="margin-bottom: 0;">
                         Live Chat: Available in the app (bottom-right corner)

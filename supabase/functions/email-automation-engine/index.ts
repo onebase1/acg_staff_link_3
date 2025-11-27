@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Database } from "../_shared/database-types.ts";
 
 /**
  * PHASE 2 - TIER 2: Smart Email Automation Engine
@@ -14,17 +15,41 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * Rollback: Individual email types can be disabled in agency settings
  */
 
+// Define types derived from Database
+type Shift = Database['public']['Tables']['shifts']['Row'];
+type Agency = Database['public']['Tables']['agencies']['Row'];
+type Staff = Database['public']['Tables']['staff']['Row'];
+type Client = Database['public']['Tables']['clients']['Row'];
+type Timesheet = Database['public']['Tables']['timesheets']['Row'];
+type Profile = Database['public']['Tables']['profiles']['Row'];
+
+interface Address {
+    line1?: string;
+    postcode?: string;
+}
+
+interface ShiftWithClient extends Shift {
+    client?: Client;
+}
+
+interface AutomationResults {
+    confirmations_sent: number;
+    daily_digests_sent: number;
+    weekly_summaries_sent: number;
+    errors: { id?: string; error: string }[];
+}
+
 serve(async (req) => {
     try {
         // Initialize Supabase client
-        const supabase = createClient(
+        const supabase = createClient<Database>(
             Deno.env.get("SUPABASE_URL") ?? "",
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
         );
 
         console.log('📧 [Email Automation Engine] Starting run...');
 
-        const results = {
+        const results: AutomationResults = {
             confirmations_sent: 0,
             daily_digests_sent: 0,
             weekly_summaries_sent: 0,
@@ -63,7 +88,7 @@ serve(async (req) => {
                     }
 
                     // Group by staff
-                    const shiftsByStaff = todayShifts.reduce((acc, shift) => {
+                    const shiftsByStaff = (todayShifts || []).reduce<Record<string, Shift[]>>((acc, shift) => {
                         if (shift.assigned_staff_id) {
                             if (!acc[shift.assigned_staff_id]) acc[shift.assigned_staff_id] = [];
                             acc[shift.assigned_staff_id].push(shift);
@@ -85,23 +110,25 @@ serve(async (req) => {
                             const staffMember = staff;
 
                             // Get client names
-                            const shiftsWithClients = await Promise.all(shifts.map(async (shift) => {
+                            const shiftsWithClients: ShiftWithClient[] = await Promise.all(shifts.map(async (shift) => {
                                 const { data: client } = await supabase
                                     .from("clients")
                                     .select("*")
-                                    .eq("id", shift.client_id)
+                                    .eq("id", shift.client_id || '')
                                     .single();
-                                return { ...shift, client };
+                                return { ...shift, client: client || undefined };
                             }));
 
-                            const shiftList = shiftsWithClients.map(s => `
+                            const shiftList = shiftsWithClients.map(s => {
+                                const address = s.client?.address as unknown as Address | undefined;
+                                return `
                                 <div style="background: white; border-left: 4px solid #06b6d4; padding: 15px; margin: 10px 0;">
                                     <p style="margin: 5px 0;"><strong>${s.start_time} - ${s.end_time}</strong> (${s.duration_hours}h)</p>
                                     <p style="margin: 5px 0;">📍 ${s.client?.name || 'Client'}</p>
-                                    <p style="margin: 5px 0; font-size: 12px;">${s.client?.address?.line1}, ${s.client?.address?.postcode}</p>
+                                    <p style="margin: 5px 0; font-size: 12px;">${address?.line1 || ''}, ${address?.postcode || ''}</p>
                                     <p style="margin: 5px 0; color: #059669;">💰 £${s.pay_rate}/hr</p>
                                 </div>
-                            `).join('');
+                            `}).join('');
 
                             await supabase.functions.invoke('send-email', {
                                 body: {
@@ -133,15 +160,15 @@ serve(async (req) => {
 
                             results.daily_digests_sent++;
 
-                        } catch (staffError) {
+                        } catch (staffError: any) {
                             console.error(`❌ Error sending digest to staff ${staffId}:`, staffError.message);
-                            results.errors.push({ staff_id: staffId, error: staffError.message });
+                            results.errors.push({ id: staffId, error: staffError.message });
                         }
                     }
 
-                } catch (agencyError) {
+                } catch (agencyError: any) {
                     console.error(`❌ Error processing agency ${agency.id}:`, agencyError.message);
-                    results.errors.push({ agency_id: agency.id, error: agencyError.message });
+                    results.errors.push({ id: agency.id, error: agencyError.message });
                 }
             }
         }
@@ -187,14 +214,14 @@ serve(async (req) => {
                         throw timesheetsError;
                     }
 
-                    const completedShifts = shiftsThisWeek.filter(s => s.status === 'completed').length;
-                    const openShifts = shiftsThisWeek.filter(s => s.status === 'open').length;
-                    const totalHours = timesheetsThisWeek.reduce((sum, t) => sum + (t.total_hours || 0), 0);
-                    const totalRevenue = timesheetsThisWeek.reduce((sum, t) => sum + (t.client_charge_amount || 0), 0);
+                    const completedShifts = (shiftsThisWeek || []).filter(s => s.status === 'completed').length;
+                    const openShifts = (shiftsThisWeek || []).filter(s => s.status === 'open').length;
+                    const totalHours = (timesheetsThisWeek || []).reduce((sum, t) => sum + (t.total_hours || 0), 0);
+                    const totalRevenue = (timesheetsThisWeek || []).reduce((sum, t) => sum + (t.client_charge_amount || 0), 0);
 
                     // Get admin users for this agency
                     const { data: adminUsers, error: usersError } = await supabase
-                        .from("users")
+                        .from("profiles")
                         .select("*")
                         .eq("agency_id", agency.id)
                         .in("user_type", ['agency_admin', 'manager']);
@@ -267,9 +294,9 @@ serve(async (req) => {
                         results.weekly_summaries_sent++;
                     }
 
-                } catch (agencyError) {
+                } catch (agencyError: any) {
                     console.error(`❌ Error sending weekly summary for agency ${agency.id}:`, agencyError.message);
-                    results.errors.push({ agency_id: agency.id, error: agencyError.message });
+                    results.errors.push({ id: agency.id, error: agencyError.message });
                 }
             }
         }
@@ -285,7 +312,7 @@ serve(async (req) => {
             { headers: { "Content-Type": "application/json" } }
         );
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('❌ [Email Automation Engine] Fatal error:', error);
         return new Response(
             JSON.stringify({
@@ -296,3 +323,4 @@ serve(async (req) => {
         );
     }
 });
+

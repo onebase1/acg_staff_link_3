@@ -211,7 +211,7 @@ This link will expire in 1 hour.
 
 If you didn't request this, you can safely ignore this email.
 
-Need help? Contact support@acg-stafflink.com
+Need help? Contact info@dhcservicesltd.co.uk
 
 Thanks,
 ACG StaffLink Team
