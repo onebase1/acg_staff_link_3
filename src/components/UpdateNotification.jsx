@@ -67,7 +67,7 @@ export default function UpdateNotification({
   return (
     <>
       {/* Desktop Version - Fixed Top Banner */}
-      <div className="fixed top-0 left-0 right-0 z-50 hidden md:block">
+      <div className="fixed top-0 left-0 md:left-[260px] right-0 z-50 hidden md:block">
         <Alert className="rounded-none border-x-0 border-t-0 border-b-2 border-blue-500 bg-gradient-to-r from-blue-50 to-cyan-50 shadow-md">
           <AlertCircle className="h-5 w-5 text-blue-600" />
           <AlertDescription className="flex items-center justify-between ml-2">
