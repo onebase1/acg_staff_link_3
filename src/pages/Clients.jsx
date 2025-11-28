@@ -309,13 +309,53 @@ export default function Clients() {
     }
   });
 
-  const handleSaveNewClient = () => {
+  // Helper to auto-geocode address
+  const geocodeAddress = async (address) => {
+    if (!address?.postcode) return null;
+
+    try {
+      const postcode = address.postcode.replace(/\s/g, '').toUpperCase();
+      const response = await fetch(`https://api.postcodes.io/postcodes/${postcode}`);
+      const data = await response.json();
+
+      if (data.status === 200 && data.result) {
+        return {
+          latitude: data.result.latitude,
+          longitude: data.result.longitude
+        };
+      }
+    } catch (error) {
+      console.warn('Auto-geocode failed:', error);
+    }
+    return null;
+  };
+
+  const handleSaveNewClient = async () => {
     if (!editFormData.name || !editFormData.contact_person.email) {
       toast.error('Client name and contact email are required');
       return;
     }
 
-    createClientMutation.mutate(editFormData);
+    let clientData = { ...editFormData };
+
+    // Attempt auto-geocode
+    if (clientData.address?.postcode) {
+      const toastId = toast.loading('Verifying address...');
+      const coords = await geocodeAddress(clientData.address);
+
+      if (coords) {
+        clientData.location_coordinates = coords;
+        clientData.geofence_enabled = true;
+        clientData.geofence_radius_meters = 100; // Default radius
+        toast.dismiss(toastId);
+        toast.success('📍 Address verified & GPS set automatically!');
+      } else {
+        toast.dismiss(toastId);
+        // Continue without GPS if failed
+      }
+    }
+
+    createClientMutation.mutate(clientData);
   };
 
   const handleEditClick = (client) => {
@@ -410,23 +450,46 @@ export default function Clients() {
     toast.success(`🗑️ Removed "${location}"`);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editFormData.name || !editFormData.contact_person.email) {
       toast.error('Client name and contact email are required');
       return;
     }
 
+    let updateData = { ...editFormData };
+
+    // Auto-geocode if address changed OR GPS missing
+    const postcodeChanged = updateData.address?.postcode !== editingClient.address?.postcode;
+    const gpsMissing = !editingClient.location_coordinates?.latitude;
+
+    if (updateData.address?.postcode && (postcodeChanged || gpsMissing)) {
+      const toastId = toast.loading('Updating GPS from address...');
+      const coords = await geocodeAddress(updateData.address);
+
+      if (coords) {
+        updateData.location_coordinates = coords;
+        updateData.geofence_enabled = true;
+        if (!updateData.geofence_radius_meters) {
+          updateData.geofence_radius_meters = 100;
+        }
+        toast.dismiss(toastId);
+        toast.success('📍 GPS updated automatically!');
+      } else {
+        toast.dismiss(toastId);
+      }
+    }
+
     // Calculate enabled_roles based on configured rates
     const enabledRoles = {};
-    Object.keys(editFormData.contract_terms.rates_by_role).forEach(role => {
-      const rate = editFormData.contract_terms.rates_by_role[role];
+    Object.keys(updateData.contract_terms.rates_by_role).forEach(role => {
+      const rate = updateData.contract_terms.rates_by_role[role];
       enabledRoles[role] = (rate.charge_rate > 0 || rate.pay_rate > 0);
     });
 
     updateClientMutation.mutate({
       id: editingClient.id,
       data: {
-        ...editFormData,
+        ...updateData,
         enabled_roles: enabledRoles // NEW: Auto-calculate enabled roles
       }
     });
