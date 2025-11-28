@@ -19,8 +19,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog"; // UI Components
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import InviteClientModal from "../components/clients/InviteClientModal";
@@ -78,7 +79,7 @@ export default function Clients() {
       try {
         // Get authenticated user
         const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-        
+
         if (authError || !authUser) {
           console.error('❌ Not authenticated:', authError);
           navigate(createPageUrl('Home'));
@@ -125,7 +126,7 @@ export default function Clients() {
     queryKey: ['clients', currentAgency],
     queryFn: async () => {
       console.log('📊 Querying clients for agency:', currentAgency);
-      
+
       const { data, error } = await supabase
         .from('clients')
         .select('*')
@@ -154,7 +155,7 @@ export default function Clients() {
         })
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -212,7 +213,7 @@ export default function Clients() {
         .from('bookings')
         .select('*')
         .eq('client_id', id);
-        
+
       if (clientBookings && clientBookings.length > 0) {
         throw new Error(
           `Cannot delete client: ${clientBookings.length} booking(s) exist. ` +
@@ -225,7 +226,7 @@ export default function Clients() {
         .from('timesheets')
         .select('*')
         .eq('client_id', id);
-        
+
       if (clientTimesheets && clientTimesheets.length > 0) {
         throw new Error(
           `Cannot delete client: ${clientTimesheets.length} timesheet(s) exist. ` +
@@ -238,7 +239,7 @@ export default function Clients() {
         .from('invoices')
         .select('*')
         .eq('client_id', id);
-        
+
       if (clientInvoices && clientInvoices.length > 0) {
         throw new Error(
           `Cannot delete client: ${clientInvoices.length} invoice(s) exist. ` +
@@ -250,7 +251,7 @@ export default function Clients() {
         .from('clients')
         .delete()
         .eq('id', id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -270,7 +271,7 @@ export default function Clients() {
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return updated;
     },
@@ -295,7 +296,7 @@ export default function Clients() {
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -433,7 +434,7 @@ export default function Clients() {
 
   const handleDeleteClick = (client) => {
     const CONFIRM_PHRASE = client.name;
-    
+
     const userConfirmed = window.confirm(
       `⚠️ DANGER ZONE - DELETE CLIENT\n\n` +
       `Are you ABSOLUTELY SURE you want to delete:\n"${client.name}"?\n\n` +
@@ -541,7 +542,7 @@ export default function Clients() {
     const headers = Object.keys(csvData[0]);
     const csvContent = [
       headers.map(header => `"${header.replace(/"/g, '""')}"`).join(','),
-      ...csvData.map(row => 
+      ...csvData.map(row =>
         headers.map(header => {
           let value = row[header];
           if (value === null || value === undefined) {
@@ -569,7 +570,7 @@ export default function Clients() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url); // Clean up the URL object after download
-    
+
     toast.success(`✅ Exported ${csvData.length} clients to CSV`);
   };
 
@@ -648,7 +649,7 @@ export default function Clients() {
             <UserPlus className="w-4 h-4 mr-2" />
             Invite Client
           </Button>
-          
+
           {/* ✅ NEW: Enhanced Onboarding Button */}
           <Button
             className="bg-gradient-to-r from-green-500 to-emerald-600"
@@ -657,7 +658,7 @@ export default function Clients() {
             <Plus className="w-4 h-4 mr-2" />
             Onboard Client ⭐
           </Button>
-          
+
           <Button
             className="bg-gradient-to-r from-cyan-500 to-blue-600"
             onClick={() => {
@@ -869,6 +870,12 @@ export default function Clients() {
       {showGPSSetup && selectedClient && (
         <Dialog open={showGPSSetup} onOpenChange={(open) => !open && handleCloseGPS()}>
           <DialogContent className="max-w-3xl max-h-[95vh] overflow-y-auto p-0">
+            <DialogHeader className="sr-only">
+              <DialogTitle>GPS Location Setup</DialogTitle>
+              <DialogDescription>
+                Configure GPS geofencing and location settings for {selectedClient.name}
+              </DialogDescription>
+            </DialogHeader>
             <div className="p-6">
               <ClientGPSSetup
                 client={selectedClient}
@@ -894,7 +901,7 @@ export default function Clients() {
                   id="new-client-name"
                   placeholder="e.g., Castle Bank Residential Home"
                   value={editFormData.name}
-                  onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
                 />
               </div>
 
@@ -903,7 +910,7 @@ export default function Clients() {
                 <select
                   id="new-client-type"
                   value={editFormData.type}
-                  onChange={(e) => setEditFormData({...editFormData, type: e.target.value})}
+                  onChange={(e) => setEditFormData({ ...editFormData, type: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 >
                   <option value="care_home">Care Home</option>
@@ -924,7 +931,7 @@ export default function Clients() {
                     value={editFormData.contact_person.name}
                     onChange={(e) => setEditFormData({
                       ...editFormData,
-                      contact_person: {...editFormData.contact_person, name: e.target.value}
+                      contact_person: { ...editFormData.contact_person, name: e.target.value }
                     })}
                   />
                 </div>
@@ -937,7 +944,7 @@ export default function Clients() {
                     value={editFormData.contact_person.email}
                     onChange={(e) => setEditFormData({
                       ...editFormData,
-                      contact_person: {...editFormData.contact_person, email: e.target.value}
+                      contact_person: { ...editFormData.contact_person, email: e.target.value }
                     })}
                   />
                 </div>
@@ -951,7 +958,7 @@ export default function Clients() {
                   value={editFormData.contact_person.phone}
                   onChange={(e) => setEditFormData({
                     ...editFormData,
-                    contact_person: {...editFormData.contact_person, phone: e.target.value}
+                    contact_person: { ...editFormData.contact_person, phone: e.target.value }
                   })}
                 />
               </div>
@@ -963,7 +970,7 @@ export default function Clients() {
                   type="email"
                   placeholder="e.g., accounts@carehome.com"
                   value={editFormData.billing_email}
-                  onChange={(e) => setEditFormData({...editFormData, billing_email: e.target.value})}
+                  onChange={(e) => setEditFormData({ ...editFormData, billing_email: e.target.value })}
                 />
               </div>
 
@@ -976,7 +983,7 @@ export default function Clients() {
                     value={editFormData.address.line1}
                     onChange={(e) => setEditFormData({
                       ...editFormData,
-                      address: {...editFormData.address, line1: e.target.value}
+                      address: { ...editFormData.address, line1: e.target.value }
                     })}
                   />
                 </div>
@@ -988,7 +995,7 @@ export default function Clients() {
                     value={editFormData.address.city}
                     onChange={(e) => setEditFormData({
                       ...editFormData,
-                      address: {...editFormData.address, city: e.target.value}
+                      address: { ...editFormData.address, city: e.target.value }
                     })}
                   />
                 </div>
@@ -1000,7 +1007,7 @@ export default function Clients() {
                     value={editFormData.address.postcode}
                     onChange={(e) => setEditFormData({
                       ...editFormData,
-                      address: {...editFormData.address, postcode: e.target.value}
+                      address: { ...editFormData.address, postcode: e.target.value }
                     })}
                   />
                 </div>
@@ -1047,7 +1054,7 @@ export default function Clients() {
                     <Input
                       id="client-name"
                       value={editFormData.name}
-                      onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                      onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
                     />
                   </div>
 
@@ -1056,7 +1063,7 @@ export default function Clients() {
                     <select
                       id="client-type"
                       value={editFormData.type}
-                      onChange={(e) => setEditFormData({...editFormData, type: e.target.value})}
+                      onChange={(e) => setEditFormData({ ...editFormData, type: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     >
                       <option value="care_home">Care Home</option>
@@ -1074,7 +1081,7 @@ export default function Clients() {
                       id="bed-capacity"
                       type="number"
                       value={editFormData.bed_capacity || ''}
-                      onChange={(e) => setEditFormData({...editFormData, bed_capacity: parseInt(e.target.value) || null})}
+                      onChange={(e) => setEditFormData({ ...editFormData, bed_capacity: parseInt(e.target.value) || null })}
                       placeholder="e.g., 50"
                     />
                   </div>
@@ -1084,7 +1091,7 @@ export default function Clients() {
                     <select
                       id="cqc-rating"
                       value={editFormData.cqc_rating}
-                      onChange={(e) => setEditFormData({...editFormData, cqc_rating: e.target.value})}
+                      onChange={(e) => setEditFormData({ ...editFormData, cqc_rating: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     >
                       <option value="outstanding">Outstanding</option>
@@ -1100,7 +1107,7 @@ export default function Clients() {
                     <select
                       id="payment-terms"
                       value={editFormData.payment_terms}
-                      onChange={(e) => setEditFormData({...editFormData, payment_terms: e.target.value})}
+                      onChange={(e) => setEditFormData({ ...editFormData, payment_terms: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     >
                       <option value="net_7">Net 7 Days</option>
@@ -1123,7 +1130,7 @@ export default function Clients() {
                       value={editFormData.contact_person.name}
                       onChange={(e) => setEditFormData({
                         ...editFormData,
-                        contact_person: {...editFormData.contact_person, name: e.target.value}
+                        contact_person: { ...editFormData.contact_person, name: e.target.value }
                       })}
                     />
                   </div>
@@ -1134,7 +1141,7 @@ export default function Clients() {
                       value={editFormData.contact_person.role}
                       onChange={(e) => setEditFormData({
                         ...editFormData,
-                        contact_person: {...editFormData.contact_person, role: e.target.value}
+                        contact_person: { ...editFormData.contact_person, role: e.target.value }
                       })}
                       placeholder="e.g., Care Home Manager"
                     />
@@ -1147,7 +1154,7 @@ export default function Clients() {
                       value={editFormData.contact_person.email}
                       onChange={(e) => setEditFormData({
                         ...editFormData,
-                        contact_person: {...editFormData.contact_person, email: e.target.value}
+                        contact_person: { ...editFormData.contact_person, email: e.target.value }
                       })}
                     />
                   </div>
@@ -1158,7 +1165,7 @@ export default function Clients() {
                       value={editFormData.contact_person.phone}
                       onChange={(e) => setEditFormData({
                         ...editFormData,
-                        contact_person: {...editFormData.contact_person, phone: e.target.value}
+                        contact_person: { ...editFormData.contact_person, phone: e.target.value }
                       })}
                     />
                   </div>
@@ -1168,7 +1175,7 @@ export default function Clients() {
                       id="billing-email"
                       type="email"
                       value={editFormData.billing_email}
-                      onChange={(e) => setEditFormData({...editFormData, billing_email: e.target.value})}
+                      onChange={(e) => setEditFormData({ ...editFormData, billing_email: e.target.value })}
                     />
                   </div>
                 </div>
@@ -1185,7 +1192,7 @@ export default function Clients() {
                       value={editFormData.address.line1}
                       onChange={(e) => setEditFormData({
                         ...editFormData,
-                        address: {...editFormData.address, line1: e.target.value}
+                        address: { ...editFormData.address, line1: e.target.value }
                       })}
                     />
                   </div>
@@ -1196,7 +1203,7 @@ export default function Clients() {
                       value={editFormData.address.line2}
                       onChange={(e) => setEditFormData({
                         ...editFormData,
-                        address: {...editFormData.address, line2: e.target.value}
+                        address: { ...editFormData.address, line2: e.target.value }
                       })}
                     />
                   </div>
@@ -1207,7 +1214,7 @@ export default function Clients() {
                       value={editFormData.address.city}
                       onChange={(e) => setEditFormData({
                         ...editFormData,
-                        address: {...editFormData.address, city: e.target.value}
+                        address: { ...editFormData.address, city: e.target.value }
                       })}
                     />
                   </div>
@@ -1218,7 +1225,7 @@ export default function Clients() {
                       value={editFormData.address.postcode}
                       onChange={(e) => setEditFormData({
                         ...editFormData,
-                        address: {...editFormData.address, postcode: e.target.value}
+                        address: { ...editFormData.address, postcode: e.target.value }
                       })}
                     />
                   </div>
@@ -1379,7 +1386,7 @@ export default function Clients() {
                   <select
                     id="shift-window-type"
                     value={editFormData.shift_window_type || '8_to_8'}
-                    onChange={(e) => setEditFormData({...editFormData, shift_window_type: e.target.value})}
+                    onChange={(e) => setEditFormData({ ...editFormData, shift_window_type: e.target.value })}
                     className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   >
                     <option value="8_to_8">🕐 8-8 Window (08:00-20:00 / 20:00-08:00) - Standard</option>
@@ -1400,7 +1407,7 @@ export default function Clients() {
                 <Alert className="border-green-300 bg-green-50">
                   <AlertCircle className="h-4 w-4 text-green-600" />
                   <AlertDescription className="text-green-900 text-sm">
-                    <strong>💡 CRITICAL:</strong> These are the agreed rates from your contract with this client. 
+                    <strong>💡 CRITICAL:</strong> These are the agreed rates from your contract with this client.
                     When creating shifts, these rates will auto-populate. This prevents rate discrepancies and ensures consistency.
                   </AlertDescription>
                 </Alert>
@@ -1488,8 +1495,8 @@ export default function Clients() {
                 <Alert className="border-gray-300 bg-gray-50">
                   <AlertCircle className="h-4 w-4 text-gray-600" />
                   <AlertDescription className="text-gray-700 text-xs">
-                    <strong>💡 How it works:</strong> When you create a shift for this client and select a role, 
-                    these rates will automatically populate in the shift form. You can override them on a per-shift basis if needed 
+                    <strong>💡 How it works:</strong> When you create a shift for this client and select a role,
+                    these rates will automatically populate in the shift form. You can override them on a per-shift basis if needed
                     (e.g., for urgent shifts with incentive pay).
                   </AlertDescription>
                 </Alert>
@@ -1503,7 +1510,7 @@ export default function Clients() {
                   <textarea
                     id="notes"
                     value={editFormData.notes}
-                    onChange={(e) => setEditFormData({...editFormData, notes: e.target.value})}
+                    onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
                     rows={4}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     placeholder="Add any internal notes about this client, e.g., communication preferences, specific requirements, previous issues."

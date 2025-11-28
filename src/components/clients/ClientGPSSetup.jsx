@@ -91,6 +91,8 @@ export default function ClientGPSSetup({ client, onComplete }) {
     }
   });
 
+  const [searchResults, setSearchResults] = useState([]);
+
   const handleAddressSearch = async () => {
     if (!searchAddress.trim()) {
       toast.error('Please enter an address');
@@ -98,8 +100,10 @@ export default function ClientGPSSetup({ client, onComplete }) {
     }
 
     setSearchingAddress(true);
+    setSearchResults([]); // Clear previous results
 
     try {
+      // 1. Try Postcode Search First (High Accuracy)
       const postcodeMatch = searchAddress.match(/([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i);
 
       if (postcodeMatch) {
@@ -110,24 +114,34 @@ export default function ClientGPSSetup({ client, onComplete }) {
           const postcodeData = await postcodeResponse.json();
 
           if (postcodeData.status === 200 && postcodeData.result) {
-            setCoordinates({
-              latitude: postcodeData.result.latitude,
-              longitude: postcodeData.result.longitude
-            });
-            toast.success(`✅ Found: ${postcodeData.result.admin_district}, ${postcodeData.result.region}`);
-            setSearchingAddress(false);
-            return;
+            // For postcodes, we trust the result enough to show it as a primary option or auto-set
+            // But to be consistent with "user needs to be able to put full address", we can add it to the list
+            // or just set it if it's a direct postcode match. 
+            // Let's set it directly for pure postcodes as it's usually what they want, 
+            // BUT if they typed more than just a postcode, we should search Nominatim too.
+
+            // If the input is JUST the postcode, auto-set.
+            if (searchAddress.trim().replace(/\s/g, '').toUpperCase() === postcode) {
+              setCoordinates({
+                latitude: postcodeData.result.latitude,
+                longitude: postcodeData.result.longitude
+              });
+              toast.success(`✅ Found Postcode: ${postcodeData.result.admin_district}`);
+              setSearchingAddress(false);
+              return;
+            }
           }
         } catch (postcodeError) {
           console.warn('⚠️ [GPS] Postcode API failed, falling back to Nominatim:', postcodeError);
         }
       }
 
+      // 2. Search Nominatim (Address Search)
       const nominatimUrl = `https://nominatim.openstreetmap.org/search?` +
         `q=${encodeURIComponent(searchAddress)}&` +
         `countrycodes=gb&` +
         `format=json&` +
-        `limit=1`;
+        `limit=5`; // Increased limit to 5
 
       const response = await fetch(nominatimUrl, {
         headers: {
@@ -138,23 +152,35 @@ export default function ClientGPSSetup({ client, onComplete }) {
       const data = await response.json();
 
       if (data && data.length > 0) {
-        const result = data[0];
-
-        setCoordinates({
-          latitude: parseFloat(result.lat),
-          longitude: parseFloat(result.lon)
-        });
-
-        toast.success(`✅ Found: ${result.display_name}`);
+        setSearchResults(data);
+        // Don't auto-set coordinates, let user choose from the list
+        if (data.length === 1) {
+          toast.success(`Found 1 result. Please confirm below.`);
+        } else {
+          toast.success(`Found ${data.length} results. Please select the correct one.`);
+        }
       } else {
-        toast.error('❌ Address not found. Try entering just the postcode (e.g., TS28 5EN) or click on the map.');
+        toast.error('❌ Address not found. Try a different search term or postcode.');
       }
     } catch (error) {
       console.error('❌ [GPS] Geocoding error:', error);
-      toast.error('❌ Address search failed. Try entering just the postcode or click on the map to set location manually.');
+      toast.error('❌ Address search failed. Please try again.');
     } finally {
       setSearchingAddress(false);
     }
+  };
+
+  const handleSelectLocation = (result) => {
+    const lat = parseFloat(result.lat);
+    const lon = parseFloat(result.lon);
+
+    setCoordinates({
+      latitude: lat,
+      longitude: lon
+    });
+    setSearchResults([]); // Clear results after selection
+    setSearchAddress(result.display_name); // Update input with full address
+    toast.success('📍 Location updated');
   };
 
   const handleClearGPS = () => {
@@ -266,6 +292,24 @@ export default function ClientGPSSetup({ client, onComplete }) {
               )}
             </Button>
           </div>
+
+          {/* Search Results List */}
+          {searchResults.length > 0 && (
+            <div className="mt-2 border rounded-md max-h-60 overflow-y-auto bg-white shadow-sm z-10 relative">
+              {searchResults.map((result, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => handleSelectLocation(result)}
+                  className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b last:border-b-0 text-sm transition-colors flex items-start gap-2"
+                >
+                  <MapPin className="w-4 h-4 mt-0.5 text-gray-400 flex-shrink-0" />
+                  <span className="text-gray-700">{result.display_name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           <p className="text-xs text-gray-500 mt-2">
             💡 Tip: Just the postcode works best (e.g., TS28 5EN). Or click on the map.
           </p>
