@@ -8,26 +8,29 @@ import { getClientRates, getShiftTimes } from './clientHelpers';
 
 // Role jargon mapping - AI translates common terms to standard role names
 const ROLE_JARGON_MAP = {
-  // Healthcare Assistant
+  // Healthcare Assistant (HCA) & Care Workers
   'hca': 'healthcare_assistant',
   "hca's": 'healthcare_assistant',
   'hcas': 'healthcare_assistant',
   'healthcare assistant': 'healthcare_assistant',
   'health care assistant': 'healthcare_assistant',
   'assistant': 'healthcare_assistant',
-  
-  // Care Worker
-  'care assistant': 'care_worker',
-  'care worker': 'care_worker',
-  'carer': 'care_worker',
-  'support worker': 'care_worker',
-  
+  'care assistant': 'healthcare_assistant',
+  'care worker': 'healthcare_assistant',
+  'care workers': 'healthcare_assistant',
+  'carer': 'healthcare_assistant',
+  'carers': 'healthcare_assistant',
+
+  // Support Worker
+  'support worker': 'support_worker',
+  'support staff': 'support_worker',
+
   // Nurse
   'rn': 'nurse',
   'registered nurse': 'nurse',
   'staff nurse': 'nurse',
   'rgn': 'nurse',
-  
+
   // Senior Care Worker
   'senior': 'senior_care_worker',
   'senior carer': 'senior_care_worker',
@@ -43,20 +46,20 @@ const ROLE_JARGON_MAP = {
  */
 export function fuzzyMatchClient(searchTerm, clients) {
   if (!searchTerm || !clients || clients.length === 0) return [];
-  
+
   const term = searchTerm.toLowerCase().trim();
-  
+
   // Exact match first
-  const exactMatch = clients.filter(c => 
+  const exactMatch = clients.filter(c =>
     c.name.toLowerCase() === term
   );
   if (exactMatch.length > 0) return exactMatch;
-  
+
   // Partial match (contains)
-  const partialMatches = clients.filter(c => 
+  const partialMatches = clients.filter(c =>
     c.name.toLowerCase().includes(term) || term.includes(c.name.toLowerCase())
   );
-  
+
   return partialMatches;
 }
 
@@ -67,7 +70,7 @@ export function fuzzyMatchClient(searchTerm, clients) {
  */
 export function translateRoleJargon(roleText) {
   if (!roleText) return null;
-  
+
   const normalized = roleText.toLowerCase().trim();
   return ROLE_JARGON_MAP[normalized] || normalized.replace(/\s+/g, '_');
 }
@@ -89,15 +92,15 @@ export async function conversationalExtraction(
   context = {}
 ) {
   // Build client list for AI
-  const clientsList = clients.map(c => 
+  const clientsList = clients.map(c =>
     `- ${c.name} (ID: ${c.id}, Type: ${c.type}, Enabled Roles: ${Object.keys(c.enabled_roles || {}).filter(r => c.enabled_roles[r]).join(', ')})`
   ).join('\n');
-  
+
   // Build conversation history string
   const historyString = conversationHistory
     .map(msg => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content}`)
     .join('\n');
-  
+
   // Build system prompt
   const systemPrompt = `You are an intelligent shift scheduling assistant for a UK healthcare staffing agency.
 
@@ -168,7 +171,7 @@ User pastes: "Monday 17th x 5 HCA shifts"
 
   // PRODUCTION MODE: Use pattern-based extraction (no Edge Function needed)
   // This is production-ready and works without OpenAI API
-  const USE_MOCK = true; // Set to false when invoke-llm Edge Function is deployed
+  const USE_MOCK = false; // Set to false when invoke-llm Edge Function is deployed
 
   if (USE_MOCK) {
     console.log('🧪 MOCK MODE: Simulating AI response');
@@ -361,9 +364,12 @@ User pastes: "Monday 17th x 5 HCA shifts"
     });
 
     const aiResponse = response?.data ?? response;
-    console.log('🤖 AI Response:', aiResponse);
+    // Unwrap nested data if present (Edge Function returns { data: ... })
+    const finalResponse = aiResponse.data ? aiResponse.data : aiResponse;
 
-    return aiResponse;
+    console.log('🤖 AI Response:', finalResponse);
+
+    return finalResponse;
   } catch (error) {
     console.error('❌ AI extraction failed:', error);
     throw new Error(`AI extraction failed: ${error.message}`);
@@ -477,4 +483,3 @@ export function convertToGridData(extractedData, client, user, agencyId) {
 
   return formData;
 }
-

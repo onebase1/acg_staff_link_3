@@ -245,19 +245,7 @@ export default function QuickActions() {
                   </Button>
                 </Link>
 
-                <Link to={createPageUrl('AIShiftPaste')}>
-                  <Button variant="outline" className="w-full h-24 flex flex-col gap-2 hover:bg-purple-50">
-                    <Sparkles className="w-6 h-6 text-purple-600" />
-                    <span className="text-sm font-medium">AI Shift Paste</span>
-                  </Button>
-                </Link>
-
-                <Link to={createPageUrl('NaturalLanguageShiftCreator')}>
-                  <Button variant="outline" className="w-full h-24 flex flex-col gap-2 hover:bg-indigo-50">
-                    <MessageSquare className="w-6 h-6 text-purple-600" />
-                    <span className="text-sm font-medium">Generate Shift (AI)</span>
-                  </Button>
-                </Link>
+                {/* Removed deprecated AI Shift Paste and Generate Shift (AI) buttons */}
 
                 <Link to={createPageUrl('Staff')}>
                   <Button variant="outline" className="w-full h-24 flex flex-col gap-2 hover:bg-blue-50">

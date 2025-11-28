@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { createPageUrl } from "@/utils";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -12,6 +12,7 @@ import Step1ClientSetup from "@/components/bulk-shifts/Step1ClientSetup";
 import RoleSelector from "@/components/bulk-shifts/RoleSelector";
 import Step2MultiRoleGrid from "@/components/bulk-shifts/Step2MultiRoleGrid";
 import Step3PreviewTable from "@/components/bulk-shifts/Step3PreviewTable";
+import AIScheduleInput from "@/components/bulk-shifts/AIScheduleInput";
 
 // Import utilities
 import { expandGridToShifts, prepareShiftsForInsert } from "@/utils/bulkShifts/shiftGenerator";
@@ -28,6 +29,10 @@ export default function BulkShiftCreation() {
   const [creationProgress, setCreationProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
   const [createdCount, setCreatedCount] = useState(0);
+
+  // AI State
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [clients, setClients] = useState([]);
 
   // Form data state
   const [formData, setFormData] = useState({
@@ -60,7 +65,7 @@ export default function BulkShiftCreation() {
     notes: ''
   });
 
-  // RBAC Check
+  // RBAC Check & Data Fetch
   useEffect(() => {
     const checkAccess = async () => {
       try {
@@ -97,6 +102,20 @@ export default function BulkShiftCreation() {
 
         setCurrentAgency(profile.agency_id);
         console.log('✅ Bulk Shift Creation - Agency:', profile.agency_id);
+
+        // Fetch clients for AI
+        const { data: clientsData, error: clientsError } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('agency_id', profile.agency_id)
+          .eq('status', 'active')
+          .order('name');
+
+        if (clientsError) {
+          console.error('❌ Error fetching clients:', clientsError);
+        } else {
+          setClients(clientsData || []);
+        }
 
         setLoading(false);
       } catch (error) {
@@ -137,6 +156,39 @@ export default function BulkShiftCreation() {
 
     // Move to step 4 (Preview)
     setCurrentStep(4);
+  };
+
+  // Handle AI Data Import
+  const handleAIImport = (aiData) => {
+    console.log('🤖 AI Data Received:', aiData);
+
+    // Generate shifts immediately for preview
+    const shifts = expandGridToShifts(
+      aiData.gridData,
+      aiData.activeRoles,
+      aiData.client,
+      aiData, // Use aiData as the source of truth for shiftTimes, etc.
+      currentAgency,
+      user
+    );
+
+    // Validate shifts
+    const validation = validateBulkShifts(shifts);
+
+    setFormData(prev => ({
+      ...prev,
+      ...aiData,
+      generatedShifts: shifts,
+      validation: validation
+    }));
+
+    // Close modal
+    setIsAIModalOpen(false);
+
+    // Jump directly to Step 4 (Preview) as requested
+    setCurrentStep(4);
+
+    toast.success('Schedule imported from AI! Please review the generated shifts.');
   };
 
   // Handle shift update from edit modal
@@ -349,18 +401,29 @@ export default function BulkShiftCreation() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">Bulk Shift Creation</h1>
-          <p className="text-gray-600">Create multiple shifts across dates and roles</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Bulk Shift Creation</h1>
+            <p className="text-gray-600">Create multiple shifts across dates and roles</p>
+          </div>
         </div>
+
+        {/* Magic Paste Button */}
+        <Button
+          onClick={() => setIsAIModalOpen(true)}
+          className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md"
+        >
+          <Sparkles className="w-4 h-4 mr-2" />
+          Magic Paste (AI)
+        </Button>
       </div>
 
       {/* Progress Steps */}
@@ -369,13 +432,12 @@ export default function BulkShiftCreation() {
           <React.Fragment key={step}>
             <div className="flex items-center gap-2">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                  currentStep === step
-                    ? 'bg-cyan-600 text-white'
-                    : currentStep > step
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${currentStep === step
+                  ? 'bg-cyan-600 text-white'
+                  : currentStep > step
                     ? 'bg-emerald-500 text-white'
                     : 'bg-gray-200 text-gray-600'
-                }`}
+                  }`}
               >
                 {currentStep > step ? '✓' : step}
               </div>
@@ -426,6 +488,17 @@ export default function BulkShiftCreation() {
           creationProgress={creationProgress}
         />
       )}
+
+      {/* AI Modal */}
+      <AIScheduleInput
+        isOpen={isAIModalOpen}
+        onClose={() => setIsAIModalOpen(false)}
+        onDataReady={handleAIImport}
+        clients={clients}
+        currentAgency={currentAgency}
+        user={user}
+        selectedClient={formData.client}
+      />
     </div>
   );
 }
