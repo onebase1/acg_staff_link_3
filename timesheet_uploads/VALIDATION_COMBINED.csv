@@ -1,0 +1,4 @@
+timesheet_id,row_num,staff_name,employer_num,shift_date_parsed,start_time,end_time,break_min,hours_calc,hours_claimed,client_matched,confidence,expected_shift_id,expected_client,expected_start,expected_end,expected_duration,match_status,match_date,match_time,match_client,match_hours,needs_review,validation_notes
+TS_001,1,Theresa Atomi,0426065951,2025-01-13,20:00,08:00,60,11.0,11,Hampton Manor,95,SEARCHING,,,,,PENDING,PENDING,PENDING,PENDING,PENDING,TRUE,Week beginning missing; Awaiting shift match
+TS_001,2,Theresa Atomi,0426065951,2025-01-17,20:00,08:00,60,11.0,11,Hampton Manor,95,SEARCHING,,,,,PENDING,PENDING,PENDING,PENDING,PENDING,TRUE,Week beginning missing; Awaiting shift match
+TS_001,3,Theresa Atomi,0426065951,2025-01-18,20:00,08:00,60,11.0,11,Hampton Manor,95,SEARCHING,,,,,PENDING,PENDING,PENDING,PENDING,PENDING,TRUE,Week beginning missing; Awaiting shift match

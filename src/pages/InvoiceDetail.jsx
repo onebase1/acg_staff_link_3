@@ -19,6 +19,25 @@ export default function InvoiceDetail() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setInvoiceId(params.get('id'));
+
+    // 🔒 RBAC CHECK: Only Admins and Managers allowed
+    const checkAccess = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('user_type')
+          .eq('id', authUser.id)
+          .single();
+
+        const allowedRoles = ['agency_admin', 'manager'];
+        if (profile && !allowedRoles.includes(profile.user_type)) {
+          toast.error('⛔ Access Denied: You do not have permission to view invoices.');
+          window.location.href = '/Dashboard';
+        }
+      }
+    };
+    checkAccess();
   }, []);
 
   // ✅ FIX: Draft invoices query LIVE data, sent invoices use snapshot
@@ -28,26 +47,26 @@ export default function InvoiceDetail() {
       const { data: invoices, error: invError } = await supabase
         .from('invoices')
         .select('*');
-      
+
       if (invError) {
         console.error('❌ Error fetching invoices:', invError);
         return null;
       }
-      
+
       const inv = invoices?.find(inv => inv.id === invoiceId);
-      
+
       // ✅ If draft, query live timesheet data
       if (inv && inv.status === 'draft' && inv.line_items) {
         console.log('📝 [Draft Invoice] Fetching live timesheet data...');
         const { data: allTimesheets, error: tsError } = await supabase
           .from('timesheets')
           .select('*');
-        
+
         if (tsError) {
           console.error('❌ Error fetching timesheets:', tsError);
           return inv;
         }
-        
+
         // Update line items with current timesheet data
         const updatedLineItems = inv.line_items.map(item => {
           const currentTimesheet = allTimesheets.find(t => t.id === item.timesheet_id);
@@ -63,12 +82,12 @@ export default function InvoiceDetail() {
           }
           return item;
         });
-        
+
         // Recalculate totals with live data
         const subtotal = updatedLineItems.reduce((sum, item) => sum + item.amount, 0);
         const vatAmount = subtotal * (inv.vat_rate / 100);
         const total = subtotal + vatAmount;
-        
+
         return {
           ...inv,
           line_items: updatedLineItems,
@@ -79,7 +98,7 @@ export default function InvoiceDetail() {
           _is_live: true
         };
       }
-      
+
       return inv;
     },
     enabled: !!invoiceId,
@@ -93,13 +112,13 @@ export default function InvoiceDetail() {
     queryKey: ['client', invoice?.client_id],
     queryFn: async () => {
       if (!invoice?.client_id) return null;
-      
+
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .eq('id', invoice.client_id)
         .single();
-      
+
       if (error) {
         console.error('❌ Error fetching client:', error);
         return null;
@@ -114,13 +133,13 @@ export default function InvoiceDetail() {
     queryKey: ['agency', invoice?.agency_id],
     queryFn: async () => {
       if (!invoice?.agency_id) return null;
-      
+
       const { data, error } = await supabase
         .from('agencies')
         .select('*')
         .eq('id', invoice.agency_id)
         .single();
-      
+
       if (error) {
         console.error('❌ Error fetching agency:', error);
         return null;
@@ -140,7 +159,7 @@ export default function InvoiceDetail() {
           invoice_id: invoiceId
         }
       });
-      
+
       if (error) {
         console.error('❌ Error sending invoice:', error);
         throw error;
@@ -220,10 +239,10 @@ export default function InvoiceDetail() {
             Back
           </Button>
           {invoice.status !== 'draft' && (
-             <Button variant="outline" onClick={() => toast.info('Link copied to clipboard', { description: 'Client can view this invoice using this link.' })}>
-             <Eye className="w-4 h-4 mr-2" />
-             View Link
-           </Button>
+            <Button variant="outline" onClick={() => toast.info('Link copied to clipboard', { description: 'Client can view this invoice using this link.' })}>
+              <Eye className="w-4 h-4 mr-2" />
+              View Link
+            </Button>
           )}
           <Button variant="outline" onClick={handleDownloadPDF}>
             <Download className="w-4 h-4 mr-2" />
@@ -465,11 +484,10 @@ export default function InvoiceDetail() {
           </div>
 
           {/* Payment Instructions */}
-          <div className={`p-6 rounded-lg border ${
-            !agency?.bank_details || !agency.bank_details.account_name 
-              ? 'bg-red-50 border-red-300' 
+          <div className={`p-6 rounded-lg border ${!agency?.bank_details || !agency.bank_details.account_name
+              ? 'bg-red-50 border-red-300'
               : 'bg-gray-50 border-gray-200'
-          }`}>
+            }`}>
             <h3 className="text-sm font-semibold text-gray-700 mb-3">PAYMENT INSTRUCTIONS:</h3>
             <div className="text-sm text-gray-600 space-y-1">
               <p>Please make payment via bank transfer to:</p>
@@ -514,7 +532,7 @@ export default function InvoiceDetail() {
                     ⚠️ CRITICAL: Bank Details Missing
                   </p>
                   <p className="text-sm text-red-700 mt-2">
-                    This invoice cannot be sent without payment instructions. 
+                    This invoice cannot be sent without payment instructions.
                   </p>
                   <p className="text-sm text-red-700 mt-1">
                     <strong>Action Required:</strong> Go to Agency Settings → Bank Details to configure payment information.

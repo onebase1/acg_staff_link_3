@@ -8,7 +8,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import {
   Trash2, AlertTriangle, CheckCircle, Calendar,
-  Clock, FileText, Users, Building2, Loader2, Database
+  Clock, FileText, Users, Building2, Loader2, Database,
+  Bell, Receipt, DollarSign
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -16,51 +17,66 @@ export default function CleanSlate() {
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteProgress, setDeleteProgress] = useState({ current: 0, total: 0, entity: '' });
-  const [useSqlMethod, setUseSqlMethod] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch counts for display
   const { data: shifts = [] } = useQuery({
     queryKey: ['all-shifts-count'],
     queryFn: async () => {
-      const { data } = await supabase.from('shifts').select('*');
-      return data || [];
+      const { data } = await supabase.from('shifts').select('*', { count: 'exact', head: true });
+      return new Array(data?.length || 0); // Mock array for length
     }
   });
 
   const { data: bookings = [] } = useQuery({
     queryKey: ['all-bookings-count'],
     queryFn: async () => {
-      const { data } = await supabase.from('bookings').select('*');
-      return data || [];
+      const { count } = await supabase.from('bookings').select('*', { count: 'exact', head: true });
+      return new Array(count || 0);
     }
   });
 
   const { data: timesheets = [] } = useQuery({
     queryKey: ['all-timesheets-count'],
     queryFn: async () => {
-      const { data } = await supabase.from('timesheets').select('*');
-      return data || [];
+      const { count } = await supabase.from('timesheets').select('*', { count: 'exact', head: true });
+      return new Array(count || 0);
+    }
+  });
+
+  const { data: invoices = [] } = useQuery({
+    queryKey: ['all-invoices-count'],
+    queryFn: async () => {
+      const { count } = await supabase.from('invoices').select('*', { count: 'exact', head: true });
+      return new Array(count || 0);
+    }
+  });
+
+  const { data: notifications = [] } = useQuery({
+    queryKey: ['all-notifications-count'],
+    queryFn: async () => {
+      const { count } = await supabase.from('notifications').select('*', { count: 'exact', head: true });
+      return new Array(count || 0);
     }
   });
 
   const { data: staff = [] } = useQuery({
     queryKey: ['all-staff-count'],
     queryFn: async () => {
-      const { data } = await supabase.from('staff').select('*');
-      return data || [];
+      const { count } = await supabase.from('staff').select('*', { count: 'exact', head: true });
+      return new Array(count || 0);
     }
   });
 
   const { data: clients = [] } = useQuery({
     queryKey: ['all-clients-count'],
     queryFn: async () => {
-      const { data } = await supabase.from('clients').select('*');
-      return data || [];
+      const { count } = await supabase.from('clients').select('*', { count: 'exact', head: true });
+      return new Array(count || 0);
     }
   });
 
-  const handleSqlDelete = async () => {
+  const handleDelete = async () => {
     const CONFIRM_PHRASE = 'DELETE ALL SHIFTS';
 
     if (confirmText !== CONFIRM_PHRASE) {
@@ -71,115 +87,24 @@ export default function CleanSlate() {
     setIsDeleting(true);
 
     try {
-      console.log('🗑️ Starting SQL-based deletion...');
+      console.log('🗑️ Starting Clean Slate deletion...');
 
-      // Use RPC function or direct SQL via Supabase
-      setDeleteProgress({ current: 1, total: 5, entity: 'AdminWorkflows' });
+      // Try RPC first (faster, atomic)
+      setDeleteProgress({ current: 0, total: 100, entity: 'Initializing...' });
 
-      // Step 1: Delete AdminWorkflows
-      const { error: workflowError } = await supabase.rpc('delete_all_shift_data');
+      const { data, error: rpcError } = await supabase.rpc('delete_all_shift_data');
 
-      if (workflowError) {
-        console.error('❌ SQL deletion error:', workflowError);
-        // Fallback to manual deletion
+      if (rpcError) {
+        console.error('❌ RPC deletion error:', rpcError);
         console.log('⚠️ RPC failed, falling back to manual deletion...');
-        return handleBulkDelete();
+        await handleManualDelete();
+      } else {
+        console.log('✅ RPC deletion success:', data);
+        toast.success('🎉 All shift data deleted successfully via RPC!');
       }
-
-      toast.success('🎉 All shifts, bookings, and timesheets deleted via SQL!');
 
       // Refresh all queries
-      queryClient.invalidateQueries();
-      setConfirmText('');
-
-    } catch (error) {
-      console.error('❌ SQL deletion error:', error);
-      toast.error(`SQL deletion failed: ${error.message}. Try the manual method.`);
-    } finally {
-      setIsDeleting(false);
-      setDeleteProgress({ current: 0, total: 0, entity: '' });
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    const CONFIRM_PHRASE = 'DELETE ALL SHIFTS';
-
-    if (confirmText !== CONFIRM_PHRASE) {
-      toast.error(`Please type "${CONFIRM_PHRASE}" exactly to confirm`);
-      return;
-    }
-
-    setIsDeleting(true);
-
-    try {
-      console.log('🗑️ Starting bulk deletion...');
-      console.log(`📊 Counts: ${timesheets.length} timesheets, ${bookings.length} bookings, ${shifts.length} shifts`);
-
-      // ✅ IMPROVED: Use bulk delete with proper error handling
-
-      // Step 1: Delete all Timesheets
-      console.log('🗑️ Step 1: Deleting timesheets...');
-      setDeleteProgress({ current: 0, total: timesheets.length, entity: 'Timesheets' });
-
-      const { error: timesheetError, count: timesheetCount } = await supabase
-        .from('timesheets')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all (using dummy condition)
-
-      if (timesheetError) {
-        console.error('❌ Timesheet deletion error:', timesheetError);
-        throw new Error(`Failed to delete timesheets: ${timesheetError.message}`);
-      }
-
-      console.log(`✅ Deleted timesheets (count: ${timesheetCount})`);
-      toast.success(`✅ Deleted timesheets`);
-
-      // Step 2: Delete all Bookings
-      console.log('🗑️ Step 2: Deleting bookings...');
-      setDeleteProgress({ current: 0, total: bookings.length, entity: 'Bookings' });
-
-      const { error: bookingError, count: bookingCount } = await supabase
-        .from('bookings')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-
-      if (bookingError) {
-        console.error('❌ Booking deletion error:', bookingError);
-        throw new Error(`Failed to delete bookings: ${bookingError.message}`);
-      }
-
-      console.log(`✅ Deleted bookings (count: ${bookingCount})`);
-      toast.success(`✅ Deleted bookings`);
-
-      // Step 3: Delete all Shifts
-      console.log('🗑️ Step 3: Deleting shifts...');
-      setDeleteProgress({ current: 0, total: shifts.length, entity: 'Shifts' });
-
-      const { error: shiftError, count: shiftCount } = await supabase
-        .from('shifts')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-
-      if (shiftError) {
-        console.error('❌ Shift deletion error:', shiftError);
-        throw new Error(`Failed to delete shifts: ${shiftError.message}`);
-      }
-
-      console.log(`✅ Deleted shifts (count: ${shiftCount})`);
-      toast.success(`✅ Deleted shifts`);
-
-      // Refresh all queries
-      queryClient.invalidateQueries(['shifts']);
-      queryClient.invalidateQueries(['bookings']);
-      queryClient.invalidateQueries(['timesheets']);
-      queryClient.invalidateQueries(['workflows']);
-      queryClient.invalidateQueries(['invoices']);
-      queryClient.invalidateQueries(['payslips']);
-      queryClient.invalidateQueries(['all-shifts-count']);
-      queryClient.invalidateQueries(['all-bookings-count']);
-      queryClient.invalidateQueries(['all-timesheets-count']);
-
-      toast.success('🎉 CLEAN SLATE COMPLETE! All shifts, bookings, and timesheets deleted. Staff and clients preserved.');
+      await queryClient.invalidateQueries();
       setConfirmText('');
 
     } catch (error) {
@@ -191,7 +116,62 @@ export default function CleanSlate() {
     }
   };
 
-  const totalToDelete = shifts.length + bookings.length + timesheets.length;
+  const handleManualDelete = async () => {
+    console.log('🗑️ Starting manual fallback deletion...');
+
+    try {
+      // 1. Operational Costs
+      setDeleteProgress({ current: 1, total: 9, entity: 'Operational Costs' });
+      const { error: opError } = await supabase.from('operational_costs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (opError) throw new Error(`Operational Costs: ${opError.message}`);
+
+      // 2. Invoice Amendments
+      setDeleteProgress({ current: 2, total: 9, entity: 'Invoice Amendments' });
+      const { error: iaError } = await supabase.from('invoice_amendments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (iaError) throw new Error(`Invoice Amendments: ${iaError.message}`);
+
+      // 3. Timesheets
+      setDeleteProgress({ current: 3, total: 9, entity: 'Timesheets' });
+      const { error: tsError } = await supabase.from('timesheets').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (tsError) throw new Error(`Timesheets: ${tsError.message}`);
+
+      // 4. Bookings
+      setDeleteProgress({ current: 4, total: 9, entity: 'Bookings' });
+      const { error: bkError } = await supabase.from('bookings').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (bkError) throw new Error(`Bookings: ${bkError.message}`);
+
+      // 5. Notifications
+      setDeleteProgress({ current: 5, total: 9, entity: 'Notifications' });
+      const { error: ntError } = await supabase.from('notifications').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (ntError) throw new Error(`Notifications: ${ntError.message}`);
+
+      // 6. Invoices
+      setDeleteProgress({ current: 6, total: 9, entity: 'Invoices' });
+      const { error: invError } = await supabase.from('invoices').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (invError) throw new Error(`Invoices: ${invError.message}`);
+
+      // 7. Admin Workflows
+      setDeleteProgress({ current: 7, total: 9, entity: 'Admin Workflows' });
+      // Best effort, ignore errors as RLS might block
+      await supabase.from('admin_workflows').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+      // 8. Change Logs
+      setDeleteProgress({ current: 8, total: 9, entity: 'Change Logs' });
+      await supabase.from('change_logs').delete().in('affected_entity_type', ['shift', 'timesheet', 'booking', 'invoice']);
+
+      // 9. Shifts
+      setDeleteProgress({ current: 9, total: 9, entity: 'Shifts' });
+      const { error: shiftError } = await supabase.from('shifts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (shiftError) throw new Error(`Shifts: ${shiftError.message}`);
+
+      toast.success('✅ Manual deletion complete');
+    } catch (error) {
+      console.error('❌ Manual deletion failed:', error);
+      throw error; // Re-throw to be caught by main handler
+    }
+  };
+
+  const totalToDelete = shifts.length + bookings.length + timesheets.length + invoices.length + notifications.length;
   const canDelete = confirmText === 'DELETE ALL SHIFTS';
 
   return (
@@ -208,13 +188,13 @@ export default function CleanSlate() {
           <Alert className="border-red-400 bg-white mb-4">
             <AlertTriangle className="h-5 w-5 text-red-600" />
             <AlertDescription className="text-red-900">
-              <strong>⚠️ DESTRUCTIVE ACTION:</strong> This will permanently delete ALL shifts, bookings, and timesheets from the database. This action CANNOT be undone!
+              <strong>⚠️ DESTRUCTIVE ACTION:</strong> This will permanently delete ALL shifts, bookings, timesheets, invoices, and notifications. This action CANNOT be undone!
             </AlertDescription>
           </Alert>
 
           <div className="bg-white p-4 rounded-lg border-2 border-red-200">
             <h3 className="font-bold text-red-900 mb-3">What will be DELETED:</h3>
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div className="flex items-center justify-between p-3 bg-red-50 rounded">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-red-600" />
@@ -236,13 +216,28 @@ export default function CleanSlate() {
                 </div>
                 <Badge className="bg-red-600 text-white text-lg">{timesheets.length}</Badge>
               </div>
-              <div className="flex items-center justify-between p-3 bg-red-100 rounded border-2 border-red-400">
+              <div className="flex items-center justify-between p-3 bg-red-50 rounded">
                 <div className="flex items-center gap-2">
-                  <Trash2 className="w-5 h-5 text-red-700" />
-                  <span className="font-bold text-red-900">TOTAL TO DELETE</span>
+                  <Receipt className="w-5 h-5 text-red-600" />
+                  <span className="font-semibold">Invoices</span>
                 </div>
-                <Badge className="bg-red-700 text-white text-xl">{totalToDelete}</Badge>
+                <Badge className="bg-red-600 text-white text-lg">{invoices.length}</Badge>
               </div>
+              <div className="flex items-center justify-between p-3 bg-red-50 rounded">
+                <div className="flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-red-600" />
+                  <span className="font-semibold">Notifications</span>
+                </div>
+                <Badge className="bg-red-600 text-white text-lg">{notifications.length}</Badge>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-red-100 rounded border-2 border-red-400 mt-4">
+              <div className="flex items-center gap-2">
+                <Trash2 className="w-5 h-5 text-red-700" />
+                <span className="font-bold text-red-900">TOTAL TO DELETE</span>
+              </div>
+              <Badge className="bg-red-700 text-white text-xl">{totalToDelete}</Badge>
             </div>
           </div>
 
@@ -309,20 +304,16 @@ export default function CleanSlate() {
                   }}
                 />
               </div>
-              <p className="text-sm text-blue-700 mt-1">
-                {deleteProgress.current} / {deleteProgress.total}
-              </p>
             </div>
           )}
 
           <Button
-            onClick={handleBulkDelete}
+            onClick={handleDelete}
             disabled={!canDelete || isDeleting}
-            className={`w-full h-14 text-lg font-bold ${
-              canDelete && !isDeleting
-                ? 'bg-red-600 hover:bg-red-700'
-                : 'bg-gray-400'
-            }`}
+            className={`w-full h-14 text-lg font-bold ${canDelete && !isDeleting
+              ? 'bg-red-600 hover:bg-red-700'
+              : 'bg-gray-400'
+              }`}
           >
             {isDeleting ? (
               <>

@@ -153,6 +153,8 @@ import GPSAccuracyMonitoring from "./GPSAccuracyMonitoring";
 
 import AdminComplianceReview from "./AdminComplianceReview";
 
+import RateManagement from "./RateManagement";
+
 import Login from "./Login";
 import ResetPassword from "./ResetPassword";
 
@@ -313,6 +315,8 @@ const PAGES = {
     GPSAccuracyMonitoring: GPSAccuracyMonitoring,
 
     AdminComplianceReview: AdminComplianceReview,
+
+    RateManagement: RateManagement,
 
     ResetPassword: ResetPassword,
 
@@ -499,6 +503,8 @@ function PagesContent() {
                 <Route path="/GPSAccuracyMonitoring" element={<GPSAccuracyMonitoring />} />
 
                 <Route path="/AdminComplianceReview" element={<AdminComplianceReview />} />
+
+                <Route path="/RateManagement" element={<RateManagement />} />
 
             </Routes>
         </Layout>

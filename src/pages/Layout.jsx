@@ -66,6 +66,7 @@ const navigationStructure = [
       { title: "Operational Costs", url: createPageUrl("OperationalCosts"), icon: DollarSign, adminOnly: true },
       { title: "CFO Dashboard", url: createPageUrl("CFODashboard"), icon: Shield, adminOnly: true },
       { title: "Dispute Resolution", url: createPageUrl("DisputeResolution"), icon: Shield, adminOnly: true },
+      { title: "Rate Management", url: createPageUrl("RateManagement"), icon: DollarSign, adminOnly: true },
     ]
   },
   {

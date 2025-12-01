@@ -1,0 +1,6 @@
+shift_id,staff_id,staff_name,employer_number,client_id,client_name,shift_date,shift_date_parsed,scheduled_start,scheduled_end,duration_hours,break_minutes,role,shift_status,already_has_timesheet
+SH_001234,ST_789,Theron Ultimi,0742656595,CL_456,Hampton Manor,13/01/25,2025-01-13,20:00,08:00,12,60,Care Assistant,completed,FALSE
+SH_001235,ST_789,Theron Ultimi,0742656595,CL_456,Hampton Manor,17/01/25,2025-01-17,20:00,08:00,12,60,Care Assistant,completed,FALSE
+SH_001236,ST_789,Theron Ultimi,0742656595,CL_456,Hampton Manor,18/01/25,2025-01-18,20:00,08:00,12,60,Care Assistant,completed,FALSE
+SH_001237,ST_790,Jane Smith,0512345678,CL_456,Hampton Manor,15/01/25,2025-01-15,08:00,20:00,12,60,Care Assistant,completed,FALSE
+SH_001238,ST_789,Theron Ultimi,0742656595,CL_457,Sunrise Care Home,20/01/25,2025-01-20,20:00,08:00,12,60,Care Assistant,completed,FALSE

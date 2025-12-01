@@ -1494,39 +1494,6 @@ export default function TimesheetDetail() {
           </div>
         )}
 
-        {/* Admin Financial Details - Show early on mobile */}
-        {isAdmin && workedHours > 0 && (
-          <Card className="order-2 bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
-            <CardHeader className="border-b border-blue-200">
-              <CardTitle className="flex items-center gap-2 text-blue-900">
-                <DollarSign className="w-5 h-5" />
-                Agency Financial Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6 space-y-4">
-              <div>
-                <p className="text-sm text-blue-700">Client Charge</p>
-                <p className="text-2xl font-bold text-blue-900">
-                  £{(timesheet.client_charge_amount || 0).toFixed(2)}
-                </p>
-                <p className="text-xs text-blue-600">
-                  £{timesheet.charge_rate}/hr × {workedHours}h
-                </p>
-              </div>
-
-              <div className="pt-4 border-t border-blue-200">
-                <p className="text-sm text-blue-700">Agency Margin</p>
-                <p className="text-2xl font-bold text-blue-900">
-                  £{((timesheet.client_charge_amount || 0) - (timesheet.staff_pay_amount || 0)).toFixed(2)}
-                </p>
-                <p className="text-xs text-blue-600">
-                  {(((timesheet.client_charge_amount || 0) - (timesheet.staff_pay_amount || 0)) / (timesheet.client_charge_amount || 1) * 100).toFixed(1)}% margin
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Actions - Show after financial on mobile */}
         {isAdmin && timesheet.status === 'submitted' && (
           <Card className="order-3">
@@ -1555,50 +1522,7 @@ export default function TimesheetDetail() {
           </Card>
         )}
 
-        {/* Create Invoice Button - Show after actions on mobile */}
-        {isAdmin && timesheet.status === 'approved' && !timesheet.invoice_id && (
-          <Card className="order-3 border-2 border-green-300 bg-gradient-to-br from-green-50 to-emerald-50">
-            <CardHeader className="border-b border-green-200">
-              <CardTitle className="text-green-900">Ready to Invoice</CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6">
-              <p className="text-sm text-green-800 mb-4">
-                This timesheet has been approved and is ready to be invoiced.
-              </p>
-              <Button
-                onClick={handleCreateInvoice}
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                Create Invoice
-              </Button>
-              <p className="text-xs text-green-700 mt-2 text-center">
-                Will generate PDF invoice with VAT calculation
-              </p>
-            </CardContent>
-          </Card>
-        )}
 
-        {/* Invoice Link - Show after create invoice on mobile */}
-        {timesheet.invoice_id && (
-          <Card className="order-3 border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-cyan-50">
-            <CardHeader className="border-b border-blue-200">
-              <CardTitle className="text-blue-900">Invoiced</CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6">
-              <p className="text-sm text-blue-800 mb-4">
-                This timesheet has been included in an invoice.
-              </p>
-              <Button
-                onClick={() => navigate(`${createPageUrl('InvoiceDetail')}?id=${timesheet.invoice_id}`)}
-                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                View Invoice
-              </Button>
-            </CardContent>
-          </Card>
-        )}
 
         {timesheet.rejection_reason && (
           <Alert variant="destructive">
