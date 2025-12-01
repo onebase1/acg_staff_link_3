@@ -54,6 +54,8 @@ export default function ClientGPSSetup({ client, onComplete }) {
     client?.geofence_radius_meters || 100
   );
 
+  const [selectedAddressDetails, setSelectedAddressDetails] = useState(null);
+
   // Ensure map is ready before rendering
   useEffect(() => {
     // Small delay to ensure DOM is ready for Leaflet
@@ -93,6 +95,42 @@ export default function ClientGPSSetup({ client, onComplete }) {
 
   const [searchResults, setSearchResults] = useState([]);
 
+  const reverseGeocode = async (lat, lon) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'ACG-StaffLink/1.0'
+          }
+        }
+      );
+      const data = await response.json();
+
+      if (data && data.address) {
+        const addr = data.address;
+        const city = addr.city || addr.town || addr.village || addr.county || '';
+        const postcode = addr.postcode || '';
+        const line1 = [addr.house_number, addr.road].filter(Boolean).join(' ');
+
+        setSelectedAddressDetails({
+          line1: line1,
+          line2: '',
+          city: city,
+          postcode: postcode
+        });
+
+        // Update the search box to show the found address
+        // This gives the user immediate visual feedback that the address has been "found" and synced
+        setSearchAddress(`${line1}, ${city}, ${postcode}`.replace(/^, /, '').replace(/, $/, ''));
+
+        toast.success(`📍 Address identified: ${line1}, ${city}`);
+      }
+    } catch (error) {
+      console.warn('Reverse geocoding failed:', error);
+    }
+  };
+
   const handleAddressSearch = async () => {
     if (!searchAddress.trim()) {
       toast.error('Please enter an address');
@@ -103,6 +141,45 @@ export default function ClientGPSSetup({ client, onComplete }) {
     setSearchResults([]); // Clear previous results
 
     try {
+      // 0a. Check for Google Maps URL
+      // Pattern: @54.7221,-1.373463
+      const googleMapsMatch = searchAddress.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (googleMapsMatch) {
+        const lat = parseFloat(googleMapsMatch[1]);
+        const lon = parseFloat(googleMapsMatch[2]);
+
+        if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+          setCoordinates({ latitude: lat, longitude: lon });
+          toast.success('📍 Coordinates extracted from Google Maps link!');
+
+          // Reverse geocode to get the address for these coordinates
+          await reverseGeocode(lat, lon);
+
+          setSearchingAddress(false);
+          return;
+        }
+      }
+
+      // 0b. Check for Coordinates Input (Lat, Lon)
+      // Regex allows: 54.123, -1.123 or 54.123 -1.123
+      const coordMatch = searchAddress.match(/^(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)$/);
+
+      if (coordMatch) {
+        const lat = parseFloat(coordMatch[1]);
+        const lon = parseFloat(coordMatch[3]);
+
+        if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+          setCoordinates({ latitude: lat, longitude: lon });
+          toast.success('📍 Coordinates set directly!');
+
+          // Reverse geocode to get the address for these coordinates
+          await reverseGeocode(lat, lon);
+
+          setSearchingAddress(false);
+          return;
+        }
+      }
+
       // 1. Try Postcode Search First (High Accuracy)
       const postcodeMatch = searchAddress.match(/([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i);
 
@@ -126,6 +203,15 @@ export default function ClientGPSSetup({ client, onComplete }) {
                 latitude: postcodeData.result.latitude,
                 longitude: postcodeData.result.longitude
               });
+
+              // Capture address details from postcode lookup
+              setSelectedAddressDetails({
+                city: postcodeData.result.admin_district || postcodeData.result.parish || '',
+                postcode: postcodeData.result.postcode,
+                line1: '', // Postcode lookup doesn't give street line
+                line2: ''
+              });
+
               toast.success(`✅ Found Postcode: ${postcodeData.result.admin_district}`);
               setSearchingAddress(false);
               return;
@@ -141,6 +227,7 @@ export default function ClientGPSSetup({ client, onComplete }) {
         `q=${encodeURIComponent(searchAddress)}&` +
         `countrycodes=gb&` +
         `format=json&` +
+        `addressdetails=1&` + // Request address details
         `limit=5`; // Increased limit to 5
 
       const response = await fetch(nominatimUrl, {
@@ -178,6 +265,20 @@ export default function ClientGPSSetup({ client, onComplete }) {
       latitude: lat,
       longitude: lon
     });
+
+    // Extract address details from Nominatim result
+    const addr = result.address || {};
+    const city = addr.city || addr.town || addr.village || addr.county || '';
+    const postcode = addr.postcode || '';
+    const line1 = [addr.house_number, addr.road].filter(Boolean).join(' ');
+
+    setSelectedAddressDetails({
+      line1: line1,
+      line2: '',
+      city: city,
+      postcode: postcode
+    });
+
     setSearchResults([]); // Clear results after selection
     setSearchAddress(result.display_name); // Update input with full address
     toast.success('📍 Location updated');
@@ -197,6 +298,7 @@ export default function ClientGPSSetup({ client, onComplete }) {
         onSuccess: () => {
           toast.success('❌ GPS location removed successfully!');
           setCoordinates({ latitude: 54.7191, longitude: -1.3539 });
+          setSelectedAddressDetails(null);
         }
       }
     );
@@ -216,18 +318,36 @@ export default function ClientGPSSetup({ client, onComplete }) {
       return;
     }
 
-    updateClientMutation.mutate(
-      {
-        location_coordinates: {
-          latitude: lat,
-          longitude: lng
-        },
-        geofence_radius_meters: parseInt(radius),
-        geofence_enabled: true
+    const payload = {
+      location_coordinates: {
+        latitude: lat,
+        longitude: lng
       },
+      geofence_radius_meters: parseInt(radius),
+      geofence_enabled: true
+    };
+
+    // If we have captured address details from the search, update the client address too
+    if (selectedAddressDetails) {
+      // Only update fields that have values to avoid wiping existing data with empty strings if search was partial
+      // But user requested "auto filled with correct address", so we should probably overwrite if we have a valid result.
+      // Let's merge with existing address to be safe, but prioritize new values.
+
+      const currentAddress = client.address || {};
+
+      payload.address = {
+        line1: selectedAddressDetails.line1 || currentAddress.line1 || '',
+        line2: selectedAddressDetails.line2 || currentAddress.line2 || '', // Nominatim rarely gives line 2
+        city: selectedAddressDetails.city || currentAddress.city || '',
+        postcode: selectedAddressDetails.postcode || currentAddress.postcode || ''
+      };
+    }
+
+    updateClientMutation.mutate(
+      payload,
       {
         onSuccess: () => {
-          toast.success('✅ GPS location saved successfully!');
+          toast.success('✅ GPS location & Address saved successfully!');
         }
       }
     );
@@ -236,6 +356,8 @@ export default function ClientGPSSetup({ client, onComplete }) {
   const handleMapClick = (lat, lng) => {
     setCoordinates({ latitude: lat, longitude: lng });
     toast.success('📍 Location set! Adjust radius if needed.');
+    // Also reverse geocode to get the address for this point
+    reverseGeocode(lat, lng);
   };
 
   const hasCoordinates = client?.location_coordinates?.latitude;
@@ -258,20 +380,25 @@ export default function ClientGPSSetup({ client, onComplete }) {
         <Alert className="border-blue-300 bg-blue-50">
           <MapPin className="h-5 w-5 text-blue-600" />
           <AlertDescription className="text-blue-900">
-            <strong>📍 UK Address Lookup:</strong> Enter the postcode (e.g., TS28 5EN) or full address below,
-            OR click directly on the map to set the location manually.
+            <strong>📍 Precise Location Setup:</strong>
+            <ul className="list-disc list-inside mt-1 space-y-1">
+              <li><strong>Best Method:</strong> Find the building on <a href="https://maps.google.com" target="_blank" rel="noopener noreferrer" className="underline font-semibold hover:text-blue-700">Google Maps</a>, copy the URL (link), and paste it below.</li>
+              <li><strong>Alternative:</strong> Enter exact coordinates (e.g., 54.7205089, -1.3734818).</li>
+              <li><strong>Basic:</strong> Search by postcode or address.</li>
+            </ul>
           </AlertDescription>
         </Alert>
 
         <div>
-          <Label htmlFor="address-search">Search Address or Postcode</Label>
+          <Label htmlFor="address-search">Paste Google Maps Link, Coordinates, or Address</Label>
           <div className="flex gap-2 mt-2">
             <Input
               id="address-search"
-              placeholder="e.g., TS28 5EN or 72 Newholme Estate, Wingate"
+              placeholder="Paste Google Maps Link here..."
               value={searchAddress}
               onChange={(e) => setSearchAddress(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && !searchingAddress && handleAddressSearch()}
+              className="font-mono text-sm"
             />
             <Button
               type="button"
@@ -311,7 +438,7 @@ export default function ClientGPSSetup({ client, onComplete }) {
           )}
 
           <p className="text-xs text-gray-500 mt-2">
-            💡 Tip: Just the postcode works best (e.g., TS28 5EN). Or click on the map.
+            💡 Tip: Pasting a Google Maps link is the most accurate way to set the location.
           </p>
         </div>
 
@@ -323,7 +450,7 @@ export default function ClientGPSSetup({ client, onComplete }) {
           ) : (
             <MapContainer
               center={[coordinates.latitude, coordinates.longitude]}
-              zoom={13}
+              zoom={18} // Increased zoom for better precision visibility
               scrollWheelZoom={true}
               style={{ height: '400px', width: '100%' }}
               key={`map-${coordinates.latitude}-${coordinates.longitude}`}
@@ -351,7 +478,7 @@ export default function ClientGPSSetup({ client, onComplete }) {
           <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
             <p className="text-sm text-green-900 mb-2">
               <CheckCircle className="w-4 h-4 inline mr-1" />
-              <strong>Selected Coordinates:</strong> {coordinates.latitude.toFixed(6)}, {coordinates.longitude.toFixed(6)}
+              <strong>Selected Coordinates:</strong> {coordinates.latitude.toFixed(7)}, {coordinates.longitude.toFixed(7)}
             </p>
             <a
               href={`https://www.google.com/maps?q=${coordinates.latitude},${coordinates.longitude}`}

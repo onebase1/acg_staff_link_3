@@ -458,26 +458,8 @@ export default function Clients() {
 
     let updateData = { ...editFormData };
 
-    // Auto-geocode if address changed OR GPS missing
-    const postcodeChanged = updateData.address?.postcode !== editingClient.address?.postcode;
-    const gpsMissing = !editingClient.location_coordinates?.latitude;
-
-    if (updateData.address?.postcode && (postcodeChanged || gpsMissing)) {
-      const toastId = toast.loading('Updating GPS from address...');
-      const coords = await geocodeAddress(updateData.address);
-
-      if (coords) {
-        updateData.location_coordinates = coords;
-        updateData.geofence_enabled = true;
-        if (!updateData.geofence_radius_meters) {
-          updateData.geofence_radius_meters = 100;
-        }
-        toast.dismiss(toastId);
-        toast.success('📍 GPS updated automatically!');
-      } else {
-        toast.dismiss(toastId);
-      }
-    }
+    // Auto-geocode logic removed to prevent overwriting precise GPS coordinates.
+    // GPS should only be updated via the dedicated GPS Setup modal.
 
     // Calculate enabled_roles based on configured rates
     const enabledRoles = {};
