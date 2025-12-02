@@ -245,7 +245,10 @@ export default function ProfileSetup() {
           return;
         }
 
-        if (currentUser.user_type === 'pending' || !currentUser.agency_id || !currentUser.user_type) {
+        // ✅ FIX: Client users don't need agency_id (they use client_id instead)
+        if (currentUser.user_type === 'pending' ||
+            (!currentUser.agency_id && currentUser.user_type !== 'client_user') ||
+            !currentUser.user_type) {
           setNeedsOnboarding(true);
         }
 

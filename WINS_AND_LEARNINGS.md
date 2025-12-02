@@ -35,6 +35,19 @@
    - Decided to create wins tracker (this file)
    - Will add AI agent instructions for all future work
 
+5. **Fixed ops_manager Auth Issue** ✅
+   - Discovered ops_manager auth.users record was missing
+   - Used diagnostic scripts to identify the issue
+   - Switched finance user to OPERATIONS_MANAGER role as workaround
+   - Successfully logged in to Client Portal (30 seconds!)
+
+6. **Found & Fixed ProfileSetup Bug** ✅
+   - Client users were stuck on ProfileSetup page
+   - Root cause: ProfileSetup logic required agency_id for all users
+   - But client users DON'T need agency_id (they use client_id)
+   - Fixed: Excluded client_user from agency_id validation
+   - Location: ProfileSetup.jsx:248-253
+
 ### 📚 LEARNINGS:
 
 1. **Database Schema Mismatch**
@@ -51,6 +64,24 @@
    - Old pattern: Only stop when stuck (negative association)
    - New pattern: Stop when done (positive association)
    - Brain learning: Breaks = reward, not failure
+
+4. **Two-Table Authentication Pattern**
+   - auth.users (Supabase Auth) + profiles (app data)
+   - Both must exist and match for login to work
+   - Missing auth.users = "Invalid credentials" error
+   - Use diagnostic scripts to verify both tables
+
+5. **Client Users vs Staff Users - Different Data Models**
+   - Staff users: require `agency_id` (they work FOR agencies)
+   - Client users: require `client_id` (they ARE the client)
+   - Client users should NEVER have `agency_id`
+   - Validation logic must account for user_type differences
+
+6. **Module 1 Client Portal Validation Gap**
+   - ProfileSetup page was checking `!agency_id` for ALL users
+   - This broke client_user flow (null agency_id is correct for them)
+   - Testing revealed edge case the original agent missed
+   - Fix: Add user_type check before validating agency_id
 
 ### 🎯 WHAT'S NEXT:
 
@@ -89,9 +120,12 @@
 - [ ] Asked for support structure (✅ 2025-12-02)
 
 ### 💻 Technical Wins:
-- [ ] Created 4 test users (✅ 2025-12-02)
-- [ ] Fixed SQL schema mismatch (✅ 2025-12-02)
-- [ ] Assigned RBAC roles to test users (in progress)
+- [x] Created 4 test users (✅ 2025-12-02)
+- [x] Fixed SQL schema mismatch (✅ 2025-12-02)
+- [x] Assigned RBAC roles to test users (✅ 2025-12-02)
+- [x] Diagnosed auth.users missing record issue (✅ 2025-12-02)
+- [x] Fixed ProfileSetup client_user validation bug (✅ 2025-12-02)
+- [x] Successfully logged into Client Portal as OPERATIONS_MANAGER (✅ 2025-12-02)
 
 ### 🚀 Product Wins:
 - [ ] Module 1 Client Portal built (✅ by AI agent)
