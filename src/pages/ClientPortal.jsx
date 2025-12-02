@@ -13,15 +13,22 @@ import {
   Calendar, Clock, Users, DollarSign, CheckCircle,
   AlertCircle, FileText, Star, Plus, X, Send, AlertTriangle,
   User, MapPin, Phone, Mail, TrendingUp, Download, Eye,
-  Check, XCircle, BarChart3
+  Check, XCircle, BarChart3, Shield, Bell
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, isToday, isFuture, isPast } from "date-fns";
+import clientRBAC from "@/services/clientRBAC";
+import NotificationCenter from "@/pages/client/NotificationCenter";
+import ShiftRating from "@/pages/client/ShiftRating";
 
 export default function ClientPortal() {
   const [clientRecord, setClientRecord] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [clientContact, setClientContact] = useState(null); // NEW: Client contact with RBAC role
+  const [userRole, setUserRole] = useState(null); // NEW: User's client role
   const [showRequestForm, setShowRequestForm] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false); // NEW: Notification center modal
+  const [ratingShift, setRatingShift] = useState(null); // NEW: Shift being rated
   const [activeTab, setActiveTab] = useState('timesheets'); // Changed default to timesheets
   const queryClient = useQueryClient();
 
@@ -56,6 +63,22 @@ export default function ClientPortal() {
         }
 
         setCurrentUser(profile);
+
+        // NEW: Fetch client_contact record for RBAC
+        const { data: contactData, error: contactError } = await supabase
+          .from('client_contacts')
+          .select('*, clients(id, name, type)')
+          .eq('profile_id', authUser.id)
+          .eq('is_active', true)
+          .single();
+
+        if (contactData && !contactError) {
+          setClientContact(contactData);
+          setUserRole(contactData.role);
+          console.log('✅ Client contact loaded:', contactData.role);
+        } else {
+          console.warn('⚠️ No client_contact found for user, using legacy mode');
+        }
 
         const { data: clients, error: clientsError } = await supabase
           .from('clients')
@@ -100,12 +123,12 @@ export default function ClientPortal() {
     queryKey: ['client-shifts', clientRecord?.id],
     queryFn: async () => {
       if (!clientRecord) return [];
-      
+
       const { data, error } = await supabase
         .from('shifts')
         .select('*')
         .eq('client_id', clientRecord.id);
-      
+
       if (error) {
         console.error('❌ Error fetching shifts:', error);
         return [];
@@ -120,13 +143,13 @@ export default function ClientPortal() {
     queryKey: ['client-timesheets', clientRecord?.id],
     queryFn: async () => {
       if (!clientRecord) return [];
-      
+
       const { data, error } = await supabase
         .from('timesheets')
         .select('*')
         .eq('client_id', clientRecord.id)
         .order('shift_date', { ascending: false });
-      
+
       if (error) {
         console.error('❌ Error fetching timesheets:', error);
         return [];
@@ -143,7 +166,7 @@ export default function ClientPortal() {
       const { data, error } = await supabase
         .from('staff')
         .select('*');
-      
+
       if (error) {
         console.error('❌ Error fetching staff:', error);
         return [];
@@ -158,13 +181,13 @@ export default function ClientPortal() {
     queryKey: ['client-invoices', clientRecord?.id],
     queryFn: async () => {
       if (!clientRecord) return [];
-      
+
       const { data, error } = await supabase
         .from('invoices')
         .select('*')
         .eq('client_id', clientRecord.id)
         .order('invoice_date', { ascending: false });
-      
+
       if (error) {
         console.error('❌ Error fetching invoices:', error);
         return [];
@@ -179,13 +202,13 @@ export default function ClientPortal() {
     queryKey: ['agency', clientRecord?.agency_id],
     queryFn: async () => {
       if (!clientRecord?.agency_id) return null;
-      
+
       const { data, error } = await supabase
         .from('agencies')
         .select('*')
         .eq('id', clientRecord.agency_id)
         .single();
-      
+
       if (error) {
         console.error('❌ Error fetching agency:', error);
         return null;
@@ -194,6 +217,30 @@ export default function ClientPortal() {
     },
     enabled: !!clientRecord?.agency_id,
     refetchOnMount: 'always'
+  });
+
+  // NEW: Fetch unread notification count
+  const { data: unreadNotificationsCount = 0 } = useQuery({
+    queryKey: ['unread-notifications-count', clientContact?.id],
+    queryFn: async () => {
+      if (!clientContact?.id) return 0;
+
+      const { count, error } = await supabase
+        .from('client_notifications')
+        .select('*', { count: 'exact', head: true })
+        .or(`client_id.eq.${clientContact.client_id},contact_id.eq.${clientContact.id}`)
+        .is('read_at', null)
+        .is('dismissed_at', null);
+
+      if (error) {
+        console.error('Error fetching unread count:', error);
+        return 0;
+      }
+
+      return count || 0;
+    },
+    enabled: !!clientContact?.id,
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   const approveTimesheetMutation = useMutation({
@@ -205,7 +252,7 @@ export default function ClientPortal() {
           client_approved_at: new Date().toISOString()
         })
         .eq('id', timesheetId);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -227,7 +274,7 @@ export default function ClientPortal() {
           rejection_reason: reason
         })
         .eq('id', timesheetId);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -259,9 +306,10 @@ export default function ClientPortal() {
           charge_rate: clientRecord.contract_terms?.rates_by_role?.[data.role_required]?.charge_rate || 18,
           pay_rate: clientRecord.contract_terms?.rates_by_role?.[data.role_required]?.pay_rate || 15,
           notes: data.requirements,
+          client_created: true, // NEW: Mark shift as created by client
           created_date: new Date().toISOString()
         });
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -380,28 +428,57 @@ export default function ClientPortal() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             {agency?.logo_url && (
-              <img 
-                src={agency.logo_url} 
+              <img
+                src={agency.logo_url}
                 alt={agency.name}
                 className="h-16 w-16 rounded-lg object-contain bg-white p-2"
               />
             )}
             <div>
               <h1 className="text-4xl font-bold mb-2">{clientRecord.name}</h1>
-              <p className="text-cyan-100 text-lg">Client Portal - Real-time Management</p>
+              <p className="text-cyan-100 text-lg flex items-center gap-2">
+                Client Portal - Real-time Management
+                {/* NEW: Role Badge */}
+                {userRole && (
+                  <Badge variant="secondary" className="ml-2 flex items-center gap-1 bg-white/20 text-white border-white/30">
+                    <Shield className="w-3 h-3" />
+                    {userRole.replace(/_/g, ' ')}
+                  </Badge>
+                )}
+              </p>
               {agency && (
                 <p className="text-cyan-200 text-sm mt-1">Powered by {agency.name}</p>
               )}
             </div>
           </div>
-          <Button
-            onClick={() => setShowRequestForm(true)}
-            size="lg"
-            className="bg-white text-blue-700 hover:bg-gray-100 text-lg px-8 py-6"
-          >
-            <Plus className="w-6 h-6 mr-2" />
-            Request Shift
-          </Button>
+          <div className="flex items-center gap-3">
+            {/* NEW: Notification Bell */}
+            <Button
+              onClick={() => setShowNotifications(true)}
+              size="lg"
+              variant="outline"
+              className="bg-white/10 text-white border-white/30 hover:bg-white/20 relative px-4"
+            >
+              <Bell className="w-6 h-6" />
+              {unreadNotificationsCount > 0 && (
+                <Badge className="absolute -top-2 -right-2 bg-red-500 text-white px-2 py-1 text-xs">
+                  {unreadNotificationsCount}
+                </Badge>
+              )}
+            </Button>
+
+            {/* NEW: Conditionally render Request Shift button based on role */}
+            {(!userRole || clientRBAC.hasPermission(userRole, 'shifts', 'create')) && (
+              <Button
+                onClick={() => setShowRequestForm(true)}
+                size="lg"
+                className="bg-white text-blue-700 hover:bg-gray-100 text-lg px-8 py-6"
+              >
+                <Plus className="w-6 h-6 mr-2" />
+                Request Shift
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -653,7 +730,7 @@ export default function ClientPortal() {
           {activeTab === 'summary' && (
             <div className="p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Services Summary (Last 30 Days)</h2>
-              
+
               <div className="grid md:grid-cols-3 gap-6 mb-8">
                 <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
                   <CardContent className="p-6">
@@ -721,8 +798,8 @@ export default function ClientPortal() {
                             <h3 className="font-bold text-xl text-gray-900">{invoice.invoice_number}</h3>
                             <Badge className={
                               invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
-                              stats.overdueInvoices > 0 && new Date(invoice.due_date) < today && invoice.status !== 'paid' ? 'bg-red-100 text-red-800' :
-                              'bg-yellow-100 text-yellow-800'
+                                stats.overdueInvoices > 0 && new Date(invoice.due_date) < today && invoice.status !== 'paid' ? 'bg-red-100 text-red-800' :
+                                  'bg-yellow-100 text-yellow-800'
                             }>
                               {stats.overdueInvoices > 0 && new Date(invoice.due_date) < today && invoice.status !== 'paid' ? 'overdue' : invoice.status}
                             </Badge>
@@ -796,9 +873,9 @@ export default function ClientPortal() {
                               </h3>
                               <Badge className={
                                 shift.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                                shift.status === 'in_progress' ? 'bg-green-500 text-white animate-pulse' :
-                                shift.status === 'open' ? 'bg-red-100 text-red-800' :
-                                'bg-gray-100 text-gray-800'
+                                  shift.status === 'in_progress' ? 'bg-green-500 text-white animate-pulse' :
+                                    shift.status === 'open' ? 'bg-red-100 text-red-800' :
+                                      'bg-gray-100 text-gray-800'
                               }>
                                 {shift.status === 'in_progress' ? '🟢 LIVE NOW' : shift.status}
                               </Badge>
@@ -811,19 +888,43 @@ export default function ClientPortal() {
 
                         {staffMember ? (
                           <div className="bg-blue-50 border border-blue-200 rounded p-4">
-                            <p className="font-semibold text-blue-900 mb-2">
-                              👤 {staffMember.first_name} {staffMember.last_name}
-                            </p>
-                            {staffMember.phone && (
-                              <p className="text-sm text-blue-700">
-                                📞 {staffMember.phone}
-                              </p>
-                            )}
-                            {staffMember.rating && (
-                              <p className="text-sm text-blue-700">
-                                ⭐ {staffMember.rating.toFixed(1)}/5.0
-                              </p>
-                            )}
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <p className="font-semibold text-blue-900 mb-2">
+                                  👤 {staffMember.first_name} {staffMember.last_name}
+                                </p>
+                                {staffMember.phone && (
+                                  <p className="text-sm text-blue-700">
+                                    📞 {staffMember.phone}
+                                  </p>
+                                )}
+                                {staffMember.rating && (
+                                  <p className="text-sm text-blue-700">
+                                    ⭐ {staffMember.rating.toFixed(1)}/5.0
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* NEW: Rate Staff Button for completed shifts */}
+                              {shift.status === 'completed' && shift.rating_status === 'awaiting_rating' && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => setRatingShift(shift)}
+                                  className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                                >
+                                  <Star className="w-4 h-4 mr-1" />
+                                  Rate Staff
+                                </Button>
+                              )}
+
+                              {/* Show rated badge if already rated */}
+                              {shift.status === 'completed' && shift.rating_status === 'rated' && (
+                                <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
+                                  <CheckCircle className="w-4 h-4" />
+                                  Rated
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         ) : (
                           <div className="bg-orange-50 border border-orange-200 rounded p-4">
@@ -971,6 +1072,32 @@ export default function ClientPortal() {
               </form>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* NEW: Notification Center Modal */}
+      {showNotifications && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-4xl">
+            <NotificationCenter onClose={() => setShowNotifications(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* NEW: Shift Rating Modal */}
+      {ratingShift && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-2xl my-8">
+            <ShiftRating
+              shift={ratingShift}
+              staff={staff.find(s => s.id === ratingShift.assigned_staff_id)}
+              onClose={() => setRatingShift(null)}
+              onSuccess={() => {
+                setRatingShift(null);
+                queryClient.invalidateQueries(['client-shifts']);
+              }}
+            />
+          </div>
         </div>
       )}
     </div>
