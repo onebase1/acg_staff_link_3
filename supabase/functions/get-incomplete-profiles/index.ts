@@ -201,6 +201,7 @@ serve(async (req) => {
           email: member.email,
           phone: member.phone,
           agency_name: member.agencies?.name || 'Unknown Agency',
+          agency_id: member.agencies?.id,
           completion_percentage: completionPercentage,
           completed_items: completed,
           total_items: total,

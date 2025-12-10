@@ -219,6 +219,47 @@ Good luck! 🎉
 
 - ${agencyName}`;
 
+            // 🔔 NEW: Queue client email notification
+            if (client?.billing_email || client?.contact_person?.email) {
+                const clientEmail = client.billing_email || client.contact_person?.email;
+                const clientName = client.contact_person?.name || 'Team';
+
+                const notificationItem = {
+                    shift_id: shift.id,
+                    staff_id: staff.id,
+                    staff_name: `${staff.first_name} ${staff.last_name}`,
+                    staff_phone: staff.phone,
+                    date: shift.date,
+                    start_time: shift.start_time,
+                    end_time: shift.end_time,
+                    duration_hours: shift.duration_hours,
+                    location: shift.work_location_within_site,
+                    role: shift.role_required.replace('_', ' '),
+                    charge_rate: shift.charge_rate
+                };
+
+                const { error: queueError } = await supabase
+                    .from('notification_queue')
+                    .insert({
+                        agency_id: shift.agency_id,
+                        recipient_email: clientEmail,
+                        recipient_type: 'client',
+                        recipient_first_name: clientName,
+                        notification_type: 'shift_confirmation',
+                        pending_items: [notificationItem],
+                        item_count: 1,
+                        status: 'pending',
+                        scheduled_send_at: new Date().toISOString(),
+                        message: 'shift_confirmation notification'
+                    });
+
+                if (queueError) {
+                    console.error('❌ Failed to queue client notification:', queueError);
+                } else {
+                    console.log('✅ Client notification queued');
+                }
+            }
+
             console.log(`✅ Shift confirmed for ${staff.first_name}`);
 
             return new Response(

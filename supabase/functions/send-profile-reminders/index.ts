@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 
 /**
  * 📬 SEND PROFILE REMINDERS
@@ -162,6 +169,33 @@ serve(async (req) => {
           continue;
         }
 
+        // Check preference
+        const preferenceCheck = await shouldSendNotification(
+            supabase,
+            profile.email,
+            'system_update', // Mapped as per instructions
+            'email',
+            'staff'
+        );
+
+        if (!preferenceCheck.allowed) {
+            console.log(`⏭️ [Profile Reminder] Skipped for ${profile.email} - ${preferenceCheck.reason}`);
+            await logNotificationSkipped(supabase, {
+                recipientEmail: profile.email,
+                recipientType: 'staff',
+                staffId: profile.staff_id,
+                agencyId: profile.agency_id,
+                notificationType: 'system_update',
+                channel: 'email',
+                preferenceChecked: preferenceCheck.preferenceChecked,
+                preferenceStatus: preferenceCheck.preferenceStatus,
+                skippedReason: preferenceCheck.reason,
+                metadata: { completion_percentage: profile.completion_percentage }
+            });
+            results.skipped++;
+            continue;
+        }
+
         console.log(`📧 Sending reminder to ${profile.name} (${profile.email}) - ${profile.completion_percentage}% complete`);
 
         // Generate missing items HTML list
@@ -291,6 +325,21 @@ serve(async (req) => {
           console.error(`⚠️  Failed to update last_reminder_sent for ${profile.name}:`, updateError);
         }
 
+        // Log success
+        await logNotificationSent(supabase, {
+            recipientEmail: profile.email,
+            recipientType: 'staff',
+            staffId: profile.staff_id,
+            agencyId: profile.agency_id,
+            notificationType: 'system_update',
+            channel: 'email',
+            provider: 'resend',
+            providerMessageId: emailResult?.messageId,
+            preferenceChecked: preferenceCheck.preferenceChecked,
+            preferenceStatus: preferenceCheck.preferenceStatus,
+            metadata: { completion_percentage: profile.completion_percentage }
+        });
+
         results.sent++;
         results.details.push({
           staff_id: profile.staff_id,
@@ -303,6 +352,29 @@ serve(async (req) => {
 
       } catch (error) {
         console.error(`❌ Failed to send reminder to ${profile.name}:`, error);
+        
+        // Log failure
+        await logNotificationFailed(supabase, {
+            recipientEmail: profile.email,
+            recipientType: 'staff',
+            staffId: profile.staff_id,
+            agencyId: profile.agency_id,
+            notificationType: 'system_update',
+            channel: 'email',
+            errorMessage: (error as Error).message,
+            errorCode: 'send_failed'
+        });
+
+        // Schedule retry
+        await scheduleRetry(supabase, {
+            notificationType: 'system_update',
+            recipientEmail: profile.email,
+            recipientId: profile.staff_id,
+            agencyId: profile.agency_id,
+            channel: 'email',
+            metadata: { staffId: profile.staff_id }
+        });
+
         results.failed++;
         results.details.push({
           staff_id: profile.staff_id,

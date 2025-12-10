@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 
 /**
  * OPTION A: No-Show Detection Engine
@@ -107,22 +114,80 @@ serve(async (req) => {
                         // First detection - send reminder to staff
                         if (staffMember?.phone) {
                             try {
-                                await supabase.functions.invoke('send-sms', {
-                                    body: {
-                                        to: staffMember.phone,
-                                        message: `⚠️ URGENT: Did you forget to clock in for your shift at ${clientData?.name}? Please clock in now or contact the office immediately. Reply HELP if you need assistance.`
-                                    }
-                                });
+                                const preferenceCheck = await shouldSendNotification(
+                                    supabase,
+                                    staffMember.email, // Use email for preference lookup
+                                    'system_update', // Using system_update as per plan
+                                    'sms',
+                                    'staff'
+                                );
 
-                                results.reminded.push({
-                                    shift_id: shift.id,
-                                    staff_name: `${staffMember.first_name} ${staffMember.last_name}`,
-                                    action: 'reminder_sent'
-                                });
+                                if (!preferenceCheck.allowed) {
+                                    console.log(`⏭️ [No-Show] Skipped SMS for ${staffMember.email} - ${preferenceCheck.reason}`);
+                                    await logNotificationSkipped(supabase, {
+                                        recipientEmail: staffMember.email,
+                                        recipientType: 'staff',
+                                        staffId: staffMember.id,
+                                        agencyId: shift.agency_id,
+                                        notificationType: 'system_update',
+                                        channel: 'sms',
+                                        preferenceChecked: preferenceCheck.preferenceChecked,
+                                        preferenceStatus: preferenceCheck.preferenceStatus,
+                                        skippedReason: preferenceCheck.reason,
+                                        metadata: { shift_id: shift.id, action: 'no_show_reminder' }
+                                    });
+                                } else {
+                                    const { error: smsError } = await supabase.functions.invoke('send-sms', {
+                                        body: {
+                                            to: staffMember.phone,
+                                            message: `⚠️ URGENT: Did you forget to clock in for your shift at ${clientData?.name}? Please clock in now or contact the office immediately. Reply HELP if you need assistance.`
+                                        }
+                                    });
 
-                                console.log(`📱 Reminder sent to ${staffMember.first_name} ${staffMember.last_name}`);
-                            } catch (smsError) {
+                                    if (smsError) throw smsError;
+
+                                    await logNotificationSent(supabase, {
+                                        recipientEmail: staffMember.email,
+                                        recipientType: 'staff',
+                                        staffId: staffMember.id,
+                                        agencyId: shift.agency_id,
+                                        notificationType: 'system_update',
+                                        channel: 'sms',
+                                        provider: 'twilio',
+                                        preferenceChecked: preferenceCheck.preferenceChecked,
+                                        preferenceStatus: preferenceCheck.preferenceStatus,
+                                        metadata: { shift_id: shift.id, action: 'no_show_reminder' }
+                                    });
+
+                                    results.reminded.push({
+                                        shift_id: shift.id,
+                                        staff_name: `${staffMember.first_name} ${staffMember.last_name}`,
+                                        action: 'reminder_sent'
+                                    });
+
+                                    console.log(`📱 Reminder sent to ${staffMember.first_name} ${staffMember.last_name}`);
+                                }
+                            } catch (smsError: any) {
                                 console.error('SMS send failed:', smsError);
+                                await logNotificationFailed(supabase, {
+                                    recipientEmail: staffMember.email,
+                                    recipientType: 'staff',
+                                    staffId: staffMember.id,
+                                    agencyId: shift.agency_id,
+                                    notificationType: 'system_update',
+                                    channel: 'sms',
+                                    errorMessage: smsError.message,
+                                    errorCode: 'send_failed'
+                                });
+                                // Retry logic for SMS? Maybe not for immediate no-show, but let's add it for consistency
+                                await scheduleRetry(supabase, {
+                                    notificationType: 'system_update',
+                                    recipientEmail: staffMember.email,
+                                    recipientId: staffMember.id,
+                                    agencyId: shift.agency_id,
+                                    channel: 'sms',
+                                    metadata: { shift_id: shift.id, action: 'no_show_reminder' }
+                                });
                             }
                         }
 

@@ -1,6 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Database } from "../_shared/database-types.ts";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 
 /**
  * PHASE 2 - TIER 2: Smart Email Automation Engine
@@ -130,7 +137,33 @@ serve(async (req) => {
                                 </div>
                             `}).join('');
 
-                            await supabase.functions.invoke('send-email', {
+                            // Check preference
+                            const preferenceCheck = await shouldSendNotification(
+                                supabase,
+                                staffMember.email,
+                                'daily_digest',
+                                'email',
+                                'staff'
+                            );
+
+                            if (!preferenceCheck.allowed) {
+                                console.log(`⏭️ [Daily Digest] Skipped for ${staffMember.email} - ${preferenceCheck.reason}`);
+                                await logNotificationSkipped(supabase, {
+                                    recipientEmail: staffMember.email,
+                                    recipientType: 'staff',
+                                    staffId: staffMember.id,
+                                    agencyId: agency.id,
+                                    notificationType: 'daily_digest',
+                                    channel: 'email',
+                                    preferenceChecked: preferenceCheck.preferenceChecked,
+                                    preferenceStatus: preferenceCheck.preferenceStatus,
+                                    skippedReason: preferenceCheck.reason,
+                                    metadata: { shift_count: shifts.length }
+                                });
+                                continue;
+                            }
+
+                            const emailResult = await supabase.functions.invoke('send-email', {
                                 body: {
                                     to: staffMember.email,
                                     subject: `🌅 Good Morning! You have ${shifts.length} shift${shifts.length > 1 ? 's' : ''} today`,
@@ -158,10 +191,50 @@ serve(async (req) => {
                                 }
                             });
 
+                            if (emailResult.error) throw new Error(emailResult.error);
+
+                            // Log success
+                            await logNotificationSent(supabase, {
+                                recipientEmail: staffMember.email,
+                                recipientType: 'staff',
+                                staffId: staffMember.id,
+                                agencyId: agency.id,
+                                notificationType: 'daily_digest',
+                                channel: 'email',
+                                provider: 'resend',
+                                providerMessageId: emailResult?.data?.id, // Resend returns 'id'
+                                preferenceChecked: preferenceCheck.preferenceChecked,
+                                preferenceStatus: preferenceCheck.preferenceStatus,
+                                metadata: { shift_count: shifts.length }
+                            });
+
                             results.daily_digests_sent++;
 
                         } catch (staffError: any) {
                             console.error(`❌ Error sending digest to staff ${staffId}:`, staffError.message);
+                            
+                            // Log failure
+                            await logNotificationFailed(supabase, {
+                                recipientEmail: staffId, // We might not have email if staff fetch failed, but usually we do inside the loop
+                                recipientType: 'staff',
+                                staffId: staffId,
+                                agencyId: agency.id,
+                                notificationType: 'daily_digest',
+                                channel: 'email',
+                                errorMessage: staffError.message,
+                                errorCode: 'send_failed'
+                            });
+
+                            // Schedule retry
+                            await scheduleRetry(supabase, {
+                                notificationType: 'daily_digest',
+                                recipientEmail: staffId, // Using ID as placeholder if email unknown, but ideally email
+                                recipientId: staffId,
+                                agencyId: agency.id,
+                                channel: 'email',
+                                metadata: { staffId, agencyId: agency.id } // Minimal payload for retry worker to reconstruct
+                            });
+
                             results.errors.push({ id: staffId, error: staffError.message });
                         }
                     }
@@ -231,7 +304,32 @@ serve(async (req) => {
                     }
 
                     for (const admin of adminUsers) {
-                        await supabase.functions.invoke('send-email', {
+                        // Check preference
+                        const preferenceCheck = await shouldSendNotification(
+                            supabase,
+                            admin.email,
+                            'weekly_summary',
+                            'email',
+                            'admin'
+                        );
+
+                        if (!preferenceCheck.allowed) {
+                            console.log(`⏭️ [Weekly Summary] Skipped for ${admin.email} - ${preferenceCheck.reason}`);
+                             await logNotificationSkipped(supabase, {
+                                recipientEmail: admin.email,
+                                recipientType: 'admin',
+                                agencyId: agency.id,
+                                notificationType: 'weekly_summary',
+                                channel: 'email',
+                                preferenceChecked: preferenceCheck.preferenceChecked,
+                                preferenceStatus: preferenceCheck.preferenceStatus,
+                                skippedReason: preferenceCheck.reason,
+                                metadata: { completed_shifts: completedShifts, total_revenue: totalRevenue }
+                            });
+                            continue;
+                        }
+
+                        const emailResult = await supabase.functions.invoke('send-email', {
                             body: {
                                 to: admin.email,
                                 subject: `📊 Weekly Summary: ${agency.name} - ${completedShifts} shifts completed`,
@@ -289,6 +387,22 @@ serve(async (req) => {
                                 </div>
                             `
                             }
+                        });
+
+                        if (emailResult.error) throw new Error(emailResult.error);
+
+                        // Log success
+                        await logNotificationSent(supabase, {
+                            recipientEmail: admin.email,
+                            recipientType: 'admin',
+                            agencyId: agency.id,
+                            notificationType: 'weekly_summary',
+                            channel: 'email',
+                            provider: 'resend',
+                            providerMessageId: emailResult?.data?.id,
+                            preferenceChecked: preferenceCheck.preferenceChecked,
+                            preferenceStatus: preferenceCheck.preferenceStatus,
+                            metadata: { completed_shifts: completedShifts, total_revenue: totalRevenue }
                         });
 
                         results.weekly_summaries_sent++;

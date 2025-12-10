@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 
 /**
  * INTERNAL ADMIN NOTIFIER
@@ -52,17 +59,89 @@ serve(async (req) => {
       );
     }
 
-    // 5. Invoke the send-email function
-    const { error: emailError } = await supabase.functions.invoke('send-email', {
-      body: {
-        to: adminEmail,
-        subject: subject,
-        html: body_html
-      }
-    });
+    // 5. Check preferences and send email
+    try {
+        // Check preference
+        const preferenceCheck = await shouldSendNotification(
+            supabase,
+            adminEmail,
+            'system_update', // Mapped as per instructions
+            'email',
+            'admin'
+        );
 
-    if (emailError) {
-      throw new Error(`Email sending failed: ${emailError.message}`);
+        if (!preferenceCheck.allowed) {
+            console.log(`⏭️ [Internal Admin] Skipped for ${adminEmail} - ${preferenceCheck.reason}`);
+            await logNotificationSkipped(supabase, {
+                recipientEmail: adminEmail,
+                recipientType: 'admin',
+                agencyId: undefined, // Internal notification, maybe no specific agency context or global
+                notificationType: 'system_update',
+                channel: 'email',
+                preferenceChecked: preferenceCheck.preferenceChecked,
+                preferenceStatus: preferenceCheck.preferenceStatus,
+                skippedReason: preferenceCheck.reason,
+                metadata: { change_type, subject }
+            });
+            
+            // Even if skipped by preference (unlikely for admin system updates), we return success to the caller
+            // but maybe log it.
+        } else {
+            // Invoke the send-email function
+            const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-email', {
+                body: {
+                    to: adminEmail,
+                    subject: subject,
+                    html: body_html
+                }
+            });
+
+            if (emailError) {
+                throw new Error(`Email sending failed: ${emailError.message}`);
+            }
+
+            // Log success
+            await logNotificationSent(supabase, {
+                recipientEmail: adminEmail,
+                recipientType: 'admin',
+                agencyId: undefined,
+                notificationType: 'system_update',
+                channel: 'email',
+                provider: 'resend',
+                providerMessageId: emailResult?.id,
+                preferenceChecked: preferenceCheck.preferenceChecked,
+                preferenceStatus: preferenceCheck.preferenceStatus,
+                metadata: { change_type, subject }
+            });
+        }
+
+    } catch (error: any) {
+        console.error(`❌ Failed to send internal admin notification to ${adminEmail}:`, error);
+        
+        // Log failure
+        await logNotificationFailed(supabase, {
+            recipientEmail: adminEmail,
+            recipientType: 'admin',
+            agencyId: undefined,
+            notificationType: 'system_update',
+            channel: 'email',
+            errorMessage: error.message,
+            errorCode: 'send_failed'
+        });
+
+        // Schedule retry
+        await scheduleRetry(supabase, {
+            notificationType: 'system_update',
+            recipientEmail: adminEmail,
+            recipientId: undefined, // No specific admin ID usually for group email
+            agencyId: undefined,
+            channel: 'email',
+            metadata: { change_type, subject, body_html }
+        });
+
+        // We re-throw or handle? The original code returned 500 on catch.
+        // We should probably re-throw to trigger the catch block below.
+        throw error;
     }
 
     // 6. Log the notification for audit purposes

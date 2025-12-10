@@ -100,9 +100,43 @@ const staffPortalItems = [
   { title: "My Compliance", url: createPageUrl("ComplianceTracker"), icon: Shield, staffOnly: true },
 ];
 
-// Client portal items
+// Client portal items (RBAC-filtered based on role)
 const clientPortalItems = [
-  { title: "Client Portal", url: createPageUrl("ClientPortal"), icon: Building2, clientOnly: true },
+  {
+    title: "Dashboard",
+    url: createPageUrl("ClientPortal"),
+    icon: LayoutDashboard,
+    clientOnly: true,
+    roles: ['OPERATIONS_MANAGER', 'FINANCE_MANAGER', 'FACILITY_COORDINATOR', 'VIEW_ONLY_CONTACT']
+  },
+  {
+    title: "Timesheets",
+    url: createPageUrl("ClientPortal") + "?tab=timesheets",
+    icon: Clock,
+    clientOnly: true,
+    roles: ['OPERATIONS_MANAGER', 'FACILITY_COORDINATOR']
+  },
+  {
+    title: "Invoices",
+    url: createPageUrl("ClientPortal") + "?tab=invoices",
+    icon: FileText,
+    clientOnly: true,
+    roles: ['OPERATIONS_MANAGER', 'FINANCE_MANAGER', 'VIEW_ONLY_CONTACT']
+  },
+  {
+    title: "Today's Shifts",
+    url: createPageUrl("ClientPortal") + "?tab=shifts",
+    icon: Calendar,
+    clientOnly: true,
+    roles: ['OPERATIONS_MANAGER', 'FACILITY_COORDINATOR']
+  },
+  {
+    title: "Client Management",
+    url: createPageUrl("ClientManagement"),
+    icon: Building2,
+    clientOnly: true,
+    roles: ['OPERATIONS_MANAGER']
+  },
 ];
 
 // Super admin only items
@@ -144,6 +178,10 @@ export default function Layout({ children, currentPageName }) {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [expandedSections, setExpandedSections] = useState(['OPERATIONS']);
+
+  // ✅ NEW: Client contact role for RBAC
+  const [clientContact, setClientContact] = useState(null);
+  const [clientRole, setClientRole] = useState(null);
 
   // ✅ NEW: Authentication state
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -297,6 +335,16 @@ export default function Layout({ children, currentPageName }) {
           return;
         }
 
+        // ✅ NEW: GDPR Protection - Block client users from accessing Dashboard (agency data breach)
+        if (currentUser.user_type === 'client_user' && location.pathname === createPageUrl('Dashboard')) {
+          console.warn('🔒 [Layout] Client user attempted to access Dashboard - redirecting to ClientPortal');
+          navigate(createPageUrl('ClientPortal'));
+          setIsCheckingAuth(false);
+          authChecked.current = true;
+          authCheckInProgress.current = false;
+          return;
+        }
+
         if (!currentUser.agency_id || !currentUser.user_type) {
           setNeedsOnboarding(true);
           if (location.pathname !== createPageUrl('ProfileSetup')) {
@@ -322,6 +370,38 @@ export default function Layout({ children, currentPageName }) {
     fetchUser();
   }, [isAuthRoute]); // ✅ Re-run if route switches between auth and app
 
+  // ✅ NEW: Fetch client contact role for RBAC filtering
+  useEffect(() => {
+    const fetchClientContact = async () => {
+      if (!user || user.user_type !== 'client_user') return;
+
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        const { data, error } = await supabase
+          .from('client_contacts')
+          .select('*')
+          .eq('profile_id', user.id)
+          .eq('is_active', true)
+          .single();
+
+        if (error) {
+          console.warn('⚠️ [Layout] No client contact found for user:', error.message);
+          return;
+        }
+
+        if (data) {
+          setClientContact(data);
+          setClientRole(data.role);
+          console.log('✅ [Layout] Client contact loaded:', data.role);
+        }
+      } catch (error) {
+        console.error('❌ [Layout] Error fetching client contact:', error);
+      }
+    };
+
+    fetchClientContact();
+  }, [user]);
+
   const handleLogout = () => {
     localStorage.removeItem('admin_view_mode');
     // ✅ FIX: Add redirect URL to ensure user is taken to login page after logout
@@ -345,6 +425,12 @@ export default function Layout({ children, currentPageName }) {
     if (item.adminOnly && user?.user_type !== 'agency_admin' && user?.user_type !== 'manager') return false;
     if (item.staffOnly && user?.user_type !== 'staff_member') return false;
     if (item.clientOnly && user?.user_type !== 'client_user') return false;
+
+    // ✅ NEW: RBAC filtering for client portal items
+    if (item.clientOnly && item.roles && clientRole) {
+      return item.roles.includes(clientRole);
+    }
+
     return true;
   };
 
@@ -532,20 +618,22 @@ export default function Layout({ children, currentPageName }) {
             </div>
           )}
 
-          {/* Client Portal (for client users) */}
+          {/* Client Portal (for client users) - RBAC filtered */}
           {user?.user_type === 'client_user' && (
             <div className="mb-4">
-              {clientPortalItems.map((item) => (
-                <Link
-                  key={item.title}
-                  to={item.url}
-                  className={`sidebar-link ${isActive(item.url) ? 'active' : ''}`}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span className="ml-3">{item.title}</span>
-                </Link>
-              ))}
+              {clientPortalItems
+                .filter(shouldShowItem)
+                .map((item) => (
+                  <Link
+                    key={item.title}
+                    to={item.url}
+                    className={`sidebar-link ${isActive(item.url) ? 'active' : ''}`}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    <span className="ml-3">{item.title}</span>
+                  </Link>
+                ))}
             </div>
           )}
 

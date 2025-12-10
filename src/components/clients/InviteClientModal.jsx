@@ -95,6 +95,30 @@ export default function InviteClientModal({ open, onClose, currentAgency }) {
         throw clientError;
       }
 
+      // Step 1.5: Create Client Contact (Anchor for Auth)
+      const nameParts = data.contact_person_name.trim().split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const { error: contactError } = await supabase
+        .from('client_contacts')
+        .insert({
+          client_id: client.id,
+          first_name: firstName,
+          last_name: lastName,
+          email: data.contact_person_email,
+          role: data.contact_person_role,
+          is_primary_contact: true
+        });
+
+      if (contactError) {
+        console.error('❌ Error creating client contact:', contactError);
+        // We don't throw here to avoid failing the whole invite if just the contact fails, 
+        // but ideally this should be a transaction. For now, we log and proceed 
+        // or we could throw to ensure consistency. Given the instructions, this is critical.
+        throw contactError;
+      }
+
       // Step 2: Generate professional invitation email
       const APP_URL = window.location.origin;
       const setupUrl = `${APP_URL}/ProfileSetup?logout=true`;
@@ -240,7 +264,7 @@ export default function InviteClientModal({ open, onClose, currentAgency }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     if (!formData.name || !formData.contact_person_name || !formData.contact_person_email) {
       toast.error('Please fill in all required fields');
       return;
@@ -264,7 +288,7 @@ export default function InviteClientModal({ open, onClose, currentAgency }) {
             <Alert className="border-blue-300 bg-blue-50">
               <AlertCircle className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-900 text-sm">
-                <strong>How it works:</strong> Enter the care home details below. 
+                <strong>How it works:</strong> Enter the care home details below.
                 The manager will receive an invitation email with a secure link to create their account and access the client portal.
               </AlertDescription>
             </Alert>
@@ -351,8 +375,8 @@ export default function InviteClientModal({ open, onClose, currentAgency }) {
 
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <p className="text-sm text-green-900">
-                <strong>✅ After sending:</strong> The manager will receive a professional invitation email 
-                with instructions to create their account. They'll be able to approve timesheets, 
+                <strong>✅ After sending:</strong> The manager will receive a professional invitation email
+                with instructions to create their account. They'll be able to approve timesheets,
                 request shifts, and manage invoices immediately.
               </p>
             </div>

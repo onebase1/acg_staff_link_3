@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 
 /**
  * PHASE 2 - TIER 2: Proactive Compliance Monitor
@@ -133,43 +140,105 @@ serve(async (req) => {
                             results.workflows_created++;
 
                             // Send urgent notification
-                            await supabase.functions.invoke('send-email', {
-                                body: {
-                                    to: staffMember.email,
-                                    subject: `🚨 URGENT: Your ${doc.document_name} has EXPIRED - Account Suspended`,
-                                    html: `
-                                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                                            <div style="background: #dc2626; padding: 30px; text-align: center;">
-                                                <h1 style="color: white; margin: 0;">⛔ ACCOUNT SUSPENDED</h1>
-                                            </div>
-                                            <div style="padding: 30px; background: #fef2f2;">
-                                                <p style="font-size: 16px; color: #1f2937;">Hi ${staffMember.first_name},</p>
-                                                <p style="font-size: 16px; color: #dc2626; font-weight: bold;">Your account has been automatically suspended.</p>
+                            try {
+                                const preferenceCheck = await shouldSendNotification(
+                                    supabase,
+                                    staffMember.email,
+                                    'compliance_warning',
+                                    'email',
+                                    'staff'
+                                );
 
-                                                <div style="background: white; border-left: 4px solid #dc2626; padding: 20px; margin: 20px 0;">
-                                                    <p style="margin: 10px 0;"><strong>Document:</strong> ${doc.document_name}</p>
-                                                    <p style="margin: 10px 0;"><strong>Expired:</strong> ${doc.expiry_date}</p>
-                                                    <p style="margin: 10px 0;"><strong>Reference:</strong> ${doc.reference_number}</p>
+                                if (!preferenceCheck.allowed) {
+                                    console.log(`⏭️ [Compliance] Skipped suspension alert for ${staffMember.email} - ${preferenceCheck.reason}`);
+                                    await logNotificationSkipped(supabase, {
+                                        recipientEmail: staffMember.email,
+                                        recipientType: 'staff',
+                                        staffId: staffMember.id,
+                                        agencyId: agency.id,
+                                        notificationType: 'compliance_warning',
+                                        channel: 'email',
+                                        preferenceChecked: preferenceCheck.preferenceChecked,
+                                        preferenceStatus: preferenceCheck.preferenceStatus,
+                                        skippedReason: preferenceCheck.reason,
+                                        metadata: { document_id: doc.id, type: 'suspension' }
+                                    });
+                                } else {
+                                    const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-email', {
+                                        body: {
+                                            to: staffMember.email,
+                                            subject: `🚨 URGENT: Your ${doc.document_name} has EXPIRED - Account Suspended`,
+                                            html: `
+                                                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                                                    <div style="background: #dc2626; padding: 30px; text-align: center;">
+                                                        <h1 style="color: white; margin: 0;">⛔ ACCOUNT SUSPENDED</h1>
+                                                    </div>
+                                                    <div style="padding: 30px; background: #fef2f2;">
+                                                        <p style="font-size: 16px; color: #1f2937;">Hi ${staffMember.first_name},</p>
+                                                        <p style="font-size: 16px; color: #dc2626; font-weight: bold;">Your account has been automatically suspended.</p>
+        
+                                                        <div style="background: white; border-left: 4px solid #dc2626; padding: 20px; margin: 20px 0;">
+                                                            <p style="margin: 10px 0;"><strong>Document:</strong> ${doc.document_name}</p>
+                                                            <p style="margin: 10px 0;"><strong>Expired:</strong> ${doc.expiry_date}</p>
+                                                            <p style="margin: 10px 0;"><strong>Reference:</strong> ${doc.reference_number}</p>
+                                                        </div>
+        
+                                                        <p style="font-size: 14px; color: #1f2937;">
+                                                            <strong>What this means:</strong><br>
+                                                            - You cannot accept any new shifts<br>
+                                                            - Any assigned shifts will be reassigned<br>
+                                                            - You must renew this document immediately<br>
+                                                        </p>
+        
+                                                        <p style="font-size: 14px; color: #dc2626; margin-top: 20px;">
+                                                            <strong>Action Required:</strong> Upload your renewed ${doc.document_name} today to reactivate your account.
+                                                        </p>
+                                                    </div>
+                                                    <div style="background: #991b1b; padding: 20px; text-align: center;">
+                                                        <p style="color: white; font-size: 12px; margin: 0;">Contact admin immediately if you have questions</p>
+                                                    </div>
                                                 </div>
+                                            `
+                                        }
+                                    });
 
-                                                <p style="font-size: 14px; color: #1f2937;">
-                                                    <strong>What this means:</strong><br>
-                                                    - You cannot accept any new shifts<br>
-                                                    - Any assigned shifts will be reassigned<br>
-                                                    - You must renew this document immediately<br>
-                                                </p>
+                                    if (emailError) throw emailError;
 
-                                                <p style="font-size: 14px; color: #dc2626; margin-top: 20px;">
-                                                    <strong>Action Required:</strong> Upload your renewed ${doc.document_name} today to reactivate your account.
-                                                </p>
-                                            </div>
-                                            <div style="background: #991b1b; padding: 20px; text-align: center;">
-                                                <p style="color: white; font-size: 12px; margin: 0;">Contact admin immediately if you have questions</p>
-                                            </div>
-                                        </div>
-                                    `
+                                    await logNotificationSent(supabase, {
+                                        recipientEmail: staffMember.email,
+                                        recipientType: 'staff',
+                                        staffId: staffMember.id,
+                                        agencyId: agency.id,
+                                        notificationType: 'compliance_warning',
+                                        channel: 'email',
+                                        provider: 'resend',
+                                        providerMessageId: emailResult?.id,
+                                        preferenceChecked: preferenceCheck.preferenceChecked,
+                                        preferenceStatus: preferenceCheck.preferenceStatus,
+                                        metadata: { document_id: doc.id, type: 'suspension' }
+                                    });
                                 }
-                            });
+                            } catch (notifyError: any) {
+                                console.error(`❌ [Compliance] Failed to send suspension alert:`, notifyError);
+                                await logNotificationFailed(supabase, {
+                                    recipientEmail: staffMember.email,
+                                    recipientType: 'staff',
+                                    staffId: staffMember.id,
+                                    agencyId: agency.id,
+                                    notificationType: 'compliance_warning',
+                                    channel: 'email',
+                                    errorMessage: notifyError.message,
+                                    errorCode: 'send_failed'
+                                });
+                                await scheduleRetry(supabase, {
+                                    notificationType: 'compliance_warning',
+                                    recipientEmail: staffMember.email,
+                                    recipientId: staffMember.id,
+                                    agencyId: agency.id,
+                                    channel: 'email',
+                                    metadata: { document_id: doc.id, type: 'suspension' }
+                                });
+                            }
                         }
 
                         continue;
@@ -179,36 +248,98 @@ serve(async (req) => {
                     if (daysUntilExpiry === 30 && !doc.reminder_30d_sent) {
                         console.log(`📧 [Doc ${doc.id}] Sending 30-day reminder to ${staffMember.email}`);
 
-                        await supabase.functions.invoke('send-email', {
-                            body: {
-                                to: staffMember.email,
-                                subject: `📋 Reminder: ${doc.document_name} expires in 30 days`,
-                                html: `
-                                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                                        <div style="background-color: #d97706; padding: 30px; text-align: center;" bgcolor="#d97706">
-                                            <h1 style="color: white; margin: 0; font-weight: bold;">📋 Document Expiry Reminder</h1>
-                                        </div>
-                                        <div style="padding: 30px; background: #fffbeb;">
-                                            <p style="font-size: 16px; color: #1f2937;">Hi ${staffMember.first_name},</p>
-                                            <p style="font-size: 16px; color: #1f2937;">Your ${doc.document_name} will expire in <strong>30 days</strong>.</p>
+                        try {
+                            const preferenceCheck = await shouldSendNotification(
+                                supabase,
+                                staffMember.email,
+                                'compliance_warning',
+                                'email',
+                                'staff'
+                            );
 
-                                            <div style="background: white; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0;">
-                                                <p style="margin: 10px 0;"><strong>Document:</strong> ${doc.document_name}</p>
-                                                <p style="margin: 10px 0;"><strong>Expires:</strong> ${doc.expiry_date}</p>
-                                                <p style="margin: 10px 0;"><strong>Days Remaining:</strong> 30</p>
+                            if (!preferenceCheck.allowed) {
+                                console.log(`⏭️ [Compliance] Skipped 30d reminder for ${staffMember.email} - ${preferenceCheck.reason}`);
+                                await logNotificationSkipped(supabase, {
+                                    recipientEmail: staffMember.email,
+                                    recipientType: 'staff',
+                                    staffId: staffMember.id,
+                                    agencyId: agency.id,
+                                    notificationType: 'compliance_warning',
+                                    channel: 'email',
+                                    preferenceChecked: preferenceCheck.preferenceChecked,
+                                    preferenceStatus: preferenceCheck.preferenceStatus,
+                                    skippedReason: preferenceCheck.reason,
+                                    metadata: { document_id: doc.id, type: 'reminder_30d' }
+                                });
+                            } else {
+                                const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-email', {
+                                    body: {
+                                        to: staffMember.email,
+                                        subject: `📋 Reminder: ${doc.document_name} expires in 30 days`,
+                                        html: `
+                                            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                                                <div style="background-color: #d97706; padding: 30px; text-align: center;" bgcolor="#d97706">
+                                                    <h1 style="color: white; margin: 0; font-weight: bold;">📋 Document Expiry Reminder</h1>
+                                                </div>
+                                                <div style="padding: 30px; background: #fffbeb;">
+                                                    <p style="font-size: 16px; color: #1f2937;">Hi ${staffMember.first_name},</p>
+                                                    <p style="font-size: 16px; color: #1f2937;">Your ${doc.document_name} will expire in <strong>30 days</strong>.</p>
+    
+                                                    <div style="background: white; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0;">
+                                                        <p style="margin: 10px 0;"><strong>Document:</strong> ${doc.document_name}</p>
+                                                        <p style="margin: 10px 0;"><strong>Expires:</strong> ${doc.expiry_date}</p>
+                                                        <p style="margin: 10px 0;"><strong>Days Remaining:</strong> 30</p>
+                                                    </div>
+    
+                                                    <p style="font-size: 14px; color: #78716c;">
+                                                        Please start the renewal process now to avoid any work interruption.
+                                                    </p>
+                                                </div>
+                                                <div style="background: #d97706; padding: 20px; text-align: center;">
+                                                    <p style="color: white; font-size: 12px; margin: 0;">© ${new Date().getFullYear()} ${agency.name}</p>
+                                                </div>
                                             </div>
+                                        `
+                                    }
+                                });
 
-                                            <p style="font-size: 14px; color: #78716c;">
-                                                Please start the renewal process now to avoid any work interruption.
-                                            </p>
-                                        </div>
-                                        <div style="background: #d97706; padding: 20px; text-align: center;">
-                                            <p style="color: white; font-size: 12px; margin: 0;">© ${new Date().getFullYear()} ${agency.name}</p>
-                                        </div>
-                                    </div>
-                                `
+                                if (emailError) throw emailError;
+
+                                await logNotificationSent(supabase, {
+                                    recipientEmail: staffMember.email,
+                                    recipientType: 'staff',
+                                    staffId: staffMember.id,
+                                    agencyId: agency.id,
+                                    notificationType: 'compliance_warning',
+                                    channel: 'email',
+                                    provider: 'resend',
+                                    providerMessageId: emailResult?.id,
+                                    preferenceChecked: preferenceCheck.preferenceChecked,
+                                    preferenceStatus: preferenceCheck.preferenceStatus,
+                                    metadata: { document_id: doc.id, type: 'reminder_30d' }
+                                });
                             }
-                        });
+                        } catch (notifyError: any) {
+                            console.error(`❌ [Compliance] Failed to send 30d reminder:`, notifyError);
+                            await logNotificationFailed(supabase, {
+                                recipientEmail: staffMember.email,
+                                recipientType: 'staff',
+                                staffId: staffMember.id,
+                                agencyId: agency.id,
+                                notificationType: 'compliance_warning',
+                                channel: 'email',
+                                errorMessage: notifyError.message,
+                                errorCode: 'send_failed'
+                            });
+                            await scheduleRetry(supabase, {
+                                notificationType: 'compliance_warning',
+                                recipientEmail: staffMember.email,
+                                recipientId: staffMember.id,
+                                agencyId: agency.id,
+                                channel: 'email',
+                                metadata: { document_id: doc.id, type: 'reminder_30d' }
+                            });
+                        }
 
                         await supabase
                             .from("compliance")
@@ -225,36 +356,98 @@ serve(async (req) => {
                     if (daysUntilExpiry === 14 && !doc.reminder_14d_sent) {
                         console.log(`📧 [Doc ${doc.id}] Sending 14-day reminder to ${staffMember.email}`);
 
-                        await supabase.functions.invoke('send-email', {
-                            body: {
-                                to: staffMember.email,
-                                subject: `⚠️ Important: ${doc.document_name} expires in 2 weeks`,
-                                html: `
-                                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                                        <div style="background: #f59e0b; padding: 30px; text-align: center;">
-                                            <h1 style="color: white; margin: 0;">⚠️ URGENT REMINDER</h1>
-                                        </div>
-                                        <div style="padding: 30px; background: #fef3c7;">
-                                            <p style="font-size: 16px; color: #1f2937;">Hi ${staffMember.first_name},</p>
-                                            <p style="font-size: 16px; color: #92400e; font-weight: bold;">Your ${doc.document_name} expires in just 14 days!</p>
+                        try {
+                            const preferenceCheck = await shouldSendNotification(
+                                supabase,
+                                staffMember.email,
+                                'compliance_warning',
+                                'email',
+                                'staff'
+                            );
 
-                                            <div style="background: white; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0;">
-                                                <p style="margin: 10px 0;"><strong>Document:</strong> ${doc.document_name}</p>
-                                                <p style="margin: 10px 0;"><strong>Expires:</strong> ${doc.expiry_date}</p>
-                                                <p style="margin: 10px 0; color: #dc2626;"><strong>Days Remaining:</strong> 14</p>
+                            if (!preferenceCheck.allowed) {
+                                console.log(`⏭️ [Compliance] Skipped 14d reminder for ${staffMember.email} - ${preferenceCheck.reason}`);
+                                await logNotificationSkipped(supabase, {
+                                    recipientEmail: staffMember.email,
+                                    recipientType: 'staff',
+                                    staffId: staffMember.id,
+                                    agencyId: agency.id,
+                                    notificationType: 'compliance_warning',
+                                    channel: 'email',
+                                    preferenceChecked: preferenceCheck.preferenceChecked,
+                                    preferenceStatus: preferenceCheck.preferenceStatus,
+                                    skippedReason: preferenceCheck.reason,
+                                    metadata: { document_id: doc.id, type: 'reminder_14d' }
+                                });
+                            } else {
+                                const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-email', {
+                                    body: {
+                                        to: staffMember.email,
+                                        subject: `⚠️ Important: ${doc.document_name} expires in 2 weeks`,
+                                        html: `
+                                            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                                                <div style="background: #f59e0b; padding: 30px; text-align: center;">
+                                                    <h1 style="color: white; margin: 0;">⚠️ URGENT REMINDER</h1>
+                                                </div>
+                                                <div style="padding: 30px; background: #fef3c7;">
+                                                    <p style="font-size: 16px; color: #1f2937;">Hi ${staffMember.first_name},</p>
+                                                    <p style="font-size: 16px; color: #92400e; font-weight: bold;">Your ${doc.document_name} expires in just 14 days!</p>
+    
+                                                    <div style="background: white; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0;">
+                                                        <p style="margin: 10px 0;"><strong>Document:</strong> ${doc.document_name}</p>
+                                                        <p style="margin: 10px 0;"><strong>Expires:</strong> ${doc.expiry_date}</p>
+                                                        <p style="margin: 10px 0; color: #dc2626;"><strong>Days Remaining:</strong> 14</p>
+                                                    </div>
+    
+                                                    <p style="font-size: 14px; color: #92400e;">
+                                                        <strong>Action required NOW:</strong> If you haven't already started the renewal process, please do so immediately to avoid suspension.
+                                                    </p>
+                                                </div>
+                                                <div style="background: #d97706; padding: 20px; text-align: center;">
+                                                    <p style="color: white; font-size: 12px; margin: 0;">Upload renewed document as soon as possible</p>
+                                                </div>
                                             </div>
+                                        `
+                                    }
+                                });
 
-                                            <p style="font-size: 14px; color: #92400e;">
-                                                <strong>Action required NOW:</strong> If you haven't already started the renewal process, please do so immediately to avoid suspension.
-                                            </p>
-                                        </div>
-                                        <div style="background: #d97706; padding: 20px; text-align: center;">
-                                            <p style="color: white; font-size: 12px; margin: 0;">Upload renewed document as soon as possible</p>
-                                        </div>
-                                    </div>
-                                `
+                                if (emailError) throw emailError;
+
+                                await logNotificationSent(supabase, {
+                                    recipientEmail: staffMember.email,
+                                    recipientType: 'staff',
+                                    staffId: staffMember.id,
+                                    agencyId: agency.id,
+                                    notificationType: 'compliance_warning',
+                                    channel: 'email',
+                                    provider: 'resend',
+                                    providerMessageId: emailResult?.id,
+                                    preferenceChecked: preferenceCheck.preferenceChecked,
+                                    preferenceStatus: preferenceCheck.preferenceStatus,
+                                    metadata: { document_id: doc.id, type: 'reminder_14d' }
+                                });
                             }
-                        });
+                        } catch (notifyError: any) {
+                            console.error(`❌ [Compliance] Failed to send 14d reminder:`, notifyError);
+                            await logNotificationFailed(supabase, {
+                                recipientEmail: staffMember.email,
+                                recipientType: 'staff',
+                                staffId: staffMember.id,
+                                agencyId: agency.id,
+                                notificationType: 'compliance_warning',
+                                channel: 'email',
+                                errorMessage: notifyError.message,
+                                errorCode: 'send_failed'
+                            });
+                            await scheduleRetry(supabase, {
+                                notificationType: 'compliance_warning',
+                                recipientEmail: staffMember.email,
+                                recipientId: staffMember.id,
+                                agencyId: agency.id,
+                                channel: 'email',
+                                metadata: { document_id: doc.id, type: 'reminder_14d' }
+                            });
+                        }
 
                         await supabase
                             .from("compliance")
@@ -272,50 +465,155 @@ serve(async (req) => {
                         console.log(`🚨 [Doc ${doc.id}] Sending 7-day CRITICAL reminder to ${staffMember.email}`);
 
                         // Send email + SMS for 7-day warning
-                        await supabase.functions.invoke('send-email', {
-                            body: {
-                                to: staffMember.email,
-                                subject: `🚨 CRITICAL: ${doc.document_name} expires in 7 DAYS`,
-                                html: `
-                                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                                        <div style="background: #dc2626; padding: 30px; text-align: center;">
-                                            <h1 style="color: white; margin: 0;">🚨 FINAL WARNING</h1>
-                                        </div>
-                                        <div style="padding: 30px; background: #fef2f2;">
-                                            <p style="font-size: 16px; color: #1f2937;">Hi ${staffMember.first_name},</p>
-                                            <p style="font-size: 18px; color: #dc2626; font-weight: bold;">Your ${doc.document_name} expires in 7 DAYS!</p>
+                        try {
+                            // EMAIL
+                            const emailPref = await shouldSendNotification(
+                                supabase,
+                                staffMember.email,
+                                'compliance_warning',
+                                'email',
+                                'staff'
+                            );
 
-                                            <div style="background: white; border-left: 4px solid #dc2626; padding: 20px; margin: 20px 0;">
-                                                <p style="margin: 10px 0;"><strong>Document:</strong> ${doc.document_name}</p>
-                                                <p style="margin: 10px 0;"><strong>Expires:</strong> ${doc.expiry_date}</p>
-                                                <p style="margin: 10px 0; color: #dc2626; font-size: 18px;"><strong>Days Remaining:</strong> 7</p>
+                            if (!emailPref.allowed) {
+                                console.log(`⏭️ [Compliance] Skipped 7d email for ${staffMember.email} - ${emailPref.reason}`);
+                                await logNotificationSkipped(supabase, {
+                                    recipientEmail: staffMember.email,
+                                    recipientType: 'staff',
+                                    staffId: staffMember.id,
+                                    agencyId: agency.id,
+                                    notificationType: 'compliance_warning',
+                                    channel: 'email',
+                                    preferenceChecked: emailPref.preferenceChecked,
+                                    preferenceStatus: emailPref.preferenceStatus,
+                                    skippedReason: emailPref.reason,
+                                    metadata: { document_id: doc.id, type: 'reminder_7d' }
+                                });
+                            } else {
+                                const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-email', {
+                                    body: {
+                                        to: staffMember.email,
+                                        subject: `🚨 CRITICAL: ${doc.document_name} expires in 7 DAYS`,
+                                        html: `
+                                            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                                                <div style="background: #dc2626; padding: 30px; text-align: center;">
+                                                    <h1 style="color: white; margin: 0;">🚨 FINAL WARNING</h1>
+                                                </div>
+                                                <div style="padding: 30px; background: #fef2f2;">
+                                                    <p style="font-size: 16px; color: #1f2937;">Hi ${staffMember.first_name},</p>
+                                                    <p style="font-size: 18px; color: #dc2626; font-weight: bold;">Your ${doc.document_name} expires in 7 DAYS!</p>
+    
+                                                    <div style="background: white; border-left: 4px solid #dc2626; padding: 20px; margin: 20px 0;">
+                                                        <p style="margin: 10px 0;"><strong>Document:</strong> ${doc.document_name}</p>
+                                                        <p style="margin: 10px 0;"><strong>Expires:</strong> ${doc.expiry_date}</p>
+                                                        <p style="margin: 10px 0; color: #dc2626; font-size: 18px;"><strong>Days Remaining:</strong> 7</p>
+                                                    </div>
+    
+                                                    <div style="background: #fee2e2; border: 2px solid #dc2626; padding: 15px; margin: 20px 0; border-radius: 8px;">
+                                                        <p style="font-size: 14px; color: #991b1b; margin: 0;">
+                                                            <strong>⚠️ WARNING:</strong> If this document expires, your account will be AUTOMATICALLY SUSPENDED and you will be unable to work until it's renewed.
+                                                        </p>
+                                                    </div>
+    
+                                                    <p style="font-size: 14px; color: #dc2626;">
+                                                        <strong>IMMEDIATE ACTION REQUIRED:</strong> Upload your renewed ${doc.document_name} TODAY or contact admin if you need assistance.
+                                                    </p>
+                                                </div>
+                                                <div style="background: #991b1b; padding: 20px; text-align: center;">
+                                                    <p style="color: white; font-size: 14px; margin: 0; font-weight: bold;">THIS IS YOUR FINAL REMINDER - ACT NOW</p>
+                                                </div>
                                             </div>
+                                        `
+                                    }
+                                });
 
-                                            <div style="background: #fee2e2; border: 2px solid #dc2626; padding: 15px; margin: 20px 0; border-radius: 8px;">
-                                                <p style="font-size: 14px; color: #991b1b; margin: 0;">
-                                                    <strong>⚠️ WARNING:</strong> If this document expires, your account will be AUTOMATICALLY SUSPENDED and you will be unable to work until it's renewed.
-                                                </p>
-                                            </div>
+                                if (emailError) throw emailError;
 
-                                            <p style="font-size: 14px; color: #dc2626;">
-                                                <strong>IMMEDIATE ACTION REQUIRED:</strong> Upload your renewed ${doc.document_name} TODAY or contact admin if you need assistance.
-                                            </p>
-                                        </div>
-                                        <div style="background: #991b1b; padding: 20px; text-align: center;">
-                                            <p style="color: white; font-size: 14px; margin: 0; font-weight: bold;">THIS IS YOUR FINAL REMINDER - ACT NOW</p>
-                                        </div>
-                                    </div>
-                                `
+                                await logNotificationSent(supabase, {
+                                    recipientEmail: staffMember.email,
+                                    recipientType: 'staff',
+                                    staffId: staffMember.id,
+                                    agencyId: agency.id,
+                                    notificationType: 'compliance_warning',
+                                    channel: 'email',
+                                    provider: 'resend',
+                                    providerMessageId: emailResult?.id,
+                                    preferenceChecked: emailPref.preferenceChecked,
+                                    preferenceStatus: emailPref.preferenceStatus,
+                                    metadata: { document_id: doc.id, type: 'reminder_7d' }
+                                });
                             }
-                        });
 
-                        // Also send SMS
-                        await supabase.functions.invoke('send-sms', {
-                            body: {
-                                to: staffMember.phone,
-                                message: `🚨 URGENT: Your ${doc.document_name} expires in 7 DAYS (${doc.expiry_date}). Upload renewal NOW or your account will be suspended. Contact admin: ${agency.contact_phone}`
+                            // SMS
+                            if (staffMember.phone) {
+                                const smsPref = await shouldSendNotification(
+                                    supabase,
+                                    staffMember.email, // Use email to look up preferences
+                                    'compliance_warning',
+                                    'sms',
+                                    'staff'
+                                );
+
+                                if (!smsPref.allowed) {
+                                    console.log(`⏭️ [Compliance] Skipped 7d SMS for ${staffMember.email} - ${smsPref.reason}`);
+                                    await logNotificationSkipped(supabase, {
+                                        recipientEmail: staffMember.email,
+                                        recipientType: 'staff',
+                                        staffId: staffMember.id,
+                                        agencyId: agency.id,
+                                        notificationType: 'compliance_warning',
+                                        channel: 'sms',
+                                        preferenceChecked: smsPref.preferenceChecked,
+                                        preferenceStatus: smsPref.preferenceStatus,
+                                        skippedReason: smsPref.reason,
+                                        metadata: { document_id: doc.id, type: 'reminder_7d' }
+                                    });
+                                } else {
+                                    const { error: smsError } = await supabase.functions.invoke('send-sms', {
+                                        body: {
+                                            to: staffMember.phone,
+                                            message: `🚨 URGENT: Your ${doc.document_name} expires in 7 DAYS (${doc.expiry_date}). Upload renewal NOW or your account will be suspended. Contact admin: ${agency.contact_phone}`
+                                        }
+                                    });
+
+                                    if (smsError) throw smsError;
+
+                                    await logNotificationSent(supabase, {
+                                        recipientEmail: staffMember.email,
+                                        recipientType: 'staff',
+                                        staffId: staffMember.id,
+                                        agencyId: agency.id,
+                                        notificationType: 'compliance_warning',
+                                        channel: 'sms',
+                                        provider: 'twilio', // Assuming Twilio
+                                        preferenceChecked: smsPref.preferenceChecked,
+                                        preferenceStatus: smsPref.preferenceStatus,
+                                        metadata: { document_id: doc.id, type: 'reminder_7d' }
+                                    });
+                                }
                             }
-                        });
+
+                        } catch (notifyError: any) {
+                            console.error(`❌ [Compliance] Failed to send 7d reminder:`, notifyError);
+                            await logNotificationFailed(supabase, {
+                                recipientEmail: staffMember.email,
+                                recipientType: 'staff',
+                                staffId: staffMember.id,
+                                agencyId: agency.id,
+                                notificationType: 'compliance_warning',
+                                channel: 'email_or_sms',
+                                errorMessage: notifyError.message,
+                                errorCode: 'send_failed'
+                            });
+                            await scheduleRetry(supabase, {
+                                notificationType: 'compliance_warning',
+                                recipientEmail: staffMember.email,
+                                recipientId: staffMember.id,
+                                agencyId: agency.id,
+                                channel: 'email', // Default retry channel
+                                metadata: { document_id: doc.id, type: 'reminder_7d' }
+                            });
+                        }
 
                         await supabase
                             .from("compliance")

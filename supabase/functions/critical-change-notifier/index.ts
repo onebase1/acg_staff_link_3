@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 
 /**
  * CRITICAL CHANGE NOTIFIER
@@ -81,11 +88,126 @@ serve(async (req) => {
         const agencyPhone = agency?.phone || agency?.contact_phone || '+44 20 1234 5678';
         const agencyEmail = agency?.email || 'support@agilecaremanagement.co.uk';
 
-        const notifications = [];
+        // Helper function to send notification with checks and logging
+        const sendCriticalNotification = async (
+            recipientEmail: string,
+            recipientName: string,
+            subject: string,
+            html: string,
+            recipientType: 'staff' | 'client' | 'admin',
+            recipientId: string | undefined // We might not always have ID if it's just email, but for staff/client we usually do.
+            // Actually, for critical changes we might not have the ID passed in directly in all cases, 
+            // but let's see what we have. 
+            // The request body has `staff_email`, `client_email`. It doesn't explicitly have `staff_id` or `client_id`.
+            // We might need to fetch them or just log without ID if missing (though logger prefers ID).
+            // However, `affected_entity_id` might be the staff_id if `affected_entity_type` is 'staff'.
+            // Let's try to infer or fetch if needed, or just pass what we have.
+        ) => {
+            try {
+                // Check preference
+                const preferenceCheck = await shouldSendNotification(
+                    supabase,
+                    recipientEmail,
+                    'system_update', // Critical changes are system updates
+                    'email',
+                    recipientType
+                );
+
+                if (!preferenceCheck.allowed) {
+                    console.log(`⏭️ [Critical Change] Skipped for ${recipientEmail} - ${preferenceCheck.reason}`);
+                    await logNotificationSkipped(supabase, {
+                        recipientEmail: recipientEmail,
+                        recipientType: recipientType,
+                        // staffId/clientId: we might miss these if not passed. 
+                        // We'll try to use affected_entity_id if it matches.
+                        staffId: recipientType === 'staff' && affected_entity_type === 'staff' ? affected_entity_id : undefined,
+                        clientId: recipientType === 'client' && affected_entity_type === 'client' ? affected_entity_id : undefined,
+                        agencyId: agency_id,
+                        notificationType: 'system_update',
+                        channel: 'email',
+                        preferenceChecked: preferenceCheck.preferenceChecked,
+                        preferenceStatus: preferenceCheck.preferenceStatus,
+                        skippedReason: preferenceCheck.reason,
+                        metadata: { change_type, reason }
+                    });
+                    return false;
+                }
+
+                // Send email
+                const emailResponse = await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${RESEND_API_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        from: `Agile Care Management <noreply@${RESEND_FROM_DOMAIN}>`,
+                        to: [recipientEmail],
+                        subject: subject,
+                        html: html
+                    }),
+                });
+
+                if (!emailResponse.ok) {
+                    const errorData = await emailResponse.json();
+                    throw new Error(JSON.stringify(errorData));
+                }
+
+                const emailResult = await emailResponse.json();
+
+                // Log success
+                await logNotificationSent(supabase, {
+                    recipientEmail: recipientEmail,
+                    recipientType: recipientType,
+                    staffId: recipientType === 'staff' && affected_entity_type === 'staff' ? affected_entity_id : undefined,
+                    clientId: recipientType === 'client' && affected_entity_type === 'client' ? affected_entity_id : undefined,
+                    agencyId: agency_id,
+                    notificationType: 'system_update',
+                    channel: 'email',
+                    provider: 'resend',
+                    providerMessageId: emailResult.id,
+                    preferenceChecked: preferenceCheck.preferenceChecked,
+                    preferenceStatus: preferenceCheck.preferenceStatus,
+                    metadata: { change_type, reason }
+                });
+
+                return true;
+
+            } catch (error: any) {
+                console.error(`❌ Failed to send critical notification to ${recipientEmail}:`, error);
+                
+                // Log failure
+                await logNotificationFailed(supabase, {
+                    recipientEmail: recipientEmail,
+                    recipientType: recipientType,
+                    staffId: recipientType === 'staff' && affected_entity_type === 'staff' ? affected_entity_id : undefined,
+                    clientId: recipientType === 'client' && affected_entity_type === 'client' ? affected_entity_id : undefined,
+                    agencyId: agency_id,
+                    notificationType: 'system_update',
+                    channel: 'email',
+                    errorMessage: error.message,
+                    errorCode: 'send_failed'
+                });
+
+                // Schedule retry
+                await scheduleRetry(supabase, {
+                    notificationType: 'system_update',
+                    recipientEmail: recipientEmail,
+                    recipientId: recipientType === 'staff' && affected_entity_type === 'staff' ? affected_entity_id : undefined, // Best effort ID
+                    agencyId: agency_id,
+                    channel: 'email',
+                    metadata: { change_type, reason, subject, html, recipientName, recipientType } // Pass all needed for retry
+                });
+
+                return false;
+            }
+        };
+
+        let sentCount = 0;
 
         // SHIFT CANCELLATION
         if (change_type === 'shift_cancelled') {
-            const email_body = (recipient_name) => `
+            const email_body = (recipient_name: string) => `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
                     <div style="background-color: #dc2626; padding: 30px; border-radius: 10px 10px 0 0;" bgcolor="#dc2626">
                         <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">⚠️ Shift Cancellation Notice</h1>
@@ -113,22 +235,28 @@ serve(async (req) => {
 
             // Notify Staff
             if (staff_email) {
-                notifications.push({
-                    from: `Agile Care Management <noreply@${RESEND_FROM_DOMAIN}>`,
-                    to: [staff_email],
-                    subject: `SHIFT CANCELLED - ${client_name} on ${shift_date}`,
-                    html: email_body(staff_name || 'Staff Member')
-                });
+                const sent = await sendCriticalNotification(
+                    staff_email,
+                    staff_name || 'Staff Member',
+                    `SHIFT CANCELLED - ${client_name} on ${shift_date}`,
+                    email_body(staff_name || 'Staff Member'),
+                    'staff',
+                    undefined // We don't have staff_id explicitly passed for shift_cancelled in the destructuring
+                );
+                if (sent) sentCount++;
             }
 
             // Notify Client
             if (client_email) {
-                notifications.push({
-                    from: `Agile Care Management <noreply@${RESEND_FROM_DOMAIN}>`,
-                    to: [client_email],
-                    subject: `Shift Cancellation for ${shift_date}`,
-                    html: email_body(client_name || 'Team')
-                });
+                const sent = await sendCriticalNotification(
+                    client_email,
+                    client_name || 'Team',
+                    `Shift Cancellation for ${shift_date}`,
+                    email_body(client_name || 'Team'),
+                    'client',
+                    undefined
+                );
+                if (sent) sentCount++;
             }
         }
 
@@ -190,12 +318,15 @@ serve(async (req) => {
                 </div>
             `;
 
-            notifications.push({
-                from: `Agile Care Management <noreply@${RESEND_FROM_DOMAIN}>`,
-                to: [staff_email],
-                subject: `🔒 SECURITY ALERT: Your Bank Details Were Changed`,
-                html: html
-            });
+            const sent = await sendCriticalNotification(
+                staff_email,
+                staff_name || 'Staff Member',
+                `🔒 SECURITY ALERT: Your Bank Details Were Changed`,
+                html,
+                'staff',
+                affected_entity_id // Usually staff_id for bank details
+            );
+            if (sent) sentCount++;
         }
 
         // PAY RATE OVERRIDE
@@ -245,12 +376,15 @@ serve(async (req) => {
                 </div>
             `;
 
-            notifications.push({
-                from: `Agile Care Management <noreply@${RESEND_FROM_DOMAIN}>`,
-                to: [staff_email],
-                subject: `💰 Pay Rate Adjusted - ${client_name} on ${shift_date}`,
-                html: html
-            });
+            const sent = await sendCriticalNotification(
+                staff_email,
+                staff_name || 'Staff Member',
+                `💰 Pay Rate Adjusted - ${client_name} on ${shift_date}`,
+                html,
+                'staff',
+                undefined // We don't have staff_id explicitly here usually
+            );
+            if (sent) sentCount++;
         }
 
         // CONFIRMED SHIFT MODIFIED
@@ -313,12 +447,15 @@ serve(async (req) => {
                 </div>
             `;
 
-            notifications.push({
-                from: `Agile Care Management <noreply@${RESEND_FROM_DOMAIN}>`,
-                to: [staff_email],
-                subject: `⚠️ Shift Update for ${client_name} on ${shift_date}`,
-                html: html
-            });
+            const sent = await sendCriticalNotification(
+                staff_email,
+                staff_name || 'Staff Member',
+                `⚠️ Shift Update for ${client_name} on ${shift_date}`,
+                html,
+                'staff',
+                undefined
+            );
+            if (sent) sentCount++;
         }
 
         // SHIFT REASSIGNMENT
@@ -391,28 +528,17 @@ serve(async (req) => {
                     </div>
                 `;
 
-                notifications.push({
-                    from: `Agile Care Management <noreply@${RESEND_FROM_DOMAIN}>`,
-                    to: [staff_email],
-                    subject: `Shift Update - You've been removed from ${client_name} on ${shift_date}`,
-                    html: html
-                });
+                const sent = await sendCriticalNotification(
+                    staff_email,
+                    staff_name || 'Staff Member',
+                    `Shift Update - You've been removed from ${client_name} on ${shift_date}`,
+                    html,
+                    'staff',
+                    undefined
+                );
+                if (sent) sentCount++;
             }
         }
-
-        // Send all notifications
-        const results = await Promise.allSettled(
-            notifications.map(notification =>
-                fetch('https://api.resend.com/emails', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${RESEND_API_KEY}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(notification),
-                })
-            )
-        );
 
         // Log change to audit trail (could create ChangeLog entity)
         const changeLog = {
@@ -425,15 +551,13 @@ serve(async (req) => {
             changed_by: user.id,
             changed_by_email: user.email,
             changed_at: new Date().toISOString(),
-            notifications_sent: results.filter(r => r.status === 'fulfilled').length
+            notifications_sent: sentCount
         };
-
-        const successCount = results.filter(r => r.status === 'fulfilled').length;
 
         return new Response(
             JSON.stringify({
                 success: true,
-                notifications_sent: successCount,
+                notifications_sent: sentCount,
                 change_log: changeLog
             }),
             { headers: { "Content-Type": "application/json" } }

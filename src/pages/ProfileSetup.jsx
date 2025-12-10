@@ -27,6 +27,7 @@ export default function ProfileSetup() {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [linkedStaff, setLinkedStaff] = useState(null);
+  const [linkedClient, setLinkedClient] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [trainingModalOpen, setTrainingModalOpen] = useState(false);
   const [activeTrainingContext, setActiveTrainingContext] = useState(null);
@@ -88,6 +89,27 @@ export default function ProfileSetup() {
     retry: false
   });
 
+  // ✅ NEW: Use RPC to securely find and link client contact record
+  const { data: linkedClientContact, isLoading: isLinkingClient } = useQuery({
+    queryKey: ['link-client-contact'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('link_user_to_client_contact_by_email');
+
+      if (error) {
+        console.error('❌ Error linking client contact:', error);
+        return null;
+      }
+
+      if (data) {
+        console.log('✅ Successfully linked to client contact:', data.id);
+        return data;
+      }
+
+      return null;
+    },
+    retry: false
+  });
+
   const { data: agencies = [] } = useQuery({
     queryKey: ['agencies-list'],
     queryFn: async () => {
@@ -124,9 +146,9 @@ export default function ProfileSetup() {
     refetchOnMount: 'always'
   });
 
-  // ✅ FIXED: Only show "Awaiting Approval" for self-signup users WITHOUT staff record
-  // If user has linked staff record, they were invited by admin and are NOT pending
-  const isPendingUser = user?.user_type === 'pending' && !linkedStaff;
+  // ✅ FIXED: Only show "Awaiting Approval" for self-signup users WITHOUT staff/client record
+  // If user has linked staff/client record, they were invited by admin and are NOT pending
+  const isPendingUser = user?.user_type === 'pending' && !linkedStaff && !linkedClient;
 
   useEffect(() => {
     const initSetup = async () => {
@@ -173,6 +195,7 @@ export default function ProfileSetup() {
 
         // Use the RPC result if available
         const matchingStaff = linkedStaffRecord;
+        const matchingClient = linkedClientContact;
 
         if (matchingStaff) {
           console.log('✅ [ProfileSetup] Auto-linked to staff record:', matchingStaff.id);
@@ -212,8 +235,29 @@ export default function ProfileSetup() {
             occupational_health: matchingStaff.occupational_health || { cleared_to_work: false, restrictions: '' },
             mandatory_training: matchingStaff.mandatory_training || {}
           });
+        } else if (matchingClient) {
+          console.log('✅ [ProfileSetup] Auto-linked to client contact:', matchingClient.id);
+          setLinkedClient(matchingClient);
+
+          setFormData({
+            full_name: `${matchingClient.first_name} ${matchingClient.last_name}`,
+            email: currentUser.email || '',
+            phone: matchingClient.phone_number || currentUser.phone || '',
+            user_type: 'client_user',
+            agency_id: '', // Not needed for client user form
+            profile_photo_url: currentUser.profile_photo_url || '',
+            date_of_birth: '',
+            address: { line1: '', line2: '', city: '', postcode: '' },
+            emergency_contact: { name: '', phone: '', relationship: '' },
+            references: [],
+            employment_history: [],
+            occupational_health: { cleared_to_work: false, restrictions: '' },
+            ni_number: '',
+            bank_details: { account_name: '', sort_code: '', account_number: '', bank_name: '' },
+            mandatory_training: {}
+          });
         } else {
-          console.warn('⚠️ [ProfileSetup] No staff record found for email:', currentUser.email);
+          console.warn('⚠️ [ProfileSetup] No staff/client record found for email:', currentUser.email);
 
           const photoUrl = currentUser.profile_photo_url || '';
 
@@ -247,8 +291,8 @@ export default function ProfileSetup() {
 
         // ✅ FIX: Client users don't need agency_id (they use client_id instead)
         if (currentUser.user_type === 'pending' ||
-            (!currentUser.agency_id && currentUser.user_type !== 'client_user') ||
-            !currentUser.user_type) {
+          (!currentUser.agency_id && currentUser.user_type !== 'client_user') ||
+          !currentUser.user_type) {
           setNeedsOnboarding(true);
         }
 
@@ -258,11 +302,11 @@ export default function ProfileSetup() {
       }
     };
 
-    if (!isLinking) {
+    if (!isLinking && !isLinkingClient) {
       initSetup();
     }
 
-  }, [linkedStaffRecord, isLinking, agencies]);
+  }, [linkedStaffRecord, linkedClientContact, isLinking, isLinkingClient, agencies]);
 
   const updateMutation = useMutation({
     mutationFn: async (dataToUpdate) => {
@@ -270,13 +314,18 @@ export default function ProfileSetup() {
         throw new Error('Profile photo is mandatory for staff members.');
       }
 
+      // Build update payload - exclude agency_id for client users (they use client_id instead)
       const userUpdatePayload = {
         full_name: dataToUpdate.full_name,
         phone: dataToUpdate.phone,
         user_type: dataToUpdate.user_type,
-        agency_id: dataToUpdate.agency_id,
         profile_photo_url: dataToUpdate.profile_photo_url
       };
+
+      // Only include agency_id for non-client users
+      if (dataToUpdate.user_type !== 'client_user' && dataToUpdate.agency_id) {
+        userUpdatePayload.agency_id = dataToUpdate.agency_id;
+      }
 
       const { error: updateError } = await supabase
         .from('profiles')
@@ -433,7 +482,11 @@ export default function ProfileSetup() {
           navigate(createPageUrl('Dashboard'));
         } else if (formData.user_type === 'staff_member') {
           navigate(createPageUrl('StaffPortal'));
+        } else if (formData.user_type === 'client_user') {
+          // ✅ FIX: Redirect client users to their portal (not Dashboard)
+          navigate(createPageUrl('ClientPortal'));
         } else {
+          // Fallback for agency_admin and other user types
           navigate(createPageUrl('Dashboard'));
         }
 
@@ -542,7 +595,10 @@ export default function ProfileSetup() {
     // This handles cases where profile was updated but form state hasn't refreshed
     const hasAgency = formData.agency_id || user?.agency_id || linkedStaff?.agency_id;
 
-    if (!isSuperAdmin && !hasAgency && !isPendingUser) {
+    // ✅ FIX: Client users don't need agency_id (they use client_id instead)
+    const isClientUser = user?.user_type === 'client_user' || formData.user_type === 'client_user';
+
+    if (!isSuperAdmin && !hasAgency && !isPendingUser && !isClientUser) {
       toast.error('⚠️ Please select an agency');
       return;
     }
@@ -740,6 +796,16 @@ export default function ProfileSetup() {
             <AlertDescription className="text-green-900">
               <strong>Staff Record Found!</strong>
               <p className="mt-1">Linked to: {linkedStaff.first_name} {linkedStaff.last_name} ({linkedStaff.role?.replace('_', ' ')})</p>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {linkedClient && !isSuperAdmin && (
+          <Alert className="border-blue-300 bg-blue-50">
+            <Building2 className="h-5 w-5 text-blue-600" />
+            <AlertDescription className="text-blue-900">
+              <strong>Client Account Found!</strong>
+              <p className="mt-1">Linked to: {linkedClient.first_name} {linkedClient.last_name} ({linkedClient.role})</p>
             </AlertDescription>
           </Alert>
         )}

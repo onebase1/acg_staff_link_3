@@ -33,7 +33,7 @@ export default function OnboardClient() {
       const { data, error } = await supabase
         .from('agencies')
         .select('*');
-      
+
       if (error) {
         console.error('❌ Error fetching agencies:', error);
         return [];
@@ -50,11 +50,11 @@ export default function OnboardClient() {
     type: 'care_home',
     contact_person: { name: '', email: '', phone: '', role: '' },
     billing_email: '',
-    
+
     // Step 2: Address & Location
     address: { line1: '', line2: '', city: '', postcode: '' },
     internal_locations: [],
-    
+
     // Step 3: Contract Terms
     contract_received: false,
     contract_start_date: '',
@@ -63,10 +63,10 @@ export default function OnboardClient() {
     payment_terms: 'net_30',
     break_duration_minutes: 0,
     shift_window_type: '8_to_8', // NEW: 7_to_7 or 8_to_8
-    
+
     // Step 4: Rate Configuration
     rate_model: 'simple', // 'simple' or 'advanced'
-    
+
     // Simple rates (legacy backward compatible)
     simple_rates: {
       nurse: { pay_rate: 0, charge_rate: 0 },
@@ -74,7 +74,7 @@ export default function OnboardClient() {
       support_worker: { pay_rate: 0, charge_rate: 0 },
       senior_carer: { pay_rate: 0, charge_rate: 0 }
     },
-    
+
     // Advanced rates (Dominion-style)
     advanced_rates: {
       nurse: {
@@ -138,7 +138,7 @@ export default function OnboardClient() {
 
         // ✅ FIX: Set agency_id based on user type
         const isSuperAdmin = currentUser.email === 'g.basera@yahoo.com' || localStorage.getItem('admin_view_mode') === 'super_admin';
-        
+
         if (!isSuperAdmin && currentUser.agency_id) {
           setSelectedAgencyId(currentUser.agency_id);
         }
@@ -161,13 +161,34 @@ export default function OnboardClient() {
         })
         .select()
         .single();
-      
+
       if (createError) throw createError;
-      
+
+      // ✅ NEW: Create Client Contact (Anchor for Auth)
+      const nameParts = clientData.contact_person.name.trim().split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const { error: contactError } = await supabase
+        .from('client_contacts')
+        .insert({
+          client_id: newClient.id,
+          first_name: firstName,
+          last_name: lastName,
+          email: clientData.contact_person.email,
+          role: clientData.contact_person.role,
+          is_primary_contact: true
+        });
+
+      if (contactError) {
+        console.error('❌ Error creating client contact:', contactError);
+        throw contactError;
+      }
+
       // Send welcome email
       try {
         const agency = agencies.find(a => a.id === clientData.agency_id);
-        
+
         const { error: emailError } = await supabase.functions.invoke('send-email', {
           body: {
             to: clientData.contact_person.email,
@@ -228,13 +249,13 @@ export default function OnboardClient() {
           `
           }
         });
-        
+
         console.log('✅ Welcome email sent to', clientData.contact_person.email);
       } catch (emailError) {
         console.error('⚠️ Failed to send welcome email:', emailError);
         // Don't fail the entire operation if email fails
       }
-      
+
       return newClient;
     },
     onSuccess: () => {
@@ -280,20 +301,20 @@ export default function OnboardClient() {
           toast.error('Client name and contact email required');
           return false;
         }
-        
+
         // ✅ NEW: Validate agency selection for super admin
         const isSuperAdmin = user?.email === 'g.basera@yahoo.com' || localStorage.getItem('admin_view_mode') === 'super_admin';
         if (isSuperAdmin && !selectedAgencyId) {
           toast.error('Please select an agency for this client');
           return false;
         }
-        
+
         return true;
-      
+
       case 2:
         // Address optional, but locations recommended
         return true;
-      
+
       case 3:
         if (!formData.contract_received) {
           toast.error('Please confirm contract receipt');
@@ -304,7 +325,7 @@ export default function OnboardClient() {
           return false;
         }
         return true;
-      
+
       case 4:
         // Validate rates configured
         if (formData.rate_model === 'simple') {
@@ -325,7 +346,7 @@ export default function OnboardClient() {
           }
         }
         return true;
-      
+
       default:
         return true;
     }
@@ -437,30 +458,27 @@ export default function OnboardClient() {
               const Icon = step.icon;
               const isActive = currentStep === step.num;
               const isCompleted = currentStep > step.num;
-              
+
               return (
                 <React.Fragment key={step.num}>
                   <div className="flex flex-col items-center">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                      isCompleted ? 'bg-green-600' :
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isCompleted ? 'bg-green-600' :
                       isActive ? 'bg-cyan-600' : 'bg-gray-300'
-                    }`}>
+                      }`}>
                       {isCompleted ? (
                         <CheckCircle className="w-6 h-6 text-white" />
                       ) : (
                         <Icon className="w-6 h-6 text-white" />
                       )}
                     </div>
-                    <p className={`text-xs mt-2 font-medium ${
-                      isActive ? 'text-cyan-600' : isCompleted ? 'text-green-600' : 'text-gray-500'
-                    }`}>
+                    <p className={`text-xs mt-2 font-medium ${isActive ? 'text-cyan-600' : isCompleted ? 'text-green-600' : 'text-gray-500'
+                      }`}>
                       {step.title}
                     </p>
                   </div>
                   {idx < steps.length - 1 && (
-                    <div className={`flex-1 h-1 mx-2 ${
-                      currentStep > step.num ? 'bg-green-600' : 'bg-gray-300'
-                    }`}></div>
+                    <div className={`flex-1 h-1 mx-2 ${currentStep > step.num ? 'bg-green-600' : 'bg-gray-300'
+                      }`}></div>
                   )}
                 </React.Fragment>
               );
@@ -523,7 +541,7 @@ export default function OnboardClient() {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g., Divine Care Centre"
                   className="mt-1"
                 />
@@ -534,7 +552,7 @@ export default function OnboardClient() {
                 <select
                   id="type"
                   value={formData.type}
-                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                   className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
                 >
                   <option value="care_home">Care Home</option>
@@ -554,7 +572,7 @@ export default function OnboardClient() {
                     value={formData.contact_person.name}
                     onChange={(e) => setFormData({
                       ...formData,
-                      contact_person: {...formData.contact_person, name: e.target.value}
+                      contact_person: { ...formData.contact_person, name: e.target.value }
                     })}
                     placeholder="e.g., Lisa Nausbet"
                     className="mt-1"
@@ -567,7 +585,7 @@ export default function OnboardClient() {
                     value={formData.contact_person.role}
                     onChange={(e) => setFormData({
                       ...formData,
-                      contact_person: {...formData.contact_person, role: e.target.value}
+                      contact_person: { ...formData.contact_person, role: e.target.value }
                     })}
                     placeholder="e.g., Care Home Manager"
                     className="mt-1"
@@ -583,7 +601,7 @@ export default function OnboardClient() {
                   value={formData.contact_person.email}
                   onChange={(e) => setFormData({
                     ...formData,
-                    contact_person: {...formData.contact_person, email: e.target.value}
+                    contact_person: { ...formData.contact_person, email: e.target.value }
                   })}
                   placeholder="manager@divinecare.com"
                   className="mt-1"
@@ -597,7 +615,7 @@ export default function OnboardClient() {
                   value={formData.contact_person.phone}
                   onChange={(e) => setFormData({
                     ...formData,
-                    contact_person: {...formData.contact_person, phone: e.target.value}
+                    contact_person: { ...formData.contact_person, phone: e.target.value }
                   })}
                   placeholder="01234567890"
                   className="mt-1"
@@ -610,7 +628,7 @@ export default function OnboardClient() {
                   id="billing_email"
                   type="email"
                   value={formData.billing_email}
-                  onChange={(e) => setFormData({...formData, billing_email: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, billing_email: e.target.value })}
                   placeholder="accounts@divinecare.com"
                   className="mt-1"
                 />
@@ -631,7 +649,7 @@ export default function OnboardClient() {
                       value={formData.address.line1}
                       onChange={(e) => setFormData({
                         ...formData,
-                        address: {...formData.address, line1: e.target.value}
+                        address: { ...formData.address, line1: e.target.value }
                       })}
                       placeholder="Station Town"
                       className="mt-1"
@@ -645,7 +663,7 @@ export default function OnboardClient() {
                         value={formData.address.city}
                         onChange={(e) => setFormData({
                           ...formData,
-                          address: {...formData.address, city: e.target.value}
+                          address: { ...formData.address, city: e.target.value }
                         })}
                         placeholder="Wingate"
                         className="mt-1"
@@ -658,7 +676,7 @@ export default function OnboardClient() {
                         value={formData.address.postcode}
                         onChange={(e) => setFormData({
                           ...formData,
-                          address: {...formData.address, postcode: e.target.value}
+                          address: { ...formData.address, postcode: e.target.value }
                         })}
                         placeholder="TS28 5DP"
                         className="mt-1"
@@ -768,7 +786,7 @@ export default function OnboardClient() {
                   type="checkbox"
                   id="contract_received"
                   checked={formData.contract_received}
-                  onChange={(e) => setFormData({...formData, contract_received: e.target.checked})}
+                  onChange={(e) => setFormData({ ...formData, contract_received: e.target.checked })}
                   className="w-5 h-5"
                 />
                 <Label htmlFor="contract_received" className="cursor-pointer flex-1">
@@ -786,7 +804,7 @@ export default function OnboardClient() {
                     id="contract_start"
                     type="date"
                     value={formData.contract_start_date}
-                    onChange={(e) => setFormData({...formData, contract_start_date: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, contract_start_date: e.target.value })}
                     className="mt-1"
                   />
                 </div>
@@ -795,7 +813,7 @@ export default function OnboardClient() {
                   <Input
                     id="contract_ref"
                     value={formData.contract_reference}
-                    onChange={(e) => setFormData({...formData, contract_reference: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, contract_reference: e.target.value })}
                     placeholder="e.g., DHC-2025-001"
                     className="mt-1"
                   />
@@ -807,7 +825,7 @@ export default function OnboardClient() {
                 <select
                   id="payment_terms"
                   value={formData.payment_terms}
-                  onChange={(e) => setFormData({...formData, payment_terms: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
                   className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
                 >
                   <option value="net_7">Net 7 Days</option>
@@ -823,7 +841,7 @@ export default function OnboardClient() {
                   id="break_duration"
                   type="number"
                   value={formData.break_duration_minutes}
-                  onChange={(e) => setFormData({...formData, break_duration_minutes: parseInt(e.target.value) || 0})}
+                  onChange={(e) => setFormData({ ...formData, break_duration_minutes: parseInt(e.target.value) || 0 })}
                   placeholder="e.g., 30"
                   className="mt-1"
                 />
@@ -840,7 +858,7 @@ export default function OnboardClient() {
                 <select
                   id="shift_window"
                   value={formData.shift_window_type || '8_to_8'}
-                  onChange={(e) => setFormData({...formData, shift_window_type: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, shift_window_type: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 >
                   <option value="8_to_8">🕐 8-8 Window (08:00-20:00 / 20:00-08:00) - Standard</option>
@@ -862,12 +880,11 @@ export default function OnboardClient() {
                 <div className="grid grid-cols-2 gap-4 mt-2">
                   <button
                     type="button"
-                    onClick={() => setFormData({...formData, rate_model: 'simple'})}
-                    className={`p-4 border-2 rounded-lg text-left transition-all ${
-                      formData.rate_model === 'simple' 
-                        ? 'border-cyan-600 bg-cyan-50' 
-                        : 'border-gray-300 hover:border-gray-400'
-                    }`}
+                    onClick={() => setFormData({ ...formData, rate_model: 'simple' })}
+                    className={`p-4 border-2 rounded-lg text-left transition-all ${formData.rate_model === 'simple'
+                      ? 'border-cyan-600 bg-cyan-50'
+                      : 'border-gray-300 hover:border-gray-400'
+                      }`}
                   >
                     <h3 className="font-semibold">Simple Rates</h3>
                     <p className="text-sm text-gray-600 mt-1">
@@ -876,12 +893,11 @@ export default function OnboardClient() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setFormData({...formData, rate_model: 'advanced'})}
-                    className={`p-4 border-2 rounded-lg text-left transition-all ${
-                      formData.rate_model === 'advanced' 
-                        ? 'border-cyan-600 bg-cyan-50' 
-                        : 'border-gray-300 hover:border-gray-400'
-                    }`}
+                    onClick={() => setFormData({ ...formData, rate_model: 'advanced' })}
+                    className={`p-4 border-2 rounded-lg text-left transition-all ${formData.rate_model === 'advanced'
+                      ? 'border-cyan-600 bg-cyan-50'
+                      : 'border-gray-300 hover:border-gray-400'
+                      }`}
                   >
                     <h3 className="font-semibold">Advanced Rates ⭐</h3>
                     <p className="text-sm text-gray-600 mt-1">
@@ -946,7 +962,7 @@ export default function OnboardClient() {
                       </div>
                       {formData.simple_rates[role].charge_rate > 0 && formData.simple_rates[role].pay_rate > 0 && (
                         <p className="text-xs text-green-700 mt-2">
-                          💰 Margin: £{(formData.simple_rates[role].charge_rate - formData.simple_rates[role].pay_rate).toFixed(2)}/hr 
+                          💰 Margin: £{(formData.simple_rates[role].charge_rate - formData.simple_rates[role].pay_rate).toFixed(2)}/hr
                           ({((formData.simple_rates[role].charge_rate - formData.simple_rates[role].pay_rate) / formData.simple_rates[role].charge_rate * 100).toFixed(1)}%)
                         </p>
                       )}
@@ -979,9 +995,9 @@ export default function OnboardClient() {
                                 step="0.01"
                                 value={formData.advanced_rates[role][rateType].pay_rate || ''}
                                 onChange={(e) => {
-                                  const newRates = {...formData.advanced_rates};
+                                  const newRates = { ...formData.advanced_rates };
                                   newRates[role][rateType].pay_rate = parseFloat(e.target.value) || 0;
-                                  setFormData({...formData, advanced_rates: newRates});
+                                  setFormData({ ...formData, advanced_rates: newRates });
                                 }}
                                 className="mt-1"
                               />
@@ -993,9 +1009,9 @@ export default function OnboardClient() {
                                 step="0.01"
                                 value={formData.advanced_rates[role][rateType].charge_rate || ''}
                                 onChange={(e) => {
-                                  const newRates = {...formData.advanced_rates};
+                                  const newRates = { ...formData.advanced_rates };
                                   newRates[role][rateType].charge_rate = parseFloat(e.target.value) || 0;
-                                  setFormData({...formData, advanced_rates: newRates});
+                                  setFormData({ ...formData, advanced_rates: newRates });
                                 }}
                                 className="mt-1"
                               />
@@ -1046,7 +1062,7 @@ export default function OnboardClient() {
                     <strong>{formData.rate_model === 'simple' ? 'Simple Rates' : 'Advanced Rates (Dominion-Style)'}</strong>
                   </p>
                   <p className="text-xs text-gray-600 mt-1">
-                    {formData.rate_model === 'simple' 
+                    {formData.rate_model === 'simple'
                       ? 'Single rate per role applies to all shifts'
                       : '5 rate types per role (day/night, weekday/weekend, bank holiday)'}
                   </p>

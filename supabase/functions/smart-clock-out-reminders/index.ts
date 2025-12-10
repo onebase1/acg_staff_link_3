@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 
 /**
  * 📲 SMART CLOCK-OUT REMINDER SYSTEM (Phase 2)
@@ -263,50 +270,111 @@ async function sendReminder(supabase: any, staff: any, shift: any, clientName: s
         </div>
     `;
 
-    // Send via all channels in parallel for maximum delivery rate
-    const promises = [];
+    const channels = ['email', 'sms', 'whatsapp'];
+    const results = { successful: 0, failed: 0 };
 
-    // Email (always send)
-    promises.push(
-        supabase.functions.invoke('send-email', {
-            body: {
-                to: staff.email,
-                subject: subject,
-                html: emailHtml
+    for (const channel of channels) {
+        if (channel === 'sms' && !staff.phone) continue;
+        if (channel === 'whatsapp' && !staff.phone) continue;
+
+        try {
+            // Check preference
+            const preferenceCheck = await shouldSendNotification(
+                supabase,
+                staff.email,
+                'shift_complete', // Mapped as per instructions
+                channel,
+                'staff'
+            );
+
+            if (!preferenceCheck.allowed) {
+                console.log(`⏭️ [Smart Reminder] Skipped ${channel} for ${staff.email} - ${preferenceCheck.reason}`);
+                await logNotificationSkipped(supabase, {
+                    recipientEmail: staff.email,
+                    recipientType: 'staff',
+                    staffId: staff.id,
+                    agencyId: shift.agency_id, // Assuming shift has agency_id
+                    notificationType: 'shift_complete',
+                    channel: channel,
+                    preferenceChecked: preferenceCheck.preferenceChecked,
+                    preferenceStatus: preferenceCheck.preferenceStatus,
+                    skippedReason: preferenceCheck.reason,
+                    metadata: { shift_id: shift.id, stage }
+                });
+                continue;
             }
-        })
-    );
 
-    // SMS (if phone number exists)
-    if (staff.phone) {
-        promises.push(
-            supabase.functions.invoke('send-sms', {
-                body: {
-                    to: staff.phone,
-                    message: message
-                }
-            })
-        );
+            let sendResult;
+            if (channel === 'email') {
+                sendResult = await supabase.functions.invoke('send-email', {
+                    body: {
+                        to: staff.email,
+                        subject: subject,
+                        html: emailHtml
+                    }
+                });
+            } else if (channel === 'sms') {
+                sendResult = await supabase.functions.invoke('send-sms', {
+                    body: {
+                        to: staff.phone,
+                        message: message
+                    }
+                });
+            } else if (channel === 'whatsapp') {
+                sendResult = await supabase.functions.invoke('send-whatsapp', {
+                    body: {
+                        to: staff.phone,
+                        message: message
+                    }
+                });
+            }
+
+            if (sendResult.error) throw new Error(sendResult.error.message || JSON.stringify(sendResult.error));
+
+            // Log success
+            await logNotificationSent(supabase, {
+                recipientEmail: staff.email,
+                recipientType: 'staff',
+                staffId: staff.id,
+                agencyId: shift.agency_id,
+                notificationType: 'shift_complete',
+                channel: channel,
+                provider: channel === 'email' ? 'resend' : 'twilio', // Assuming twilio for sms/whatsapp
+                providerMessageId: sendResult.data?.id || sendResult.data?.messageId,
+                preferenceChecked: preferenceCheck.preferenceChecked,
+                preferenceStatus: preferenceCheck.preferenceStatus,
+                metadata: { shift_id: shift.id, stage }
+            });
+            results.successful++;
+
+        } catch (error: any) {
+            console.error(`❌ Failed to send ${channel} reminder to ${staff.email}:`, error);
+            
+            // Log failure
+            await logNotificationFailed(supabase, {
+                recipientEmail: staff.email,
+                recipientType: 'staff',
+                staffId: staff.id,
+                agencyId: shift.agency_id,
+                notificationType: 'shift_complete',
+                channel: channel,
+                errorMessage: error.message,
+                errorCode: 'send_failed'
+            });
+
+            // Schedule retry
+            await scheduleRetry(supabase, {
+                notificationType: 'shift_complete',
+                recipientEmail: staff.email,
+                recipientId: staff.id,
+                agencyId: shift.agency_id,
+                channel: channel,
+                metadata: { shiftId: shift.id, stage, message, subject } // Pass necessary data for retry
+            });
+            results.failed++;
+        }
     }
 
-    // WhatsApp (if phone number exists and WhatsApp enabled)
-    if (staff.phone) {
-        promises.push(
-            supabase.functions.invoke('send-whatsapp', {
-                body: {
-                    to: staff.phone,
-                    message: message
-                }
-            })
-        );
-    }
-
-    const results = await Promise.allSettled(promises);
-
-    const successful = results.filter(r => r.status === 'fulfilled').length;
-    const failed = results.filter(r => r.status === 'rejected').length;
-
-    console.log(`📲 [Reminder ${stage}] Sent to ${staff.first_name}: ${successful} successful, ${failed} failed`);
-
-    return { successful, failed };
+    console.log(`📲 [Reminder ${stage}] Sent to ${staff.first_name}: ${results.successful} successful, ${results.failed} failed`);
+    return results;
 }

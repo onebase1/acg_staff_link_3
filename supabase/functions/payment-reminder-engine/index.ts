@@ -1,8 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { format } from "https://esm.sh/date-fns@2";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import { 
+    logNotificationSent, 
+    logNotificationFailed, 
+    logNotificationSkipped 
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 
 /**
- * 💳 PRODUCTION MODE: Payment Reminder Engine
+ * 💳 PRODUCTION MODE: Payment Reminder Engine - ENHANCED
+ *
+ * ✅ PREFERENCE CHECKING: Respects user opt-outs (NEW)
+ * ✅ COMPREHENSIVE LOGGING: Audit trail for all sends (NEW)
  *
  * PRODUCTION INTERVALS (Industry Standard):
  * - 7 days overdue = First gentle reminder (Email)
@@ -51,7 +62,7 @@ serve(async (req) => {
             second_reminders: 0,
             final_notices: 0,
             workflows_created: 0,
-            errors: [],
+            errors: [] as any[],
         };
 
         // Get all unpaid/partially paid invoices
@@ -117,6 +128,35 @@ serve(async (req) => {
                 if (msOverdue >= intervals.first_reminder && msOverdue < intervals.second_reminder && invoice.reminder_sent_count === 0) {
                     console.log(`📧 [Invoice ${invoice.invoice_number}] Sending first reminder (${TESTING_MODE ? '10 min' : '7 days'})`);
 
+                    // ✅ Check preference before sending
+                    const preferenceCheck = await shouldSendNotification(
+                        supabase,
+                        contactEmail,
+                        'payment_reminder',
+                        'email',
+                        'client'
+                    );
+
+                    if (!preferenceCheck.allowed) {
+                        console.log(`⏭️ [Invoice ${invoice.invoice_number}] Skipping - ${preferenceCheck.reason}`);
+                        await logNotificationSkipped(supabase, {
+                            recipientEmail: contactEmail,
+                            recipientType: 'client',
+                            agencyId: invoice.agency_id,
+                            clientId: invoice.client_id,
+                            notificationType: 'payment_reminder',
+                            channel: 'email',
+                            subject: `Payment Reminder: Invoice ${invoice.invoice_number}`,
+                            preferenceChecked: preferenceCheck.preferenceChecked,
+                            preferenceStatus: preferenceCheck.preferenceStatus,
+                            skippedReason: preferenceCheck.reason,
+                            relatedEntityId: invoice.id,
+                            relatedEntityType: 'invoice',
+                            metadata: { invoice_number: invoice.invoice_number, reminder_count: 1 }
+                        });
+                        continue;
+                    }
+
                     if (contactEmail) {
                         const subject = `Gentle Reminder: Invoice ${invoice.invoice_number} Payment Due`;
                         const message = `
@@ -133,12 +173,30 @@ serve(async (req) => {
                         `;
 
                         try {
-                            await supabase.functions.invoke('send-email', {
+                            const emailResult = await supabase.functions.invoke('send-email', {
                                 body: {
                                     to: contactEmail,
                                     subject: subject,
                                     html: message
                                 }
+                            });
+
+                            // ✅ Log successful send
+                            await logNotificationSent(supabase, {
+                                recipientEmail: contactEmail,
+                                recipientType: 'client',
+                                agencyId: invoice.agency_id,
+                                clientId: invoice.client_id,
+                                notificationType: 'payment_reminder',
+                                channel: 'email',
+                                subject: subject,
+                                provider: 'resend',
+                                providerMessageId: emailResult?.data?.messageId,
+                                preferenceChecked: preferenceCheck.preferenceChecked,
+                                preferenceStatus: preferenceCheck.preferenceStatus,
+                                relatedEntityId: invoice.id,
+                                relatedEntityType: 'invoice',
+                                metadata: { invoice_number: invoice.invoice_number, reminder_count: 1 }
                             });
 
                             await supabase
@@ -152,10 +210,40 @@ serve(async (req) => {
                             results.first_reminders++;
                             console.log(`✅ [Invoice ${invoice.invoice_number}] First reminder email sent`);
                         } catch (error) {
-                            console.error(`❌ [Invoice ${invoice.invoice_number}] WhatsApp failed:`, error.message);
+                            // ✅ Log failed send
+                            await logNotificationFailed(supabase, {
+                                recipientEmail: contactEmail,
+                                recipientType: 'client',
+                                agencyId: invoice.agency_id,
+                                clientId: invoice.client_id,
+                                notificationType: 'payment_reminder',
+                                channel: 'email',
+                                subject: subject,
+                                errorMessage: error.message,
+                                relatedEntityId: invoice.id,
+                                relatedEntityType: 'invoice',
+                                metadata: { invoice_number: invoice.invoice_number, reminder_count: 1 }
+                            });
+                            // ✅ NEW: Schedule Retry
+                            await scheduleRetry(supabase, {
+                                notificationType: 'payment_reminder',
+                                channel: 'email',
+                                recipientEmail: contactEmail,
+                                recipientType: 'client',
+                                agencyId: invoice.agency_id,
+                                recipientId: invoice.client_id,
+                                subject: subject,
+                                content: message,
+                                relatedEntityId: invoice.id,
+                                relatedEntityType: 'invoice',
+                                errorMessage: error.message,
+                                metadata: { invoice_number: invoice.invoice_number, reminder_count: 1 }
+                            });
+
+                            console.error(`❌ [Invoice ${invoice.invoice_number}] Email failed:`, error.message);
                             results.errors.push({
                                 invoice_id: invoice.id,
-                                error: `WhatsApp failed: ${error.message}`
+                                error: `Email failed: ${error.message}`
                             });
                         }
                     } else {
@@ -167,9 +255,38 @@ serve(async (req) => {
                 if (msOverdue >= intervals.second_reminder && msOverdue < intervals.final_notice && invoice.reminder_sent_count === 1) {
                     console.log(`📧 [Invoice ${invoice.invoice_number}] Sending second reminder (${TESTING_MODE ? '4 min' : '14 days'})`);
 
+                    // ✅ Check preference before sending
+                    const preferenceCheck = await shouldSendNotification(
+                        supabase,
+                        contactEmail,
+                        'payment_reminder',
+                        'email',
+                        'client'
+                    );
+
+                    if (!preferenceCheck.allowed) {
+                        console.log(`⏭️ [Invoice ${invoice.invoice_number}] Skipping - ${preferenceCheck.reason}`);
+                        await logNotificationSkipped(supabase, {
+                            recipientEmail: contactEmail,
+                            recipientType: 'client',
+                            agencyId: invoice.agency_id,
+                            clientId: invoice.client_id,
+                            notificationType: 'payment_reminder',
+                            channel: 'email',
+                            subject: `Payment Reminder #2: Invoice ${invoice.invoice_number}`,
+                            preferenceChecked: preferenceCheck.preferenceChecked,
+                            preferenceStatus: preferenceCheck.preferenceStatus,
+                            skippedReason: preferenceCheck.reason,
+                            relatedEntityId: invoice.id,
+                            relatedEntityType: 'invoice',
+                            metadata: { invoice_number: invoice.invoice_number, reminder_count: 2 }
+                        });
+                        continue;
+                    }
+
                     if (contactEmail) {
                         try {
-                            await supabase.functions.invoke('send-email', {
+                            const emailResult = await supabase.functions.invoke('send-email', {
                                 body: {
                                     to: contactEmail,
                                     subject: `🧪 TEST: Payment Reminder #2 - Invoice ${invoice.invoice_number} (4 mins overdue)`,
@@ -208,6 +325,24 @@ serve(async (req) => {
                                 }
                             });
 
+                            // ✅ Log successful send
+                            await logNotificationSent(supabase, {
+                                recipientEmail: contactEmail,
+                                recipientType: 'client',
+                                agencyId: invoice.agency_id,
+                                clientId: invoice.client_id,
+                                notificationType: 'payment_reminder',
+                                channel: 'email',
+                                subject: `Payment Reminder #2 - Invoice ${invoice.invoice_number}`,
+                                provider: 'resend',
+                                providerMessageId: emailResult?.data?.messageId,
+                                preferenceChecked: preferenceCheck.preferenceChecked,
+                                preferenceStatus: preferenceCheck.preferenceStatus,
+                                relatedEntityId: invoice.id,
+                                relatedEntityType: 'invoice',
+                                metadata: { invoice_number: invoice.invoice_number, reminder_count: 2, testing_mode: TESTING_MODE }
+                            });
+
                             await supabase
                                 .from("invoices")
                                 .update({
@@ -216,10 +351,71 @@ serve(async (req) => {
                                 })
                                 .eq("id", invoice.id);
 
-                            results.reminders_20min++;
+                            results.second_reminders++;
                             console.log(`✅ [Invoice ${invoice.invoice_number}] 20-min email sent`);
                         } catch (error) {
-                            console.error(`❌ [Invoice ${invoice.invoice_number}] Email failed:`, error.message);
+                            // ✅ Log failure
+                            await logNotificationFailed(supabase, {
+                                recipientEmail: contactEmail,
+                                recipientType: 'client',
+                                agencyId: invoice.agency_id,
+                                clientId: invoice.client_id,
+                                notificationType: 'payment_reminder',
+                                channel: 'email',
+                                subject: `Payment Reminder #2 - Invoice ${invoice.invoice_number}`,
+                                errorMessage: (error as Error).message,
+                                relatedEntityId: invoice.id,
+                                relatedEntityType: 'invoice'
+                            });
+
+                            // ✅ NEW: Schedule Retry
+                            await scheduleRetry(supabase, {
+                                notificationType: 'payment_reminder',
+                                channel: 'email',
+                                recipientEmail: contactEmail,
+                                recipientType: 'client',
+                                agencyId: invoice.agency_id,
+                                recipientId: invoice.client_id,
+                                subject: `Payment Reminder #2 - Invoice ${invoice.invoice_number}`,
+                                content: `
+                                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                                        <div style="background: #f59e0b; padding: 30px; text-align: center;">
+                                            <h1 style="color: white; margin: 0;">⚠️ Payment Reminder #2 (TEST)</h1>
+                                        </div>
+                                        <div style="padding: 30px; background: #fffbeb;">
+                                            <p style="font-size: 16px; color: #1f2937;">Dear ${clientInfo.contact_person?.name || 'Finance Team'},</p>
+                                            <p style="font-size: 16px; color: #1f2937;">This is <strong>TEST reminder #2</strong> that invoice ${invoice.invoice_number} is now <strong>4 minutes overdue</strong>.</p>
+
+                                            <div style="background: white; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0;">
+                                                <p style="margin: 10px 0;"><strong>Invoice Number:</strong> ${invoice.invoice_number}</p>
+                                                <p style="margin: 10px 0;"><strong>Invoice Date:</strong> ${invoice.invoice_date}</p>
+                                                <p style="margin: 10px 0;"><strong>Due Date:</strong> ${invoice.due_date}</p>
+                                                <p style="margin: 10px 0;"><strong>Amount Due:</strong> £${invoice.balance_due.toFixed(2)}</p>
+                                                <p style="margin: 10px 0; color: #dc2626;"><strong>Test Mode:</strong> 4 minutes overdue (14 days in production)</p>
+                                            </div>
+
+                                            <p style="font-size: 14px; color: #78716c;">
+                                                In production, this would be sent 14 days after invoice is overdue.
+                                            </p>
+
+                                            <div style="background: #fef3c7; border: 2px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 8px;">
+                                                <p style="font-size: 14px; color: #92400e; margin: 0;">
+                                                    <strong>Payment Details:</strong> Please reference invoice number ${invoice.invoice_number} when making payment.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div style="background: #d97706; padding: 20px; text-align: center;">
+                                            <p style="color: white; font-size: 12px; margin: 0;">© ${new Date().getFullYear()} ${agencyInfo.name}</p>
+                                        </div>
+                                    </div>
+                                `,
+                                relatedEntityId: invoice.id,
+                                relatedEntityType: 'invoice',
+                                errorMessage: (error as Error).message,
+                                metadata: { invoice_number: invoice.invoice_number, reminder_count: 2 }
+                            });
+
+                            console.error(`❌ [Invoice ${invoice.invoice_number}] Email failed:`, (error as Error).message);
                             results.errors.push({
                                 invoice_id: invoice.id,
                                 error: `Email failed: ${error.message}`
@@ -234,10 +430,18 @@ serve(async (req) => {
                 if (msOverdue >= intervals.final_notice && msOverdue < intervals.admin_escalation && invoice.reminder_sent_count === 2) {
                     console.log(`🚨 [Invoice ${invoice.invoice_number}] Sending final notice (${TESTING_MODE ? '6 min' : '21 days'})`);
 
-                    // Send email
-                    if (contactEmail) {
+                    // --- EMAIL NOTIFICATION ---
+                    const emailPref = await shouldSendNotification(
+                        supabase,
+                        contactEmail,
+                        'payment_reminder',
+                        'email',
+                        'client'
+                    );
+
+                    if (emailPref.allowed && contactEmail) {
                         try {
-                            await supabase.functions.invoke('send-email', {
+                            const emailResult = await supabase.functions.invoke('send-email', {
                                 body: {
                                     to: contactEmail,
                                     subject: `🚨 URGENT TEST: Reminder #3 - Invoice ${invoice.invoice_number} - 6 Minutes Overdue - Immediate Action Required`,
@@ -274,25 +478,197 @@ serve(async (req) => {
                                 `
                                 }
                             });
-                            console.log(`✅ [Invoice ${invoice.invoice_number}] 30-min urgent email sent`);
+
+                            await logNotificationSent(supabase, {
+                                recipientEmail: contactEmail,
+                                recipientType: 'client',
+                                agencyId: invoice.agency_id,
+                                clientId: invoice.client_id,
+                                notificationType: 'payment_reminder',
+                                channel: 'email',
+                                subject: `Payment Reminder #3 - Invoice ${invoice.invoice_number}`,
+                                provider: 'resend',
+                                providerMessageId: emailResult?.data?.messageId,
+                                preferenceChecked: emailPref.preferenceChecked,
+                                preferenceStatus: emailPref.preferenceStatus,
+                                relatedEntityId: invoice.id,
+                                relatedEntityType: 'invoice',
+                                metadata: { invoice_number: invoice.invoice_number, reminder_count: 3, testing_mode: TESTING_MODE }
+                            });
+
                         } catch (error) {
-                            console.error(`❌ [Invoice ${invoice.invoice_number}] Urgent email failed:`, error.message);
+                            // ✅ Log failure
+                            await logNotificationFailed(supabase, {
+                                recipientEmail: contactEmail,
+                                recipientType: 'client',
+                                agencyId: invoice.agency_id,
+                                clientId: invoice.client_id,
+                                notificationType: 'payment_reminder',
+                                channel: 'email',
+                                subject: `FINAL NOTICE: Invoice ${invoice.invoice_number} Overdue`,
+                                errorMessage: (error as Error).message,
+                                relatedEntityId: invoice.id,
+                                relatedEntityType: 'invoice'
+                            });
+
+                            // ✅ NEW: Schedule Retry
+                            await scheduleRetry(supabase, {
+                                notificationType: 'payment_reminder',
+                                channel: 'email',
+                                recipientEmail: contactEmail,
+                                recipientType: 'client',
+                                agencyId: invoice.agency_id,
+                                recipientId: invoice.client_id,
+                                subject: `FINAL NOTICE: Invoice ${invoice.invoice_number} Overdue`,
+                                content: `
+                                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                                        <div style="background: #dc2626; padding: 30px; text-align: center;">
+                                            <h1 style="color: white; margin: 0;">🚨 FINAL NOTICE (TEST)</h1>
+                                        </div>
+                                        <div style="padding: 30px; background: #fef2f2;">
+                                            <p style="font-size: 16px; color: #1f2937;">Dear ${clientInfo.contact_person?.name || 'Finance Team'},</p>
+                                            <p style="font-size: 16px; color: #1f2937;">This is a <strong>FINAL NOTICE (TEST)</strong> regarding invoice ${invoice.invoice_number} which is now <strong>6 minutes overdue</strong>.</p>
+
+                                            <div style="background: white; border-left: 4px solid #dc2626; padding: 20px; margin: 20px 0;">
+                                                <p style="margin: 10px 0;"><strong>Invoice Number:</strong> ${invoice.invoice_number}</p>
+                                                <p style="margin: 10px 0;"><strong>Amount Due:</strong> £${invoice.balance_due.toFixed(2)}</p>
+                                                <p style="margin: 10px 0; color: #dc2626;"><strong>Status:</strong> SERIOUSLY OVERDUE</p>
+                                            </div>
+
+                                            <p style="font-size: 14px; color: #78716c;">
+                                                In production, this would be sent 30 days after invoice is overdue.
+                                            </p>
+
+                                            <div style="background: #fee2e2; border: 2px solid #dc2626; padding: 15px; margin: 20px 0; border-radius: 8px;">
+                                                <p style="font-size: 14px; color: #991b1b; margin: 0;">
+                                                    <strong>IMMEDIATE ACTION REQUIRED:</strong> Please remit payment immediately to avoid service interruption.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div style="background: #991b1b; padding: 20px; text-align: center;">
+                                            <p style="color: white; font-size: 12px; margin: 0;">© ${new Date().getFullYear()} ${agencyInfo.name}</p>
+                                        </div>
+                                    </div>
+                                `,
+                                relatedEntityId: invoice.id,
+                                relatedEntityType: 'invoice',
+                                errorMessage: (error as Error).message,
+                                metadata: { invoice_number: invoice.invoice_number, reminder_count: 3 }
+                            });
+
+                            console.error(`❌ [Invoice ${invoice.invoice_number}] Email failed:`, (error as Error).message);
+                            results.errors.push({
+                                invoice_id: invoice.id,
+                                error: `Email failed: ${error.message}`
+                            });
                         }
+                    } else if (!emailPref.allowed) {
+                         console.log(`⏭️ [Invoice ${invoice.invoice_number}] Email Skipped - ${emailPref.reason}`);
+                         await logNotificationSkipped(supabase, {
+                            recipientEmail: contactEmail,
+                            recipientType: 'client',
+                            agencyId: invoice.agency_id,
+                            clientId: invoice.client_id,
+                            notificationType: 'payment_reminder',
+                            channel: 'email',
+                            subject: `Payment Reminder #3: Invoice ${invoice.invoice_number}`,
+                            preferenceChecked: emailPref.preferenceChecked,
+                            preferenceStatus: emailPref.preferenceStatus,
+                            skippedReason: emailPref.reason,
+                            relatedEntityId: invoice.id,
+                            relatedEntityType: 'invoice',
+                            metadata: { invoice_number: invoice.invoice_number, reminder_count: 3 }
+                        });
                     }
 
-                    // Send SMS
-                    if (contactPhone) {
+                    // --- SMS NOTIFICATION ---
+                    const smsPref = await shouldSendNotification(
+                        supabase,
+                        contactEmail,
+                        'payment_reminder',
+                        'sms',
+                        'client'
+                    );
+
+                    if (smsPref.allowed && contactPhone) {
                         try {
-                            await supabase.functions.invoke('send-sms', {
+                            const smsResult = await supabase.functions.invoke('send-sms', {
                                 body: {
                                     to: contactPhone,
                                     message: `🧪 TEST: 🚨 URGENT REMINDER #3: Invoice ${invoice.invoice_number} for £${invoice.balance_due.toFixed(2)} is now 6 minutes overdue. IMMEDIATE PAYMENT REQUIRED. Contact: ${agencyInfo.contact_phone}`
                                 }
                             });
+
+                             await logNotificationSent(supabase, {
+                                recipientEmail: contactEmail,
+                                recipientPhone: contactPhone,
+                                recipientType: 'client',
+                                agencyId: invoice.agency_id,
+                                clientId: invoice.client_id,
+                                notificationType: 'payment_reminder',
+                                channel: 'sms',
+                                subject: `Payment Reminder #3 SMS`,
+                                provider: 'twilio',
+                                providerMessageId: smsResult?.data?.sid,
+                                preferenceChecked: smsPref.preferenceChecked,
+                                preferenceStatus: smsPref.preferenceStatus,
+                                relatedEntityId: invoice.id,
+                                relatedEntityType: 'invoice',
+                                metadata: { invoice_number: invoice.invoice_number, reminder_count: 3, testing_mode: TESTING_MODE }
+                            });
+
                             console.log(`✅ [Invoice ${invoice.invoice_number}] 30-min urgent SMS sent`);
                         } catch (error) {
-                            console.error(`❌ [Invoice ${invoice.invoice_number}] SMS failed:`, error.message);
+                             await logNotificationFailed(supabase, {
+                                recipientEmail: contactEmail,
+                                recipientPhone: contactPhone,
+                                recipientType: 'client',
+                                agencyId: invoice.agency_id,
+                                clientId: invoice.client_id,
+                                notificationType: 'payment_reminder',
+                                channel: 'sms',
+                                subject: `Payment Reminder #3 SMS`,
+                                errorMessage: (error as Error).message,
+                                relatedEntityId: invoice.id,
+                                relatedEntityType: 'invoice'
+                            });
+                             // ✅ NEW: Schedule Retry
+                             await scheduleRetry(supabase, {
+                                notificationType: 'payment_reminder',
+                                channel: 'sms',
+                                recipientEmail: contactEmail,
+                                recipientPhone: contactPhone,
+                                recipientType: 'client',
+                                agencyId: invoice.agency_id,
+                                recipientId: invoice.client_id,
+                                content: `🧪 TEST: 🚨 URGENT REMINDER #3: Invoice ${invoice.invoice_number} for £${invoice.balance_due.toFixed(2)} is now 6 minutes overdue. IMMEDIATE PAYMENT REQUIRED. Contact: ${agencyInfo.contact_phone}`,
+                                relatedEntityId: invoice.id,
+                                relatedEntityType: 'invoice',
+                                errorMessage: (error as Error).message,
+                                metadata: { invoice_number: invoice.invoice_number, reminder_count: 3 }
+                            });
+
+                            console.error(`❌ [Invoice ${invoice.invoice_number}] SMS failed:`, (error as Error).message);
+                            results.errors.push({ invoice_id: invoice.id, error: `SMS failed: ${error.message}` });
                         }
+                    } else if (!smsPref.allowed) {
+                        console.log(`⏭️ [Invoice ${invoice.invoice_number}] SMS Skipped - ${smsPref.reason}`);
+                         await logNotificationSkipped(supabase, {
+                            recipientEmail: contactEmail,
+                            recipientPhone: contactPhone,
+                            recipientType: 'client',
+                            agencyId: invoice.agency_id,
+                            clientId: invoice.client_id,
+                            notificationType: 'payment_reminder',
+                            channel: 'sms',
+                            subject: `Payment Reminder #3 SMS`,
+                            preferenceChecked: smsPref.preferenceChecked,
+                            preferenceStatus: smsPref.preferenceStatus,
+                            skippedReason: smsPref.reason,
+                            relatedEntityId: invoice.id,
+                            relatedEntityType: 'invoice',
+                            metadata: { invoice_number: invoice.invoice_number, reminder_count: 3 }
+                        });
                     }
 
                     await supabase
@@ -303,7 +679,7 @@ serve(async (req) => {
                         })
                         .eq("id", invoice.id);
 
-                    results.reminders_30min++;
+                    results.final_notices++;
                 }
 
                 // ESCALATION: Admin workflow for critical overdue

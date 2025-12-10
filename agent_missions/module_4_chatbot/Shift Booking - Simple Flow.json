@@ -1,0 +1,404 @@
+{
+  "name": "Shift Booking - Simple Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        304,
+        -240
+      ],
+      "id": "e47ee5fd-c5e4-4184-a6d7-5d6aa9e84975",
+      "name": "User Sends Message",
+      "webhookId": "5c6070ca-2546-4389-9b9f-0fcdb945aa0f"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "client-name",
+              "name": "client_name",
+              "value": "Divine Care Center",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        544,
+        -240
+      ],
+      "id": "a6e782d8-0dd0-4cd6-be3a-45201c58a3eb",
+      "name": "Set Client Name"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "clients",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "name",
+              "keyValue": "={{ $json.client_name }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        784,
+        -240
+      ],
+      "id": "967161c8-97a9-4ec6-9d27-07e440b65f82",
+      "name": "Get Client from Database",
+      "credentials": {
+        "supabaseApi": {
+          "id": "Vl1ZMO9tnqpJkJDe",
+          "name": "ACG-Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// THIS CODE MAKES THE CONTEXT FOR THE AI AGENT\n\n// Get the client data - handle different response formats\nlet client;\nif (Array.isArray($json)) {\n  // If Supabase returns an array\n  client = $json[0];\n} else if ($json && $json.id) {\n  // If Supabase returns an object directly\n  client = $json;\n} else {\n  // Fallback - return error\n  return { error: 'No client data found' };\n}\n\n// Safety check\nif (!client || !client.id) {\n  return { error: 'Client data missing required fields' };\n}\n\n// Build list of valid roles\nconst rolesList = [];\nconst rates = client.contract_terms?.rates_by_role || {};\n\nfor (const [roleName, roleData] of Object.entries(rates)) {\n  if (roleData && roleData.charge_rate > 0 && roleData.pay_rate > 0) {\n    rolesList.push(roleName);\n  }\n}\n\n// Build list of locations\nconst locationsList = client.internal_locations || [];\n\n// Get shift times\nconst dayStart = client.day_shift_start || '08:00';\nconst dayEnd = client.day_shift_end || '20:00';\nconst nightStart = client.night_shift_start || '20:00';\nconst nightEnd = client.night_shift_end || '08:00';\n\n// Create the context message for the AI\nconst contextString = `\nCLIENT INFORMATION:\n- Client Name: ${client.name}\n- Client ID: ${client.id}\n- Agency ID: ${client.agency_id}\n\nAVAILABLE ROLES:\n${rolesList.join(', ')}\n\nAVAILABLE LOCATIONS:\n${locationsList.join(', ')}\n\nSHIFT TIMES:\n- Day Shift: ${dayStart} to ${dayEnd}\n- Night Shift: ${nightStart} to ${nightEnd}\n\nRATE INFORMATION:\n${rolesList.map(role => {\n  const rate = rates[role];\n  return `- ${role}: Pay £${rate.pay_rate}/hour, Charge £${rate.charge_rate}/hour`;\n}).join('\\n')}\n`;\n\nreturn {\n  contextString,\n  client_data: client,\n  rolesList,\n  locationsList,\n  rates\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        -240
+      ],
+      "id": "704eada3-658a-4ae7-a106-9b08f9ce86ff",
+      "name": "Build AI Context"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=User: {{ $('User Sends Message').item.json.chatInput }}\n\nContext:\n{{ $json.contextString }}",
+        "options": {
+          "systemMessage": "=You are a friendly shift booking assistant for Divine Care Center.\n\nYour job:\n1. Ask the user for these details (one at a time):\n   - Which LOCATION? (options: {{ $json.locationsList.join(', ') }})\n   - Which ROLE? (options: {{ $json.rolesList.join(', ') }})\n   - What DATE? (format: YYYY-MM-DD, like 2025-12-08)\n   - What SHIFT? (day or night)\n   - How URGENT? (normal, urgent, or critical)\n   - Any SPECIAL NOTES? (optional)\n\n2. Be friendly and conversational.\n\n3. Once you have ALL information, respond with ONLY this JSON (no markdown, no extra text):\n{\n  \"booking_ready\": true,\n  \"location\": \"[their location]\",\n  \"role\": \"[their role]\",\n  \"date\": \"[YYYY-MM-DD]\",\n  \"shift\": \"[day or night]\",\n  \"urgency\": \"[normal/urgent/critical]\",\n  \"notes\": \"[special notes or empty string]\"\n}\n\nIf they haven't given all info, just ask the next question in a friendly way.\nNEVER output JSON until you have everything.\n\nContext:\n{{ $json.contextString }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1264,
+        -240
+      ],
+      "id": "32e9c307-fd2f-4f03-8d4e-50f8657e7f8d",
+      "name": "AI Booking Agent",
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        48
+      ],
+      "id": "4d91b559-6971-45c8-8415-a078903a94d4",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "tFcIPTBu9oNfbJex",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1376,
+        160
+      ],
+      "id": "547b134b-9f36-4c83-992f-7e80035edd1a",
+      "name": "Chat Memory"
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.output }}",
+        "rules": {
+          "rules": [
+            {
+              "operation": "contains",
+              "value2": "\"booking_ready\": true"
+            },
+            {
+              "operation": "notContains",
+              "value2": "\"booking_ready\": true",
+              "output": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        1584,
+        -272
+      ],
+      "id": "d2e2a5ff-9904-42eb-a459-ba5cfb10ac65",
+      "name": "Is Booking Ready?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// THIS CODE EXTRACTS THE BOOKING DATA FROM THE AI RESPONSE\nconst output = $json.output || '';\n\n// Find the JSON in the response\nconst jsonMatch = output.match(/\\{[^{}]*\\}/);\nif (!jsonMatch) {\n  return { error: 'No booking data found' };\n}\n\nlet booking = {};\ntry {\n  booking = JSON.parse(jsonMatch[0]);\n} catch (e) {\n  return { error: 'Invalid JSON' };\n}\n\n// Get context data\nconst contextData = $('Build AI Context').first().json;\nconst clientData = contextData.client_data;\nconst rates = contextData.rates;\n\n// Find the rate for this role\nconst roleRate = rates[booking.role] || { pay_rate: 0, charge_rate: 0 };\n\n// Calculate shift times\nlet startTime, endTime;\nif (booking.shift === 'night') {\n  startTime = clientData.night_shift_start;\n  endTime = clientData.night_shift_end;\n} else {\n  startTime = clientData.day_shift_start;\n  endTime = clientData.day_shift_end;\n}\n\n// Calculate duration in hours\nconst [startHour, startMin] = startTime.split(':').map(Number);\nconst [endHour, endMin] = endTime.split(':').map(Number);\nlet duration = endHour - startHour + (endMin - startMin) / 60;\nif (duration < 0) duration = duration + 24; // Handle night shift\n\n// Return the complete booking data\nreturn {\n  client_id: clientData.id,\n  agency_id: clientData.agency_id,\n  date: booking.date,\n  start_time: startTime,\n  end_time: endTime,\n  role_required: booking.role,\n  shift_type: booking.shift,\n  status: 'open',\n  urgency: booking.urgency,\n  notes: booking.notes || '',\n  location: booking.location || '',\n  work_location_within_site: booking.location || '',\n  pay_rate: roleRate.pay_rate,\n  charge_rate: roleRate.charge_rate,\n  duration_hours: Math.round(duration * 100) / 100,\n  created_by: 'AI Agent',\n  shift_journey_log: [{\n    state: 'created',\n    timestamp: new Date().toISOString(),\n    method: 'ai_agent',\n    user_id: 'AI_AGENT'\n  }],\n  created_date: new Date().toISOString()\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1856,
+        -352
+      ],
+      "id": "7102cb16-f795-4d09-8a30-ebf985de590b",
+      "name": "Extract Booking Data"
+    },
+    {
+      "parameters": {
+        "tableId": "shifts",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "client_id",
+              "fieldValue": "={{ $json.client_id }}"
+            },
+            {
+              "fieldId": "agency_id",
+              "fieldValue": "={{ $json.agency_id }}"
+            },
+            {
+              "fieldId": "date",
+              "fieldValue": "={{ $json.date }}"
+            },
+            {
+              "fieldId": "start_time",
+              "fieldValue": "={{ $json.start_time }}"
+            },
+            {
+              "fieldId": "end_time",
+              "fieldValue": "={{ $json.end_time }}"
+            },
+            {
+              "fieldId": "role_required",
+              "fieldValue": "={{ $json.role_required }}"
+            },
+            {
+              "fieldId": "shift_type",
+              "fieldValue": "={{ $json.shift_type }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "open"
+            },
+            {
+              "fieldId": "urgency",
+              "fieldValue": "={{ $json.urgency }}"
+            },
+            {
+              "fieldId": "notes",
+              "fieldValue": "={{ $json.notes }}"
+            },
+            {
+              "fieldId": "work_location_within_site",
+              "fieldValue": "={{ $json.work_location_within_site }}"
+            },
+            {
+              "fieldId": "location",
+              "fieldValue": "={{ $json.location }}"
+            },
+            {
+              "fieldId": "pay_rate",
+              "fieldValue": "={{ $json.pay_rate }}"
+            },
+            {
+              "fieldId": "charge_rate",
+              "fieldValue": "={{ $json.charge_rate }}"
+            },
+            {
+              "fieldId": "created_by",
+              "fieldValue": "AI Agent"
+            },
+            {
+              "fieldId": "created_date",
+              "fieldValue": "={{ $json.created_date }}"
+            },
+            {
+              "fieldId": "shift_journey_log",
+              "fieldValue": "={{ $json.shift_journey_log }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2064,
+        -352
+      ],
+      "id": "731e0f59-0646-4a9e-9da7-d1d212086385",
+      "name": "Save Booking to Database",
+      "credentials": {
+        "supabaseApi": {
+          "id": "Vl1ZMO9tnqpJkJDe",
+          "name": "ACG-Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "message": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1,
+      "position": [
+        1968,
+        16
+      ],
+      "id": "091e3c1a-094d-498a-ae22-b50708dd892d",
+      "name": "Respond to Chat",
+      "disabled": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "User Sends Message": {
+      "main": [
+        [
+          {
+            "node": "Set Client Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Client Name": {
+      "main": [
+        [
+          {
+            "node": "Get Client from Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Client from Database": {
+      "main": [
+        [
+          {
+            "node": "Build AI Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build AI Context": {
+      "main": [
+        [
+          {
+            "node": "AI Booking Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Booking Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Booking Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Booking Agent": {
+      "main": [
+        [
+          {
+            "node": "Is Booking Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Booking Ready?": {
+      "main": [
+        [
+          {
+            "node": "Extract Booking Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Booking Data": {
+      "main": [
+        [
+          {
+            "node": "Save Booking to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a95ed281-0db5-454a-a381-641853ad305f",
+  "meta": {
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  },
+  "id": "2kvSDzp1oMu5SfJ1",
+  "tags": []
+}

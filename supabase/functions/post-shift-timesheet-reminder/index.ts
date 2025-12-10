@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 
 /**
  * 📋 POST-SHIFT TIMESHEET REMINDER
@@ -336,42 +343,233 @@ async function sendTimesheetReminder(supabase, shift) {
 
     // Send WhatsApp + Email in parallel
     if (staffMember.phone) {
-        const [whatsappResult, emailResult] = await Promise.allSettled([
-            supabase.functions.invoke('send-whatsapp', {
-                body: {
-                    to: staffMember.phone,
-                    message: whatsappMessage
-                }
-            }),
-            supabase.functions.invoke('send-email', {
-                body: {
-                    to: staffMember.email,
-                    subject: emailSubject,
-                    html: emailBody
-                }
-            })
-        ]);
-
-        results.whatsapp = whatsappResult.status === 'fulfilled' && whatsappResult.value?.data?.success
-            ? { success: true }
-            : { success: false, error: whatsappResult.reason?.message };
-
-        results.email = emailResult.status === 'fulfilled' && emailResult.value?.data?.success
-            ? { success: true }
-            : { success: false, error: emailResult.reason?.message };
-    } else {
-        // Email only
+        // --- WHATSAPP ---
         try {
-            const { data, error } = await supabase.functions.invoke('send-email', {
-                body: {
-                    to: staffMember.email,
-                    subject: emailSubject,
-                    html: emailBody
+            const waPref = await shouldSendNotification(supabase, staffMember.email, 'shift_complete', 'whatsapp', 'staff');
+            
+            if (waPref.allowed) {
+                const whatsappResult = await supabase.functions.invoke('send-whatsapp', {
+                    body: { to: staffMember.phone, message: whatsappMessage }
+                });
+
+                if (whatsappResult.error || !whatsappResult.data?.success) {
+                    throw new Error(whatsappResult.error?.message || whatsappResult.data?.error || 'Unknown WhatsApp error');
                 }
+
+                results.whatsapp = { success: true };
+                await logNotificationSent(supabase, {
+                    recipientEmail: staffMember.email,
+                    recipientPhone: staffMember.phone,
+                    recipientType: 'staff',
+                    staffId: staffMember.id,
+                    agencyId: shift.agency_id,
+                    notificationType: 'shift_complete',
+                    channel: 'whatsapp',
+                    provider: 'twilio',
+                    providerMessageId: whatsappResult.data?.sid,
+                    preferenceChecked: waPref.preferenceChecked,
+                    preferenceStatus: waPref.preferenceStatus,
+                    relatedEntityId: shift.id,
+                    relatedEntityType: 'shift'
+                });
+            } else {
+                console.log(`⏭️ [Timesheet Reminder] WhatsApp skipped for ${staffMember.phone} - ${waPref.reason}`);
+                await logNotificationSkipped(supabase, {
+                    recipientEmail: staffMember.email,
+                    recipientPhone: staffMember.phone,
+                    recipientType: 'staff',
+                    staffId: staffMember.id,
+                    agencyId: shift.agency_id,
+                    notificationType: 'shift_complete',
+                    channel: 'whatsapp',
+                    preferenceChecked: waPref.preferenceChecked,
+                    preferenceStatus: waPref.preferenceStatus,
+                    skippedReason: waPref.reason,
+                    relatedEntityId: shift.id,
+                    relatedEntityType: 'shift'
+                });
+            }
+        } catch (error: any) {
+            console.error(`❌ [Timesheet Reminder] WhatsApp failed:`, error);
+            results.whatsapp = { success: false, error: error.message };
+            
+            await logNotificationFailed(supabase, {
+                recipientEmail: staffMember.email,
+                recipientPhone: staffMember.phone,
+                recipientType: 'staff',
+                staffId: staffMember.id,
+                agencyId: shift.agency_id,
+                notificationType: 'shift_complete',
+                channel: 'whatsapp',
+                errorMessage: error.message,
+                relatedEntityId: shift.id,
+                relatedEntityType: 'shift'
             });
-            results.email = error ? { success: false, error: error.message } : { success: true };
-        } catch (error) {
+
+            // Schedule retry
+            await scheduleRetry(supabase, {
+                notificationType: 'shift_complete',
+                channel: 'whatsapp',
+                recipientEmail: staffMember.email,
+                recipientPhone: staffMember.phone,
+                recipientId: staffMember.id,
+                agencyId: shift.agency_id,
+                content: whatsappMessage,
+                relatedEntityId: shift.id,
+                relatedEntityType: 'shift',
+                errorMessage: error.message
+            });
+        }
+
+        // --- EMAIL ---
+        try {
+            const emailPref = await shouldSendNotification(supabase, staffMember.email, 'shift_complete', 'email', 'staff');
+
+            if (emailPref.allowed) {
+                const emailResult = await supabase.functions.invoke('send-email', {
+                    body: { to: staffMember.email, subject: emailSubject, html: emailBody }
+                });
+
+                if (emailResult.error) throw new Error(emailResult.error);
+
+                results.email = { success: true };
+                await logNotificationSent(supabase, {
+                    recipientEmail: staffMember.email,
+                    recipientType: 'staff',
+                    staffId: staffMember.id,
+                    agencyId: shift.agency_id,
+                    notificationType: 'shift_complete',
+                    channel: 'email',
+                    provider: 'resend',
+                    providerMessageId: emailResult.data?.id,
+                    preferenceChecked: emailPref.preferenceChecked,
+                    preferenceStatus: emailPref.preferenceStatus,
+                    relatedEntityId: shift.id,
+                    relatedEntityType: 'shift'
+                });
+            } else {
+                console.log(`⏭️ [Timesheet Reminder] Email skipped for ${staffMember.email} - ${emailPref.reason}`);
+                await logNotificationSkipped(supabase, {
+                    recipientEmail: staffMember.email,
+                    recipientType: 'staff',
+                    staffId: staffMember.id,
+                    agencyId: shift.agency_id,
+                    notificationType: 'shift_complete',
+                    channel: 'email',
+                    preferenceChecked: emailPref.preferenceChecked,
+                    preferenceStatus: emailPref.preferenceStatus,
+                    skippedReason: emailPref.reason,
+                    relatedEntityId: shift.id,
+                    relatedEntityType: 'shift'
+                });
+            }
+        } catch (error: any) {
+            console.error(`❌ [Timesheet Reminder] Email failed:`, error);
             results.email = { success: false, error: error.message };
+
+            await logNotificationFailed(supabase, {
+                recipientEmail: staffMember.email,
+                recipientType: 'staff',
+                staffId: staffMember.id,
+                agencyId: shift.agency_id,
+                notificationType: 'shift_complete',
+                channel: 'email',
+                errorMessage: error.message,
+                relatedEntityId: shift.id,
+                relatedEntityType: 'shift'
+            });
+
+            // Schedule retry
+            await scheduleRetry(supabase, {
+                notificationType: 'shift_complete',
+                channel: 'email',
+                recipientEmail: staffMember.email,
+                recipientId: staffMember.id,
+                agencyId: shift.agency_id,
+                subject: emailSubject,
+                content: emailBody,
+                relatedEntityId: shift.id,
+                relatedEntityType: 'shift',
+                errorMessage: error.message
+            });
+        }
+
+    } else {
+        // Email only (no phone)
+        try {
+            const emailPref = await shouldSendNotification(supabase, staffMember.email, 'shift_complete', 'email', 'staff');
+
+            if (emailPref.allowed) {
+                const { data, error } = await supabase.functions.invoke('send-email', {
+                    body: {
+                        to: staffMember.email,
+                        subject: emailSubject,
+                        html: emailBody
+                    }
+                });
+                
+                if (error) throw new Error(error.message);
+
+                results.email = { success: true };
+                await logNotificationSent(supabase, {
+                    recipientEmail: staffMember.email,
+                    recipientType: 'staff',
+                    staffId: staffMember.id,
+                    agencyId: shift.agency_id,
+                    notificationType: 'shift_complete',
+                    channel: 'email',
+                    provider: 'resend',
+                    providerMessageId: data?.id,
+                    preferenceChecked: emailPref.preferenceChecked,
+                    preferenceStatus: emailPref.preferenceStatus,
+                    relatedEntityId: shift.id,
+                    relatedEntityType: 'shift'
+                });
+            } else {
+                console.log(`⏭️ [Timesheet Reminder] Email skipped for ${staffMember.email} - ${emailPref.reason}`);
+                await logNotificationSkipped(supabase, {
+                    recipientEmail: staffMember.email,
+                    recipientType: 'staff',
+                    staffId: staffMember.id,
+                    agencyId: shift.agency_id,
+                    notificationType: 'shift_complete',
+                    channel: 'email',
+                    preferenceChecked: emailPref.preferenceChecked,
+                    preferenceStatus: emailPref.preferenceStatus,
+                    skippedReason: emailPref.reason,
+                    relatedEntityId: shift.id,
+                    relatedEntityType: 'shift'
+                });
+            }
+        } catch (error: any) {
+            console.error(`❌ [Timesheet Reminder] Email failed:`, error);
+            results.email = { success: false, error: error.message };
+            
+            await logNotificationFailed(supabase, {
+                recipientEmail: staffMember.email,
+                recipientType: 'staff',
+                staffId: staffMember.id,
+                agencyId: shift.agency_id,
+                notificationType: 'shift_complete',
+                channel: 'email',
+                errorMessage: error.message,
+                relatedEntityId: shift.id,
+                relatedEntityType: 'shift'
+            });
+
+            // Schedule retry
+            await scheduleRetry(supabase, {
+                notificationType: 'shift_complete',
+                channel: 'email',
+                recipientEmail: staffMember.email,
+                recipientId: staffMember.id,
+                agencyId: shift.agency_id,
+                subject: emailSubject,
+                content: emailBody,
+                relatedEntityId: shift.id,
+                relatedEntityType: 'shift',
+                errorMessage: error.message
+            });
         }
     }
 

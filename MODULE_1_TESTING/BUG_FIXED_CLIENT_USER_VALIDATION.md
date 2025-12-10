@@ -47,7 +47,9 @@ The validation logic didn't account for this difference.
 
 ---
 
-## ✅ THE FIX:
+## ✅ THE FIX (TWO LOCATIONS):
+
+### Fix #1: needsOnboarding State (Line 248-253)
 
 **File:** `src/pages/ProfileSetup.jsx` (line 248-253)
 
@@ -63,20 +65,57 @@ if (currentUser.user_type === 'pending' ||
 
 **What changed:**
 - Added check: `&& currentUser.user_type !== 'client_user'`
-- Now only non-client users need agency_id validation
+- Now only non-client users need agency_id validation for onboarding state
 - Client users bypass this check entirely
+
+---
+
+### Fix #2: handleSubmit Validation (Line 545-550) **← THIS WAS THE REAL BLOCKER**
+
+**File:** `src/pages/ProfileSetup.jsx` (line 545-550)
+
+**New code:**
+```javascript
+const hasAgency = formData.agency_id || user?.agency_id || linkedStaff?.agency_id;
+
+// ✅ FIX: Client users don't need agency_id (they use client_id instead)
+const isClientUser = user?.user_type === 'client_user' || formData.user_type === 'client_user';
+
+if (!isSuperAdmin && !hasAgency && !isPendingUser && !isClientUser) {
+  toast.error('⚠️ Please select an agency');
+  return;
+}
+```
+
+**What changed:**
+- Added `isClientUser` check before validation
+- Validation now excludes client users from agency_id requirement
+- This was the actual blocker preventing save - Fix #1 only fixed the button text
+
+**Why both fixes were needed:**
+- Fix #1: Changed button from "Complete Setup" → "Save Changes" (cosmetic)
+- Fix #2: Actually allowed the form to submit (functional blocker)
 
 ---
 
 ## 🧪 HOW WE FOUND IT:
 
+### Discovery Phase 1: Button Text Issue
 1. Attempted to login as ops_manager (different issue - auth.users missing)
 2. Switched finance user to OPERATIONS_MANAGER role
 3. Logged in successfully ✅
-4. Saw "Complete Setup" button on Client Portal
-5. Clicked save → got "needs to select agency" error
-6. Investigated ProfileSetup validation logic
-7. Found the bug in needsOnboarding condition
+4. Saw "Complete Setup" button instead of "Save Changes"
+5. Found bug in needsOnboarding check (line 248-253)
+6. Applied Fix #1 → Button text should change
+
+### Discovery Phase 2: Actual Save Blocker
+7. User refreshed browser but still couldn't save
+8. Got error: "⚠️ Please select an agency"
+9. Traced error message to handleSubmit function (line 545-550)
+10. **Found second validation checking agency_id**
+11. Applied Fix #2 → Form can now submit
+
+**Key learning:** One symptom can have multiple causes! The "Complete Setup" button was a clue, but the real blocker was hidden in the submit handler.
 
 **This is EXACTLY why we test!** 🎯
 
@@ -121,7 +160,8 @@ if (currentUser.user_type === 'pending' ||
 
 ## 🎯 RELATED FILES:
 
-- **Fixed:** [ProfileSetup.jsx:248-253](../src/pages/ProfileSetup.jsx#L248-L253)
+- **Fixed (Part 1):** [ProfileSetup.jsx:248-253](../src/pages/ProfileSetup.jsx#L248-L253) (needsOnboarding check)
+- **Fixed (Part 2):** [ProfileSetup.jsx:545-550](../src/pages/ProfileSetup.jsx#L545-L550) (handleSubmit validation) **← MAIN FIX**
 - **Testing:** [WINS_AND_LEARNINGS.md](../WINS_AND_LEARNINGS.md)
 - **Routing:** [Home.jsx:62-64](../src/pages/Home.jsx#L62-L64) (client_user → ClientPortal)
 

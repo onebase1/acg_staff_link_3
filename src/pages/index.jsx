@@ -155,6 +155,8 @@ import AdminComplianceReview from "./AdminComplianceReview";
 
 import RateManagement from "./RateManagement";
 
+import ClientManagement from "./ClientManagement";
+
 import Login from "./Login";
 import ResetPassword from "./ResetPassword";
 
@@ -317,6 +319,8 @@ const PAGES = {
     AdminComplianceReview: AdminComplianceReview,
 
     RateManagement: RateManagement,
+
+    ClientManagement: ClientManagement,
 
     ResetPassword: ResetPassword,
 
@@ -505,6 +509,8 @@ function PagesContent() {
                 <Route path="/AdminComplianceReview" element={<AdminComplianceReview />} />
 
                 <Route path="/RateManagement" element={<RateManagement />} />
+
+                <Route path="/ClientManagement" element={<ClientManagement />} />
 
             </Routes>
         </Layout>

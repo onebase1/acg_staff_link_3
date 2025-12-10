@@ -61,7 +61,9 @@
       "Bash(deno run:*)",
       "Bash(/c/Users/gbase/superbasecli/supabase.exe db query:*)",
       "Bash(git checkout:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(/c/Users/gbase/superbasecli/supabase.exe migration repair:*)",
+      "Bash(/c/Users/gbase/superbasecli/supabase.exe db pull:*)"
     ],
     "deny": [],
     "ask": []

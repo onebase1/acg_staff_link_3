@@ -1,6 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
+import { Database } from "../_shared/database-types.ts";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 /**
  * DAILY CLIENT DIGEST
  *
@@ -14,7 +21,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 serve(async (req) => {
   try {
-    const supabase = createClient(
+    const supabase = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
@@ -59,7 +66,7 @@ serve(async (req) => {
     const clientIds = Object.keys(shiftsByClient);
     const { data: clients, error: clientsError } = await supabase
       .from("clients")
-      .select("id, name, contact_person")
+      .select("id, name, contact_person, agency_id")
       .in("id", clientIds);
 
     if (clientsError) {
@@ -118,17 +125,84 @@ serve(async (req) => {
       `;
 
       try {
-        await supabase.functions.invoke('send-email', {
+        // Check preference
+        const preferenceCheck = await shouldSendNotification(
+            supabase,
+            client.contact_person.email,
+            'daily_digest',
+            'email',
+            'client'
+        );
+
+        if (!preferenceCheck.allowed) {
+            console.log(`⏭️ [Client Digest] Skipped for ${client.name} - ${preferenceCheck.reason}`);
+            await logNotificationSkipped(supabase, {
+                recipientEmail: client.contact_person.email,
+                recipientType: 'client',
+                clientId: client.id,
+                agencyId: client.agency_id,
+                notificationType: 'daily_digest',
+                channel: 'email',
+                preferenceChecked: preferenceCheck.preferenceChecked,
+                preferenceStatus: preferenceCheck.preferenceStatus,
+                skippedReason: preferenceCheck.reason,
+                metadata: { shift_count: clientShifts.length }
+            });
+            continue;
+        }
+
+        const emailResult = await supabase.functions.invoke('send-email', {
           body: {
             to: client.contact_person.email,
             subject: subject,
             html: body_html,
           },
         });
+
+        if (emailResult.error) throw new Error(emailResult.error);
+
+        // Log success
+        await logNotificationSent(supabase, {
+            recipientEmail: client.contact_person.email,
+            recipientType: 'client',
+            clientId: client.id,
+            agencyId: client.agency_id,
+            notificationType: 'daily_digest',
+            channel: 'email',
+            provider: 'resend',
+            providerMessageId: emailResult?.data?.id,
+            preferenceChecked: preferenceCheck.preferenceChecked,
+            preferenceStatus: preferenceCheck.preferenceStatus,
+            metadata: { shift_count: clientShifts.length }
+        });
+
         emailsSent++;
         console.log(`✅ [Client Digest] Email sent to ${client.name}.`);
-      } catch (emailError) {
+      } catch (emailError: any) {
         console.error(`❌ [Client Digest] Failed to send email to ${client.name}:`, emailError);
+        
+        // Log failure
+        await logNotificationFailed(supabase, {
+            recipientEmail: client.contact_person.email,
+            recipientType: 'client',
+            clientId: client.id,
+            agencyId: client.agency_id,
+            notificationType: 'daily_digest',
+            channel: 'email',
+            errorMessage: emailError.message,
+            errorCode: 'send_failed'
+        });
+
+        // Schedule retry
+        await scheduleRetry(supabase, {
+            notificationType: 'daily_digest',
+            recipientEmail: client.contact_person.email,
+            recipientId: client.id,
+            agencyId: client.agency_id,
+            channel: 'email',
+            metadata: { clientId: client.id } 
+        });
+
         errors.push({ client_id: client.id, error: emailError.message });
       }
     }

@@ -436,8 +436,8 @@ export default function ClientPortal() {
             )}
             <div>
               <h1 className="text-4xl font-bold mb-2">{clientRecord.name}</h1>
-              <p className="text-cyan-100 text-lg flex items-center gap-2">
-                Client Portal - Real-time Management
+              <div className="text-cyan-100 text-lg flex items-center gap-2">
+                <span>Client Portal - Real-time Management</span>
                 {/* NEW: Role Badge */}
                 {userRole && (
                   <Badge variant="secondary" className="ml-2 flex items-center gap-1 bg-white/20 text-white border-white/30">
@@ -445,7 +445,7 @@ export default function ClientPortal() {
                     {userRole.replace(/_/g, ' ')}
                   </Badge>
                 )}
-              </p>
+              </div>
               {agency && (
                 <p className="text-cyan-200 text-sm mt-1">Powered by {agency.name}</p>
               )}

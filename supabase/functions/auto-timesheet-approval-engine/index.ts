@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 
 /**
  * ⚡ AUTO-TIMESHEET APPROVAL ENGINE
@@ -311,15 +318,79 @@ serve(async (req) => {
             .select("*");
           const client = clients?.find(c => c.id === timesheet.client_id);
 
-          await supabase.functions.invoke('send-email', {
-            body: {
-              to: staffMember.email,
-              subject: '✅ Timesheet Approved',
-              body: `Good news ${staffMember.first_name}! Your timesheet for ${client?.name || 'client'} on ${timesheet.shift_date} has been automatically approved. Payment will be processed in the next payroll cycle.`
-            }
-          });
-        } catch (emailError) {
+          // Check preference
+          const preferenceCheck = await shouldSendNotification(
+              supabase,
+              staffMember.email,
+              'system_update', // Mapped as per instructions
+              'email',
+              'staff'
+          );
+
+          if (!preferenceCheck.allowed) {
+              console.log(`⏭️ [Auto-Timesheet] Skipped for ${staffMember.email} - ${preferenceCheck.reason}`);
+              await logNotificationSkipped(supabase, {
+                  recipientEmail: staffMember.email,
+                  recipientType: 'staff',
+                  staffId: staffMember.id,
+                  agencyId: agency?.id,
+                  notificationType: 'system_update',
+                  channel: 'email',
+                  preferenceChecked: preferenceCheck.preferenceChecked,
+                  preferenceStatus: preferenceCheck.preferenceStatus,
+                  skippedReason: preferenceCheck.reason,
+                  metadata: { timesheet_id: timesheet.id, action: 'approved' }
+              });
+          } else {
+              const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-email', {
+                body: {
+                  to: staffMember.email,
+                  subject: '✅ Timesheet Approved',
+                  body: `Good news ${staffMember.first_name}! Your timesheet for ${client?.name || 'client'} on ${timesheet.shift_date} has been automatically approved. Payment will be processed in the next payroll cycle.`
+                }
+              });
+
+              if (emailError) throw emailError;
+
+              // Log success
+              await logNotificationSent(supabase, {
+                  recipientEmail: staffMember.email,
+                  recipientType: 'staff',
+                  staffId: staffMember.id,
+                  agencyId: agency?.id,
+                  notificationType: 'system_update',
+                  channel: 'email',
+                  provider: 'resend',
+                  providerMessageId: emailResult?.id,
+                  preferenceChecked: preferenceCheck.preferenceChecked,
+                  preferenceStatus: preferenceCheck.preferenceStatus,
+                  metadata: { timesheet_id: timesheet.id, action: 'approved' }
+              });
+          }
+        } catch (emailError: any) {
           console.error('Email notification failed:', emailError);
+          
+          // Log failure
+          await logNotificationFailed(supabase, {
+              recipientEmail: staffMember.email,
+              recipientType: 'staff',
+              staffId: staffMember.id,
+              agencyId: agency?.id,
+              notificationType: 'system_update',
+              channel: 'email',
+              errorMessage: emailError.message,
+              errorCode: 'send_failed'
+          });
+
+          // Schedule retry
+          await scheduleRetry(supabase, {
+              notificationType: 'system_update',
+              recipientEmail: staffMember.email,
+              recipientId: staffMember.id,
+              agencyId: agency?.id,
+              channel: 'email',
+              metadata: { timesheet_id: timesheet.id, action: 'approved', subject: '✅ Timesheet Approved' }
+          });
         }
       }
 
@@ -370,16 +441,81 @@ serve(async (req) => {
                 </div>
             `;
 
-            await supabase.functions.invoke('send-email', {
-                body: {
-                    to: client.contact_person.email,
-                    subject: subject,
-                    html: body_html,
-                },
-            });
-            console.log(`✅ [Auto-Approval] "60-Second Approval" email sent to ${client.name}.`);
-        } catch (emailError) {
+            // Check preference
+            const preferenceCheck = await shouldSendNotification(
+                supabase,
+                client.contact_person.email,
+                'system_update', // Using system_update as it's an action required
+                'email',
+                'client'
+            );
+
+            if (!preferenceCheck.allowed) {
+                console.log(`⏭️ [Auto-Timesheet] Skipped for client ${client.contact_person.email} - ${preferenceCheck.reason}`);
+                await logNotificationSkipped(supabase, {
+                    recipientEmail: client.contact_person.email,
+                    recipientType: 'client',
+                    clientId: client.id,
+                    agencyId: agency?.id,
+                    notificationType: 'system_update',
+                    channel: 'email',
+                    preferenceChecked: preferenceCheck.preferenceChecked,
+                    preferenceStatus: preferenceCheck.preferenceStatus,
+                    skippedReason: preferenceCheck.reason,
+                    metadata: { timesheet_id: timesheet.id, action: 'approval_request' }
+                });
+            } else {
+                const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-email', {
+                    body: {
+                        to: client.contact_person.email,
+                        subject: subject,
+                        html: body_html,
+                    },
+                });
+
+                if (emailError) throw emailError;
+
+                // Log success
+                await logNotificationSent(supabase, {
+                    recipientEmail: client.contact_person.email,
+                    recipientType: 'client',
+                    clientId: client.id,
+                    agencyId: agency?.id,
+                    notificationType: 'system_update',
+                    channel: 'email',
+                    provider: 'resend',
+                    providerMessageId: emailResult?.id,
+                    preferenceChecked: preferenceCheck.preferenceChecked,
+                    preferenceStatus: preferenceCheck.preferenceStatus,
+                    metadata: { timesheet_id: timesheet.id, action: 'approval_request' }
+                });
+                console.log(`✅ [Auto-Approval] "60-Second Approval" email sent to ${client.name}.`);
+            }
+
+        } catch (emailError: any) {
             console.error(`❌ [Auto-Approval] Failed to send approval email to ${client.name}:`, emailError);
+            
+            // Log failure
+            await logNotificationFailed(supabase, {
+                recipientEmail: client.contact_person.email,
+                recipientType: 'client',
+                clientId: client.id,
+                agencyId: agency?.id,
+                notificationType: 'system_update',
+                channel: 'email',
+                errorMessage: emailError.message,
+                errorCode: 'send_failed'
+            });
+
+            // Schedule retry
+            await scheduleRetry(supabase, {
+                notificationType: 'system_update',
+                recipientEmail: client.contact_person.email,
+                recipientId: client.id,
+                agencyId: agency?.id,
+                channel: 'email',
+                metadata: { timesheet_id: timesheet.id, action: 'approval_request' }
+            });
         }
     }
 

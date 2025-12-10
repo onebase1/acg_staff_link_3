@@ -308,7 +308,7 @@ export default function PostShiftV2() {
     mutationFn: async (shiftData) => {
       const agencyId = currentAgency;
       if (!agencyId) throw new Error('Agency ID not found');
-      
+
       console.log('📝 [Create Shift] Starting shift creation with data:', {
         urgency: shiftData.urgency,
         client_id: shiftData.client_id,
@@ -369,19 +369,20 @@ export default function PostShiftV2() {
             type: 'unfilled_urgent_shift',
             priority: shiftData.urgency === 'critical' ? 'critical' : 'high',
             status: 'pending',
+            name: `Urgent Shift: ${clients.find(c => c.id === shiftData.client_id)?.name} - ${shiftData.role_required}`,
             title: `Urgent shift - ${clients.find(c => c.id === shiftData.client_id)?.name}`,
-          description: `${shiftData.role_required} needed`,
-          related_entity: { entity_type: 'shift', entity_id: newShift.id }
-        });
+            description: `${shiftData.role_required} needed`,
+            related_entity: { entity_type: 'shift', entity_id: newShift.id }
+          });
       }
-      
+
       return { newShift };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries(['shifts']);
-      
+
       const client = clients.find(c => c.id === formData.client_id);
-      
+
       toast.success(
         <div>
           <p className="font-bold text-lg">✅ Shift Created!</p>
@@ -397,7 +398,7 @@ export default function PostShiftV2() {
         </div>,
         { duration: 6000 }
       );
-      
+
       // Redirect with query params for better UX
       const params = new URLSearchParams();
       params.set('status', 'open');
@@ -471,7 +472,7 @@ export default function PostShiftV2() {
               <Label>Care Home *</Label>
               <Select
                 value={formData.client_id}
-                onValueChange={(value) => setFormData({...formData, client_id: value})}
+                onValueChange={(value) => setFormData({ ...formData, client_id: value })}
               >
                 <SelectTrigger className="h-11">
                   <SelectValue placeholder="Select care home..." />
@@ -495,7 +496,7 @@ export default function PostShiftV2() {
                 <Label>Work Location *</Label>
                 <Select
                   value={formData.work_location_within_site}
-                  onValueChange={(value) => setFormData({...formData, work_location_within_site: value})}
+                  onValueChange={(value) => setFormData({ ...formData, work_location_within_site: value })}
                   disabled={!formData.client_id}
                 >
                   <SelectTrigger>
@@ -547,7 +548,7 @@ export default function PostShiftV2() {
                 <Label>Role Required *</Label>
                 <Select
                   value={formData.role_required}
-                  onValueChange={(value) => setFormData({...formData, role_required: value})}
+                  onValueChange={(value) => setFormData({ ...formData, role_required: value })}
                   disabled={!formData.client_id || availableRoles.length === 0}
                 >
                   <SelectTrigger className={!formData.client_id ? 'bg-gray-50' : ''}>
@@ -578,7 +579,7 @@ export default function PostShiftV2() {
               <Input
                 type="date"
                 value={formData.date}
-                onChange={(e) => setFormData({...formData, date: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               />
             </div>
 
@@ -629,7 +630,7 @@ export default function PostShiftV2() {
                   type="button"
                   variant="outline"
                   size="lg"
-                  onClick={() => setFormData({...formData, urgency: 'normal'})}
+                  onClick={() => setFormData({ ...formData, urgency: 'normal' })}
                   className={`flex-1 h-12 ${formData.urgency === 'normal' ? 'bg-gray-900 text-white hover:bg-gray-800' : 'hover:bg-gray-50'}`}
                 >
                   Normal
@@ -638,7 +639,7 @@ export default function PostShiftV2() {
                   type="button"
                   variant="outline"
                   size="lg"
-                  onClick={() => setFormData({...formData, urgency: 'urgent'})}
+                  onClick={() => setFormData({ ...formData, urgency: 'urgent' })}
                   className={`flex-1 h-12 ${formData.urgency === 'urgent' ? 'bg-orange-500 text-white hover:bg-orange-600' : 'hover:bg-orange-50'}`}
                 >
                   🔥 Urgent
@@ -650,7 +651,7 @@ export default function PostShiftV2() {
               <Label>Notes (Optional)</Label>
               <Textarea
                 value={formData.notes}
-                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 rows={3}
                 placeholder="Special requirements or instructions..."
               />

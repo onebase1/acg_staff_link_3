@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 
 /**
  * TIER 2B-4: Staff Daily Digest Engine
@@ -114,96 +121,231 @@ serve(async (req) => {
                         return sum + (s.pay_rate * billableHours);
                     }, 0).toFixed(2);
 
-                    // SEND EMAIL
+                    // --- EMAIL SENDING ---
                     if (sendEmail && staffMember.email) {
-                        const shiftListHTML = shiftsWithClients.map(s => `
-                            <div style="background: white; border-left: 4px solid #06b6d4; padding: 15px; margin: 10px 0; border-radius: 8px;">
-                                <p style="margin: 5px 0;"><strong style="font-size: 18px;">${s.start_time} - ${s.end_time}</strong> <span style="color: #6b7280;">(${s.duration_hours}h)</span></p>
-                                <p style="margin: 5px 0; font-size: 16px;">📍 ${s.client?.name || 'Client'}</p>
-                                <p style="margin: 5px 0; font-size: 14px; color: #6b7280;">${s.client?.address?.line1}, ${s.client?.address?.postcode}</p>
-                                ${s.client?.contact_person?.phone ? `<p style="margin: 5px 0; font-size: 14px; color: #6b7280;">☎️ Contact: ${s.client.contact_person.phone}</p>` : ''}
-                                <p style="margin: 5px 0; color: #059669; font-weight: bold;">💰 £${s.pay_rate}/hr = £${(s.pay_rate * s.duration_hours).toFixed(2)}</p>
-                            </div>
-                        `).join('');
+                        try {
+                            // Check preference
+                            const emailPref = await shouldSendNotification(
+                                supabase,
+                                staffMember.email,
+                                'daily_digest',
+                                'email',
+                                'staff'
+                            );
 
-                        await supabase.functions.invoke('send-email', {
-                            body: {
-                                to: staffMember.email,
-                                subject: `🌅 Good Morning! You have ${shifts.length} shift${shifts.length > 1 ? 's' : ''} today`,
-                                html: `
-                                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                                        <div style="background-color: #0284c7; padding: 30px; text-align: center;" bgcolor="#0284c7">
-                                            <h1 style="color: white; margin: 0; font-weight: bold;">🌅 Good Morning, ${staffMember.first_name}!</h1>
-                                            <p style="color: #e0f2fe; margin-top: 10px; font-size: 18px;">${now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-                                        </div>
-                                        <div style="padding: 30px; background: #f0f9ff;">
-                                            <p style="font-size: 16px; color: #1f2937;">Here's your schedule for today:</p>
-
-                                            ${shiftListHTML}
-
-                                            <div style="background: #cffafe; border: 2px solid #06b6d4; padding: 20px; margin: 20px 0; border-radius: 8px; text-align: center;">
-                                                <p style="font-size: 14px; color: #0e7490; margin: 0;">
-                                                    💰 <strong>Today's Total Earnings:</strong> £${totalEarnings}
-                                                </p>
-                                            </div>
-
-                                            <div style="background: #dbeafe; border: 2px solid #0284c7; padding: 15px; margin: 20px 0; border-radius: 8px;">
-                                                <p style="font-size: 14px; color: #0369a1; margin: 0;">
-                                                    💡 <strong>Reminder:</strong> Arrive 10 minutes early to each shift. Have your ID and any required documents ready.
-                                                </p>
-                                            </div>
-
-                                            <p style="font-size: 14px; color: #6b7280; text-align: center;">
-                                                Have a great day! 🌟
-                                            </p>
-                                        </div>
-
-                                        <!-- Unsubscribe Link -->
-                                        <div style="background: #f9fafb; padding: 15px; text-align: center;">
-                                            <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                                                <a href="https://agilecaremanagement.co.uk/preferences?email=${encodeURIComponent(staffMember.email)}" style="color: #64748b; text-decoration: underline;">
-                                                    Manage email preferences
-                                                </a>
-                                            </p>
-                                        </div>
-
-                                        <!-- Footer -->
-                                        <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
-                                            <p style="margin: 0; font-size: 13px;">© ${now.getFullYear()} Agile Care Management. All rights reserved.</p>
-                                            <p style="margin: 10px 0 0 0; font-size: 12px;">
-                                                Need help? Contact us at <a href="mailto:support@agilecaremanagement.co.uk" style="color: #06b6d4; text-decoration: none;">support@agilecaremanagement.co.uk</a>
-                                            </p>
-                                        </div>
+                            if (!emailPref.allowed) {
+                                console.log(`⏭️ [Staff Digest] Email skipped for ${staffMember.email} - ${emailPref.reason}`);
+                                await logNotificationSkipped(supabase, {
+                                    recipientEmail: staffMember.email,
+                                    recipientType: 'staff',
+                                    staffId: staffMember.id,
+                                    agencyId: agency.id,
+                                    notificationType: 'daily_digest',
+                                    channel: 'email',
+                                    preferenceChecked: emailPref.preferenceChecked,
+                                    preferenceStatus: emailPref.preferenceStatus,
+                                    skippedReason: emailPref.reason,
+                                    metadata: { shift_count: shifts.length }
+                                });
+                            } else {
+                                const shiftListHTML = shiftsWithClients.map(s => `
+                                    <div style="background: white; border-left: 4px solid #06b6d4; padding: 15px; margin: 10px 0; border-radius: 8px;">
+                                        <p style="margin: 5px 0;"><strong style="font-size: 18px;">${s.start_time} - ${s.end_time}</strong> <span style="color: #6b7280;">(${s.duration_hours}h)</span></p>
+                                        <p style="margin: 5px 0; font-size: 16px;">📍 ${s.client?.name || 'Client'}</p>
+                                        <p style="margin: 5px 0; font-size: 14px; color: #6b7280;">${s.client?.address?.line1}, ${s.client?.address?.postcode}</p>
+                                        ${s.client?.contact_person?.phone ? `<p style="margin: 5px 0; font-size: 14px; color: #6b7280;">☎️ Contact: ${s.client.contact_person.phone}</p>` : ''}
+                                        <p style="margin: 5px 0; color: #059669; font-weight: bold;">💰 £${s.pay_rate}/hr = £${(s.pay_rate * s.duration_hours).toFixed(2)}</p>
                                     </div>
-                                `
-                            }
-                        });
+                                `).join('');
 
-                        results.emails_sent++;
+                                const emailResult = await supabase.functions.invoke('send-email', {
+                                    body: {
+                                        to: staffMember.email,
+                                        subject: `🌅 Good Morning! You have ${shifts.length} shift${shifts.length > 1 ? 's' : ''} today`,
+                                        html: `
+                                            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                                                <div style="background-color: #0284c7; padding: 30px; text-align: center;" bgcolor="#0284c7">
+                                                    <h1 style="color: white; margin: 0; font-weight: bold;">🌅 Good Morning, ${staffMember.first_name}!</h1>
+                                                    <p style="color: #e0f2fe; margin-top: 10px; font-size: 18px;">${now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                                                </div>
+                                                <div style="padding: 30px; background: #f0f9ff;">
+                                                    <p style="font-size: 16px; color: #1f2937;">Here's your schedule for today:</p>
+
+                                                    ${shiftListHTML}
+
+                                                    <div style="background: #cffafe; border: 2px solid #06b6d4; padding: 20px; margin: 20px 0; border-radius: 8px; text-align: center;">
+                                                        <p style="font-size: 14px; color: #0e7490; margin: 0;">
+                                                            💰 <strong>Today's Total Earnings:</strong> £${totalEarnings}
+                                                        </p>
+                                                    </div>
+
+                                                    <div style="background: #dbeafe; border: 2px solid #0284c7; padding: 15px; margin: 20px 0; border-radius: 8px;">
+                                                        <p style="font-size: 14px; color: #0369a1; margin: 0;">
+                                                            💡 <strong>Reminder:</strong> Arrive 10 minutes early to each shift. Have your ID and any required documents ready.
+                                                        </p>
+                                                    </div>
+
+                                                    <p style="font-size: 14px; color: #6b7280; text-align: center;">
+                                                        Have a great day! 🌟
+                                                    </p>
+                                                </div>
+
+                                                <!-- Unsubscribe Link -->
+                                                <div style="background: #f9fafb; padding: 15px; text-align: center;">
+                                                    <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                                                        <a href="https://agilecaremanagement.co.uk/preferences?email=${encodeURIComponent(staffMember.email)}" style="color: #64748b; text-decoration: underline;">
+                                                            Manage email preferences
+                                                        </a>
+                                                    </p>
+                                                </div>
+
+                                                <!-- Footer -->
+                                                <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
+                                                    <p style="margin: 0; font-size: 13px;">© ${now.getFullYear()} Agile Care Management. All rights reserved.</p>
+                                                    <p style="margin: 10px 0 0 0; font-size: 12px;">
+                                                        Need help? Contact us at <a href="mailto:support@agilecaremanagement.co.uk" style="color: #06b6d4; text-decoration: none;">support@agilecaremanagement.co.uk</a>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        `
+                                    }
+                                });
+
+                                if (emailResult.error) throw new Error(emailResult.error);
+
+                                await logNotificationSent(supabase, {
+                                    recipientEmail: staffMember.email,
+                                    recipientType: 'staff',
+                                    staffId: staffMember.id,
+                                    agencyId: agency.id,
+                                    notificationType: 'daily_digest',
+                                    channel: 'email',
+                                    provider: 'resend',
+                                    providerMessageId: emailResult?.data?.id,
+                                    preferenceChecked: emailPref.preferenceChecked,
+                                    preferenceStatus: emailPref.preferenceStatus,
+                                    metadata: { shift_count: shifts.length }
+                                });
+
+                                results.emails_sent++;
+                            }
+                        } catch (emailError: any) {
+                            console.error(`❌ [Staff Digest] Email failed for ${staffMember.email}:`, emailError);
+                            await logNotificationFailed(supabase, {
+                                recipientEmail: staffMember.email,
+                                recipientType: 'staff',
+                                staffId: staffMember.id,
+                                agencyId: agency.id,
+                                notificationType: 'daily_digest',
+                                channel: 'email',
+                                errorMessage: emailError.message,
+                                errorCode: 'send_failed'
+                            });
+                            
+                            // Schedule retry for email
+                            await scheduleRetry(supabase, {
+                                notificationType: 'daily_digest',
+                                recipientEmail: staffMember.email,
+                                recipientId: staffMember.id,
+                                agencyId: agency.id,
+                                channel: 'email',
+                                metadata: { staffId: staffMember.id, agencyId: agency.id }
+                            });
+                        }
                     }
 
-                    // SEND SMS (shorter version)
+                    // --- SMS SENDING ---
                     if (sendSMS && staffMember.phone) {
-                        const shiftListSMS = shiftsWithClients.map(s =>
-                            `${s.start_time}-${s.end_time} @ ${s.client?.name} (£${(s.pay_rate * s.duration_hours).toFixed(0)})`
-                        ).join('\n');
+                        try {
+                            // Check preference
+                            const smsPref = await shouldSendNotification(
+                                supabase,
+                                staffMember.email, // Using email to identify user for preferences
+                                'daily_digest',
+                                'sms',
+                                'staff'
+                            );
 
-                        const smsMessage = `🌅 Good morning ${staffMember.first_name}! Today's shifts:\n\n${shiftListSMS}\n\nTotal: £${totalEarnings}. Have a great day! 🌟`;
+                            if (!smsPref.allowed) {
+                                console.log(`⏭️ [Staff Digest] SMS skipped for ${staffMember.email} - ${smsPref.reason}`);
+                                await logNotificationSkipped(supabase, {
+                                    recipientEmail: staffMember.email, // Log email for identification
+                                    recipientPhone: staffMember.phone,
+                                    recipientType: 'staff',
+                                    staffId: staffMember.id,
+                                    agencyId: agency.id,
+                                    notificationType: 'daily_digest',
+                                    channel: 'sms',
+                                    preferenceChecked: smsPref.preferenceChecked,
+                                    preferenceStatus: smsPref.preferenceStatus,
+                                    skippedReason: smsPref.reason,
+                                    metadata: { shift_count: shifts.length }
+                                });
+                            } else {
+                                const shiftListSMS = shiftsWithClients.map(s =>
+                                    `${s.start_time}-${s.end_time} @ ${s.client?.name} (£${(s.pay_rate * s.duration_hours).toFixed(0)})`
+                                ).join('\n');
 
-                        await supabase.functions.invoke('send-sms', {
-                            body: {
-                                to: staffMember.phone,
-                                message: smsMessage
+                                const smsMessage = `🌅 Good morning ${staffMember.first_name}! Today's shifts:\n\n${shiftListSMS}\n\nTotal: £${totalEarnings}. Have a great day! 🌟`;
+
+                                const smsResult = await supabase.functions.invoke('send-sms', {
+                                    body: {
+                                        to: staffMember.phone,
+                                        message: smsMessage
+                                    }
+                                });
+                                
+                                if (smsResult.error) throw new Error(smsResult.error);
+
+                                await logNotificationSent(supabase, {
+                                    recipientEmail: staffMember.email,
+                                    recipientPhone: staffMember.phone,
+                                    recipientType: 'staff',
+                                    staffId: staffMember.id,
+                                    agencyId: agency.id,
+                                    notificationType: 'daily_digest',
+                                    channel: 'sms',
+                                    provider: 'twilio', // Assuming Twilio for SMS
+                                    providerMessageId: smsResult?.data?.sid,
+                                    preferenceChecked: smsPref.preferenceChecked,
+                                    preferenceStatus: smsPref.preferenceStatus,
+                                    metadata: { shift_count: shifts.length }
+                                });
+
+                                results.sms_sent++;
                             }
-                        });
-
-                        results.sms_sent++;
+                        } catch (smsError: any) {
+                            console.error(`❌ [Staff Digest] SMS failed for ${staffMember.phone}:`, smsError);
+                             await logNotificationFailed(supabase, {
+                                recipientEmail: staffMember.email,
+                                recipientPhone: staffMember.phone,
+                                recipientType: 'staff',
+                                staffId: staffMember.id,
+                                agencyId: agency.id,
+                                notificationType: 'daily_digest',
+                                channel: 'sms',
+                                errorMessage: smsError.message,
+                                errorCode: 'send_failed'
+                            });
+                            
+                            // Schedule retry for SMS
+                            await scheduleRetry(supabase, {
+                                notificationType: 'daily_digest',
+                                recipientEmail: staffMember.email,
+                                recipientPhone: staffMember.phone,
+                                recipientId: staffMember.id,
+                                agencyId: agency.id,
+                                channel: 'sms',
+                                content: `🌅 Good morning! Today's shifts... (see email for details)`, // Simplified for retry payload
+                                metadata: { staffId: staffMember.id, agencyId: agency.id }
+                            });
+                        }
                     }
 
-                    console.log(`✅ Sent daily digest to ${staffMember.first_name} ${staffMember.last_name} (${shifts.length} shifts)`);
+                    console.log(`✅ Processed daily digest for ${staffMember.first_name} ${staffMember.last_name}`);
 
-                } catch (staffError) {
-                    console.error(`❌ Error sending digest to staff ${staffId}:`, staffError.message);
+                } catch (staffError: any) {
+                    console.error(`❌ Error processing staff ${staffId}:`, staffError.message);
                     results.errors.push({
                         staff_id: staffId,
                         error: staffError.message
@@ -224,7 +366,21 @@ serve(async (req) => {
                 for (const staffMember of staffWithNoShifts) {
                     try {
                         if (sendEmail && staffMember.email) {
-                            await supabase.functions.invoke('send-email', {
+                             // Check preference
+                            const pref = await shouldSendNotification(
+                                supabase,
+                                staffMember.email,
+                                'daily_digest',
+                                'email',
+                                'staff'
+                            );
+
+                            if (!pref.allowed) {
+                                console.log(`⏭️ [Rest Day] Skipped for ${staffMember.email} - ${pref.reason}`);
+                                continue;
+                            }
+
+                            const emailResult = await supabase.functions.invoke('send-email', {
                                 body: {
                                     to: staffMember.email,
                                     subject: `☀️ Good Morning! Rest day today`,
@@ -246,6 +402,8 @@ serve(async (req) => {
                                     `
                                 }
                             });
+
+                            if (emailResult.error) throw new Error(emailResult.error);
 
                             results.emails_sent++;
                         }

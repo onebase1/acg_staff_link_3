@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 
 /**
  * 📧 INCOMPLETE PROFILE REMINDER ENGINE
@@ -99,21 +106,90 @@ serve(async (req) => {
 
             console.log(`📧 Sending Day ${daysSinceCreation} reminder to: ${staff.first_name} ${staff.last_name}`);
 
-            // Send appropriate reminder
-            if (daysSinceCreation === 1) {
-                await sendDay1Reminder(supabase, staff, agency, progress);
-                remindersSent++;
-            } else if (daysSinceCreation === 3) {
-                await sendDay3Reminder(supabase, staff, agency, progress);
-                remindersSent++;
-            } else if (daysSinceCreation === 7) {
-                await sendDay7Reminder(supabase, staff, agency, progress);
-                remindersSent++;
-            } else if (daysSinceCreation === 14) {
-                await sendDay14Reminder(supabase, staff, agency, progress);
-                await escalateToAdmin(supabase, staff, agency, progress);
-                remindersSent++;
-                escalationsSent++;
+            try {
+                // Check preference
+                const preferenceCheck = await shouldSendNotification(
+                    supabase,
+                    staff.email,
+                    'system_update', // Mapped as per instructions
+                    'email',
+                    'staff'
+                );
+
+                if (!preferenceCheck.allowed) {
+                    console.log(`⏭️ [Incomplete Profile] Skipped for ${staff.email} - ${preferenceCheck.reason}`);
+                    await logNotificationSkipped(supabase, {
+                        recipientEmail: staff.email,
+                        recipientType: 'staff',
+                        staffId: staff.id,
+                        agencyId: agency.id,
+                        notificationType: 'system_update',
+                        channel: 'email',
+                        preferenceChecked: preferenceCheck.preferenceChecked,
+                        preferenceStatus: preferenceCheck.preferenceStatus,
+                        skippedReason: preferenceCheck.reason,
+                        metadata: { days_since_creation: daysSinceCreation, progress: progress.percentage }
+                    });
+                    continue;
+                }
+
+                let emailResult;
+                // Send appropriate reminder
+                if (daysSinceCreation === 1) {
+                    emailResult = await sendDay1Reminder(supabase, staff, agency, progress);
+                    remindersSent++;
+                } else if (daysSinceCreation === 3) {
+                    emailResult = await sendDay3Reminder(supabase, staff, agency, progress);
+                    remindersSent++;
+                } else if (daysSinceCreation === 7) {
+                    emailResult = await sendDay7Reminder(supabase, staff, agency, progress);
+                    remindersSent++;
+                } else if (daysSinceCreation === 14) {
+                    emailResult = await sendDay14Reminder(supabase, staff, agency, progress);
+                    await escalateToAdmin(supabase, staff, agency, progress);
+                    remindersSent++;
+                    escalationsSent++;
+                }
+
+                // Log success
+                await logNotificationSent(supabase, {
+                    recipientEmail: staff.email,
+                    recipientType: 'staff',
+                    staffId: staff.id,
+                    agencyId: agency.id,
+                    notificationType: 'system_update',
+                    channel: 'email',
+                    provider: 'resend',
+                    providerMessageId: emailResult?.data?.id,
+                    preferenceChecked: preferenceCheck.preferenceChecked,
+                    preferenceStatus: preferenceCheck.preferenceStatus,
+                    metadata: { days_since_creation: daysSinceCreation, progress: progress.percentage }
+                });
+
+            } catch (sendError: any) {
+                console.error(`❌ Error sending reminder to staff ${staff.id}:`, sendError.message);
+                
+                // Log failure
+                await logNotificationFailed(supabase, {
+                    recipientEmail: staff.email,
+                    recipientType: 'staff',
+                    staffId: staff.id,
+                    agencyId: agency.id,
+                    notificationType: 'system_update',
+                    channel: 'email',
+                    errorMessage: sendError.message,
+                    errorCode: 'send_failed'
+                });
+
+                // Schedule retry
+                await scheduleRetry(supabase, {
+                    notificationType: 'system_update',
+                    recipientEmail: staff.email,
+                    recipientId: staff.id,
+                    agencyId: agency.id,
+                    channel: 'email',
+                    metadata: { staffId: staff.id, daysSinceCreation } // Pass necessary data for retry
+                });
             }
         }
 

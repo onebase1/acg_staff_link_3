@@ -1,5 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import {
+    logNotificationSent,
+    logNotificationSkipped
+} from "../_shared/notificationLogger.ts";
 
 /**
  * Edge Function: Post-Shift Rating Reminder
@@ -28,12 +33,19 @@ interface Shift {
   end_time: string;
   role_required: string;
   rating_status: string;
+  agency_id?: string; // Added optional
 }
 
 interface Staff {
   id: string;
   first_name: string;
   last_name: string;
+}
+
+interface Client {
+    id: string;
+    contact_person: any;
+    agency_id: string;
 }
 
 serve(async (req) => {
@@ -54,7 +66,7 @@ serve(async (req) => {
     // Query completed shifts that need rating reminders
     const { data: shifts, error: shiftsError } = await supabase
       .from('shifts')
-      .select('id, client_id, assigned_staff_id, date, start_time, end_time, role_required, rating_status')
+      .select('id, client_id, assigned_staff_id, date, start_time, end_time, role_required, rating_status, agency_id')
       .eq('status', 'completed')
       .in('rating_status', ['awaiting_rating', 'not_required'])
       .gte('date', twentyFourHoursAgo.toISOString().split('T')[0])
@@ -112,6 +124,16 @@ serve(async (req) => {
 
     const staffMap = new Map(staffMembers?.map(s => [s.id, s]) || []);
 
+    // Fetch client details to get contact email for preference check
+    const clientIds = [...new Set(shiftsNeedingReminder.map(s => s.client_id))];
+    const { data: clients, error: clientError } = await supabase
+        .from('clients')
+        .select('id, contact_person, agency_id')
+        .in('id', clientIds);
+    
+    if (clientError) throw clientError;
+    const clientMap = new Map(clients?.map(c => [c.id, c]) || []);
+
     // Create notifications for each unrated shift
     const notificationsToCreate = [];
     const processedShifts = [];
@@ -119,6 +141,11 @@ serve(async (req) => {
     for (const shift of shiftsNeedingReminder) {
       const staff = staffMap.get(shift.assigned_staff_id);
       if (!staff) continue;
+
+      const client = clientMap.get(shift.client_id);
+      // We need an email to check preferences. 
+      // Assuming client.contact_person has email.
+      const clientEmail = client?.contact_person?.email;
 
       // Check if reminder already sent for this shift
       const { data: existingNotification } = await supabase
@@ -134,6 +161,35 @@ serve(async (req) => {
         continue;
       }
 
+      // Check Preference
+      if (clientEmail) {
+          const pref = await shouldSendNotification(
+              supabase,
+              clientEmail,
+              'rating_reminder',
+              'in_app', // Channel
+              'client'
+          );
+
+          if (!pref.allowed) {
+              console.log(`⏭️ [Rating Reminder] Skipped for ${clientEmail} - ${pref.reason}`);
+              await logNotificationSkipped(supabase, {
+                  recipientEmail: clientEmail,
+                  recipientType: 'client',
+                  clientId: shift.client_id,
+                  agencyId: shift.agency_id,
+                  notificationType: 'rating_reminder',
+                  channel: 'in_app',
+                  preferenceChecked: pref.preferenceChecked,
+                  preferenceStatus: pref.preferenceStatus,
+                  skippedReason: pref.reason,
+                  relatedEntityId: shift.id,
+                  relatedEntityType: 'shift'
+              });
+              continue;
+          }
+      }
+
       notificationsToCreate.push({
         client_id: shift.client_id,
         contact_id: null, // Will notify all contacts for this client
@@ -147,6 +203,24 @@ serve(async (req) => {
       });
 
       processedShifts.push(shift.id);
+
+      // Log "Sent" (Created)
+      if (clientEmail) {
+           await logNotificationSent(supabase, {
+              recipientEmail: clientEmail,
+              recipientType: 'client',
+              clientId: shift.client_id,
+              agencyId: shift.agency_id,
+              notificationType: 'rating_reminder',
+              channel: 'in_app',
+              provider: 'n8n', // or 'supabase' - internal
+              providerMessageId: `in_app_${shift.id}`, // Fake ID for in-app
+              preferenceChecked: true,
+              preferenceStatus: 'opted_in', // If we got here
+              relatedEntityId: shift.id,
+              relatedEntityType: 'shift'
+          });
+      }
     }
 
     // Bulk insert notifications

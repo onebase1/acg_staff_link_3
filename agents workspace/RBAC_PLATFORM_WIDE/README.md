@@ -6,6 +6,29 @@
 
 ---
 
+## 🌟 KEY SCALABILITY FEATURE: MULTI-AGENCY SUPPORT
+
+**Module A implements true multi-tenancy:**
+- ✅ Users can belong to **multiple agencies** with different roles
+- ✅ Staff can work for 3+ agencies simultaneously
+- ✅ Different pay rates per agency
+- ✅ Freelance coordinators, shared staff pools supported
+
+**Architecture:**
+- Uses `agency_contacts` table (many-to-many relationship)
+- Replicates Module 1's proven `client_contacts` pattern
+- Migrates away from single-valued `profiles.agency_id`
+
+**Business impact:**
+- Enables freelance workforce model
+- Multi-branch agencies (one user, 3 branches)
+- Platform can handle umbrella organizations
+- True SaaS multi-tenancy unlocked
+
+**See:** [MODULE_A_AGENCY_RBAC.md - Multi-Agency Architecture section](MODULE_A_AGENCY_RBAC.md#-multi-agency-architecture-true-multi-tenancy)
+
+---
+
 ## 📁 FOLDER STRUCTURE
 
 ```
@@ -77,16 +100,19 @@ Build when you expand services or scale operations:
 - [ ] Test encryption/decryption with different roles
 - [ ] Verify audit trail captures changes
 
-### **Week 2-3: Module A (Agency RBAC)**
-- [ ] Create `agency_contacts` table
+### **Week 2-3: Module A (Agency RBAC + Multi-Agency Support)**
+- [ ] Create `agency_contacts` table (enables multi-agency support)
 - [ ] Deploy 6 agency roles (AGENCY_OWNER, OPERATIONS_DIRECTOR, etc.)
 - [ ] Backfill existing `agency_admin` users → AGENCY_OWNER
+- [ ] **SCALABILITY:** Update all code to query `agency_contacts` instead of `profiles.agency_id`
+- [ ] Add agency switcher UI (for users belonging to multiple agencies)
 - [ ] Create `agencyRBAC.js` service (permission matrix)
 - [ ] Add role badges to navigation UI
 - [ ] Implement field redaction in financial pages
 - [ ] Hide navigation items based on role
 - [ ] Build role assignment UI (super admin assigns roles)
 - [ ] Test with all 6 roles
+- [ ] Test multi-agency user scenarios (1 user → 3 agencies with different roles)
 
 ### **Week 3-4: Module D (Backend Enforcement)**
 - [ ] Create `permission_denials_log` table

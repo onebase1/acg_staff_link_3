@@ -1,0 +1,515 @@
+# MODULE 2: NOTIFICATIONS OPTIMIZATION PLAN
+
+**Date**: 2025-12-04  
+**Author**: Claude Opus 4.5 Review  
+**Status**: Ready for Implementation  
+
+---
+
+## EXECUTIVE SUMMARY
+
+After a comprehensive review of the notification system across all three modules and the database schema, this plan addresses the key concerns raised:
+
+1. **2-hour shift reminders for clients** - Currently NOT sent (good), but preferences exist misleadingly
+2. **SMS/WhatsApp to clients** - Currently NOT implemented (good), need to ensure it stays staff-only
+3. **On-duty contact capture** - Field exists (`shifts.on_duty_contact`) but unused - critical for care home scenario
+4. **Notification batching** - Already implemented for email, working well
+
+---
+
+## SECTION 1: CURRENT STATE ANALYSIS
+
+### 1.1 Database Schema Review
+
+| Table | Notification-Related Fields | Status |
+|-------|---------------------------|--------|
+| `staff` | `opt_out_shift_reminders`, `phone`, `whatsapp_number` | ✅ Working |
+| `client_contacts` | `notification_preferences` (JSONB with granular toggles) | ⚠️ Contains unused 2h reminder preference |
+| `shifts` | `on_duty_contact` (JSONB), `reminder_24h_sent`, `reminder_2h_sent` | ⚠️ `on_duty_contact` unused |
+| `notification_queue` | Full batching system | ✅ Working |
+| `agencies` | `sms_notifications`, `whatsapp_notifications`, `email_notifications` | ✅ Working |
+
+### 1.2 Notification Channels by Recipient
+
+| Recipient Type | Email | SMS | WhatsApp | In-App |
+|---------------|-------|-----|----------|--------|
+| **Staff** | ✅ All notifications | ✅ Reminders, urgent | ✅ Reminders, urgent | ❌ Not implemented |
+| **Clients** | ✅ Assignment, invoices | ❌ Not sent | ❌ Not sent | ❌ Not implemented |
+| **Admin** | ✅ Alerts, summaries | ❌ Not sent | ❌ Not sent | ❌ Not implemented |
+
+### 1.3 Shift Reminder Flow (Current)
+
+```mermaid
+graph TD
+    A[Shift Created] --> B{Staff Assigned?}
+    B -->|Yes| C[24h Before Shift]
+    C --> D{Staff.opt_out_shift_reminders?}
+    D -->|No| E[Send Staff SMS + WhatsApp + Email]
+    D -->|Yes| F[Skip Staff Reminder]
+    
+    E --> G[2h Before Shift]
+    G --> H{Staff.opt_out_shift_reminders?}
+    H -->|No| I[Send Staff SMS + WhatsApp ONLY]
+    H -->|Yes| J[Skip 2h Reminder]
+    
+    K[Client Notification] -->|Email Only| L[Day Before: Reminder Email]
+```
+
+---
+
+## SECTION 2: IDENTIFIED ISSUES
+
+### 2.1 🔴 Critical: Client 2h Reminder Preferences Exist but Unused
+
+**Problem:**  
+The `client_contacts.notification_preferences` JSONB includes:
+```json
+{
+  "shift_2h_reminder": true,
+  "shift_24h_reminder": true
+}
+```
+
+These defaults suggest clients WILL receive these reminders, but **NO CODE ACTUALLY SENDS THEM**. This creates:
+1. Confusion in the UI (preference exists but does nothing)
+2. Potential for accidental future implementation without proper consideration
+
+**Why This is Actually Good:**  
+- Care home shifts are booked by nurses on duty who may not be present 2h before
+- 2h reminders would go to stored contacts, NOT the person actually on duty
+- SMS/WhatsApp to random contacts is inappropriate for care home context
+
+### 2.2 🔴 Critical: On-Duty Contact Field Unused
+
+**Problem:**  
+The `shifts.on_duty_contact` JSONB field exists but is NEVER populated or used.
+
+**Business Context:**  
+- Urgent shifts at care homes are booked by nurses on duty
+- These nurses are often NOT in the client_contacts list
+- When a shift needs SMS/WhatsApp (future), it should go to the SPECIFIC person who booked it
+
+**Current State:**
+```sql
+SELECT on_duty_contact FROM shifts LIMIT 1;
+-- Result: NULL (never populated)
+```
+
+### 2.3 🟡 Medium: Staff SMS/WhatsApp Goes to All Staff
+
+**Problem:**  
+Shift reminders (24h + 2h) currently send to `staff.phone` which is correct. However:
+1. Staff `opt_out_shift_reminders` exists but may not be checked everywhere
+2. No distinction between "I want SMS but not WhatsApp" or vice versa
+
+**Current Code (shift-reminder-engine):**
+```typescript
+// Sends to BOTH channels regardless of staff preference
+const [smsResult, whatsappResult] = await Promise.allSettled([
+  supabase.functions.invoke('send-sms', { body: { to: staff.phone, message } }),
+  supabase.functions.invoke('send-whatsapp', { body: { to: staff.phone, message } })
+]);
+```
+
+### 2.4 🟢 Good: Client Email-Only Policy
+
+**Current Implementation:**  
+Clients ONLY receive emails - no SMS or WhatsApp. This is intentional and correct because:
+1. Care home contacts may change shifts
+2. Email can be forwarded/shared with team
+3. Email creates audit trail
+4. No accidental SMS to personal phones
+
+---
+
+## SECTION 3: OPTIMIZATION RECOMMENDATIONS
+
+### 3.1 Database Changes
+
+#### 3.1.1 Update Default Client Notification Preferences
+```sql
+-- Remove misleading 2h reminder from defaults (it does nothing)
+-- Add explicit client_reminders_enabled toggle
+
+ALTER TABLE client_contacts 
+ALTER COLUMN notification_preferences 
+SET DEFAULT '{
+  "promotional": false,
+  "shift_assigned": true,
+  "shift_complete": true,
+  "system_updates": false,
+  "rating_reminder": true,
+  "payment_reminder": true,
+  "compliance_warning": true,
+  "invoice_notification": true,
+  "day_before_reminder": true
+}'::jsonb;
+
+-- Note: Removed shift_2h_reminder and shift_24h_reminder
+-- Replaced with single "day_before_reminder" for clarity
+```
+
+#### 3.1.2 Document On-Duty Contact Structure
+```sql
+-- Recommended structure for shifts.on_duty_contact:
+COMMENT ON COLUMN shifts.on_duty_contact IS 
+'JSONB storing optional on-duty contact for THIS SPECIFIC SHIFT. 
+Structure: {
+  "name": "Nurse Sarah",
+  "phone": "+447123456789",
+  "role": "Night Nurse",
+  "notes": "Call this number for any issues during the shift"
+}
+Only used for urgent/critical notifications related to this shift.
+SMS/WhatsApp should ONLY go here, never to general client_contacts.';
+```
+
+#### 3.1.3 Add Staff Channel Preferences
+```sql
+-- Allow staff to choose SMS vs WhatsApp preference
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS notification_channels JSONB 
+DEFAULT '{"sms": true, "whatsapp": true, "email": true}'::jsonb;
+
+COMMENT ON COLUMN staff.notification_channels IS 
+'Staff preference for which channels they want to receive notifications on.
+Keys: sms, whatsapp, email. All default to true.
+If both sms and whatsapp are false, only email is sent for reminders.';
+```
+
+### 3.2 Code Changes
+
+#### 3.2.1 Update Shift Creation UI
+**File:** `src/components/shifts/ShiftCreationModal.jsx` (or equivalent)
+
+Add optional "On-Duty Contact" section:
+```jsx
+{/* Optional: On-Duty Contact for This Shift */}
+<div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+  <h4 className="font-medium text-yellow-800">
+    📞 On-Duty Contact (Optional)
+  </h4>
+  <p className="text-sm text-yellow-700 mb-3">
+    If the shift was requested by someone not in your contact list 
+    (e.g., nurse on duty), add their details here. They will receive 
+    SMS/WhatsApp updates for THIS shift only.
+  </p>
+  
+  <div className="grid grid-cols-2 gap-4">
+    <Input 
+      label="Contact Name" 
+      placeholder="e.g., Nurse Sarah"
+      value={onDutyContact.name}
+      onChange={(e) => setOnDutyContact({...onDutyContact, name: e.target.value})}
+    />
+    <Input 
+      label="Phone Number" 
+      placeholder="+44..."
+      value={onDutyContact.phone}
+      onChange={(e) => setOnDutyContact({...onDutyContact, phone: e.target.value})}
+    />
+  </div>
+</div>
+```
+
+#### 3.2.2 Update Shift Reminder Engine
+**File:** `supabase/functions/shift-reminder-engine/index.ts`
+
+Add staff channel preference check:
+```typescript
+// BEFORE sending SMS/WhatsApp:
+const staffChannels = staff.notification_channels || { sms: true, whatsapp: true };
+
+const sendPromises = [];
+if (staffChannels.sms && staff.phone) {
+  sendPromises.push(supabase.functions.invoke('send-sms', { body: { to: staff.phone, message } }));
+}
+if (staffChannels.whatsapp && staff.phone) {
+  sendPromises.push(supabase.functions.invoke('send-whatsapp', { body: { to: staff.phone, message } }));
+}
+
+const results = await Promise.allSettled(sendPromises);
+```
+
+#### 3.2.3 Add On-Duty Notification Function (Future)
+**New File:** `supabase/functions/notify-on-duty-contact/index.ts`
+
+```typescript
+/**
+ * NOTIFY ON-DUTY CONTACT
+ * 
+ * Sends SMS/WhatsApp ONLY to the on_duty_contact for a specific shift.
+ * Used for:
+ * - Staff running late alerts
+ * - Staff no-show alerts
+ * - Urgent shift updates
+ * 
+ * NEVER sends to general client_contacts - only to the person who 
+ * booked this specific shift.
+ */
+serve(async (req) => {
+  const { shift_id, message_type, custom_message } = await req.json();
+  
+  // Get shift with on_duty_contact
+  const { data: shift } = await supabase
+    .from('shifts')
+    .select('on_duty_contact, client_id')
+    .eq('id', shift_id)
+    .single();
+  
+  if (!shift?.on_duty_contact?.phone) {
+    console.log('⚠️ No on-duty contact for this shift, falling back to email');
+    // Fall back to client email notification
+    return await sendClientEmail(shift.client_id, message_type);
+  }
+  
+  // Send SMS to on-duty contact ONLY
+  await supabase.functions.invoke('send-sms', {
+    body: {
+      to: shift.on_duty_contact.phone,
+      message: buildMessage(message_type, shift.on_duty_contact.name)
+    }
+  });
+});
+```
+
+### 3.3 Client Notification Preferences UI Update
+
+**File:** `src/pages/client/NotificationPreferences.jsx`
+
+Update to reflect actual available notifications:
+```jsx
+const CLIENT_NOTIFICATION_OPTIONS = [
+  // Shift-Related
+  {
+    key: 'shift_assigned',
+    label: 'Shift Assigned',
+    description: 'Receive email when staff is assigned to your shift',
+    category: 'shift',
+    required: true  // Cannot disable
+  },
+  {
+    key: 'day_before_reminder',
+    label: 'Day-Before Reminder',
+    description: 'Email reminder the day before a shift',
+    category: 'shift',
+    required: false
+  },
+  {
+    key: 'shift_complete',
+    label: 'Shift Completion',
+    description: 'Email when shift is completed and timesheet submitted',
+    category: 'shift',
+    required: false
+  },
+  
+  // Financial
+  {
+    key: 'invoice_notification',
+    label: 'Invoice Ready',
+    description: 'Email when new invoice is generated',
+    category: 'financial',
+    required: true  // Cannot disable
+  },
+  {
+    key: 'payment_reminder',
+    label: 'Payment Reminders',
+    description: 'Reminders for overdue invoices',
+    category: 'financial',
+    required: false
+  },
+  
+  // Compliance
+  {
+    key: 'compliance_warning',
+    label: 'Compliance Alerts',
+    description: 'Alerts about staff document expirations affecting your shifts',
+    category: 'compliance',
+    required: true  // Cannot disable
+  },
+  
+  // Other
+  {
+    key: 'rating_reminder',
+    label: 'Rating Requests',
+    description: 'Requests to rate staff after shifts',
+    category: 'other',
+    required: false
+  }
+];
+
+// REMOVED from options:
+// - shift_24h_reminder (replaced with day_before_reminder, email only)
+// - shift_2h_reminder (removed entirely - not appropriate for care homes)
+// - system_updates (rarely used)
+// - promotional (rarely used)
+```
+
+---
+
+## SECTION 4: MIGRATION PLAN
+
+### 4.1 Phase 1: Database Updates (Low Risk)
+
+```sql
+-- Step 1: Add notification_channels to staff (additive, no breaking changes)
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS notification_channels JSONB 
+DEFAULT '{"sms": true, "whatsapp": true, "email": true}'::jsonb;
+
+-- Step 2: Add comment to on_duty_contact for documentation
+COMMENT ON COLUMN shifts.on_duty_contact IS 
+'Optional on-duty contact for THIS SPECIFIC SHIFT. 
+Structure: {"name": "...", "phone": "+44...", "role": "...", "notes": "..."}';
+
+-- Step 3: Migrate existing client preferences (remove unused fields)
+-- NOTE: This is optional - existing records can keep old fields, they just won't be used
+UPDATE client_contacts 
+SET notification_preferences = notification_preferences - 'shift_2h_reminder'
+WHERE notification_preferences ? 'shift_2h_reminder';
+```
+
+### 4.2 Phase 2: Code Updates (Medium Risk)
+
+1. Update shift creation UI to capture `on_duty_contact`
+2. Update `shift-reminder-engine` to respect staff channel preferences
+3. Update client notification preferences UI
+4. Create `notify-on-duty-contact` edge function
+
+### 4.3 Phase 3: Testing Checklist
+
+- [ ] Staff with `opt_out_shift_reminders = true` receives NO reminders
+- [ ] Staff with `notification_channels.sms = false` receives WhatsApp but not SMS
+- [ ] Client with `day_before_reminder = false` receives NO day-before email
+- [ ] Shift with `on_duty_contact` set can receive targeted SMS
+- [ ] Shift WITHOUT `on_duty_contact` falls back to client email
+
+---
+
+## SECTION 5: IMPORTANT CONSTRAINTS (DO NOT VIOLATE)
+
+### 5.1 ❌ NEVER Send SMS/WhatsApp to Client Contacts List
+
+**Reason:**  
+- Care home contacts may not be on duty
+- Phone numbers may be personal, not work phones
+- No consent for SMS marketing
+- Creates confusion and annoyance
+
+**Exception:**  
+Only send SMS/WhatsApp to `shifts.on_duty_contact` when:
+1. The field is populated for that specific shift
+2. The notification is URGENT (staff no-show, staff running late)
+3. Email was already sent as primary notification
+
+### 5.2 ✅ Always Batch Client Email Notifications
+
+**Reason:**  
+- Prevents email overload for clients with many shifts
+- Reduces spam filter triggers
+- Professional appearance
+
+**Implementation:**  
+Already implemented via `notification_queue` table and `notification-digest-engine`.
+
+### 5.3 ✅ Always Respect Staff Opt-Out Preferences
+
+**Check BOTH:**
+1. `staff.opt_out_shift_reminders` - Global opt-out
+2. `staff.notification_channels` - Channel-specific preferences
+
+---
+
+## SECTION 6: MODULE INTEGRATION NOTES
+
+### 6.1 Module 1 (Client Portal) Integration
+
+The client portal already respects notification preferences via:
+- `client_contacts.notification_preferences` for email toggles
+- `client_contacts.role` for RBAC on who can modify settings
+
+**No changes required** - just ensure UI reflects actual available options.
+
+### 6.2 Module 3 (Scoring) Integration
+
+Scoring triggers notifications via:
+- Rating request emails (after shift completion)
+- Score update notifications (when reliability score changes)
+
+**Integration point:**  
+When rating is submitted, check `client_contacts.notification_preferences.rating_reminder` before sending.
+
+### 6.3 Module 4 (Chatbot) Integration
+
+If chatbot books shifts:
+- Should prompt for `on_duty_contact` if shift is urgent
+- Should use same notification queue system
+
+---
+
+## SECTION 7: IMPLEMENTATION PRIORITY
+
+| Priority | Task | Effort | Impact |
+|----------|------|--------|--------|
+| 🔴 High | Add `on_duty_contact` to shift creation UI | 2h | High - enables targeted SMS |
+| 🔴 High | Update client preferences UI (remove unused) | 1h | Medium - reduces confusion |
+| 🟡 Medium | Add staff `notification_channels` preference | 3h | Medium - staff control |
+| 🟡 Medium | Create `notify-on-duty-contact` function | 2h | High - enables urgent alerts |
+| 🟢 Low | Migrate existing preference data | 1h | Low - cleanup only |
+
+---
+
+## APPENDIX A: Mermaid Diagram - Optimized Notification Flow
+
+```mermaid
+graph TD
+    subgraph "Shift Creation"
+        A[Admin Creates Shift] --> B{Urgent Shift?}
+        B -->|Yes| C[Prompt: Add On-Duty Contact]
+        B -->|No| D[Standard Creation]
+        C --> D
+        D --> E[Save Shift with on_duty_contact if provided]
+    end
+    
+    subgraph "Staff Assignment"
+        E --> F[Admin Assigns Staff]
+        F --> G{Staff.opt_out_shift_reminders?}
+        G -->|No| H[Queue Staff Email]
+        G -->|Yes| I[Skip Staff Notification]
+        H --> J{Staff.notification_channels.sms?}
+        J -->|Yes| K[Send Staff SMS]
+        J -->|No| L[Skip SMS]
+        H --> M{Staff.notification_channels.whatsapp?}
+        M -->|Yes| N[Send Staff WhatsApp]
+        M -->|No| O[Skip WhatsApp]
+    end
+    
+    subgraph "Client Notification"
+        F --> P{Client.notification_preferences.shift_assigned?}
+        P -->|Yes| Q[Queue Client Email - Batched]
+        P -->|No| R[Skip Client Email]
+    end
+    
+    subgraph "Day Before Reminder"
+        S[24h Before Shift - Cron] --> T{Staff Assigned?}
+        T -->|Yes| U{Staff.opt_out_shift_reminders?}
+        U -->|No| V[Send Staff SMS + WhatsApp]
+        U -->|Yes| W[Skip Staff Reminder]
+        T --> X{Client.notification_preferences.day_before_reminder?}
+        X -->|Yes| Y[Send Client Email]
+        X -->|No| Z[Skip Client Email]
+    end
+    
+    subgraph "Urgent Alerts"
+        AA[Staff No-Show Detected] --> BB{Shift.on_duty_contact exists?}
+        BB -->|Yes| CC[Send SMS to on_duty_contact ONLY]
+        BB -->|No| DD[Send Email to Client Contacts]
+    end
+    
+    style C fill:#f59e0b,color:#fff
+    style CC fill:#dc2626,color:#fff
+    style H fill:#10b981,color:#fff
+    style Q fill:#06b6d4,color:#fff
+```
+
+---
+
+**END OF OPTIMIZATION PLAN**

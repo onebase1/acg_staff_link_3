@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 
 /**
  * TIER 2B-3: Client Communication Automation
@@ -262,34 +269,112 @@ serve(async (req) => {
             );
         }
 
-        // Send email
-        await supabase.functions.invoke('send-email', {
-            body: {
-                to: clientEmail,
-                subject: subject,
-                html: html
+        // Send email with checks and logging
+        try {
+            // Check preference
+            const preferenceCheck = await shouldSendNotification(
+                supabase,
+                clientEmail,
+                'client_communication', // Mapped as per instructions
+                'email',
+                'client'
+            );
+
+            if (!preferenceCheck.allowed) {
+                console.log(`⏭️ [Client Communication] Skipped for ${clientEmail} - ${preferenceCheck.reason}`);
+                await logNotificationSkipped(supabase, {
+                    recipientEmail: clientEmail,
+                    recipientType: 'client',
+                    clientId: client.id,
+                    agencyId: agency.id,
+                    notificationType: 'client_communication',
+                    channel: 'email',
+                    preferenceChecked: preferenceCheck.preferenceChecked,
+                    preferenceStatus: preferenceCheck.preferenceStatus,
+                    skippedReason: preferenceCheck.reason,
+                    metadata: { shift_id: shift.id, type }
+                });
+                
+                return new Response(
+                    JSON.stringify({
+                        success: true,
+                        skipped: true,
+                        reason: preferenceCheck.reason
+                    }),
+                    { headers: { "Content-Type": "application/json" } }
+                );
             }
-        });
 
-        console.log(`✅ Sent ${type} email to ${client.name}`);
+            // Invoke the send-email function
+            const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-email', {
+                body: {
+                    to: clientEmail,
+                    subject: subject,
+                    html: html
+                }
+            });
 
-        return new Response(
-            JSON.stringify({
-                success: true,
-                type: type,
-                recipient: clientEmail
-            }),
-            { headers: { "Content-Type": "application/json" } }
-        );
+            if (emailError) {
+                throw new Error(`Email sending failed: ${emailError.message}`);
+            }
 
-    } catch (error) {
-        console.error('❌ [Client Communication] Fatal error:', error);
-        return new Response(
-            JSON.stringify({
-                success: false,
-                error: error.message
-            }),
-            { status: 500, headers: { "Content-Type": "application/json" } }
-        );
-    }
+            // Log success
+            await logNotificationSent(supabase, {
+                recipientEmail: clientEmail,
+                recipientType: 'client',
+                clientId: client.id,
+                agencyId: agency.id,
+                notificationType: 'client_communication',
+                channel: 'email',
+                provider: 'resend',
+                providerMessageId: emailResult?.id,
+                preferenceChecked: preferenceCheck.preferenceChecked,
+                preferenceStatus: preferenceCheck.preferenceStatus,
+                metadata: { shift_id: shift.id, type }
+            });
+
+            console.log(`✅ Sent ${type} email to ${client.name}`);
+
+            return new Response(
+                JSON.stringify({
+                    success: true,
+                    type: type,
+                    recipient: clientEmail
+                }),
+                { headers: { "Content-Type": "application/json" } }
+            );
+
+        } catch (error: any) {
+            console.error('❌ [Client Communication] Failed to send email:', error);
+            
+            // Log failure
+            await logNotificationFailed(supabase, {
+                recipientEmail: clientEmail,
+                recipientType: 'client',
+                clientId: client.id,
+                agencyId: agency.id,
+                notificationType: 'client_communication',
+                channel: 'email',
+                errorMessage: error.message,
+                errorCode: 'send_failed'
+            });
+
+            // Schedule retry
+            await scheduleRetry(supabase, {
+                notificationType: 'client_communication',
+                recipientEmail: clientEmail,
+                recipientId: client.id,
+                agencyId: agency.id,
+                channel: 'email',
+                metadata: { shiftId: shift.id, type } // Pass necessary data for retry
+            });
+
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    error: error.message
+                }),
+                { status: 500, headers: { "Content-Type": "application/json" } }
+            );
+        }
 });

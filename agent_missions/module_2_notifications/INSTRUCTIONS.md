@@ -23,6 +23,7 @@
     - Create `pages/client/NotificationPreferences.jsx`.
 - [ ] **Implement Email Templates (Section 4.2):**
     - Create `templates/emails/` directory and HTML files.
+    - **Crucial:** Migrate hardcoded emails from `InviteClientModal.jsx` and `OnboardClient.jsx` to templates (`client-invite.html`, `client-welcome.html`).
     - Create `services/emailTemplates.js`.
 - [ ] **Implement Queue System (Section 5):**
     - Create `NotificationQueue` and `NotificationLog` tables.

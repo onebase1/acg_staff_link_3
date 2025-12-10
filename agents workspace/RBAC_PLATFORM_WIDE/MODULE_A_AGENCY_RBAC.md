@@ -26,6 +26,103 @@
 
 ---
 
+## 🌐 MULTI-AGENCY ARCHITECTURE (TRUE MULTI-TENANCY)
+
+### Why This Matters for Scalability
+
+**Current limitation:**
+- `profiles.agency_id` is a **single-value column** (1 user → 1 agency)
+- Staff can only belong to ONE agency at a time
+- Agency admin users locked to one agency
+
+**New architecture:** `agency_contacts` table (Many-to-Many)
+- ✅ One user can work for **multiple agencies**
+- ✅ Each agency relationship has its own **role** and **permissions**
+- ✅ Different **pay rates** per agency
+- ✅ True SaaS multi-tenancy model
+
+### Real-World Use Cases
+
+**Example 1: Freelance Coordinator**
+```
+Sarah (user ID: abc123) can be:
+- SHIFT_COORDINATOR for Agency A (£18/hour)
+- OPERATIONS_DIRECTOR for Agency B (£25/hour)
+- HR_COORDINATOR for Agency C (£20/hour)
+```
+
+**Example 2: Multi-Branch Agency**
+```
+Company with 3 regional branches (3 separate "agencies" in system):
+- John is AGENCY_OWNER for all 3 branches
+- Mary is FINANCE_MANAGER for London + Birmingham
+- Tom is SHIFT_COORDINATOR for Manchester only
+```
+
+**Example 3: Shared Staff Pool**
+```
+ACG StaffLink operates as umbrella:
+- Staff work for multiple client agencies
+- Each has different role/rate per agency
+- Platform handles multi-agency payroll
+```
+
+### Migration from Legacy Single-Agency Model
+
+**Step 1: Create agency_contacts table** (see DATABASE SCHEMA below)
+
+**Step 2: Backfill from profiles.agency_id**
+```sql
+INSERT INTO agency_contacts (agency_id, profile_id, role, is_primary_contact)
+SELECT
+  p.agency_id,
+  p.id,
+  CASE
+    WHEN p.user_type = 'agency_admin' THEN 'AGENCY_OWNER'
+    WHEN p.user_type = 'manager' THEN 'OPERATIONS_DIRECTOR'
+    ELSE 'SHIFT_COORDINATOR'
+  END AS role,
+  TRUE AS is_primary_contact
+FROM profiles p
+WHERE p.agency_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM agency_contacts ac
+    WHERE ac.profile_id = p.id
+  );
+```
+
+**Step 3: Update code to use agency_contacts**
+- Replace all `profiles.agency_id` queries with `agency_contacts` join
+- Check user's role PER AGENCY (not global role)
+- UI shows agency switcher if user belongs to multiple agencies
+
+**Step 4: Keep profiles.agency_id for legacy compatibility**
+- Don't drop column immediately
+- Set as "primary agency" pointer for backward compatibility
+- Eventually deprecate after all code migrated
+
+### ✅ Proven Pattern: Module 1 Already Did This
+
+**Module 1 Client Portal** implemented `client_contacts` table (Dec 2, 2025):
+- Same many-to-many architecture
+- Roles per client (OPERATIONS_MANAGER, FINANCE_MANAGER, etc.)
+- Successfully tested and working
+
+**This module replicates that success for agencies.**
+
+### Benefits Summary
+
+| Feature | Old (profiles.agency_id) | New (agency_contacts) |
+|---------|-------------------------|----------------------|
+| User → Agencies | 1-to-1 | Many-to-many |
+| Role flexibility | Global role | Role per agency |
+| Pay rates | Single rate | Rate per agency |
+| Multi-tenant SaaS | ❌ No | ✅ Yes |
+| Freelance workers | ❌ Can't support | ✅ Fully supported |
+| Agency groups | ❌ Complex workaround | ✅ Native support |
+
+---
+
 ## ROLE DEFINITIONS
 
 ### 1. AGENCY_OWNER

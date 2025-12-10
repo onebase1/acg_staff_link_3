@@ -1,8 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import { 
+    logNotificationSent, 
+    logNotificationFailed, 
+    logNotificationSkipped 
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 
 /**
- * 🔔 SHIFT REMINDER ENGINE - MULTI-CHANNEL
+ * 🔔 SHIFT REMINDER ENGINE - MULTI-CHANNEL - ENHANCED
  *
  * Auto-sends reminders to confirmed staff:
  * - 24 hours before shift (Email + SMS + WhatsApp)
@@ -10,6 +17,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  *
  * ✅ FIXED: Race condition prevention with atomic flag setting
  * ✅ FIXED: Removed "reply if you cannot attend" (inappropriate for care workers)
+ * ✅ PREFERENCE CHECKING: Respects staff opt-outs (NEW)
+ * ✅ COMPREHENSIVE LOGGING: Audit trail for all sends (NEW)
  *
  * Triggered: Cron every hour
  */
@@ -110,6 +119,35 @@ serve(async (req) => {
                         continue;
                     }
 
+                    // ✅ NEW: Check if staff opted out of shift reminders
+                    const preferenceCheck = await shouldSendNotification(
+                        supabase,
+                        staff.email,
+                        'shift_24h_reminder',
+                        'sms',
+                        'staff'
+                    );
+
+                    if (!preferenceCheck.allowed) {
+                        console.log(`⏭️ [24h Reminder] Staff ${staff.email} opted out - ${preferenceCheck.reason}`);
+                        await logNotificationSkipped(supabase, {
+                            recipientEmail: staff.email,
+                            recipientPhone: staff.phone,
+                            recipientType: 'staff',
+                            staffId: staff.id,
+                            agencyId: shift.agency_id,
+                            notificationType: 'shift_24h_reminder',
+                            channel: 'sms',
+                            preferenceChecked: preferenceCheck.preferenceChecked,
+                            preferenceStatus: preferenceCheck.preferenceStatus,
+                            skippedReason: preferenceCheck.reason,
+                            relatedEntityId: shift.id,
+                            relatedEntityType: 'shift',
+                            metadata: { shift_date: shift.date, client_name: client.name }
+                        });
+                        continue;
+                    }
+
                     const agencyName = agency?.name || 'Your Agency';
                     const locationText = shift.work_location_within_site ? ` (${shift.work_location_within_site})` : '';
 
@@ -136,13 +174,82 @@ serve(async (req) => {
                     const whatsappSuccess = whatsappResult.status === 'fulfilled' && whatsappResult.value?.data?.success;
 
                     if (smsSuccess || whatsappSuccess) {
+                        // ✅ NEW: Log successful sends
+                        if (smsSuccess) {
+                            const smsId = (smsResult as PromiseFulfilledResult<any>).value?.data?.sid;
+                            await logNotificationSent(supabase, {
+                                recipientEmail: staff.email,
+                                recipientPhone: staff.phone,
+                                recipientType: 'staff',
+                                staffId: staff.id,
+                                agencyId: shift.agency_id,
+                                notificationType: 'shift_24h_reminder',
+                                channel: 'sms',
+                                provider: 'twilio',
+                                providerMessageId: smsId,
+                                preferenceChecked: preferenceCheck.preferenceChecked,
+                                preferenceStatus: preferenceCheck.preferenceStatus,
+                                relatedEntityId: shift.id,
+                                relatedEntityType: 'shift',
+                                metadata: { shift_date: shift.date, client_name: client.name, message_length: message.length }
+                            });
+                        }
+                        if (whatsappSuccess) {
+                            const whatsappId = (whatsappResult as PromiseFulfilledResult<any>).value?.data?.sid;
+                            await logNotificationSent(supabase, {
+                                recipientEmail: staff.email,
+                                recipientPhone: staff.phone,
+                                recipientType: 'staff',
+                                staffId: staff.id,
+                                agencyId: shift.agency_id,
+                                notificationType: 'shift_24h_reminder',
+                                channel: 'whatsapp',
+                                provider: 'twilio',
+                                providerMessageId: whatsappId,
+                                preferenceChecked: preferenceCheck.preferenceChecked,
+                                preferenceStatus: preferenceCheck.preferenceStatus,
+                                relatedEntityId: shift.id,
+                                relatedEntityType: 'shift',
+                                metadata: { shift_date: shift.date, client_name: client.name, message_length: message.length }
+                            });
+                        }
+                        
                         results.reminders_24h_sent++;
                         console.log(`✅ [24h Reminder] Sent to ${staff.first_name} ${staff.last_name} (SMS: ${smsSuccess}, WhatsApp: ${whatsappSuccess})`);
                     } else {
-                        console.error(`❌ [24h Reminder] Both channels failed for shift ${shift.id}`);
+                        // ✅ NEW: Log failure
+                        await logNotificationFailed(supabase, {
+                            recipientEmail: staff.email,
+                            recipientPhone: staff.phone,
+                            recipientType: 'staff',
+                            staffId: staff.id,
+                            agencyId: shift.agency_id,
+                            notificationType: 'shift_24h_reminder',
+                            channel: 'sms',
+                            errorMessage: 'Both SMS and WhatsApp failed',
+                            relatedEntityId: shift.id,
+                            relatedEntityType: 'shift'
+                        });
+
+                        // ✅ NEW: Schedule Retry (24h reminders only)
+                        await scheduleRetry(supabase, {
+                            notificationType: 'shift_24h_reminder',
+                            channel: 'sms', // Fallback to SMS for retry
+                            recipientPhone: staff.phone,
+                            recipientEmail: staff.email,
+                            recipientId: staff.id,
+                            recipientType: 'staff',
+                            agencyId: shift.agency_id,
+                            content: message,
+                            relatedEntityId: shift.id,
+                            relatedEntityType: 'shift',
+                            errorMessage: 'Both SMS and WhatsApp failed'
+                        });
+
+                        console.error(`❌ [24h Reminder] Both channels failed for shift ${shift.id} - Scheduled retry`);
                         results.errors.push({
                             shift_id: shift.id,
-                            error: 'Both SMS and WhatsApp failed'
+                            error: 'Both SMS and WhatsApp failed - Scheduled retry'
                         });
                     }
                 }
@@ -191,6 +298,35 @@ serve(async (req) => {
                         continue;
                     }
 
+                    // ✅ NEW: Check if staff opted out of shift reminders
+                    const preferenceCheck = await shouldSendNotification(
+                        supabase,
+                        staff.email,
+                        'shift_2h_reminder',
+                        'sms',
+                        'staff'
+                    );
+
+                    if (!preferenceCheck.allowed) {
+                        console.log(`⏭️ [2h Reminder] Staff ${staff.email} opted out - ${preferenceCheck.reason}`);
+                        await logNotificationSkipped(supabase, {
+                            recipientEmail: staff.email,
+                            recipientPhone: staff.phone,
+                            recipientType: 'staff',
+                            staffId: staff.id,
+                            agencyId: shift.agency_id,
+                            notificationType: 'shift_2h_reminder',
+                            channel: 'sms',
+                            preferenceChecked: preferenceCheck.preferenceChecked,
+                            preferenceStatus: preferenceCheck.preferenceStatus,
+                            skippedReason: preferenceCheck.reason,
+                            relatedEntityId: shift.id,
+                            relatedEntityType: 'shift',
+                            metadata: { shift_date: shift.date, client_name: client.name }
+                        });
+                        continue;
+                    }
+
                     const agencyName = agency?.name || 'Your Agency';
                     const locationText = shift.work_location_within_site ? ` at ${shift.work_location_within_site}` : '';
 
@@ -226,9 +362,62 @@ serve(async (req) => {
                     const whatsappSuccess = whatsappResult.status === 'fulfilled' && whatsappResult.value?.data?.success;
 
                     if (smsSuccess || whatsappSuccess) {
+                        // ✅ NEW: Log successful sends
+                        if (smsSuccess) {
+                            const smsId = (smsResult as PromiseFulfilledResult<any>).value?.data?.sid;
+                            await logNotificationSent(supabase, {
+                                recipientEmail: staff.email,
+                                recipientPhone: staff.phone,
+                                recipientType: 'staff',
+                                staffId: staff.id,
+                                agencyId: shift.agency_id,
+                                notificationType: 'shift_2h_reminder',
+                                channel: 'sms',
+                                provider: 'twilio',
+                                providerMessageId: smsId,
+                                preferenceChecked: preferenceCheck.preferenceChecked,
+                                preferenceStatus: preferenceCheck.preferenceStatus,
+                                relatedEntityId: shift.id,
+                                relatedEntityType: 'shift',
+                                metadata: { shift_date: shift.date, client_name: client.name, gps_enabled: hasGPSConsent }
+                            });
+                        }
+                        if (whatsappSuccess) {
+                            const whatsappId = (whatsappResult as PromiseFulfilledResult<any>).value?.data?.sid;
+                            await logNotificationSent(supabase, {
+                                recipientEmail: staff.email,
+                                recipientPhone: staff.phone,
+                                recipientType: 'staff',
+                                staffId: staff.id,
+                                agencyId: shift.agency_id,
+                                notificationType: 'shift_2h_reminder',
+                                channel: 'whatsapp',
+                                provider: 'twilio',
+                                providerMessageId: whatsappId,
+                                preferenceChecked: preferenceCheck.preferenceChecked,
+                                preferenceStatus: preferenceCheck.preferenceStatus,
+                                relatedEntityId: shift.id,
+                                relatedEntityType: 'shift',
+                                metadata: { shift_date: shift.date, client_name: client.name, gps_enabled: hasGPSConsent }
+                            });
+                        }
+                        
                         results.reminders_2h_sent++;
                         console.log(`✅ [2h Reminder] Sent to ${staff.first_name} ${staff.last_name} (SMS: ${smsSuccess}, WhatsApp: ${whatsappSuccess})`);
                     } else {
+                        // ✅ NEW: Log failure
+                        await logNotificationFailed(supabase, {
+                            recipientEmail: staff.email,
+                            recipientPhone: staff.phone,
+                            recipientType: 'staff',
+                            staffId: staff.id,
+                            agencyId: shift.agency_id,
+                            notificationType: 'shift_2h_reminder',
+                            channel: 'sms',
+                            errorMessage: 'Both SMS and WhatsApp failed',
+                            relatedEntityId: shift.id,
+                            relatedEntityType: 'shift'
+                        });
                         console.error(`❌ [2h Reminder] Both channels failed for shift ${shift.id}`);
                         results.errors.push({
                             shift_id: shift.id,

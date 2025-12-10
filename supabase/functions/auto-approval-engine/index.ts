@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 
 /**
  * OPTION B: Auto-Approval Engine
@@ -94,6 +101,85 @@ serve(async (req) => {
                     });
 
                     console.log(`✅ Auto-approved timesheet ${timesheet.id} (score: ${validation.score})`);
+
+                    // Send notification to staff
+                    try {
+                        // Fetch staff email if not available (timesheet might not have it, need to fetch staff)
+                        // Optimization: We could have fetched staff earlier, but for now let's fetch here or assume we have it?
+                        // The loop iterates timesheets. We need staff details.
+                        // Let's fetch staff member details.
+                        const { data: staffMember } = await supabase
+                            .from('staff')
+                            .select('email, first_name, id')
+                            .eq('id', timesheet.staff_id)
+                            .single();
+
+                        if (staffMember?.email) {
+                            // Check preference
+                            const preferenceCheck = await shouldSendNotification(
+                                supabase,
+                                staffMember.email,
+                                'system_update',
+                                'email',
+                                'staff'
+                            );
+
+                            if (!preferenceCheck.allowed) {
+                                console.log(`⏭️ [Auto-Approval] Skipped for ${staffMember.email} - ${preferenceCheck.reason}`);
+                                await logNotificationSkipped(supabase, {
+                                    recipientEmail: staffMember.email,
+                                    recipientType: 'staff',
+                                    staffId: staffMember.id,
+                                    agencyId: shift?.agency_id, // Assuming shift has agency_id
+                                    notificationType: 'system_update',
+                                    channel: 'email',
+                                    preferenceChecked: preferenceCheck.preferenceChecked,
+                                    preferenceStatus: preferenceCheck.preferenceStatus,
+                                    skippedReason: preferenceCheck.reason,
+                                    metadata: { timesheet_id: timesheet.id, action: 'auto_approved' }
+                                });
+                            } else {
+                                const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-email', {
+                                    body: {
+                                        to: staffMember.email,
+                                        subject: '✅ Timesheet Approved',
+                                        body: `Good news ${staffMember.first_name}! Your timesheet has been automatically approved.`
+                                    }
+                                });
+
+                                if (emailError) throw emailError;
+
+                                await logNotificationSent(supabase, {
+                                    recipientEmail: staffMember.email,
+                                    recipientType: 'staff',
+                                    staffId: staffMember.id,
+                                    agencyId: shift?.agency_id,
+                                    notificationType: 'system_update',
+                                    channel: 'email',
+                                    provider: 'resend',
+                                    providerMessageId: emailResult?.id,
+                                    preferenceChecked: preferenceCheck.preferenceChecked,
+                                    preferenceStatus: preferenceCheck.preferenceStatus,
+                                    metadata: { timesheet_id: timesheet.id, action: 'auto_approved' }
+                                });
+                            }
+                        }
+                    } catch (notifyError: any) {
+                        console.error('Failed to notify staff of auto-approval:', notifyError);
+                        // Log failure
+                        // We need staffMember details for logging, if fetch failed we might not have them.
+                        // But we have timesheet.staff_id.
+                         await logNotificationFailed(supabase, {
+                            recipientEmail: 'unknown', // We might not have email if fetch failed
+                            recipientType: 'staff',
+                            staffId: timesheet.staff_id,
+                            agencyId: shift?.agency_id,
+                            notificationType: 'system_update',
+                            channel: 'email',
+                            errorMessage: notifyError.message,
+                            errorCode: 'send_failed'
+                        });
+                    }
                 } else {
                     // FLAG FOR REVIEW
                     results.flagged.push({

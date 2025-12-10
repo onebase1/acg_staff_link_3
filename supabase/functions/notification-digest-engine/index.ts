@@ -1,8 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import { 
+    logNotificationSent, 
+    logNotificationFailed, 
+    logNotificationSkipped 
+} from "../_shared/notificationLogger.ts";
 
 /**
- * 📧 NOTIFICATION DIGEST ENGINE
+ * 📧 NOTIFICATION DIGEST ENGINE - ENHANCED
  *
  * Processes queued notifications and sends batched emails
  * Runs every 5 minutes via cron
@@ -10,6 +16,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * ✅ BATCHING: Multiple shifts in one email
  * ✅ PROFESSIONAL: Branded templates with agency logos
  * ✅ SMART: Groups by recipient + type
+ * ✅ PREFERENCE CHECKING: Respects user opt-outs (NEW)
+ * ✅ COMPREHENSIVE LOGGING: Audit trail for all sends (NEW)
  */
 
 serve(async (req) => {
@@ -258,8 +266,57 @@ serve(async (req) => {
                             </div>
                         </body>
                         </html>
-                    `;
+                    `; }
+
+                // ✅ NEW: Check if user has opted out of this notification type
+                const recipientType = queue.recipient_type || 'client'; // Default to client
+                const preferenceCheck = await shouldSendNotification(
+                    supabase,
+                    queue.recipient_email,
+                    queue.notification_type,
+                    'email',
+                    recipientType
+                );
+
+                // If user opted out, log and skip
+                if (!preferenceCheck.allowed) {
+                    console.log(`⏭️ [Queue ${queue.id}] Skipping - ${preferenceCheck.reason}`);
+                    
+                    // Log skipped notification
+                    await logNotificationSkipped(supabase, {
+                        recipientEmail: queue.recipient_email,
+                        recipientFirstName: queue.recipient_first_name,
+                        recipientType: recipientType,
+                        agencyId: queue.agency_id,
+                        notificationType: queue.notification_type,
+                        channel: 'email',
+                        subject: subject,
+                        templateName: 'inline_html', // TODO: Extract to templates
+                        preferenceChecked: preferenceCheck.preferenceChecked,
+                        preferenceStatus: preferenceCheck.preferenceStatus,
+                        skippedReason: preferenceCheck.reason,
+                        queueId: queue.id,
+                        batchId: queue.id, // Using queue ID as batch ID
+                        metadata: {
+                            item_count: queue.item_count,
+                            pending_items: queue.pending_items
+                        }
+                    });
+
+                    // Update queue status to skipped
+                    await supabase
+                        .from("notification_queue")
+                        .update({
+                            status: 'skipped',
+                            sent_at: now.toISOString()
+                        })
+                        .eq("id", queue.id);
+
+                    results.processed++;
+                    continue; // Skip to next queue item
                 }
+
+                console.log(`✅ [Queue ${queue.id}] Preference check passed - proceeding with send`);
 
                 // Send the batched email
                 const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-email', {
@@ -272,8 +329,31 @@ serve(async (req) => {
                 });
 
                 if (emailError || !emailResult?.success) {
-                    throw new Error(emailResult?.error || emailError?.message || 'Email send failed');
+                    const errorMessage = emailResult?.error || emailError?.message || 'Email send failed';
+                    throw new Error(errorMessage);
                 }
+
+                // ✅ NEW: Log successful send
+                await logNotificationSent(supabase, {
+                    recipientEmail: queue.recipient_email,
+                    recipientFirstName: queue.recipient_first_name,
+                    recipientType: recipientType,
+                    agencyId: queue.agency_id,
+                    notificationType: queue.notification_type,
+                    channel: 'email',
+                    subject: subject,
+                    templateName: 'inline_html', // TODO: Extract to templates
+                    provider: 'resend',
+                    providerMessageId: emailResult.messageId,
+                    preferenceChecked: preferenceCheck.preferenceChecked,
+                    preferenceStatus: preferenceCheck.preferenceStatus,
+                    queueId: queue.id,
+                    batchId: queue.id,
+                    metadata: {
+                        item_count: queue.item_count,
+                        agency_name: agency?.name
+                    }
+                });
 
                 // ✅ FIX: Changed from notification_queues to notification_queue (singular)
                 await supabase
@@ -290,21 +370,40 @@ serve(async (req) => {
                 results.processed++;
 
             } catch (queueError) {
-                console.error(`❌ [Queue ${queue.id}] Error:`, queueError.message);
+                const error = queueError as Error;
+                console.error(`❌ [Queue ${queue.id}] Error:`, error.message);
+
+                // ✅ NEW: Log failed send
+                await logNotificationFailed(supabase, {
+                    recipientEmail: queue.recipient_email,
+                    recipientFirstName: queue.recipient_first_name,
+                    recipientType: queue.recipient_type || 'client',
+                    agencyId: queue.agency_id,
+                    notificationType: queue.notification_type,
+                    channel: 'email',
+                    subject: '', // Subject may not be set if error occurred early
+                    errorMessage: error.message,
+                    errorCode: 'send_failed',
+                    queueId: queue.id,
+                    batchId: queue.id,
+                    metadata: {
+                        item_count: queue.item_count
+                    }
+                });
 
                 // ✅ FIX: Changed from notification_queues to notification_queue (singular)
                 await supabase
                     .from("notification_queue")
                     .update({
                         status: 'failed',
-                        error_message: queueError.message
+                        error_message: error.message
                     })
                     .eq("id", queue.id);
 
                 results.failed++;
                 results.errors.push({
                     queue_id: queue.id,
-                    error: queueError.message
+                    error: error.message
                 });
             }
         }

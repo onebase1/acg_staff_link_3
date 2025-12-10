@@ -41,12 +41,13 @@
    - Switched finance user to OPERATIONS_MANAGER role as workaround
    - Successfully logged in to Client Portal (30 seconds!)
 
-6. **Found & Fixed ProfileSetup Bug** ✅
+6. **Found & Fixed ProfileSetup Bug (2 Locations!)** ✅
    - Client users were stuck on ProfileSetup page
-   - Root cause: ProfileSetup logic required agency_id for all users
-   - But client users DON'T need agency_id (they use client_id)
-   - Fixed: Excluded client_user from agency_id validation
-   - Location: ProfileSetup.jsx:248-253
+   - Root cause: ProfileSetup checked agency_id in TWO places
+   - Fix #1: needsOnboarding state check (line 248-253) - button text
+   - Fix #2: handleSubmit validation (line 545-550) - actual save blocker
+   - Learning: One symptom can have multiple causes - search thoroughly!
+   - Locations: ProfileSetup.jsx:248-253 AND 545-550
 
 ### 📚 LEARNINGS:
 
@@ -82,6 +83,18 @@
    - This broke client_user flow (null agency_id is correct for them)
    - Testing revealed edge case the original agent missed
    - Fix: Add user_type check before validating agency_id
+
+7. **Search Error Messages to Find Bugs**
+   - User saw error: "⚠️ Please select an agency"
+   - Searched codebase for exact error text: `toast.error('⚠️ Please select an agency')`
+   - Led directly to handleSubmit function with second validation bug
+   - Lesson: Error messages are breadcrumbs - grep for them!
+
+8. **One Symptom, Multiple Causes**
+   - Fixed needsOnboarding check → button text changed
+   - But save still failed → found second validation in handleSubmit
+   - Don't assume first fix solves everything
+   - Test after each fix to verify actual behavior
 
 ### 🎯 WHAT'S NEXT:
 

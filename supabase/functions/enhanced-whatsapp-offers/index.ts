@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
+} from "../_shared/notificationLogger.ts";
+import { scheduleRetry } from "../_shared/retryHandler.ts";
 
 /**
  * TIER 2B-1: Enhanced WhatsApp Shift Offers
@@ -92,15 +99,44 @@ serve(async (req) => {
 
         // Send to each staff member
         for (const staffId of staff_ids) {
+            let staffMember = null;
             try {
-                const { data: staffMember, error: staffError } = await supabase
+                const { data: fetchedStaff, error: staffError } = await supabase
                     .from("staff")
                     .select("*")
                     .eq("id", staffId)
                     .single();
 
-                if (staffError || !staffMember) {
+                if (staffError || !fetchedStaff) {
                     console.log(`⚠️  Staff ${staffId} not found, skipping`);
+                    continue;
+                }
+
+                staffMember = fetchedStaff;
+
+                // Check preferences
+                const preferenceCheck = await shouldSendNotification(
+                    supabase,
+                    staffMember.email,
+                    'shift_offer',
+                    'whatsapp',
+                    'staff'
+                );
+
+                if (!preferenceCheck.allowed) {
+                    console.log(`⏭️ [WhatsApp Offer] Skipped for ${staffMember.email} - ${preferenceCheck.reason}`);
+                    await logNotificationSkipped(supabase, {
+                        recipientEmail: staffMember.email,
+                        recipientType: 'staff',
+                        staffId: staffMember.id,
+                        agencyId: shift.agency_id,
+                        notificationType: 'shift_offer',
+                        channel: 'whatsapp',
+                        preferenceChecked: preferenceCheck.preferenceChecked,
+                        preferenceStatus: preferenceCheck.preferenceStatus,
+                        skippedReason: preferenceCheck.reason,
+                        metadata: { shift_id: shift.id }
+                    });
                     continue;
                 }
 
@@ -140,18 +176,55 @@ Reply *NO* or *2*
 _Shift ID: ${shift.id.slice(-8)}_`;
 
                 // Send WhatsApp message
-                await supabase.functions.invoke('send-whatsapp', {
+                const { error: sendError } = await supabase.functions.invoke('send-whatsapp', {
                     body: {
                         to: staffMember.phone,
                         message: message
                     }
                 });
 
+                if (sendError) throw sendError;
+
                 console.log(`✅ Sent WhatsApp offer to ${staffMember.first_name} ${staffMember.last_name}`);
+                
+                await logNotificationSent(supabase, {
+                    recipientEmail: staffMember.email,
+                    recipientType: 'staff',
+                    staffId: staffMember.id,
+                    agencyId: shift.agency_id,
+                    notificationType: 'shift_offer',
+                    channel: 'whatsapp',
+                    provider: 'twilio', // Assuming Twilio for WhatsApp
+                    preferenceChecked: preferenceCheck.preferenceChecked,
+                    preferenceStatus: preferenceCheck.preferenceStatus,
+                    metadata: { shift_id: shift.id }
+                });
+
                 results.sent++;
 
-            } catch (staffError) {
+            } catch (staffError: any) {
                 console.error(`❌ Error sending to staff ${staffId}:`, staffError.message);
+                
+                await logNotificationFailed(supabase, {
+                    recipientEmail: staffMember?.email || 'unknown',
+                    recipientType: 'staff',
+                    staffId: staffId,
+                    agencyId: shift.agency_id,
+                    notificationType: 'shift_offer',
+                    channel: 'whatsapp',
+                    errorMessage: staffError.message,
+                    errorCode: 'send_failed'
+                });
+                
+                await scheduleRetry(supabase, {
+                    notificationType: 'shift_offer',
+                    recipientEmail: staffMember?.email || `staff_${staffId}@unknown.com`,
+                    recipientId: staffId,
+                    agencyId: shift.agency_id,
+                    channel: 'whatsapp',
+                    metadata: { shift_id: shift.id }
+                });
+                
                 results.failed++;
                 results.errors.push({
                     staff_id: staffId,
