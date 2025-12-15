@@ -159,25 +159,67 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
       };
     }
 
-    // Check for 24-hour violation (worked > 16 hours in 24h window)
-    const last24Hours = staffShifts.filter(s => {
-      const sDate = new Date(s.date);
-      const shiftDate = new Date(shift.date);
-      // Calculate difference in milliseconds
-      const timeDiff = Math.abs(shiftDate.getTime() - sDate.getTime());
-      // Convert to hours
-      const hoursDiff = timeDiff / (1000 * 60 * 60);
-      return hoursDiff <= 24;
-    });
+    // ✅ FIX: Check for CONTINUOUS WORK (minimum rest period between shifts)
+    // Industry standard: 11 hours minimum rest between shifts (EU Working Time Directive)
+    // This allows: Mon Night → Tue Night (12h break) ✓
+    // This blocks: Mon Day → Mon Night (0h break) ✗
 
-    const totalHoursIn24h = last24Hours.reduce((sum, s) => sum + (s.duration_hours || 0), 0) + (shift.duration_hours || 0);
+    const MIN_REST_HOURS = 11; // Minimum hours of rest required between shifts
 
-    if (totalHoursIn24h > 16) {
-      return {
-        valid: false,
-        reason: '24h_limit',
-        totalHours: totalHoursIn24h
-      };
+    for (const existingShift of staffShifts) {
+      if (existingShift.id === shift.id) continue; // Skip current shift
+
+      // Calculate actual end time of existing shift
+      const existingStart = new Date(`${existingShift.date}T${existingShift.start_time}`);
+      let existingEnd = new Date(`${existingShift.date}T${existingShift.end_time}`);
+
+      // Handle overnight shifts (end_time < start_time means next day)
+      if (existingEnd < existingStart) {
+        existingEnd.setDate(existingEnd.getDate() + 1);
+      }
+
+      // Calculate actual start time of new shift
+      const newShiftStart = new Date(`${shift.date}T${shift.start_time}`);
+
+      // Calculate rest period between shifts
+      // If existing shift ends BEFORE new shift starts → calculate gap
+      if (existingEnd <= newShiftStart) {
+        const restHours = (newShiftStart.getTime() - existingEnd.getTime()) / (1000 * 60 * 60);
+
+        if (restHours < MIN_REST_HOURS) {
+          return {
+            valid: false,
+            reason: 'insufficient_rest',
+            restHours: restHours.toFixed(1),
+            previousShift: {
+              date: existingShift.date,
+              end_time: existingShift.end_time
+            }
+          };
+        }
+      }
+
+      // If new shift ends BEFORE existing shift starts → calculate gap
+      let newShiftEnd = new Date(`${shift.date}T${shift.end_time}`);
+      if (newShiftEnd < newShiftStart) {
+        newShiftEnd.setDate(newShiftEnd.getDate() + 1);
+      }
+
+      if (newShiftEnd <= existingStart) {
+        const restHours = (existingStart.getTime() - newShiftEnd.getTime()) / (1000 * 60 * 60);
+
+        if (restHours < MIN_REST_HOURS) {
+          return {
+            valid: false,
+            reason: 'insufficient_rest',
+            restHours: restHours.toFixed(1),
+            nextShift: {
+              date: existingShift.date,
+              start_time: existingShift.start_time
+            }
+          };
+        }
+      }
     }
 
     return { valid: true };
@@ -191,8 +233,8 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
       if (!validation.valid) {
         if (validation.reason === 'overlap') {
           throw new Error(`Staff already assigned to ${validation.overlaps.length} overlapping shift(s) on ${shift.date}`);
-        } else if (validation.reason === '24h_limit') {
-          throw new Error(`Staff would work ${validation.totalHours.toFixed(1)}h in 24 hours (max: 16h)`);
+        } else if (validation.reason === 'insufficient_rest') {
+          throw new Error(`Insufficient rest period: Only ${validation.restHours}h break between shifts (minimum 11h required)`);
         }
       }
 
@@ -541,9 +583,9 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
                                 </ul>
                               </>
                             )}
-                            {validation.reason === '24h_limit' && (
+                            {validation.reason === 'insufficient_rest' && (
                               <>
-                                <strong>⚠️ 24-HOUR LIMIT:</strong> Would work {validation.totalHours.toFixed(1)}h in 24 hours (max: 16h for safety)
+                                <strong>⚠️ INSUFFICIENT REST:</strong> Only {validation.restHours}h break between shifts (minimum 11h required for worker safety)
                               </>
                             )}
                           </AlertDescription>
