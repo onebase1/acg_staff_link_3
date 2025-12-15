@@ -29,7 +29,7 @@ export const NotificationService = {
           from_name
         }
       });
-      
+
       if (error) throw error;
       return { success: true, data };
     } catch (error) {
@@ -111,7 +111,7 @@ export const NotificationService = {
           throw insertError;
         }
 
-        console.log('✅ [Queue] Created new queue entry');
+        console.log(`✅ [Queue] Created new queue entry. Scheduled for immediate pickup by next digest cycle (within 5 mins). Time: ${queueData.scheduled_send_at}`);
       }
 
       return { success: true, queued: true };
@@ -227,7 +227,8 @@ export const NotificationService = {
       duration_hours: shift.duration_hours,
       role: shift.role_required.replace('_', ' '),
       pay_rate: shift.pay_rate,
-      notes: shift.notes
+      notes: shift.notes,
+      status: shift.status // ✅ Added status for template logic
     };
 
     if (useBatching) {
@@ -250,29 +251,32 @@ export const NotificationService = {
       ];
 
       const portalUrl = `${window.location.origin}/staffportal?highlight=${shift.id}`;
+      const isConfirmed = shift.status === 'confirmed';
 
       const html = EmailTemplates.baseWrapper({
         agencyName,
         agencyLogo: agency?.logo_url,
         children: `
           ${EmailTemplates.header({
-            title: '📅 New Shift Assignment',
-            subtitle: 'You have been assigned to a new shift',
-            bgColor: '#06b6d4',
+            title: isConfirmed ? '✅ Shift Confirmed' : '📅 New Shift Assignment',
+            subtitle: isConfirmed ? 'You have been assigned and confirmed' : 'You have been assigned to a new shift',
+            bgColor: isConfirmed ? '#10b981' : '#0284c7',
             agencyLogo: agency?.logo_url
           })}
           ${EmailTemplates.content({
             greeting: `Dear ${staff.first_name},`,
             body: `
               <p style="font-size: 16px; color: #374151; line-height: 1.6; margin: 0 0 20px 0;">
-                We're pleased to inform you that you have been assigned to a new shift. 
-                Please review the details below and confirm your availability through your Staff Portal.
+                ${isConfirmed
+                  ? `You have been assigned and confirmed for the following shift. Please ensure you arrive on time and are ready to work.`
+                  : `We're pleased to inform you that you have been assigned to a new shift. Please review the details below and confirm your availability through your Staff Portal.`
+                }
               </p>
-              
+
               ${EmailTemplates.infoCard({
                 title: 'Shift Details',
                 items,
-                borderColor: '#06b6d4'
+                borderColor: isConfirmed ? '#10b981' : '#06b6d4'
               })}
 
               ${shift.notes ? `
@@ -281,16 +285,16 @@ export const NotificationService = {
                 </p>
               ` : ''}
 
-              ${EmailTemplates.alertBox({
+              ${!isConfirmed ? EmailTemplates.alertBox({
                 type: 'info',
                 title: '📋 Action Required',
                 message: 'Please confirm your availability as soon as possible by visiting your Staff Portal. You can view full shift details and confirm or decline the assignment there.'
-              })}
+              }) : ''}
 
               ${EmailTemplates.button({
-                text: 'View & Confirm in Staff Portal',
+                text: isConfirmed ? 'View Shift in Staff Portal' : 'View & Confirm in Staff Portal',
                 url: portalUrl,
-                bgColor: '#06b6d4'
+                bgColor: isConfirmed ? '#10b981' : '#06b6d4'
               })}
 
               <p style="font-size: 14px; color: #6b7280; line-height: 1.6; margin: 25px 0 0 0;">
@@ -303,7 +307,7 @@ export const NotificationService = {
 
       results.email = await this.sendEmail({
         to: staff.email,
-        subject: `New Shift Assignment - ${client.name}`,
+        subject: isConfirmed ? `Shift Confirmed - ${client.name}` : `New Shift Assignment - ${client.name}`,
         html,
         from_name: agencyName
       });
@@ -359,41 +363,41 @@ export const NotificationService = {
       agencyLogo: agency?.logo_url,
       children: `
         ${EmailTemplates.header({
-          title: '🚨 URGENT SHIFT AVAILABLE',
-          subtitle: 'First Come, First Served',
-          bgColor: '#dc2626',
-          agencyLogo: agency?.logo_url
-        })}
+        title: '🚨 URGENT SHIFT AVAILABLE',
+        subtitle: 'First Come, First Served',
+        bgColor: '#dc2626',
+        agencyLogo: agency?.logo_url
+      })}
         ${EmailTemplates.content({
-          greeting: `Hi ${staff.first_name},`,
-          body: `
+        greeting: `Hi ${staff.first_name},`,
+        body: `
             <p style="font-size: 18px; color: #dc2626; font-weight: 600; margin: 0 0 20px 0;">
               An urgent shift matching your role is now available!
             </p>
 
             ${EmailTemplates.infoCard({
-              title: 'Shift Details',
-              items,
-              borderColor: '#dc2626'
-            })}
+          title: 'Shift Details',
+          items,
+          borderColor: '#dc2626'
+        })}
 
             ${EmailTemplates.alertBox({
-              type: 'warning',
-              title: '⚡ Act Fast!',
-              message: 'This shift is available on a first-come, first-served basis. Click below to view and accept in the Staff Portal.'
-            })}
+          type: 'warning',
+          title: '⚡ Act Fast!',
+          message: 'This shift is available on a first-come, first-served basis. Click below to view and accept in the Staff Portal.'
+        })}
 
             ${EmailTemplates.button({
-              text: '🚀 View & Accept Shift',
-              url: portalUrl,
-              bgColor: '#dc2626'
-            })}
+          text: '🚀 View & Accept Shift',
+          url: portalUrl,
+          bgColor: '#dc2626'
+        })}
 
             <p style="font-size: 14px; color: #6b7280; line-height: 1.6; margin: 25px 0 0 0;">
               <strong>Important:</strong> This shift may be filled quickly. If you're interested, please click the button above immediately to secure it.
             </p>
           `
-        })}
+      })}
       `
     });
 
@@ -482,14 +486,14 @@ export const NotificationService = {
       agencyLogo: agency?.logo_url,
       children: `
         ${EmailTemplates.header({
-          title: urgencyLevel,
-          subtitle: 'Compliance Document Expiring',
-          bgColor,
-          agencyLogo: agency?.logo_url
-        })}
+        title: urgencyLevel,
+        subtitle: 'Compliance Document Expiring',
+        bgColor,
+        agencyLogo: agency?.logo_url
+      })}
         ${EmailTemplates.content({
-          greeting: `Dear ${staff.first_name},`,
-          body: `
+        greeting: `Dear ${staff.first_name},`,
+        body: `
             <p style="font-size: 16px; color: #374151; line-height: 1.6; margin: 0 0 20px 0;">
               This is an important notice regarding your compliance documentation with <strong>${agencyName}</strong>.
             </p>
@@ -499,24 +503,23 @@ export const NotificationService = {
             </p>
 
             ${EmailTemplates.infoCard({
-              title: 'Document Information',
-              items,
-              borderColor: bgColor
-            })}
+          title: 'Document Information',
+          items,
+          borderColor: bgColor
+        })}
 
             ${EmailTemplates.alertBox({
-              type: 'error',
-              title: '⚠️ ACTION REQUIRED',
-              message: `Please upload your renewed ${document.document_name} to your portal immediately to avoid work interruption.${
-                days_until_expiry <= 7 ? ' You will be unable to accept new shifts if this document expires.' : ''
-              }`
-            })}
+          type: 'error',
+          title: '⚠️ ACTION REQUIRED',
+          message: `Please upload your renewed ${document.document_name} to your portal immediately to avoid work interruption.${days_until_expiry <= 7 ? ' You will be unable to accept new shifts if this document expires.' : ''
+            }`
+        })}
 
             ${EmailTemplates.ctaButton({
-              text: 'Update My Documents',
-              url: 'https://agilecaremanagement.co.uk/staff-portal',
-              bgColor: bgColor
-            })}
+          text: 'Update My Documents',
+          url: 'https://agilecaremanagement.co.uk/staff-portal',
+          bgColor: bgColor
+        })}
 
             <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 20px; margin: 25px 0; border-radius: 8px;">
               <p style="margin: 0 0 10px 0; color: #0c4a6e; font-size: 15px; font-weight: bold;">
@@ -529,7 +532,7 @@ export const NotificationService = {
               </p>
             </div>
           `
-        })}
+      })}
       `
     });
 
@@ -585,28 +588,28 @@ export const NotificationService = {
       agencyLogo: agency?.logo_url,
       children: `
         ${EmailTemplates.header({
-          title: '✅ Shift Confirmed',
-          subtitle: 'Your shift has been confirmed',
-          bgColor: '#10b981',
-          agencyLogo: agency?.logo_url
-        })}
+        title: '✅ Shift Confirmed',
+        subtitle: 'Your shift has been confirmed',
+        bgColor: '#10b981',
+        agencyLogo: agency?.logo_url
+      })}
         ${EmailTemplates.content({
-          greeting: `Dear ${staff.first_name},`,
-          body: `
+        greeting: `Dear ${staff.first_name},`,
+        body: `
             <p style="font-size: 16px; color: #374151; line-height: 1.6; margin: 0 0 25px 0;">
               Great news! Your shift has been confirmed. Please review the details below and ensure you arrive 10 minutes early.
             </p>
             
             ${EmailTemplates.infoCard({
-              title: 'Shift Information',
-              items,
-              borderColor: '#10b981'
-            })}
+          title: 'Shift Information',
+          items,
+          borderColor: '#10b981'
+        })}
 
             ${EmailTemplates.alertBox({
-              type: 'info',
-              title: '📋 Important Reminders',
-              message: `
+          type: 'info',
+          title: '📋 Important Reminders',
+          message: `
                 • Arrive 10 minutes before your shift start time<br>
                 • Bring your ID badge and any required documentation<br>
                 • Clock in via the app when you arrive<br>
@@ -614,15 +617,15 @@ export const NotificationService = {
                 &nbsp;&nbsp;📧 ${agency?.contact_email || 'support@agilecaremanagement.co.uk'}<br>
                 &nbsp;&nbsp;📱 ${agency?.contact_phone || '+44 20 1234 5678'}
               `
-            })}
+        })}
 
             ${EmailTemplates.ctaButton({
-              text: 'Go to Staff Portal',
-              url: 'https://agilecaremanagement.co.uk/staff-portal',
-              bgColor: '#10b981'
-            })}
-          `
+          text: 'Go to Staff Portal',
+          url: 'https://agilecaremanagement.co.uk/staff-portal',
+          bgColor: '#10b981'
         })}
+          `
+      })}
       `
     });
 
@@ -678,39 +681,39 @@ export const NotificationService = {
       agencyLogo: agency?.logo_url,
       children: `
         ${EmailTemplates.header({
-          title: '🔔 Shift Reminder',
-          subtitle: 'Your shift is tomorrow',
-          bgColor: '#f59e0b',
-          agencyLogo: agency?.logo_url
-        })}
+        title: '🔔 Shift Reminder',
+        subtitle: 'Your shift is tomorrow',
+        bgColor: '#f59e0b',
+        agencyLogo: agency?.logo_url
+      })}
         ${EmailTemplates.content({
-          greeting: `Dear ${staff.first_name},`,
-          body: `
+        greeting: `Dear ${staff.first_name},`,
+        body: `
             <p style="font-size: 16px; color: #374151; line-height: 1.6; margin: 0 0 25px 0;">
               This is a reminder that you have a shift scheduled for <strong>tomorrow</strong>.
             </p>
             
             ${EmailTemplates.infoCard({
-              title: 'Shift Details',
-              items,
-              borderColor: '#f59e0b'
-            })}
+          title: 'Shift Details',
+          items,
+          borderColor: '#f59e0b'
+        })}
 
             ${EmailTemplates.alertBox({
-              type: 'warning',
-              title: '⚠️ Important',
-              message: `If you cannot attend this shift, please contact ${agencyName} immediately. Last-minute cancellations affect client care.<br><br>
+          type: 'warning',
+          title: '⚠️ Important',
+          message: `If you cannot attend this shift, please contact ${agencyName} immediately. Last-minute cancellations affect client care.<br><br>
                 📧 ${agency?.contact_email || 'support@agilecaremanagement.co.uk'}<br>
                 📱 ${agency?.contact_phone || '+44 20 1234 5678'}`
-            })}
+        })}
 
             ${EmailTemplates.ctaButton({
-              text: 'View Shift Details',
-              url: 'https://agilecaremanagement.co.uk/staff-portal',
-              bgColor: '#f59e0b'
-            })}
-          `
+          text: 'View Shift Details',
+          url: 'https://agilecaremanagement.co.uk/staff-portal',
+          bgColor: '#f59e0b'
         })}
+          `
+      })}
       `
     });
 
@@ -776,28 +779,28 @@ export const NotificationService = {
       agencyLogo: null,
       children: `
         ${EmailTemplates.header({
-          title: '✅ Shift Confirmed',
-          subtitle: 'Staff Member Assigned',
-          bgColor: '#06b6d4'
-        })}
+        title: '✅ Shift Confirmed',
+        subtitle: 'Staff Member Assigned',
+        bgColor: '#06b6d4'
+      })}
         ${EmailTemplates.content({
-          greeting: `Dear ${client.contact_person?.name || 'Team'},`,
-          body: `
+        greeting: `Dear ${client.contact_person?.name || 'Team'},`,
+        body: `
             <p style="font-size: 16px; color: #374151; line-height: 1.6; margin: 0 0 25px 0;">
               We're pleased to confirm that your shift request has been successfully filled.
             </p>
             
             ${EmailTemplates.infoCard({
-              title: 'Assigned Staff Member',
-              items,
-              borderColor: '#06b6d4'
-            })}
+          title: 'Assigned Staff Member',
+          items,
+          borderColor: '#06b6d4'
+        })}
 
             <p style="font-size: 14px; color: #6b7280; line-height: 1.6; margin: 25px 0 0 0;">
               ${staff.first_name} will arrive at the scheduled time.
             </p>
           `
-        })}
+      })}
       `
     });
 
@@ -812,6 +815,47 @@ export const NotificationService = {
       html,
       from_name: 'Agile Care Management'
     });
+  },
+
+  /**
+   * ✅ NEW: Notify client/admin of shift creation receipt (Batched)
+   * Sends a summary email of shifts created in a batch.
+   */
+  async notifyShiftReceipt({ client, agency, shifts = [], initiatorProfile, userType }) {
+    console.log('📧 Queueing Shift Receipt Notification:', {
+      client: client?.name,
+      count: shifts.length,
+      initiator: initiatorProfile?.email
+    });
+
+    if (!client || !agency || shifts.length === 0) return;
+
+    // Only send receipt if user is Admin or Manager
+    const recipientEmail = initiatorProfile?.email;
+    if (!recipientEmail) return;
+
+    // Queue each shift individually so the digest engine can render them as rows
+    const promises = shifts.map(shift => {
+      return this.queueNotification({
+        recipient_email: recipientEmail,
+        recipient_type: userType || 'agency_admin',
+        recipient_first_name: initiatorProfile?.first_name || 'User',
+        notification_type: 'shift_receipt',
+        agency_id: agency.id,
+        item: {
+          client_name: client.name,
+          date: shift.date,
+          start_time: shift.start_time,
+          end_time: shift.end_time,
+          role: shift.role || shift.role_required, // Handle both formats
+          location: shift.work_location_within_site || shift.location, // Handle both formats
+          agency_name: agency.name,
+          created_at: new Date().toISOString()
+        }
+      });
+    });
+
+    return Promise.all(promises);
   }
 };
 
