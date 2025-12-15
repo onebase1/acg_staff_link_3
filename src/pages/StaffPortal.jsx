@@ -967,12 +967,17 @@ export default function StaffPortal() {
                 // ✅ FIX: Find timesheet via booking_id (not shift_id) - same pattern as line 1302
                 const nextShiftBooking = myBookings.find(b => b.shift_id === nextShift.id);
                 const nextShiftTimesheet = nextShiftBooking ? myTimesheets.find(t => t.booking_id === nextShiftBooking.id) : null;
-                const isTimesheetInProgress = !!(nextShiftTimesheet?.clock_in_time && !nextShiftTimesheet?.clock_out_time);
-                const isTimesheetCompleted = !!nextShiftTimesheet?.clock_out_time;
-                const isShiftInProgress = nextShift.status === 'in_progress';
+
+                // 🎯 FIX: PRIORITY = Actual clock-in status (timesheet) > Scheduled status (shift.status)
+                const hasActuallyStarted = !!nextShiftTimesheet?.clock_in_time;
+                const hasActuallyEnded = !!nextShiftTimesheet?.clock_out_time;
+
+                const isTimesheetInProgress = hasActuallyStarted && !hasActuallyEnded;
+                const isTimesheetCompleted = hasActuallyEnded;
                 const isShiftCompleted = nextShift.status === 'completed';
 
-                const isInProgress = isTimesheetInProgress || isShiftInProgress;
+                // ✅ FIX: Only show "in progress" if staff has actually clocked in
+                const isInProgress = isTimesheetInProgress;
                 const isCompleted = isTimesheetCompleted || isShiftCompleted;
 
                 if (isCompleted) {
@@ -1016,12 +1021,18 @@ export default function StaffPortal() {
               // ✅ FIX: Find timesheet via booking_id (not shift_id) - same pattern as line 1302
               const nextShiftBooking = myBookings.find(b => b.shift_id === nextShift.id);
               const nextShiftTimesheet = nextShiftBooking ? myTimesheets.find(t => t.booking_id === nextShiftBooking.id) : null;
-              const isTimesheetInProgress = !!(nextShiftTimesheet?.clock_in_time && !nextShiftTimesheet?.clock_out_time);
-              const isTimesheetCompleted = !!nextShiftTimesheet?.clock_out_time;
-              const isShiftInProgress = nextShift.status === 'in_progress';
+
+              // 🎯 FIX: PRIORITY = Actual clock-in status (timesheet) > Scheduled status (shift.status)
+              // Only consider "in progress" if staff has ACTUALLY clocked in (has clock_in_time in timesheet)
+              const hasActuallyStarted = !!nextShiftTimesheet?.clock_in_time;
+              const hasActuallyEnded = !!nextShiftTimesheet?.clock_out_time;
+
+              const isTimesheetInProgress = hasActuallyStarted && !hasActuallyEnded;
+              const isTimesheetCompleted = hasActuallyEnded;
               const isShiftCompleted = nextShift.status === 'completed';
 
-              const isInProgress = isTimesheetInProgress || isShiftInProgress;
+              // ✅ FIX: Only show "in progress" if staff has actually clocked in (not just scheduled time passed)
+              const isInProgress = isTimesheetInProgress;
               const isCompleted = isTimesheetCompleted || isShiftCompleted;
 
               if (isCompleted) {
