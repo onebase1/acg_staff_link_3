@@ -13,6 +13,7 @@ import RoleSelector from "@/components/bulk-shifts/RoleSelector";
 import Step2MultiRoleGrid from "@/components/bulk-shifts/Step2MultiRoleGrid";
 import Step3PreviewTable from "@/components/bulk-shifts/Step3PreviewTable";
 import AIScheduleInput from "@/components/bulk-shifts/AIScheduleInput";
+import { NotificationService } from "@/components/notifications/NotificationService";
 
 // Import utilities
 import { expandGridToShifts, prepareShiftsForInsert } from "@/utils/bulkShifts/shiftGenerator";
@@ -23,7 +24,8 @@ export default function BulkShiftCreation() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [currentAgency, setCurrentAgency] = useState(null);
+  const [currentAgencyId, setCurrentAgencyId] = useState(null);
+  const [agencyDetails, setAgencyDetails] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
   const [creationProgress, setCreationProgress] = useState(0);
@@ -100,8 +102,19 @@ export default function BulkShiftCreation() {
           return;
         }
 
-        setCurrentAgency(profile.agency_id);
+        setCurrentAgencyId(profile.agency_id);
         console.log('✅ Bulk Shift Creation - Agency:', profile.agency_id);
+
+        // Fetch full agency details for notifications
+        const { data: agencyData, error: agencyError } = await supabase
+          .from('agencies')
+          .select('*')
+          .eq('id', profile.agency_id)
+          .single();
+
+        if (agencyData) {
+          setAgencyDetails(agencyData);
+        }
 
         // Fetch clients for AI
         const { data: clientsData, error: clientsError } = await supabase
@@ -128,34 +141,77 @@ export default function BulkShiftCreation() {
   }, [navigate]);
 
   // Generate shifts for preview (Step 2 → Step 3)
-  const handleGeneratePreview = () => {
+  const handleGeneratePreview = async () => {
     if (!formData.client_id || !formData.activeRoles || !formData.gridData) {
       toast.error('Please complete all required fields');
       return;
     }
 
-    // Expand grid to individual shifts
-    const shifts = expandGridToShifts(
-      formData.gridData,
-      formData.activeRoles,
-      formData.client,
-      formData,
-      currentAgency,
-      user
-    );
+    setLoading(true);
 
-    // Validate shifts
-    const validation = validateBulkShifts(shifts);
+    try {
+      // Expand grid to individual shifts
+      const shifts = expandGridToShifts(
+        formData.gridData,
+        formData.activeRoles,
+        formData.client,
+        formData,
+        currentAgencyId,
+        user
+      );
 
-    // Update form data
-    setFormData(prev => ({
-      ...prev,
-      generatedShifts: shifts,
-      validation: validation
-    }));
+      // Validate shifts
+      const validation = validateBulkShifts(shifts);
 
-    // Move to step 4 (Preview)
-    setCurrentStep(4);
+      // ✅ CHECK OVERLAPS: Query DB for date range
+      const uniqueDates = [...new Set(shifts.map(s => s.date))];
+      if (uniqueDates.length > 0) {
+        const { data: existingShifts, error } = await supabase
+          .from('shifts')
+          .select('id, date, start_time, end_time, role')
+          .eq('client_id', formData.client_id)
+          .neq('status', 'cancelled') // Ignore cancelled shifts
+          .in('date', uniqueDates);
+
+        if (!error && existingShifts?.length > 0) {
+          const overlaps = [];
+
+          shifts.forEach(newShift => {
+            const hasOverlap = existingShifts.some(existing =>
+              existing.date === newShift.date &&
+              existing.role === newShift.role &&
+              // Overlap logic: (StartA < EndB) and (EndA > StartB)
+              newShift.start_time < existing.end_time &&
+              newShift.end_time > existing.start_time
+            );
+
+            if (hasOverlap) {
+              overlaps.push(`Overlaps with existing ${newShift.role.replace(/_/g, ' ')} shift on ${newShift.date} (${newShift.start_time}-${newShift.end_time})`);
+            }
+          });
+
+          if (overlaps.length > 0) {
+            validation.overlaps = overlaps; // Add to validation object
+            validation.warnings.push(`${overlaps.length} shifts overlap with existing schedules.`);
+          }
+        }
+      }
+
+      // Update form data
+      setFormData(prev => ({
+        ...prev,
+        generatedShifts: shifts,
+        validation: validation
+      }));
+
+      // Move to step 4 (Preview)
+      setCurrentStep(4);
+    } catch (err) {
+      console.error('Failed to generate preview:', err);
+      toast.error('Error checking for overlaps');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle AI Data Import
@@ -168,7 +224,7 @@ export default function BulkShiftCreation() {
       aiData.activeRoles,
       aiData.client,
       aiData, // Use aiData as the source of truth for shiftTimes, etc.
-      currentAgency,
+      currentAgencyId,
       user
     );
 
@@ -246,7 +302,8 @@ export default function BulkShiftCreation() {
       }
 
       let totalInserted = 0;
-      const createdShiftIds = []; // Collect all created shift IDs
+      const createdShiftIds = []; // Collect all created shift IDs for redirect
+      const allCreatedShifts = []; // Collect full objects for receipt email
 
       for (let i = 0; i < batches.length; i++) {
         const batch = batches[i];
@@ -261,9 +318,15 @@ export default function BulkShiftCreation() {
           throw new Error(`Failed to insert batch ${i + 1}: ${error.message}`);
         }
 
+
         // Collect shift IDs from this batch
         if (data && data.length > 0) {
           createdShiftIds.push(...data.map(shift => shift.id));
+          allCreatedShifts.push(...data); // Collect for receipt
+
+          // ✅ NOTIFICATION TRIGGER: Queue notifications for assigned shifts
+          // We do this in background (don't await) to speed up UI
+          processBatchNotifications(data, formData.client, agencyDetails).catch(console.error);
         }
 
         totalInserted += data.length;
@@ -276,6 +339,19 @@ export default function BulkShiftCreation() {
       setShowSuccess(true);
 
       toast.success(`🎉 Successfully created ${totalInserted} shifts!`);
+
+      // ✅ NOTIFICATION TRIGGER: Send Receipt to Creator
+      if (totalInserted > 0) {
+        // Enriched shifts with friendly role names (DB has keys, we might want labels but DB roles are usually readable)
+        // We pass the raw DB objects. NotificationService handles role mapping if needed.
+        NotificationService.notifyShiftReceipt({
+          client: formData.client,
+          agency: agencyDetails,
+          shifts: allCreatedShifts, // ✅ Pass full array of objects
+          initiatorProfile: user, // The logged-in user
+          userType: user?.user_type
+        }).catch(err => console.error('Failed to send receipt:', err));
+      }
 
       // Auto-redirect after 3 seconds with query params
       setTimeout(() => {
@@ -299,12 +375,65 @@ export default function BulkShiftCreation() {
     }
   };
 
+  // ✅ Helper to process notifications for a created batch
+  const processBatchNotifications = async (createdShifts, client, agency) => {
+    if (!createdShifts || createdShifts.length === 0) return;
+
+    console.log(`📧 Processing notifications for ${createdShifts.length} created shifts...`);
+
+    // 1. Filter for assigned shifts
+    const assignedShifts = createdShifts.filter(s => s.assigned_staff_id);
+
+    if (assignedShifts.length === 0) return;
+
+    // 2. Fetch staff details for these shifts (we need email/phone)
+    const staffIds = [...new Set(assignedShifts.map(s => s.assigned_staff_id))];
+    const { data: staffMembers } = await supabase
+      .from('users') // Assuming staff are in users table (linked to staff profile) - wait, looking at other code, it might be 'staff' or 'users' with role. 
+      // NotificationService expects 'staff' object having email, phone, first_name.
+      // In Shifts.jsx it uses `staff` array from context. Here we don't have it.
+      // Let's fetch from 'staff' view/table if it exists or 'user_profiles'.
+      // Best safe bet: Fetch from 'users' or whatever 'staffMap' uses.
+      // Checking typical usage: it seems we need the profile.
+      .select('*')
+      .in('id', staffIds);
+
+    if (!staffMembers) return;
+    const staffMap = new Map(staffMembers.map(s => [s.id, s]));
+
+    // 3. Queue notifications
+    let queuedCount = 0;
+    for (const shift of assignedShifts) {
+      const staff = staffMap.get(shift.assigned_staff_id);
+      if (staff) {
+        await NotificationService.notifyShiftAssignment({
+          staff,
+          shift,
+          client,
+          agency,
+          useBatching: true // ✅ IMPORTANT: Use batching to avoid spamming
+        });
+        queuedCount++;
+      }
+    }
+    console.log(`✅ Queued ${queuedCount} assignment notifications`);
+  };
+
   // Navigation handlers
   const handleStep1Next = () => {
+    const client = clients.find(c => c.id === formData.client_id);
+    const locationRequired = client?.contract_terms?.require_location_specification || false;
+
     if (!formData.client_id || !formData.dateRange.startDate || !formData.dateRange.endDate) {
       toast.error('Please select a client and date range');
       return;
     }
+
+    if (locationRequired && client.internal_locations?.length > 0 && !formData.work_location_within_site) {
+      toast.error('Please select a work location for this batch');
+      return;
+    }
+
     setCurrentStep(2); // Go to role selection
   };
 
@@ -453,7 +582,7 @@ export default function BulkShiftCreation() {
       {/* Step Components */}
       {currentStep === 1 && (
         <Step1ClientSetup
-          currentAgency={currentAgency}
+          currentAgency={currentAgencyId}
           formData={formData}
           setFormData={setFormData}
           onNext={handleStep1Next}
@@ -473,7 +602,7 @@ export default function BulkShiftCreation() {
           setFormData={setFormData}
           onBack={handleStep3Back}
           onNext={handleGeneratePreview}
-          currentAgency={currentAgency}
+          currentAgency={currentAgencyId}
         />
       )}
 
@@ -495,7 +624,7 @@ export default function BulkShiftCreation() {
         onClose={() => setIsAIModalOpen(false)}
         onDataReady={handleAIImport}
         clients={clients}
-        currentAgency={currentAgency}
+        currentAgency={currentAgencyId}
         user={user}
         selectedClient={formData.client}
       />

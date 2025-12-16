@@ -71,7 +71,17 @@ serve(async (req) => {
                 // ✅ BATCHED SHIFT ASSIGNMENTS
                 if (queue.notification_type === 'shift_assignment') {
                     const shiftCount = queue.pending_items.length;
-                    subject = `${shiftCount} New Shift${shiftCount > 1 ? 's' : ''} Assigned - ${agency?.name || 'Your Agency'}`;
+                    
+                    // ✅ CHECK STATUS: If all shifts are already confirmed, change template
+                    const isAllConfirmed = queue.pending_items.every((item: any) => item.status === 'confirmed');
+                    
+                    const title = isAllConfirmed ? 'Shift Confirmed' : 'New Shift Assignment';
+                    const icon = isAllConfirmed ? '✅' : '📅';
+                    const headerColor = isAllConfirmed ? '#10b981' : '#0284c7';
+                    
+                    subject = isAllConfirmed 
+                        ? `Shift${shiftCount > 1 ? 's' : ''} Confirmed - ${agency?.name || 'Your Agency'}`
+                        : `${shiftCount} New Shift${shiftCount > 1 ? 's' : ''} Assigned - ${agency?.name || 'Your Agency'}`;
 
                     const totalHours = queue.pending_items.reduce((sum, item) => sum + (item.duration_hours || 0), 0);
                     const totalEarnings = queue.pending_items.reduce((sum, item) =>
@@ -80,7 +90,7 @@ serve(async (req) => {
 
                     // Generate shift cards HTML
                     const shiftCardsHtml = queue.pending_items.map(item => `
-                        <div style="border-left: 4px solid #06b6d4; padding: 15px; background: #f9fafb; border-radius: 8px; margin-bottom: 15px;">
+                        <div style="border-left: 4px solid ${headerColor}; padding: 15px; background: #f9fafb; border-radius: 8px; margin-bottom: 15px;">
                             <div style="font-weight: bold; color: #1f2937; margin-bottom: 8px;">
                                 ${new Date(item.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} • ${item.start_time} - ${item.end_time} (${item.duration_hours}h)
                             </div>
@@ -110,13 +120,13 @@ serve(async (req) => {
                             <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
 
                                 <!-- ✅ HEADER - Fixed for both light and dark mode -->
-                                <div style="background-color: #0284c7; padding: 30px 20px; text-align: center;" bgcolor="#0284c7">
+                                <div style="background-color: ${headerColor}; padding: 30px 20px; text-align: center;" bgcolor="${headerColor}">
                                     ${agency?.logo_url ? `
                                         <img src="${agency.logo_url}" alt="${agency.name}" style="max-height: 60px; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">
                                     ` : ''}
                                     <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-                                        <span style="font-size: 32px;">📅</span>
-                                        <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">New Shift Assignment</h1>
+                                        <span style="font-size: 32px;">${icon}</span>
+                                        <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">${title}</h1>
                                     </div>
                                 </div>
 
@@ -127,7 +137,10 @@ serve(async (req) => {
                                     </p>
 
                                     <p style="font-size: 16px; color: #374151; margin: 0 0 25px 0;">
-                                        You have been assigned to <strong>${shiftCount} shift${shiftCount > 1 ? 's' : ''}</strong>. Please review the details below and confirm your availability.
+                                        ${isAllConfirmed 
+                                            ? `You have been assigned to <strong>${shiftCount} confirmed shift${shiftCount > 1 ? 's' : ''}</strong>. Please ensure you arrive on time.`
+                                            : `You have been assigned to <strong>${shiftCount} shift${shiftCount > 1 ? 's' : ''}</strong>. Please review the details below and confirm your availability.`
+                                        }
                                     </p>
 
                                     ${shiftCardsHtml}
@@ -142,7 +155,8 @@ serve(async (req) => {
                                         </div>
                                     </div>
 
-                                    <!-- Action Required Box -->
+                                    <!-- Action Required Box (Only if NOT confirmed) -->
+                                    ${!isAllConfirmed ? `
                                     <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 15px; margin: 20px 0;">
                                         <div style="font-weight: bold; color: #92400e; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
                                             <span style="font-size: 20px;">⚠️</span>
@@ -152,6 +166,7 @@ serve(async (req) => {
                                             Please confirm your availability as soon as possible. Contact us immediately if you cannot attend any of these shifts.
                                         </p>
                                     </div>
+                                    ` : ''}
 
                                     <p style="font-size: 14px; color: #6b7280; margin: 20px 0 0 0;">
                                         Questions? Contact us at <a href="mailto:${agency?.contact_email || 'support@agilecaremanagement.co.uk'}" style="color: #0284c7; text-decoration: none;">${agency?.contact_email || 'support@agilecaremanagement.co.uk'}</a> or ${agency?.contact_phone || '+44 20 1234 5678'}
@@ -173,6 +188,72 @@ serve(async (req) => {
                                     <p style="margin: 10px 0 0 0; font-size: 12px;">
                                         Need help? Contact us at <a href="mailto:support@agilecaremanagement.co.uk" style="color: #06b6d4; text-decoration: none;">support@agilecaremanagement.co.uk</a>
                                     </p>
+                                </div>
+
+                            </div>
+                        </body>
+                        </html>
+                    `;
+                }
+
+                // ✅ SHIFT RECEIPT (For Creator/Admin)
+                else if (queue.notification_type === 'shift_receipt') {
+                    const shiftCount = queue.pending_items.length;
+                    subject = `Receipt: ${shiftCount} Shift${shiftCount > 1 ? 's' : ''} Created - ${agency?.name || 'Your Agency'}`;
+
+                    const shiftCardsHtml = queue.pending_items.map(item => `
+                        <div style="border-left: 4px solid #6366f1; padding: 15px; background: #eff6ff; border-radius: 8px; margin-bottom: 15px;">
+                            <div style="font-weight: bold; color: #1f2937; margin-bottom: 8px;">
+                                ${new Date(item.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} • ${item.start_time} - ${item.end_time}
+                            </div>
+                            <div style="font-size: 14px; color: #6b7280; margin-bottom: 4px;">
+                                📍 ${item.location ? `${item.client_name} → ${item.location}` : item.client_name}
+                            </div>
+                            <div style="font-size: 14px; color: #6b7280;">
+                                📋 ${item.role}
+                            </div>
+                        </div>
+                    `).join('');
+
+                    emailHtml = `
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <meta name="color-scheme" content="light dark">
+                        </head>
+                        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
+                            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+
+                                <!-- HEADER -->
+                                <div style="background-color: #6366f1; padding: 30px 20px; text-align: center;">
+                                    <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                                        <span style="font-size: 32px;">📝</span>
+                                        <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">Shift Receipt</h1>
+                                    </div>
+                                </div>
+
+                                <!-- CONTENT -->
+                                <div style="padding: 30px 20px;">
+                                    <p style="font-size: 16px; color: #374151; margin: 0 0 10px 0;">
+                                        Hello ${queue.recipient_first_name || 'Admin'},
+                                    </p>
+
+                                    <p style="font-size: 16px; color: #374151; margin: 0 0 25px 0;">
+                                        This email confirms that you successfully created ${shiftCount} new shift${shiftCount > 1 ? 's' : ''}.
+                                    </p>
+
+                                    ${shiftCardsHtml}
+
+                                    <div style="text-align: center; margin: 30px 0;">
+                                        <a href="https://app.agilecaremanagement.co.uk/shifts" style="background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Shifts</a>
+                                    </div>
+                                </div>
+
+                                <!-- FOOTER -->
+                                <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
+                                    <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} ${agency?.name || 'Agile Care Management'}</p>
                                 </div>
 
                             </div>

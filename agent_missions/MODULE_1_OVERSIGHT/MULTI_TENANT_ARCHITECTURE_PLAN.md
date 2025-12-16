@@ -1000,6 +1000,356 @@ user.agency_contacts = [
 
 ---
 
+## 🌐 URL ROUTING STRATEGIES FOR MULTI-TENANT PORTALS
+
+**Date Added:** 2025-12-19
+**Context:** Staff can belong to multiple agencies - how do email links route to correct agency?
+
+### The Problem
+
+When sending email notifications with links to `/staffportal`, how does the system know **which agency context** the staff member should land in?
+
+**Example:**
+- Sarah works for Agency A and Agency B
+- Agency B sends her an email: "New shift assigned - View in Staff Portal"
+- Link: `https://app.acgstafflink.com/staffportal?highlight=shift-123`
+- **Question:** Should she see Agency A or Agency B's shifts when she clicks?
+
+### ❌ Approach 1: Agency Subdomain (NOT RECOMMENDED for Your Use Case)
+
+```
+https://agency-a.acgstafflink.com/staffportal
+https://agency-b.acgstafflink.com/staffportal
+https://care-home-x.acgstafflink.com/clientportal
+```
+
+**How It Works:**
+- Each agency gets their own subdomain
+- DNS routes subdomain to same application
+- App detects subdomain and sets agency context
+- Used by: **Shopify**, **Atlassian**, **Zendesk**
+
+**Pros:**
+- ✅ Clean branding (agency sees "their" URL)
+- ✅ Agency context is explicit in URL
+- ✅ Easy to bookmark specific agency
+
+**Cons:**
+- ❌ Requires wildcard SSL certificate (`*.acgstafflink.com`)
+- ❌ Complex DNS configuration
+- ❌ Hard to switch contexts (different domains)
+- ❌ Cookies don't work across subdomains
+- ❌ **Breaks multi-agency staff UX** (Sarah has 2 bookmarks, 2 logins?)
+
+**Verdict:** ❌ **Don't use this.** Your staff work for MULTIPLE agencies - subdomains make context switching painful.
+
+---
+
+### ❌ Approach 2: Path-Based Routing (LEGACY PATTERN)
+
+```
+https://app.acgstafflink.com/agency-a/staffportal
+https://app.acgstafflink.com/agency-b/staffportal
+https://app.acgstafflink.com/care-home-x/clientportal
+```
+
+**How It Works:**
+- Agency name/slug in URL path
+- React Router reads path to determine context
+- Used by: **GitHub** (github.com/org-name/repo), **Trello** (trello.com/board-id)
+
+**Pros:**
+- ✅ Agency context explicit in URL
+- ✅ Easy to implement with React Router
+- ✅ No DNS complexity
+- ✅ Works with standard SSL
+
+**Cons:**
+- ❌ Ugly URLs for multi-tenant users
+- ❌ User must remember agency slug
+- ❌ Context switching requires navigation to different path
+- ❌ Hard to share "generic" staff portal link
+
+**Verdict:** ❌ **Outdated pattern.** Modern SaaS uses dynamic context switching instead.
+
+---
+
+### ✅ Approach 3: Query Parameter Context Hint (RECOMMENDED)
+
+```
+Email Link (with hint):
+https://app.acgstafflink.com/staffportal?agency=agency-b&highlight=shift-123
+
+Generic Link (user chooses):
+https://app.acgstafflink.com/staffportal
+```
+
+**How It Works:**
+1. Email includes `?agency=agency-b` query param
+2. StaffPortal component reads query param on load
+3. If user has access to Agency B → Auto-switch to that context
+4. If user doesn't have access → Ignore hint, use default context
+5. User can always manually switch contexts via UI switcher
+
+**Implementation:**
+
+```javascript
+// In StaffPortal.jsx
+useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const requestedAgencyId = urlParams.get('agency');
+
+  if (requestedAgencyId) {
+    // Check if user has access to this agency
+    const hasAccess = userAgencies.some(a => a.id === requestedAgencyId);
+
+    if (hasAccess && activeContext !== requestedAgencyId) {
+      // Auto-switch to requested agency
+      setActiveContext(requestedAgencyId);
+      localStorage.setItem('active_agency_id', requestedAgencyId);
+
+      toast.info(`Switched to ${agencyName} portal`);
+    } else if (!hasAccess) {
+      // User doesn't have access - ignore hint
+      console.warn('User does not have access to requested agency');
+      toast.warning('You do not have access to that agency');
+    }
+  }
+}, [userAgencies, activeContext]);
+```
+
+**In NotificationService.jsx:**
+
+```javascript
+async notifyShiftAssignment({ staff, shift, client, agency }) {
+  const portalUrl = `${window.location.origin}/staffportal?agency=${shift.agency_id}&highlight=${shift.id}`;
+
+  // Email button links to:
+  // https://app.acgstafflink.com/staffportal?agency=abc-123&highlight=shift-456
+
+  // When staff clicks → Automatically switches to correct agency context
+}
+```
+
+**Pros:**
+- ✅ **Seamless UX:** Staff clicks email link → lands in correct agency
+- ✅ **Graceful degradation:** If query param missing, uses default context
+- ✅ **Security:** User must have actual access (checked server-side)
+- ✅ **Shareable:** Can copy/paste link to colleague
+- ✅ **Works with context switcher:** User can still manually switch
+- ✅ **No DNS/SSL complexity**
+
+**Cons:**
+- ⚠️ URL hint can be ignored (user must have actual permissions)
+- ⚠️ Not as "clean" as subdomain branding (but functionality > cosmetics)
+
+**Verdict:** ✅ **RECOMMENDED.** This is the modern SaaS pattern.
+
+**Used By:**
+- **Slack:** `slack.com/app_redirect?channel=C12345&team=T67890`
+- **Linear:** `linear.app/acme/issue/ENG-123` (with team context)
+- **Notion:** `notion.so/workspace/page-id`
+
+---
+
+### ✅ Approach 4: Smart Context Detection (ADVANCED)
+
+**Combine multiple signals to auto-detect correct context:**
+
+```javascript
+// Priority order for context detection:
+function determineInitialContext(user, urlParams, localStorage, recentActivity) {
+  // 1. URL hint (highest priority - user clicked specific link)
+  if (urlParams.get('agency') && userHasAccess(urlParams.get('agency'))) {
+    return urlParams.get('agency');
+  }
+
+  // 2. Highlighted entity (shift, timesheet, etc)
+  if (urlParams.get('highlight')) {
+    const entityAgency = await fetchEntityAgency(urlParams.get('highlight'));
+    if (userHasAccess(entityAgency)) {
+      return entityAgency;
+    }
+  }
+
+  // 3. Last active context (localStorage)
+  const lastActive = localStorage.getItem('active_agency_id');
+  if (lastActive && userHasAccess(lastActive)) {
+    return lastActive;
+  }
+
+  // 4. Primary agency (profiles.agency_id)
+  if (user.agency_id && userHasAccess(user.agency_id)) {
+    return user.agency_id;
+  }
+
+  // 5. First available agency (fallback)
+  return userAgencies[0]?.id;
+}
+```
+
+**Benefits:**
+- ✅ Email links always work correctly (via URL hint)
+- ✅ User returns to last-used context (via localStorage)
+- ✅ Bookmarks remember context (via URL)
+- ✅ New users get sensible default (primary agency)
+
+---
+
+### 🎯 RECOMMENDED IMPLEMENTATION FOR ACG STAFFLINK
+
+**Phase 1: Add Query Param Support (Immediate)**
+
+1. Update `NotificationService.jsx`:
+```javascript
+const portalUrl = `${window.location.origin}/staffportal?agency=${shift.agency_id}&highlight=${shift.id}`;
+```
+
+2. Update `StaffPortal.jsx`:
+```javascript
+// On component mount, read ?agency= param and auto-switch context
+useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const requestedAgencyId = urlParams.get('agency');
+
+  if (requestedAgencyId && userAgencies.some(a => a.id === requestedAgencyId)) {
+    switchContext(requestedAgencyId);
+  }
+}, []);
+```
+
+**Phase 2: Add Context Switcher UI (Short-Term)**
+
+```jsx
+// In Layout.jsx header
+{userAgencies.length > 1 && (
+  <Select
+    value={activeAgencyId}
+    onValueChange={(agencyId) => {
+      switchContext(agencyId);
+      // Update URL to reflect new context
+      navigate(`/staffportal?agency=${agencyId}`);
+    }}
+  >
+    {userAgencies.map(agency => (
+      <SelectItem key={agency.id} value={agency.id}>
+        {agency.name}
+      </SelectItem>
+    ))}
+  </Select>
+)}
+```
+
+**Phase 3: Smart Context Persistence (Medium-Term)**
+
+- Store `active_agency_id` in `localStorage`
+- Restore on next visit
+- Override with URL `?agency=` param if present
+- Track in analytics (see which agencies users switch to most)
+
+---
+
+### 🔒 SECURITY CONSIDERATIONS
+
+**✅ DO:**
+1. **Always verify permissions server-side**
+   ```javascript
+   // RLS policy prevents unauthorized access
+   WHERE agency_id IN (
+     SELECT agency_id FROM agency_contacts
+     WHERE profile_id = auth.uid() AND is_active = TRUE
+   )
+   ```
+
+2. **Validate agency_id from URL before switching**
+   ```javascript
+   const hasAccess = await supabase
+     .from('agency_contacts')
+     .select('id')
+     .eq('agency_id', requestedAgencyId)
+     .eq('profile_id', user.id)
+     .eq('is_active', true)
+     .single();
+
+   if (!hasAccess) {
+     toast.error('Access denied');
+     return;
+   }
+   ```
+
+3. **Log context switches for audit trail**
+   ```javascript
+   await supabase.from('audit_log').insert({
+     user_id: user.id,
+     action: 'context_switch',
+     from_agency: oldAgencyId,
+     to_agency: newAgencyId,
+     timestamp: new Date()
+   });
+   ```
+
+**❌ DON'T:**
+1. **Trust URL params without verification**
+   ```javascript
+   // WRONG - anyone can edit URL to see other agencies
+   const agencyId = urlParams.get('agency');
+   fetchAgencyData(agencyId);  // ❌ No permission check!
+   ```
+
+2. **Allow cross-agency data leakage**
+   ```javascript
+   // WRONG - fetches ALL shifts, then filters client-side
+   const allShifts = await fetchAllShifts();  // ❌ Leaks data
+   const myShifts = allShifts.filter(s => s.agency_id === activeAgency);
+
+   // CORRECT - RLS filters at database level
+   const myShifts = await supabase
+     .from('shifts')
+     .select('*')
+     .eq('agency_id', activeAgency);  // ✅ RLS enforces
+   ```
+
+---
+
+### 📊 COMPARISON MATRIX
+
+| Approach | Implementation Complexity | User Experience | Security | Multi-Agency Support | Recommendation |
+|----------|---------------------------|-----------------|----------|---------------------|----------------|
+| **Subdomain** (agency-a.app.com) | 🔴 High (DNS, SSL) | 🟡 Medium (different URLs) | 🟢 Good | 🔴 Poor | ❌ No |
+| **Path-Based** (/agency-a/portal) | 🟡 Medium (routing) | 🔴 Poor (ugly URLs) | 🟢 Good | 🟡 Medium | ❌ No |
+| **Query Param** (?agency=abc) | 🟢 Low (simple) | 🟢 Excellent | 🟢 Good (with validation) | 🟢 Excellent | ✅ **YES** |
+| **Smart Detection** (combined) | 🟡 Medium (logic) | 🟢 Excellent | 🟢 Good | 🟢 Excellent | ✅ **Future** |
+
+---
+
+### ✅ IMPLEMENTATION CHECKLIST
+
+**Immediate (This Sprint):**
+- [ ] Update `NotificationService.jsx` to include `?agency=` param in portal links
+- [ ] Add query param reader to `StaffPortal.jsx`
+- [ ] Test: Multi-agency staff member clicks email link → Auto-switches to correct agency
+
+**Short-Term (Next Sprint):**
+- [ ] Build context switcher UI component
+- [ ] Store active context in localStorage
+- [ ] Add context indicator to page header
+- [ ] Update all queries to respect active context
+
+**Medium-Term (Post-MVP):**
+- [ ] Implement smart context detection algorithm
+- [ ] Add audit logging for context switches
+- [ ] Analytics dashboard: Track context switching patterns
+- [ ] Add "Set as default agency" feature
+
+---
+
+**Added by:** Claude Code
+**Date:** 2025-12-19
+**Status:** Recommendation - Awaiting User Approval
+**Next Action:** User reviews URL routing strategy and approves implementation approach
+
+---
+
 **Prepared by:** Claude (Oversight Agent)
 **Date:** 2025-12-04
 **Status:** Ready for Review

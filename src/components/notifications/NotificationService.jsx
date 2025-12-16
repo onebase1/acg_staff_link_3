@@ -856,6 +856,213 @@ export const NotificationService = {
     });
 
     return Promise.all(promises);
+  },
+
+  /**
+   * ✅ NEW: Check if batch is complete and send immediate client notification
+   * Called when a shift is assigned/confirmed. If all shifts in the batch are now assigned,
+   * send immediate client notification (bypass queue).
+   *
+   * @param {Object} shift - The shift that was just assigned
+   * @param {Object} client - Client object
+   * @param {Object} agency - Agency object
+   * @returns {Promise<Object>} Result of batch check and notification
+   */
+  async checkBatchCompletionAndNotifyClient({ shift, client, agency }) {
+    try {
+      console.log(`📊 [Batch Check] Checking if batch ${shift.booking_id} is complete...`);
+
+      // Only check if shift has a booking_id (batch identifier)
+      if (!shift.booking_id) {
+        console.log('⏭️ [Batch Check] Shift has no booking_id, skipping batch check');
+        return { batchComplete: false, reason: 'no_batch_id' };
+      }
+
+      // Query all shifts in this batch
+      const { data: batchShifts, error } = await supabase
+        .from('shifts')
+        .select('id, assigned_staff_id, status, date, start_time, end_time, role_required, work_location_within_site, charge_rate')
+        .eq('booking_id', shift.booking_id)
+        .eq('client_id', shift.client_id);
+
+      if (error) {
+        console.error('❌ [Batch Check] Error querying batch shifts:', error);
+        return { batchComplete: false, error: error.message };
+      }
+
+      if (!batchShifts || batchShifts.length === 0) {
+        console.log('⏭️ [Batch Check] No shifts found in batch');
+        return { batchComplete: false, reason: 'no_shifts_in_batch' };
+      }
+
+      console.log(`📊 [Batch Check] Found ${batchShifts.length} shifts in batch ${shift.booking_id}`);
+
+      // Check if ALL shifts are assigned
+      const allAssigned = batchShifts.every(s => s.assigned_staff_id);
+
+      if (!allAssigned) {
+        const assignedCount = batchShifts.filter(s => s.assigned_staff_id).length;
+        console.log(`⏳ [Batch Check] Batch not complete: ${assignedCount}/${batchShifts.length} shifts assigned`);
+        return {
+          batchComplete: false,
+          reason: 'partial_assignment',
+          assignedCount,
+          totalCount: batchShifts.length
+        };
+      }
+
+      console.log(`✅ [Batch Check] Batch ${shift.booking_id} is COMPLETE! All ${batchShifts.length} shifts assigned.`);
+      console.log(`📧 [Batch Check] Sending IMMEDIATE client notification...`);
+
+      // ✅ Fetch staff details for all assigned shifts
+      const staffIds = [...new Set(batchShifts.map(s => s.assigned_staff_id))];
+      const { data: staffMembers } = await supabase
+        .from('users')
+        .select('*')
+        .in('id', staffIds);
+
+      const staffMap = new Map(staffMembers?.map(s => [s.id, s]) || []);
+
+      // ✅ Send IMMEDIATE client notification (no batching/queue)
+      // Create consolidated email with all assigned shifts
+      const clientEmail = client.billing_email || client.contact_person?.email;
+      if (!clientEmail) {
+        console.warn('⚠️ [Batch Check] No client email found, cannot send notification');
+        return { batchComplete: true, notificationSent: false, reason: 'no_client_email' };
+      }
+
+      // Build items array for email template
+      const items = batchShifts.map(s => {
+        const staffMember = staffMap.get(s.assigned_staff_id);
+        return {
+          shift_id: s.id,
+          staff_id: s.assigned_staff_id,
+          staff_name: staffMember ? `${staffMember.first_name} ${staffMember.last_name}` : 'Unknown',
+          staff_phone: staffMember?.phone || 'N/A',
+          date: s.date,
+          start_time: s.start_time,
+          end_time: s.end_time,
+          duration_hours: 12, // All shifts are 12 hours
+          location: s.work_location_within_site,
+          role: s.role_required?.replace('_', ' ') || 'Staff',
+          charge_rate: s.charge_rate
+        };
+      });
+
+      const totalHours = items.reduce((sum, item) => sum + (item.duration_hours || 0), 0);
+      const totalCharge = items.reduce((sum, item) =>
+        sum + ((item.charge_rate || 0) * (item.duration_hours || 0)), 0
+      );
+
+      // Generate shift cards HTML (reuse digest engine template style)
+      const shiftCardsHtml = items.map(item => `
+        <div style="border-left: 4px solid #10b981; padding: 15px; background: #f0fdf4; border-radius: 8px; margin-bottom: 15px;">
+          <div style="font-weight: bold; color: #1f2937; margin-bottom: 8px;">
+            ${new Date(item.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} • ${item.start_time} - ${item.end_time}
+          </div>
+          <div style="font-size: 14px; color: #6b7280; margin-bottom: 4px;">
+            👤 ${item.staff_name} (${item.role})
+          </div>
+          ${item.location ? `
+            <div style="font-size: 14px; color: #6b7280; margin-bottom: 4px;">
+              📍 ${item.location}
+            </div>
+          ` : ''}
+          <div style="font-size: 14px; color: #6b7280;">
+            📞 ${item.staff_phone}
+          </div>
+        </div>
+      `).join('');
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <meta name="color-scheme" content="light dark">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+
+            <!-- HEADER -->
+            <div style="background-color: #10b981; padding: 30px 20px; text-align: center;" bgcolor="#10b981">
+              ${agency?.logo_url ? `
+                <img src="${agency.logo_url}" alt="${agency.name}" style="max-height: 60px; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">
+              ` : ''}
+              <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <span style="font-size: 32px;">✅</span>
+                <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">All Shifts Confirmed</h1>
+              </div>
+            </div>
+
+            <!-- CONTENT -->
+            <div style="padding: 30px 20px;">
+              <p style="font-size: 16px; color: #374151; margin: 0 0 10px 0;">
+                Dear ${client.contact_person?.name || 'Team'},
+              </p>
+
+              <p style="font-size: 16px; color: #374151; margin: 0 0 25px 0;">
+                Great news! All <strong>${items.length} shift${items.length > 1 ? 's' : ''}</strong> have been successfully filled for your facility.
+              </p>
+
+              ${shiftCardsHtml}
+
+              <div style="background-color: #d1fae5; border: 2px solid #059669; border-radius: 12px; padding: 20px; text-align: center; margin: 25px 0;" bgcolor="#d1fae5">
+                <div style="font-size: 18px; color: #065f46; font-weight: bold; margin-bottom: 5px;">
+                  📊 Total Coverage: ${totalHours} hours
+                </div>
+                <div style="font-size: 14px; color: #047857;">
+                  ${items.length} shift${items.length > 1 ? 's' : ''} • £${totalCharge.toFixed(2)} total
+                </div>
+              </div>
+
+              <p style="font-size: 14px; color: #6b7280; margin: 20px 0 0 0;">
+                The assigned staff ${items.length > 1 ? 'members' : 'member'} will arrive at the scheduled time${items.length > 1 ? 's' : ''}. If you have any questions, please contact us.
+              </p>
+            </div>
+
+            <!-- FOOTER -->
+            <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
+              <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} ${agency?.name || 'Agile Care Management'}. All rights reserved.</p>
+              <p style="margin: 10px 0 0 0; font-size: 12px;">
+                Need help? Contact us at <a href="mailto:${agency?.contact_email || 'support@agilecaremanagement.co.uk'}" style="color: #06b6d4; text-decoration: none;">${agency?.contact_email || 'support@agilecaremanagement.co.uk'}</a>
+              </p>
+            </div>
+
+          </div>
+        </body>
+        </html>
+      `;
+
+      const result = await this.sendEmail({
+        to: clientEmail,
+        subject: `✅ All ${items.length} Shift${items.length > 1 ? 's' : ''} Confirmed - ${client.name}`,
+        html,
+        from_name: agency?.name || 'Agile Care Management'
+      });
+
+      if (result.success) {
+        console.log(`✅ [Batch Check] Immediate client notification sent to ${clientEmail}`);
+        return {
+          batchComplete: true,
+          notificationSent: true,
+          totalShifts: items.length,
+          clientEmail
+        };
+      } else {
+        console.error(`❌ [Batch Check] Failed to send client notification:`, result.error);
+        return {
+          batchComplete: true,
+          notificationSent: false,
+          error: result.error
+        };
+      }
+
+    } catch (error) {
+      console.error('❌ [Batch Check] Unexpected error:', error);
+      return { batchComplete: false, error: error.message };
+    }
   }
 };
 

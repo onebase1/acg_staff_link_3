@@ -21,6 +21,10 @@ export function expandGridToShifts(gridData, activeRoles, client, formData, agen
   const shifts = [];
   let shiftIndex = 0;
 
+  // ✅ Generate batch_id for all shifts in this bulk creation
+  // This allows us to track which shifts belong together and detect batch completion
+  const batchId = crypto.randomUUID();
+
   // Iterate through each date in grid
   Object.entries(gridData).forEach(([date, roleQuantities]) => {
     // For each role/shift type combination
@@ -40,7 +44,8 @@ export function expandGridToShifts(gridData, activeRoles, client, formData, agen
           formData,
           agencyId,
           user,
-          shiftIndex++
+          shiftIndex++,
+          batchId  // ✅ Pass batch_id to each shift
         );
         shifts.push(shift);
       }
@@ -53,7 +58,7 @@ export function expandGridToShifts(gridData, activeRoles, client, formData, agen
 /**
  * Create a single shift object
  */
-function createShiftObject(date, roleConfig, client, formData, agencyId, user, index) {
+function createShiftObject(date, roleConfig, client, formData, agencyId, user, index, batchId) {
   // Get shift times
   const shiftTimes = formData.shiftTimes?.[roleConfig.shiftType] || {
     start: roleConfig.shiftType === 'day' ? '08:00' : '20:00',
@@ -94,6 +99,9 @@ function createShiftObject(date, roleConfig, client, formData, agencyId, user, i
     end_time: endTime,     // ✅ FIXED: Send HH:MM only (e.g., "20:00")
     duration_hours: 12,    // ✅ SIMPLIFIED: Always 12 hours (all shifts are 12-hour shifts)
 
+    // ✅ BATCH TRACKING: Assign booking_id to track which shifts belong together
+    booking_id: batchId,
+
     // Rates
     pay_rate: roleConfig.payRate || 0,
     charge_rate: roleConfig.chargeRate || 0,
@@ -116,6 +124,7 @@ function createShiftObject(date, roleConfig, client, formData, agencyId, user, i
       method: 'bulk_creation',
       metadata: {
         batch_creation: true,
+        batch_id: batchId,  // ✅ Track batch_id in journey log
         role_config: roleConfig.key
       }
     }],

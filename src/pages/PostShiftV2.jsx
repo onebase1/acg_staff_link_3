@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
@@ -26,11 +26,7 @@ import { determineShiftType } from "@/utils/shiftHelpers";
  */
 const getAvailableRoles = (client) => {
   if (!client || !client.contract_terms?.rates_by_role) {
-    console.log('❌ [getAvailableRoles] No client or rates_by_role:', {
-      hasClient: !!client,
-      hasContractTerms: !!client?.contract_terms,
-      hasRatesByRole: !!client?.contract_terms?.rates_by_role
-    });
+    // Silent return - normal state before client selection
     return [];
   }
 
@@ -184,7 +180,7 @@ export default function PostShiftV2() {
     checkAccess();
   }, [navigate]);
 
-  const { data: clients = [] } = useQuery({
+  const { data: rawClients = [], isLoading: isLoadingClients } = useQuery({
     queryKey: ['clients', currentAgency],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -222,6 +218,10 @@ export default function PostShiftV2() {
     refetchOnMount: 'always'
   });
 
+  // ✅ MEMOIZED: Ensure stable reference for clients to prevent effect loops
+  const clientsData = useMemo(() => rawClients || [], [rawClients]);
+  const clients = clientsData;
+
   const selectedClient = clients.find(c => c.id === formData.client_id);
   const locationRequired = selectedClient?.contract_terms?.require_location_specification || false;
 
@@ -242,30 +242,38 @@ export default function PostShiftV2() {
         const firstRole = availableRolesForClient[0];
         const dayShift = templates[0]; // First template is always day shift
 
-        setFormData(prev => ({
-          ...prev,
-          // Reset role and template when client changes
-          role_required: firstRole?.value || '',
-          shift_template: dayShift ? 'day' : '',
-          // Set rates from first available role
-          pay_rate: firstRole?.pay_rate || 0,
-          charge_rate: firstRole?.charge_rate || 0,
-          break_duration_minutes: client.contract_terms?.break_duration_minutes || 0,
-          // Update shift times to match client's day shift pattern
-          start_time: dayShift?.start || '08:00',
-          end_time: dayShift?.end || '20:00',
-          duration_hours: dayShift?.hours || 12
-        }));
+        // Guard against infinite loop: only update if values differ
+        if (
+          formData.role_required !== (firstRole?.value || '') ||
+          formData.shift_template !== (dayShift ? 'day' : '')
+        ) {
+          setFormData(prev => ({
+            ...prev,
+            // Reset role and template when client changes
+            role_required: firstRole?.value || '',
+            shift_template: dayShift ? 'day' : '',
+            // Set rates from first available role
+            pay_rate: firstRole?.pay_rate || 0,
+            charge_rate: firstRole?.charge_rate || 0,
+            break_duration_minutes: client.contract_terms?.break_duration_minutes || 0,
+            // Update shift times to match client's day shift pattern
+            start_time: dayShift?.start || '08:00',
+            end_time: dayShift?.end || '20:00',
+            duration_hours: dayShift?.hours || 12
+          }));
+        }
       }
     } else {
-      // Reset when no client selected
-      setFormData(prev => ({
-        ...prev,
-        role_required: '',
-        shift_template: '',
-        pay_rate: 0,
-        charge_rate: 0
-      }));
+      // Reset when no client selected - GUARD against loop
+      if (formData.role_required !== '' || formData.shift_template !== '') {
+        setFormData(prev => ({
+          ...prev,
+          role_required: '',
+          shift_template: '',
+          pay_rate: 0,
+          charge_rate: 0
+        }));
+      }
     }
   }, [formData.client_id, clients]);
 
@@ -276,11 +284,13 @@ export default function PostShiftV2() {
       if (client) {
         const rates = client.contract_terms?.rates_by_role?.[formData.role_required];
         if (rates) {
-          setFormData(prev => ({
-            ...prev,
-            pay_rate: rates.pay_rate || 0,
-            charge_rate: rates.charge_rate || 0
-          }));
+          if (formData.pay_rate !== (rates.pay_rate || 0)) {
+            setFormData(prev => ({
+              ...prev,
+              pay_rate: rates.pay_rate || 0,
+              charge_rate: rates.charge_rate || 0
+            }));
+          }
         }
       }
     }
@@ -379,9 +389,11 @@ export default function PostShiftV2() {
       return { newShift };
     },
     onSuccess: (data) => {
+      console.log('🎉 [PostShiftV2] Mutation onSuccess triggered', data);
       queryClient.invalidateQueries(['shifts']);
 
       const client = clients.find(c => c.id === formData.client_id);
+      console.log('found client', client);
 
       toast.success(
         <div>
@@ -399,6 +411,35 @@ export default function PostShiftV2() {
         { duration: 6000 }
       );
 
+      // ✅ NOTIFICATION TRIGGER: Send Receipt to Creator
+      // Wrapped in try/catch to ensure it NEVER blocks redirect
+      try {
+        if (data.newShift) {
+          console.log('📧 [PostShiftV2] Attempting to send receipt...');
+
+          // Reconstruct full shift object with details from formData
+          // newShift only has DB fields; formData has role_required, date, times etc
+          const shiftForReceipt = {
+            ...data.newShift,
+            date: formData.date,
+            start_time: formData.start_time,
+            end_time: formData.end_time,
+            role_required: formData.role_required,
+            work_location_within_site: formData.work_location_within_site
+          };
+
+          NotificationService.notifyShiftReceipt({
+            client: client,
+            agency: currentAgency ? { id: currentAgency } : null,
+            shifts: [shiftForReceipt], // ✅ Pass as array with ONE item
+            initiatorProfile: user,
+            userType: user?.user_type
+          }).catch(err => console.error('⚠️ Receipt promise rejected:', err));
+        }
+      } catch (err) {
+        console.error('⚠️ Error triggering receipt notification:', err);
+      }
+
       // Redirect with query params for better UX
       const params = new URLSearchParams();
       params.set('status', 'open');
@@ -409,7 +450,15 @@ export default function PostShiftV2() {
       if (formData.client_id) {
         params.set('client', formData.client_id);
       }
-      navigate(`${createPageUrl('Shifts')}?${params.toString()}`);
+
+      const targetUrl = `${createPageUrl('Shifts')}?${params.toString()}`;
+      console.log('🚀 [PostShiftV2] Preparing redirect to:', targetUrl);
+
+      // Force redirect after a short delay (ensure UI updates clear)
+      setTimeout(() => {
+        console.log('🚀 [PostShiftV2] Executing redirect NOW');
+        navigate(targetUrl);
+      }, 500);
     }
   });
 
@@ -662,16 +711,29 @@ export default function PostShiftV2() {
         <div className="flex gap-3">
           <Button
             type="submit"
-            disabled={!isFormValid || createShiftMutation.isPending}
-            className="flex-1 h-12 text-base bg-gradient-to-r from-cyan-500 to-blue-600"
+            className="w-full h-12 text-lg font-semibold shadow-lg hover:shadow-xl transition-all bg-gradient-to-r from-cyan-500 to-blue-600 text-white"
+            disabled={createShiftMutation.isPending || loading}
+            onClick={handleSubmit} // Ensure onClick is attached
           >
             {createShiftMutation.isPending ? (
-              <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Creating...</>
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Creating Shift...
+              </>
             ) : (
-              <><CheckCircle className="w-5 h-5 mr-2" />Create Shift</>
+              <>
+                <CheckCircle className="mr-2 h-5 w-5" />
+                Create Shift
+              </>
             )}
           </Button>
         </div>
+        {!isFormValid && (
+          <p className="text-sm text-red-500 text-center mt-2 flex items-center justify-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            Please complete all required fields to proceed
+          </p>
+        )}
       </form>
 
       {/* ✅ REMOVED: Add Location modal - locations managed in /clients only */}

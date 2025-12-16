@@ -235,6 +235,34 @@ export default function Step1ClientSetup({
           )}
         </div>
 
+        {/* Location Selection (Dropdown) - Only if client has internal_locations */}
+        {selectedClient?.internal_locations?.length > 0 && (
+          <div className="space-y-2 pt-2 border-t">
+            <Label htmlFor="location-select" className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-gray-500" />
+              Default Location for Batch {selectedClient.contract_terms?.require_location_specification && <span className="text-red-500">*</span>}
+            </Label>
+            <Select
+              value={formData.work_location_within_site || ''}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, work_location_within_site: value }))}
+            >
+              <SelectTrigger id="location-select" className={selectedClient.contract_terms?.require_location_specification && !formData.work_location_within_site ? "border-amber-500 ring-1 ring-amber-500" : ""}>
+                <SelectValue placeholder="-- Select a default location --" />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedClient.internal_locations.map(loc => (
+                  <SelectItem key={loc} value={loc}>
+                    {loc}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500">
+              This location will be applied to ALL shifts in this batch.
+            </p>
+          </div>
+        )}
+
         {/* Defaults Summary */}
         {selectedClient && formData.client_id && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -286,6 +314,6 @@ export default function Step1ClientSetup({
           </Button>
         </div>
       </CardContent>
-    </Card>
+    </Card >
   );
 }

@@ -876,11 +876,13 @@ export default function Shifts() {
 
       console.log(`✅ [Broadcast] Complete. Stats:`, channelStats);
 
-      // Update shift with broadcast timestamp
+      // Update shift with broadcast timestamp AND ensure it's on marketplace
       const { error } = await supabase
         .from('shifts')
         .update({
-          broadcast_sent_at: new Date().toISOString()
+          broadcast_sent_at: new Date().toISOString(),
+          marketplace_visible: true, // ✅ Auto-add to marketplace
+          urgency: 'urgent'          // ✅ Ensure identified as urgent
         })
         .eq('id', shift.id);
 

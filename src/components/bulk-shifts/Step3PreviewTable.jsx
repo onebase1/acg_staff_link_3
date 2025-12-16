@@ -182,6 +182,21 @@ export default function Step3PreviewTable({
                       <li key={i}>{warning}</li>
                     ))}
                   </ul>
+
+                  {/* ✅ OVERLAP DETAILS: Show specifics if available */}
+                  {validation.overlaps && validation.overlaps.length > 0 && (
+                    <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded text-amber-900">
+                      <p className="font-semibold text-sm mb-1 flex items-center gap-2">
+                        <AlertTriangle className="w-3 h-3" />
+                        Overlap Details ({validation.overlaps.length}):
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 text-xs max-h-32 overflow-y-auto">
+                        {validation.overlaps.map((msg, i) => (
+                          <li key={i}>{msg}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
 

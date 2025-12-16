@@ -334,15 +334,24 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
               agency: agencyData
             });
 
-            // Send confirmation to CLIENT (staff confirmed!)
-            await NotificationService.notifyShiftConfirmedToClient({
-              staff: staffData,
+            // ✅ Check if batch is complete and send immediate client notification
+            // If this shift is part of a batch (has booking_id), check if all shifts in the batch are now assigned
+            // If yes, send immediate client notification with all assigned shifts
+            const batchResult = await NotificationService.checkBatchCompletionAndNotifyClient({
               shift: updatedShift,
               client: clientData,
-              useBatching: true
+              agency: agencyData
             });
 
-            console.log('✅ [ShiftAssignment] Confirmation emails sent to staff & client');
+            if (batchResult.batchComplete && batchResult.notificationSent) {
+              console.log(`✅ [ShiftAssignment] Batch complete! Immediate client notification sent for ${batchResult.totalShifts} shifts`);
+            } else if (batchResult.batchComplete && !batchResult.notificationSent) {
+              console.warn(`⚠️ [ShiftAssignment] Batch complete but notification failed:`, batchResult.reason || batchResult.error);
+            } else {
+              console.log(`⏳ [ShiftAssignment] Batch not complete yet: ${batchResult.assignedCount || 0}/${batchResult.totalCount || 0} shifts assigned`);
+            }
+
+            console.log('✅ [ShiftAssignment] Staff confirmation email sent');
           }
         } else {
           // 🟡 ASSIGN MODE: Staff needs to confirm - send ASSIGNMENT email to STAFF
@@ -379,31 +388,50 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
             });
 
             console.log('✅ [ShiftAssignment] Assignment email sent to staff');
-          }
 
-          // Also notify CLIENT (care home) that staff has been assigned
-          const { data: emailData } = await supabase.functions.invoke('shift-verification-chain', {
-            body: {
-              shift_id: shiftId,
-              trigger_point: 'staff_assigned'
+            // ✅ Check if batch is complete and send immediate client notification
+            // Even in ASSIGN mode, if all shifts in batch are now assigned, notify client immediately
+            const batchResult = await NotificationService.checkBatchCompletionAndNotifyClient({
+              shift: updatedShift,
+              client: clientData,
+              agency: agencyData
+            });
+
+            if (batchResult.batchComplete && batchResult.notificationSent) {
+              console.log(`✅ [ShiftAssignment] Batch complete! Immediate client notification sent for ${batchResult.totalShifts} shifts`);
+              // Skip the individual shift-verification-chain call since we already sent batch notification
+            } else if (batchResult.batchComplete && !batchResult.notificationSent) {
+              console.warn(`⚠️ [ShiftAssignment] Batch complete but notification failed:`, batchResult.reason || batchResult.error);
+            } else {
+              console.log(`⏳ [ShiftAssignment] Batch not complete yet: ${batchResult.assignedCount || 0}/${batchResult.totalCount || 0} shifts assigned`);
+
+              // Only send individual client notification if NOT part of a batch or batch not complete
+              if (!updatedShift.booking_id) {
+                // Also notify CLIENT (care home) that staff has been assigned (single shift, not part of batch)
+                const { data: emailData } = await supabase.functions.invoke('shift-verification-chain', {
+                  body: {
+                    shift_id: shiftId,
+                    trigger_point: 'staff_assigned'
+                  }
+                });
+
+                console.log('✅ [ShiftAssignment] Care home notification response:', emailData);
+
+                if (emailData?.success) {
+                  console.log(`✅ [ShiftAssignment] Care home notified: ${emailData.email_sent_to}`);
+                } else if (emailData?.skipped) {
+                  console.warn(`⚠️ [ShiftAssignment] Email skipped: ${emailData.reason}`);
+                } else {
+                  console.warn('⚠️ [ShiftAssignment] Email notification failed:', emailData?.error);
+                }
+              }
             }
-          });
-
-          console.log('✅ [ShiftAssignment] Care home notification response:', emailData);
-
-          if (emailData?.success) {
-            console.log(`✅ [ShiftAssignment] Care home notified: ${emailData.email_sent_to}`);
-          } else if (emailData?.skipped) {
-            console.warn(`⚠️ [ShiftAssignment] Email skipped: ${emailData.reason}`);
-          } else {
-            console.warn('⚠️ [ShiftAssignment] Email notification failed:', emailData?.error);
           }
+        } catch (emailError) {
+          // DON'T FAIL THE ASSIGNMENT - just log the error
+          console.error('⚠️ [ShiftAssignment] Notification failed (non-critical):', emailError.message);
+          // User will still see success toast, but email failure is logged
         }
-      } catch (emailError) {
-        // DON'T FAIL THE ASSIGNMENT - just log the error
-        console.error('⚠️ [ShiftAssignment] Notification failed (non-critical):', emailError.message);
-        // User will still see success toast, but email failure is logged
-      }
 
       return updatedShift;
     },
