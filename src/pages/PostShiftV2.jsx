@@ -349,6 +349,11 @@ export default function PostShiftV2() {
           shift_type: shift_type,        // "day" or "night"
           agency_id: agencyId,
           status: 'open',
+
+          // 🤖 PHASE 2 AUTOMATION: Auto-flag urgent shifts for automated broadcast
+          pending_broadcast: shiftData.urgency === 'urgent' || shiftData.urgency === 'critical',
+          marketplace_visible: true,     // Auto-add all shifts to marketplace
+
           shift_journey_log: [{
             state: 'created',
             timestamp: new Date().toISOString(),

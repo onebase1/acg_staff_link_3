@@ -98,10 +98,6 @@ export default function Shifts() {
   const highlightedShiftRefs = React.useRef(new Map());
   const scrollPositionRef = React.useRef(null); // Store scroll position when highlighting
 
-  // 🆕 MULTI-SELECT BROADCAST STATE
-  const [selectedShiftIds, setSelectedShiftIds] = useState(new Set());
-  const [isBroadcastingSelected, setIsBroadcastingSelected] = useState(false);
-
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
@@ -932,118 +928,6 @@ export default function Shifts() {
     }
   };
 
-  // 🆕 MULTI-SELECT BROADCAST: Toggle shift selection
-  const toggleShiftSelection = (shiftId) => {
-    setSelectedShiftIds(prev => {
-      const next = new Set(prev);
-      if (next.has(shiftId)) {
-        next.delete(shiftId);
-      } else {
-        next.add(shiftId);
-      }
-      return next;
-    });
-  };
-
-  // 🆕 MULTI-SELECT BROADCAST: Select/deselect all visible shifts
-  const toggleSelectAll = () => {
-    if (selectedShiftIds.size === filteredShifts.length && filteredShifts.length > 0) {
-      // Deselect all
-      setSelectedShiftIds(new Set());
-    } else {
-      // Select all open shifts that are urgent/critical (can be broadcast)
-      const broadcastableShifts = filteredShifts.filter(s =>
-        s.status === 'open' &&
-        (s.urgency === 'urgent' || s.urgency === 'critical')
-      );
-      setSelectedShiftIds(new Set(broadcastableShifts.map(s => s.id)));
-    }
-  };
-
-  // 🆕 MULTI-SELECT BROADCAST: Broadcast selected shifts using smart-marketplace-digest
-  const broadcastSelectedShifts = async () => {
-    if (selectedShiftIds.size === 0) {
-      toast.error('No shifts selected');
-      return;
-    }
-
-    const selectedShifts = shifts.filter(s => selectedShiftIds.has(s.id));
-
-    // Validate all selected shifts are from same agency
-    const agencyIds = [...new Set(selectedShifts.map(s => s.agency_id))];
-    if (agencyIds.length > 1) {
-      toast.error('Selected shifts must be from the same agency');
-      return;
-    }
-
-    const agencyId = agencyIds[0];
-    const shiftIds = Array.from(selectedShiftIds);
-
-    try {
-      setIsBroadcastingSelected(true);
-      console.log(`🎯 [Smart Digest] Broadcasting ${shiftIds.length} selected shifts for agency ${agencyId}`);
-
-      // Call smart-marketplace-digest edge function
-      const { data, error } = await supabase.functions.invoke('smart-marketplace-digest', {
-        body: {
-          shift_ids: shiftIds,
-          agency_id: agencyId
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.skipped) {
-        toast.warning(
-          <div>
-            <p className="font-semibold">Smart Digest Disabled</p>
-            <p className="text-xs mt-1">{data.reason}</p>
-          </div>,
-          { duration: 5000 }
-        );
-        return;
-      }
-
-      // Update all shifts with broadcast timestamp
-      const { error: updateError } = await supabase
-        .from('shifts')
-        .update({
-          broadcast_sent_at: new Date().toISOString(),
-          marketplace_visible: true
-        })
-        .in('id', shiftIds);
-
-      if (updateError) throw updateError;
-
-      queryClient.invalidateQueries(['shifts']);
-
-      // Clear selection
-      setSelectedShiftIds(new Set());
-
-      // Show success toast
-      toast.success(
-        <div>
-          <p className="font-bold text-lg">📢 Smart Digest Sent!</p>
-          <p className="text-sm mt-2">
-            Notified {data.results.staffNotified} staff members about {shiftIds.length} shift{shiftIds.length > 1 ? 's' : ''}
-          </p>
-          <p className="text-xs mt-2">
-            📊 {data.results.channelBreakdown.sms} SMS • {data.results.channelBreakdown.whatsapp} WhatsApp • {data.results.channelBreakdown.email} Email
-          </p>
-        </div>,
-        { duration: 8000 }
-      );
-
-      console.log(`✅ [Smart Digest] Broadcast complete:`, data.results);
-
-    } catch (error) {
-      console.error('❌ [Smart Digest] Broadcast failed:', error);
-      toast.error(`Broadcast failed: ${error.message}`);
-    } finally {
-      setIsBroadcastingSelected(false);
-    }
-  };
-
   const completeShiftMutation = useMutation({
     mutationFn: async ({ shiftId, actualData }) => {
       const shift = shifts.find(s => s.id === shiftId);
@@ -1612,25 +1496,6 @@ export default function Shifts() {
             <Download className="w-4 h-4" />
             Export CSV
           </Button>
-          {selectedShiftIds.size > 0 && (
-            <Button
-              onClick={broadcastSelectedShifts}
-              disabled={isBroadcastingSelected}
-              className="bg-gradient-to-r from-purple-500 to-pink-600 text-white gap-2"
-            >
-              {isBroadcastingSelected ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Broadcasting...
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4" />
-                  Broadcast Selected ({selectedShiftIds.size})
-                </>
-              )}
-            </Button>
-          )}
           <Link to={createPageUrl('PostShiftV2')}>
             <Button className="bg-gradient-to-r from-cyan-500 to-blue-600">
               <Plus className="w-4 h-4 mr-2" />
@@ -1915,15 +1780,6 @@ export default function Shifts() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b sticky top-0 z-10">
                   <tr>
-                    <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 uppercase w-12">
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 rounded border-gray-300"
-                        checked={selectedShiftIds.size > 0 && selectedShiftIds.size === filteredShifts.filter(s => s.status === 'open' && (s.urgency === 'urgent' || s.urgency === 'critical')).length}
-                        onChange={toggleSelectAll}
-                        title="Select all urgent/critical open shifts"
-                      />
-                    </th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Date</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Client</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Location</th>
@@ -1971,18 +1827,6 @@ export default function Shifts() {
                         className={`hover:bg-gray-50 ${isHighlighted ? 'bg-cyan-50 border-l-4 border-l-cyan-500' : ''
                           }`}
                       >
-                        <td className="px-2 py-3 text-center">
-                          {shift.status === 'open' && (shift.urgency === 'urgent' || shift.urgency === 'critical') && (
-                            <input
-                              type="checkbox"
-                              className="w-4 h-4 rounded border-gray-300 cursor-pointer"
-                              checked={selectedShiftIds.has(shift.id)}
-                              onChange={() => toggleShiftSelection(shift.id)}
-                              onClick={(e) => e.stopPropagation()}
-                              title="Select for broadcast"
-                            />
-                          )}
-                        </td>
                         <td className="px-4 py-3">
                           <div className="text-sm font-medium text-gray-900">
                             {formattedDate}
