@@ -1964,8 +1964,8 @@ export default function Shifts() {
                       <tr
                         key={shift.id}
                         ref={isHighlighted ? (el) => {
-                          if (el && !highlightedShiftRefs.has(shift.id)) {
-                            highlightedShiftRefs.set(shift.id, el);
+                          if (el && !highlightedShiftRefs.current.has(shift.id)) {
+                            highlightedShiftRefs.current.set(shift.id, el);
                           }
                         } : null}
                         className={`hover:bg-gray-50 ${isHighlighted ? 'bg-cyan-50 border-l-4 border-l-cyan-500' : ''

@@ -18,24 +18,34 @@ serve(async (req) => {
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
         );
 
-        // Authentication check
+        // Authentication check - support both user auth AND service-to-service calls
         const authHeader = req.headers.get('Authorization');
-        if (!authHeader) {
-            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-                status: 401,
-                headers: { ...corsHeaders, "Content-Type": "application/json" }
-            });
+        const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+        // Check if this is a service-to-service call (from another edge function)
+        const isServiceCall = authHeader?.replace('Bearer ', '') === serviceRoleKey;
+
+        if (!isServiceCall) {
+            // Validate user authentication for direct client calls
+            if (!authHeader) {
+                return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                    status: 401,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            }
+
+            const token = authHeader.replace('Bearer ', '');
+            const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+            if (authError || !user) {
+                return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                    status: 401,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            }
         }
 
-        const token = authHeader.replace('Bearer ', '');
-        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-        if (authError || !user) {
-            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-                status: 401,
-                headers: { ...corsHeaders, "Content-Type": "application/json" }
-            });
-        }
+        console.log(`🔐 [SMS] Auth: ${isServiceCall ? 'service-to-service' : 'user'}`);
 
         const { to, message } = await req.json();
 
