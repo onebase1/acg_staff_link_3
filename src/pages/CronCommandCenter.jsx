@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "../lib/supabase";
-import { useAuth } from "../components/AuthWrapper";
+import { supabase } from "@/lib/supabase";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,12 +62,46 @@ const CRON_JOBS = [
 ];
 
 export default function CronCommandCenter() {
-  const { user, profile, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [jobs, setJobs] = useState([]);
   const [runs, setRuns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
+
+  // Check auth and super_admin access
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        if (authError || !authUser) {
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+
+        if (profileError || !profileData) {
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        setProfile(profileData);
+      } catch (err) {
+        console.error("Auth error:", err);
+        navigate(createPageUrl('Home'));
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+    checkAccess();
+  }, [navigate]);
 
   // Fetch cron job status from database views
   const fetchCronData = async () => {
