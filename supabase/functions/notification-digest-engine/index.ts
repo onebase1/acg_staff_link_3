@@ -1,11 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
-import { 
-    logNotificationSent, 
-    logNotificationFailed, 
-    logNotificationSkipped 
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
 } from "../_shared/notificationLogger.ts";
+import { getBranding } from "../_shared/getBranding.ts";
 
 /**
  * 📧 NOTIFICATION DIGEST ENGINE - ENHANCED
@@ -64,6 +65,9 @@ serve(async (req) => {
                     .eq("id", queue.agency_id);
 
                 const agency = agencies?.[0];
+
+                // Get dynamic branding for this agency
+                const branding = await getBranding(supabase, queue.agency_id);
 
                 let emailHtml = '';
                 let subject = '';
@@ -169,14 +173,14 @@ serve(async (req) => {
                                     ` : ''}
 
                                     <p style="font-size: 14px; color: #6b7280; margin: 20px 0 0 0;">
-                                        Questions? Contact us at <a href="mailto:${agency?.contact_email || 'support@agilecaremanagement.co.uk'}" style="color: #0284c7; text-decoration: none;">${agency?.contact_email || 'support@agilecaremanagement.co.uk'}</a> or ${agency?.contact_phone || '+44 20 1234 5678'}
+                                        Questions? Contact us at <a href="mailto:${agency?.contact_email || branding.supportEmail}" style="color: #0284c7; text-decoration: none;">${agency?.contact_email || branding.supportEmail}</a> or ${agency?.contact_phone || branding.supportPhone}
                                     </p>
                                 </div>
 
                                 <!-- Unsubscribe Link -->
                                 <div style="background: #f9fafb; padding: 15px; text-align: center;">
                                     <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                                        <a href="https://agilecaremanagement.co.uk/preferences?email=${encodeURIComponent(queue.recipient_email)}" style="color: #64748b; text-decoration: underline;">
+                                        <a href="${branding.siteUrl}/preferences?email=${encodeURIComponent(queue.recipient_email)}" style="color: #64748b; text-decoration: underline;">
                                             Manage email preferences
                                         </a>
                                     </p>
@@ -184,9 +188,9 @@ serve(async (req) => {
 
                                 <!-- ✅ FOOTER -->
                                 <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
-                                    <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} Agile Care Management. All rights reserved.</p>
+                                    <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} ${branding.companyName}. All rights reserved.</p>
                                     <p style="margin: 10px 0 0 0; font-size: 12px;">
-                                        Need help? Contact us at <a href="mailto:support@agilecaremanagement.co.uk" style="color: #06b6d4; text-decoration: none;">support@agilecaremanagement.co.uk</a>
+                                        Need help? Contact us at <a href="mailto:${branding.supportEmail}" style="color: #06b6d4; text-decoration: none;">${branding.supportEmail}</a>
                                     </p>
                                 </div>
 
@@ -247,13 +251,13 @@ serve(async (req) => {
                                     ${shiftCardsHtml}
 
                                     <div style="text-align: center; margin: 30px 0;">
-                                        <a href="https://app.agilecaremanagement.co.uk/shifts" style="background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Shifts</a>
+                                        <a href="${branding.appUrl}/shifts" style="background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Shifts</a>
                                     </div>
                                 </div>
 
                                 <!-- FOOTER -->
                                 <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
-                                    <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} ${agency?.name || 'Agile Care Management'}</p>
+                                    <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} ${agency?.name || branding.companyName}</p>
                                 </div>
 
                             </div>
@@ -330,7 +334,7 @@ serve(async (req) => {
                                 <!-- Unsubscribe Link -->
                                 <div style="background: #f9fafb; padding: 15px; text-align: center;">
                                     <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                                        <a href="https://agilecaremanagement.co.uk/preferences?email=${encodeURIComponent(queue.recipient_email)}" style="color: #64748b; text-decoration: underline;">
+                                        <a href="${branding.siteUrl}/preferences?email=${encodeURIComponent(queue.recipient_email)}" style="color: #64748b; text-decoration: underline;">
                                             Manage email preferences
                                         </a>
                                     </p>
@@ -338,9 +342,9 @@ serve(async (req) => {
 
                                 <!-- FOOTER -->
                                 <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
-                                    <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} Agile Care Management. All rights reserved.</p>
+                                    <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} ${branding.companyName}. All rights reserved.</p>
                                     <p style="margin: 10px 0 0 0; font-size: 12px;">
-                                        Need help? Contact us at <a href="mailto:support@agilecaremanagement.co.uk" style="color: #06b6d4; text-decoration: none;">support@agilecaremanagement.co.uk</a>
+                                        Need help? Contact us at <a href="mailto:${branding.supportEmail}" style="color: #06b6d4; text-decoration: none;">${branding.supportEmail}</a>
                                     </p>
                                 </div>
 

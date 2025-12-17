@@ -7,6 +7,7 @@ import {
     logNotificationSkipped
 } from "../_shared/notificationLogger.ts";
 import { scheduleRetry } from "../_shared/retryHandler.ts";
+import { getBranding } from "../_shared/getBranding.ts";
 
 /**
  * 📲 SMART CLOCK-OUT REMINDER SYSTEM (Phase 2)
@@ -58,6 +59,9 @@ serve(async (req) => {
 
         for (const shift of activeShifts) {
             try {
+                // Get dynamic branding for this agency
+                const branding = await getBranding(supabase, shift.agency_id);
+
                 // Calculate shift end time
                 const shiftDate = new Date(shift.date);
                 let endDateTime = new Date(`${shift.date}T${shift.end_time}`);
@@ -240,7 +244,7 @@ async function sendReminder(supabase: any, staff: any, shift: any, clientName: s
                             <table border="0" cellspacing="0" cellpadding="0">
                                 <tr>
                                     <td style="background-color: ${urgency === 'high' ? '#ef4444' : urgency === 'medium' ? '#fbbf24' : '#0369a1'}; border-radius: 8px;" bgcolor="${urgency === 'high' ? '#ef4444' : urgency === 'medium' ? '#fbbf24' : '#0369a1'}">
-                                        <a href="${Deno.env.get("VITE_APP_URL") || 'https://agilecaremanagement.netlify.app'}/StaffPortal" style="display: inline-block; padding: 15px 40px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 18px; font-family: Arial, sans-serif;">
+                                        <a href="${Deno.env.get("VITE_APP_URL") || branding.siteUrl}/StaffPortal" style="display: inline-block; padding: 15px 40px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 18px; font-family: Arial, sans-serif;">
                                             📱 Clock Out Now
                                         </a>
                                     </td>

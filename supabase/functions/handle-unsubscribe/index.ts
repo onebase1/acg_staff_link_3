@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logNotification } from "../_shared/notificationLogger.ts";
+import { getBranding } from "../_shared/getBranding.ts";
 
 /**
  * 🔕 UNSUBSCRIBE HANDLER
@@ -133,8 +134,11 @@ serve(async (req) => {
 
         console.log(`✅ [Unsubscribe] ${email} unsubscribed from ${unsubscribeMessage}`);
 
+        // Get dynamic branding for this agency
+        const branding = await getBranding(supabase, contact.agency_id);
+
         // Return success page
-        return new Response(getSuccessPage(email, unsubscribeMessage, contact.agency_id), {
+        return new Response(getSuccessPage(email, unsubscribeMessage, branding), {
             status: 200,
             headers: { "Content-Type": "text/html" }
         });
@@ -151,7 +155,7 @@ serve(async (req) => {
 /**
  * Generate success HTML page
  */
-function getSuccessPage(email: string, notificationType: string, agencyId?: string): string {
+function getSuccessPage(email: string, notificationType: string, branding: any): string {
     return `
         <!DOCTYPE html>
         <html lang="en">
@@ -296,10 +300,10 @@ function getSuccessPage(email: string, notificationType: string, agencyId?: stri
                     </div>
                     
                     <div class="actions">
-                        <a href="https://agilecaremanagement.co.uk/client/preferences?email=${encodeURIComponent(email)}" class="btn btn-primary">
+                        <a href="${branding.siteUrl}/client/preferences?email=${encodeURIComponent(email)}" class="btn btn-primary">
                             Manage All Preferences
                         </a>
-                        <a href="https://agilecaremanagement.co.uk/client/dashboard" class="btn btn-secondary">
+                        <a href="${branding.siteUrl}/client/dashboard" class="btn btn-secondary">
                             Return to Dashboard
                         </a>
                     </div>
@@ -307,9 +311,9 @@ function getSuccessPage(email: string, notificationType: string, agencyId?: stri
                 
                 <div class="footer">
                     <p>Changed your mind? You can update your preferences at any time.</p>
-                    <p>Need help? Contact us at <a href="mailto:support@agilecaremanagement.co.uk">support@agilecaremanagement.co.uk</a></p>
+                    <p>Need help? Contact us at <a href="mailto:${branding.supportEmail}">${branding.supportEmail}</a></p>
                     <p style="margin-top: 16px; font-size: 12px;">
-                        © ${new Date().getFullYear()} Agile Care Management. All rights reserved.
+                        © ${new Date().getFullYear()} ${branding.companyName}. All rights reserved.
                     </p>
                 </div>
             </div>
@@ -440,14 +444,14 @@ function getErrorPage(errorMessage: string): string {
                         <p>Please try again later or contact support if the problem persists.</p>
                     </div>
                     
-                    <a href="mailto:support@agilecaremanagement.co.uk?subject=Unsubscribe%20Error" class="btn">
+                    <a href="mailto:${Deno.env.get("SAAS_SUPPORT_EMAIL") || "support@agilecaremanagement.co.uk"}?subject=Unsubscribe%20Error" class="btn">
                         Contact Support
                     </a>
                 </div>
-                
+
                 <div class="footer">
-                    <p>Need help? Email us at <a href="mailto:support@agilecaremanagement.co.uk">support@agilecaremanagement.co.uk</a></p>
-                    <p style="margin-top: 8px;">© ${new Date().getFullYear()} Agile Care Management</p>
+                    <p>Need help? Email us at <a href="mailto:${Deno.env.get("SAAS_SUPPORT_EMAIL") || "support@agilecaremanagement.co.uk"}">${Deno.env.get("SAAS_SUPPORT_EMAIL") || "support@agilecaremanagement.co.uk"}</a></p>
+                    <p style="margin-top: 8px;">© ${new Date().getFullYear()} ${Deno.env.get("SAAS_COMPANY_NAME") || "Agile Care Management"}</p>
                 </div>
             </div>
         </body>

@@ -280,7 +280,7 @@ function getMissingItems(staff, compliance) {
  * Day 1: Gentle welcome + reminder
  */
 async function sendDay1Reminder(supabase, staff, agency, progress) {
-    const setupUrl = `${Deno.env.get('APP_URL') || 'https://app.base44.com'}/ProfileSetup`;
+    const setupUrl = `${Deno.env.get('APP_URL') || 'https://agilecaremanagement.co.uk'}/ProfileSetup`;
 
     await supabase.functions.invoke('send-email', {
         body: {
@@ -335,7 +335,7 @@ async function sendDay1Reminder(supabase, staff, agency, progress) {
  * Day 3: Second reminder with checklist
  */
 async function sendDay3Reminder(supabase, staff, agency, progress) {
-    const setupUrl = `${Deno.env.get('APP_URL') || 'https://app.base44.com'}/ProfileSetup`;
+    const setupUrl = `${Deno.env.get('APP_URL') || 'https://agilecaremanagement.co.uk'}/ProfileSetup`;
 
     const missingItemsHtml = progress.missingItems
         .map(item => `<li style="margin: 5px 0;">${item}</li>`)
@@ -393,7 +393,7 @@ async function sendDay3Reminder(supabase, staff, agency, progress) {
  * Day 7: Urgent reminder
  */
 async function sendDay7Reminder(supabase, staff, agency, progress) {
-    const setupUrl = `${Deno.env.get('APP_URL') || 'https://app.base44.com'}/ProfileSetup`;
+    const setupUrl = `${Deno.env.get('APP_URL') || 'https://agilecaremanagement.co.uk'}/ProfileSetup`;
 
     await supabase.functions.invoke('send-email', {
         body: {
@@ -452,7 +452,7 @@ async function sendDay7Reminder(supabase, staff, agency, progress) {
  * Day 14: Final reminder
  */
 async function sendDay14Reminder(supabase, staff, agency, progress) {
-    const setupUrl = `${Deno.env.get('APP_URL') || 'https://app.base44.com'}/ProfileSetup`;
+    const setupUrl = `${Deno.env.get('APP_URL') || 'https://agilecaremanagement.co.uk'}/ProfileSetup`;
 
     await supabase.functions.invoke('send-email', {
         body: {

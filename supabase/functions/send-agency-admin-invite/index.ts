@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0?dts";
+import { getBranding, type Branding } from "../_shared/getBranding.ts";
 
 type InvitePayload = {
   agencyId: string;
@@ -51,8 +52,8 @@ function resolveSiteUrl(request: Request, payload?: InvitePayload) {
       // ignore
     }
   }
-  // fallback to agency-specific redirect path if provided later
-  return "https://agilecaremanagement.co.uk";
+  // fallback to SITE_URL environment variable
+  return Deno.env.get("SITE_URL") || "https://agilecaremanagement.co.uk";
 }
 
 function buildInviteEmail({
@@ -62,6 +63,7 @@ function buildInviteEmail({
   actionLink,
   siteUrl,
   bankSummary,
+  branding,
 }: {
   adminEmail: string;
   adminName?: string;
@@ -69,6 +71,7 @@ function buildInviteEmail({
   actionLink: string;
   siteUrl: string;
   bankSummary?: InvitePayload["bankSummary"];
+  branding: Branding;
 }) {
   const safeName = adminName ?? "Agency Admin";
   const safeAgency = agencyName ?? "your agency";
@@ -88,19 +91,19 @@ function buildInviteEmail({
     : "";
 
   return {
-    subject: `Activate your Agile Care Management access for ${safeAgency}`,
+    subject: `Activate your ${branding.companyName} access for ${safeAgency}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
         <!-- Header -->
         <div style="background-color: #0369a1; padding: 40px 30px; text-align: center; border-radius: 10px 10px 0 0;" bgcolor="#0369a1">
-          <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">Welcome to Agile Care Management</h1>
+          <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">Welcome to ${branding.companyName}</h1>
         </div>
 
         <!-- Body -->
         <div style="background-color: #ffffff; padding: 40px 30px; border: 1px solid #e5e7eb; border-top: none;" bgcolor="#ffffff">
           <p style="font-size: 16px; color: #1f2937; margin-bottom: 20px;">Hi ${safeName},</p>
           <p style="font-size: 16px; color: #1f2937; line-height: 1.6; margin-bottom: 25px;">
-            You have been invited to manage <strong>${safeAgency}</strong> on the Agile Care Management platform.
+            You have been invited to manage <strong>${safeAgency}</strong> on the ${branding.companyName} platform.
           </p>
           <p style="font-size: 16px; color: #1f2937; line-height: 1.6; margin-bottom: 30px;">
             To get started, please secure your account by setting a password:
@@ -143,17 +146,17 @@ function buildInviteEmail({
               📞 Need Help?
             </p>
             <p style="margin: 0; font-size: 14px; color: #6b7280; line-height: 1.6;">
-              Visit <a href="${siteUrl}" style="color: #0284c7; text-decoration: none;">Agile Care Management</a> or contact us at
-              <a href="mailto:support@agilecaremanagement.co.uk" style="color: #0284c7; text-decoration: none;">support@agilecaremanagement.co.uk</a>
+              Visit <a href="${siteUrl}" style="color: #0284c7; text-decoration: none;">${branding.companyName}</a> or contact us at
+              <a href="mailto:${branding.supportEmail}" style="color: #0284c7; text-decoration: none;">${branding.supportEmail}</a>
             </p>
           </div>
         </div>
 
         <!-- Footer -->
         <div style="background: #1e293b; color: #94a3b8; padding: 25px 30px; text-align: center; border-radius: 0 0 10px 10px;">
-          <p style="margin: 0; font-size: 13px;">© 2025 Agile Care Management. All rights reserved.</p>
+          <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} ${branding.companyName}. All rights reserved.</p>
           <p style="margin: 10px 0 0 0; font-size: 12px;">
-            Need help? Contact us at <a href="mailto:support@agilecaremanagement.co.uk" style="color: #06b6d4; text-decoration: none;">support@agilecaremanagement.co.uk</a>
+            Need help? Contact us at <a href="mailto:${branding.supportEmail}" style="color: #06b6d4; text-decoration: none;">${branding.supportEmail}</a>
           </p>
         </div>
       </div>
@@ -209,8 +212,9 @@ async function sendEmail(to: string, subject: string, html: string) {
     throw new Error("RESEND_API_KEY is not configured");
   }
 
+  const fromDomain = Deno.env.get("RESEND_FROM_DOMAIN") || "agilecaremanagement.co.uk";
   const from =
-    Deno.env.get("RESEND_DEFAULT_FROM") ?? "noreply@agilecaremanagement.co.uk";
+    Deno.env.get("RESEND_DEFAULT_FROM") ?? `noreply@${fromDomain}`;
 
   const response = await fetch(RESEND_API_URL, {
     method: "POST",
@@ -259,6 +263,9 @@ export default async function handler(
   const redirectUrl = `${siteUrl}${redirectPath}`;
 
   try {
+    // Get dynamic branding for this agency
+    const branding = await getBranding(supabaseAdmin, payload.agencyId);
+
     const user = await ensureAuthUser(adminEmail, {
       invited_role: "agency_admin",
       invited_agency_id: payload.agencyId,
@@ -273,6 +280,7 @@ export default async function handler(
       actionLink,
       siteUrl,
       bankSummary: payload.bankSummary,
+      branding,
     });
 
     await sendEmail(adminEmail, subject, html);

@@ -1,11 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getBranding } from "../_shared/getBranding.ts";
 
 /**
- * 🎉 WELCOME NEW AGENCY TO ACG STAFFLINK
+ * 🎉 WELCOME NEW AGENCY
  *
  * Professional onboarding email sent when agency signs up
  * Includes: Welcome message, next steps, support information
+ * Uses dynamic branding for multi-tenant support
  */
 
 serve(async (req) => {
@@ -58,6 +60,9 @@ serve(async (req) => {
             );
         }
 
+        // Get dynamic branding for this agency
+        const branding = await getBranding(supabase, agency_id);
+
         // Get agency admin user
         const { data: adminUsers, error: usersError } = await supabase
             .from("users")
@@ -74,7 +79,7 @@ serve(async (req) => {
                 <div style="background-color: #0284c7; padding: 50px 40px; text-align: center; position: relative;" bgcolor="#0284c7">
                     <div style="background-color: rgba(255,255,255,0.15); border-radius: 20px; padding: 30px; display: inline-block;">
                         <h1 style="color: #ffffff; margin: 0; font-size: 36px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            🎉 Welcome to ACG StaffLink!
+                            🎉 Welcome to ${branding.saasName}!
                         </h1>
                         <p style="color: #ffffff; margin: 15px 0 0 0; font-size: 18px; font-weight: 400;">
                             The UK's Leading Healthcare Staffing Platform
@@ -89,12 +94,12 @@ serve(async (req) => {
                     </p>
 
                     <p style="font-size: 16px; color: #374151; line-height: 1.8; margin: 0 0 25px 0;">
-                        We're absolutely delighted to welcome <strong style="color: #0284c7;">${agency.name}</strong> to the ACG StaffLink family!
+                        We're absolutely delighted to welcome <strong style="color: #0284c7;">${agency.name}</strong> to the ${branding.saasName} family!
                         You've just gained access to the most powerful healthcare staffing management platform in the UK.
                     </p>
 
                     <p style="font-size: 16px; color: #374151; line-height: 1.8; margin: 0 0 35px 0;">
-                        ACG StaffLink is trusted by leading healthcare providers to streamline operations, reduce administrative burden,
+                        ${branding.saasName} is trusted by leading healthcare providers to streamline operations, reduce administrative burden,
                         and deliver exceptional care through intelligent workforce management.
                     </p>
 
@@ -140,7 +145,7 @@ serve(async (req) => {
                                     4️⃣ Automate Everything
                                 </h3>
                                 <p style="color: #1f2937; margin: 0; font-size: 15px; line-height: 1.6;">
-                                    From timesheets to invoicing, compliance tracking to payment reminders - ACG StaffLink
+                                    From timesheets to invoicing, compliance tracking to payment reminders - ${branding.saasName}
                                     handles it all automatically, saving you hours every day.
                                 </p>
                             </div>
@@ -193,17 +198,17 @@ serve(async (req) => {
                             🆘 Need Help Getting Started?
                         </h3>
                         <p style="color: #7f1d1d; margin: 0 0 15px 0; font-size: 15px; line-height: 1.6;">
-                            Our dedicated onboarding specialists are here to help you get the most out of ACG StaffLink.
+                            Our dedicated onboarding specialists are here to help you get the most out of ${branding.saasName}.
                         </p>
                         <p style="color: #7f1d1d; margin: 0; font-size: 15px;">
-                            <strong>📧 Email:</strong> support@acgstafflink.com<br>
+                            <strong>📧 Email:</strong> ${branding.supportEmail}<br>
                             <strong>📞 Phone:</strong> Available 24/7 for setup assistance<br>
                             <strong>💬 Live Chat:</strong> Available in your dashboard
                         </p>
                     </div>
 
                     <p style="font-size: 16px; color: #374151; line-height: 1.8; margin: 35px 0 25px 0;">
-                        We're thrilled to have you on board and can't wait to see how ACG StaffLink transforms your operations.
+                        We're thrilled to have you on board and can't wait to see how ${branding.saasName} transforms your operations.
                         Here's to streamlined workflows, happier staff, and exceptional patient care!
                     </p>
                 </div>
@@ -214,7 +219,7 @@ serve(async (req) => {
                         Welcome aboard,
                     </p>
                     <p style="color: #ffffff; font-size: 20px; font-weight: 600; margin: 0 0 5px 0;">
-                        The ACG StaffLink Team
+                        The ${branding.saasName} Team
                     </p>
                     <p style="color: #9ca3af; font-size: 14px; margin: 20px 0 30px 0;">
                         Transforming Healthcare Staffing, One Agency at a Time
@@ -222,10 +227,10 @@ serve(async (req) => {
 
                     <div style="border-top: 1px solid #374151; padding-top: 25px; margin-top: 30px;">
                         <p style="color: #6b7280; font-size: 12px; margin: 0 0 10px 0;">
-                            📧 support@acgstafflink.com | 🌐 www.acgstafflink.com
+                            📧 ${branding.supportEmail} | 🌐 ${branding.siteUrl}
                         </p>
                         <p style="color: #6b7280; font-size: 11px; margin: 0;">
-                            © ${new Date().getFullYear()} ACG StaffLink. All rights reserved.<br>
+                            © ${new Date().getFullYear()} ${branding.saasName}. All rights reserved.<br>
                             Building the future of healthcare workforce management.
                         </p>
                     </div>
@@ -237,9 +242,9 @@ serve(async (req) => {
         await supabase.functions.invoke('send-email', {
             body: {
                 to: adminEmail,
-                subject: `🎉 Welcome to ACG StaffLink - Let's Transform Your Agency!`,
+                subject: `🎉 Welcome to ${branding.saasName} - Let's Transform Your Agency!`,
                 html: welcomeEmail,
-                from_name: 'ACG StaffLink'
+                from_name: branding.saasName
             }
         });
 

@@ -42,13 +42,7 @@ import InvoiceDetail from "./InvoiceDetail";
 
 import StaffProfile from "./StaffProfile";
 
-import TestNotifications from "./TestNotifications";
-
-import TestingTracker from "./TestingTracker";
-
 import WhatsAppAgentDemo from "./WhatsAppAgentDemo";
-
-import StakeholderPresentation from "./StakeholderPresentation";
 
 import AdminWorkflows from "./AdminWorkflows";
 
@@ -76,11 +70,7 @@ import TimesheetDetail from "./TimesheetDetail";
 
 import CapabilitiesMatrix from "./CapabilitiesMatrix";
 
-import TestUserCredentials from "./TestUserCredentials";
-
 import DayOneReadiness from "./DayOneReadiness";
-
-import UATTesterGuide from "./UATTesterGuide";
 
 import StaffProfileSimulation from "./StaffProfileSimulation";
 
@@ -92,8 +82,6 @@ import PostShiftV2 from "./PostShiftV2";
 
 import PostShiftV3 from "./PostShiftV3";
 
-import NaturalLanguageTests from "./NaturalLanguageTests";
-
 import WhatsAppTimesheetGuide from "./WhatsAppTimesheetGuide";
 
 import Phase2Tracker from "./Phase2Tracker";
@@ -101,8 +89,6 @@ import Phase2Tracker from "./Phase2Tracker";
 import ValidationMatrix from "./ValidationMatrix";
 
 import CleanSlate from "./CleanSlate";
-
-import EmailNotificationTester from "./EmailNotificationTester";
 
 import DailyShiftVerification from "./DailyShiftVerification";
 
@@ -120,7 +106,7 @@ import MyAvailability from "./MyAvailability";
 
 import MyShifts from "./MyShifts";
 
-import DominionPresentation from "./DominionPresentation";
+import MyScore from "./MyScore";
 
 import AdminTrainingHub from "./AdminTrainingHub";
 
@@ -130,13 +116,7 @@ import TroubleshootingGuide from "./TroubleshootingGuide";
 
 import OnboardClient from "./OnboardClient";
 
-import PhoneDiagnostic from "./PhoneDiagnostic";
-
 import NotificationMonitor from "./NotificationMonitor";
-
-import TestShiftReminders from "./TestShiftReminders";
-
-import TestWhatsAppN8N from "./TestWhatsAppN8N";
 
 import GeneratePayslips from "./GeneratePayslips";
 
@@ -148,6 +128,7 @@ import ShiftJourneyDiagram from "./ShiftJourneyDiagram";
 
 import SuperAdminAgencyOnboarding from "./SuperAdminAgencyOnboarding";
 import SuperAdminAgencyManagement from "./SuperAdminAgencyManagement";
+import CronCommandCenter from "./CronCommandCenter";
 
 import GPSAccuracyMonitoring from "./GPSAccuracyMonitoring";
 
@@ -206,13 +187,7 @@ const PAGES = {
 
     StaffProfile: StaffProfile,
 
-    TestNotifications: TestNotifications,
-
-    TestingTracker: TestingTracker,
-
     WhatsAppAgentDemo: WhatsAppAgentDemo,
-
-    StakeholderPresentation: StakeholderPresentation,
 
     AdminWorkflows: AdminWorkflows,
 
@@ -240,11 +215,7 @@ const PAGES = {
 
     CapabilitiesMatrix: CapabilitiesMatrix,
 
-    TestUserCredentials: TestUserCredentials,
-
     DayOneReadiness: DayOneReadiness,
-
-    UATTesterGuide: UATTesterGuide,
 
     StaffProfileSimulation: StaffProfileSimulation,
 
@@ -256,8 +227,6 @@ const PAGES = {
 
     PostShiftV3: PostShiftV3,
 
-    NaturalLanguageTests: NaturalLanguageTests,
-
     WhatsAppTimesheetGuide: WhatsAppTimesheetGuide,
 
     Phase2Tracker: Phase2Tracker,
@@ -265,8 +234,6 @@ const PAGES = {
     ValidationMatrix: ValidationMatrix,
 
     CleanSlate: CleanSlate,
-
-    EmailNotificationTester: EmailNotificationTester,
 
     DailyShiftVerification: DailyShiftVerification,
 
@@ -284,8 +251,6 @@ const PAGES = {
 
     MyShifts: MyShifts,
 
-    DominionPresentation: DominionPresentation,
-
     AdminTrainingHub: AdminTrainingHub,
 
     QuickStartGuide: QuickStartGuide,
@@ -294,13 +259,7 @@ const PAGES = {
 
     OnboardClient: OnboardClient,
 
-    PhoneDiagnostic: PhoneDiagnostic,
-
     NotificationMonitor: NotificationMonitor,
-
-    TestShiftReminders: TestShiftReminders,
-
-    TestWhatsAppN8N: TestWhatsAppN8N,
 
     GeneratePayslips: GeneratePayslips,
 
@@ -323,6 +282,8 @@ const PAGES = {
     ClientManagement: ClientManagement,
 
     ResetPassword: ResetPassword,
+
+    CronCommandCenter: CronCommandCenter,
 
 }
 
@@ -396,13 +357,7 @@ function PagesContent() {
 
                 <Route path="/StaffProfile" element={<StaffProfile />} />
 
-                <Route path="/TestNotifications" element={<TestNotifications />} />
-
-                <Route path="/TestingTracker" element={<TestingTracker />} />
-
                 <Route path="/WhatsAppAgentDemo" element={<WhatsAppAgentDemo />} />
-
-                <Route path="/StakeholderPresentation" element={<StakeholderPresentation />} />
 
                 <Route path="/AdminWorkflows" element={<AdminWorkflows />} />
 
@@ -430,11 +385,7 @@ function PagesContent() {
 
                 <Route path="/CapabilitiesMatrix" element={<CapabilitiesMatrix />} />
 
-                <Route path="/TestUserCredentials" element={<TestUserCredentials />} />
-
                 <Route path="/DayOneReadiness" element={<DayOneReadiness />} />
-
-                <Route path="/UATTesterGuide" element={<UATTesterGuide />} />
 
                 <Route path="/StaffProfileSimulation" element={<StaffProfileSimulation />} />
 
@@ -446,8 +397,6 @@ function PagesContent() {
 
                 <Route path="/PostShiftV3" element={<PostShiftV3 />} />
 
-                <Route path="/NaturalLanguageTests" element={<NaturalLanguageTests />} />
-
                 <Route path="/WhatsAppTimesheetGuide" element={<WhatsAppTimesheetGuide />} />
 
                 <Route path="/Phase2Tracker" element={<Phase2Tracker />} />
@@ -455,8 +404,6 @@ function PagesContent() {
                 <Route path="/ValidationMatrix" element={<ValidationMatrix />} />
 
                 <Route path="/CleanSlate" element={<CleanSlate />} />
-
-                <Route path="/EmailNotificationTester" element={<EmailNotificationTester />} />
 
                 <Route path="/DailyShiftVerification" element={<DailyShiftVerification />} />
 
@@ -474,7 +421,7 @@ function PagesContent() {
 
                 <Route path="/MyShifts" element={<MyShifts />} />
 
-                <Route path="/DominionPresentation" element={<DominionPresentation />} />
+                <Route path="/MyScore" element={<MyScore />} />
 
                 <Route path="/AdminTrainingHub" element={<AdminTrainingHub />} />
 
@@ -484,13 +431,7 @@ function PagesContent() {
 
                 <Route path="/OnboardClient" element={<OnboardClient />} />
 
-                <Route path="/PhoneDiagnostic" element={<PhoneDiagnostic />} />
-
                 <Route path="/NotificationMonitor" element={<NotificationMonitor />} />
-
-                <Route path="/TestShiftReminders" element={<TestShiftReminders />} />
-
-                <Route path="/TestWhatsAppN8N" element={<TestWhatsAppN8N />} />
 
                 <Route path="/GeneratePayslips" element={<GeneratePayslips />} />
 
@@ -511,6 +452,8 @@ function PagesContent() {
                 <Route path="/RateManagement" element={<RateManagement />} />
 
                 <Route path="/ClientManagement" element={<ClientManagement />} />
+
+                <Route path="/CronCommandCenter" element={<CronCommandCenter />} />
 
             </Routes>
         </Layout>

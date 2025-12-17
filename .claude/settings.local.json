@@ -64,7 +64,8 @@
       "Bash(git merge:*)",
       "Bash(/c/Users/gbase/superbasecli/supabase.exe migration repair:*)",
       "Bash(/c/Users/gbase/superbasecli/supabase.exe db pull:*)",
-      "Bash(/c/Users/gbase/superbasecli/supabase.exe secrets list:*)"
+      "Bash(/c/Users/gbase/superbasecli/supabase.exe secrets list:*)",
+      "Bash(/c/Users/gbase/superbasecli/supabase.exe secrets set:*)"
     ],
     "deny": [],
     "ask": []

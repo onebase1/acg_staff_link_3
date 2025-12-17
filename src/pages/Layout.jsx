@@ -8,7 +8,7 @@ import {
   UserCog, FileText, Receipt, TrendingUp, Clock, CalendarCheck, Building2, Shield,
   UsersRound, LogOut, HelpCircle, UserPlus, Menu, X, Bell, ChevronDown, ChevronRight, Upload,
   CheckSquare, Rocket, DollarSign, Trash2, Mail, Shuffle, MessageCircle, CheckCircle, BookOpen,
-  Phone, GitBranch // ✅ Added GitBranch icon for Shift Journey
+  Phone, GitBranch, Trophy // ✅ Added Trophy icon for My Score
 } from "lucide-react";
 import { useAppVersion } from "@/hooks/useAppVersion";
 import { supabaseAuth } from "@/api/supabaseAuth";
@@ -94,6 +94,7 @@ const settingsItems = [
 const staffPortalItems = [
   { title: "Staff Portal", url: createPageUrl("StaffPortal"), icon: UserPlus, staffOnly: true },
   { title: "My Shifts", url: createPageUrl("MyShifts"), icon: Calendar, staffOnly: true },
+  { title: "My Score", url: createPageUrl("MyScore"), icon: Trophy, staffOnly: true },
   { title: "My Timesheets", url: createPageUrl("Timesheets"), icon: FileText, staffOnly: true },
   { title: "Find Shifts", url: createPageUrl("ShiftMarketplace"), icon: Calendar, staffOnly: true },
   { title: "My Availability", url: createPageUrl("MyAvailability"), icon: Clock, staffOnly: true },
@@ -143,6 +144,7 @@ const clientPortalItems = [
 const superAdminItems = [
   { title: "Agency Onboarding", url: createPageUrl("SuperAdminAgencyOnboarding"), icon: Building2 },
   { title: "Agency Management", url: createPageUrl("SuperAdminAgencyManagement"), icon: Users }, // ✅ ADDED: Manage existing agencies/admins
+  { title: "Cron Command Center", url: createPageUrl("CronCommandCenter"), icon: Clock }, // 🤖 MODULE 6: Cron job monitoring
   { title: "Platform Analytics", url: createPageUrl("PerformanceAnalytics"), icon: TrendingUp }, // ✅ QUICK CONNECT: Platform-wide analytics
   { title: "Timesheet Analytics", url: createPageUrl("TimesheetAnalytics"), icon: BarChart3 }, // ✅ QUICK CONNECT: Auto-approval metrics
   { title: "CFO Dashboard", url: createPageUrl("CFODashboard"), icon: DollarSign }, // ✅ QUICK CONNECT: Financial monitoring

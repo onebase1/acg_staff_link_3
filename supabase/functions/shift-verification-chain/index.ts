@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getBranding } from "../_shared/getBranding.ts";
 
 /**
  * PHASE 3A: Shift Verification Chain
@@ -59,6 +60,9 @@ serve(async (req) => {
                 headers: { "Content-Type": "application/json" }
             });
         }
+
+        // Get dynamic branding for this agency
+        const branding = await getBranding(supabase, shift.agency_id);
 
         // ✅ FIX 2: Get client details with validation
         let client;
@@ -158,7 +162,7 @@ serve(async (req) => {
                             <p>Great news! <strong>${staffMember.first_name} ${staffMember.last_name}</strong> has personally confirmed they will be there for the <strong>${shift.role_required.replace(/_/g, ' ')}</strong> shift on <strong>${shift.date}</strong> at <strong>${shift.start_time}</strong>.</p>
                             <p>We've also sent them the shift details and a reminder. You can rest assured your shift is covered. No further action is needed from you.</p>
                             <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">
-                                This is an automated notification from ACG StaffLink to provide you with peace of mind.
+                                This is an automated notification from ${branding.saasName} to provide you with peace of mind.
                             </p>
                         </div>
                     </div>
@@ -207,7 +211,7 @@ serve(async (req) => {
 
                             <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">
                                 Reference: SHIFT-${shift.id.substring(0, 8).toUpperCase()}<br>
-                                ${agency?.name || 'ACG StaffLink'} | ${agency?.contact_email || 'support@acgstafflink.com'}
+                                ${agency?.name || branding.saasName} | ${agency?.contact_email || branding.supportEmail}
                             </p>
                         </div>
                     </div>
@@ -282,7 +286,7 @@ serve(async (req) => {
 
                             <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">
                                 Reference: SHIFT-${shift.id.substring(0, 8).toUpperCase()}<br>
-                                ${agency?.name || 'ACG StaffLink'} | ${agency?.contact_email || 'support@acgstafflink.com'}
+                                ${agency?.name || branding.saasName} | ${agency?.contact_email || branding.supportEmail}
                             </p>
                         </div>
                     </div>
@@ -310,7 +314,7 @@ serve(async (req) => {
                     to: client.contact_person.email,
                     subject: emailSubject,
                     html: emailBody,
-                    from_name: agency?.name || 'ACG StaffLink'
+                    from_name: agency?.name || branding.saasName
                 }
             });
 
@@ -338,7 +342,7 @@ serve(async (req) => {
                 new_value: `Email sent to ${client.contact_person.email}`,
                 reason: changeLogDescription,
                 changed_by: 'system',
-                changed_by_email: 'automation@acgstafflink.com',
+                changed_by_email: `automation@${branding.emailDomain}`,
                 changed_at: new Date().toISOString(),
                 risk_level: 'low',
                 reviewed: false

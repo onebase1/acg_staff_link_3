@@ -427,7 +427,8 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
               }
             }
           }
-        } catch (emailError) {
+        }
+      } catch (emailError) {
           // DON'T FAIL THE ASSIGNMENT - just log the error
           console.error('⚠️ [ShiftAssignment] Notification failed (non-critical):', emailError.message);
           // User will still see success toast, but email failure is logged

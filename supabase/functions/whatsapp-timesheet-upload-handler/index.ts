@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getBranding } from "../_shared/getBranding.ts";
 
 /**
  * 📸 WHATSAPP TIMESHEET UPLOAD HANDLER
@@ -78,6 +79,9 @@ serve(async (req) => {
         }
 
         console.log(`✅ [Timesheet Upload] Staff found: ${staff.first_name} ${staff.last_name} (ID: ${staff.id})`);
+
+        // Get dynamic branding for this agency
+        const branding = await getBranding(supabase, staff.agency_id);
 
         // Download image from WhatsApp
         console.log(`📥 [Timesheet Upload] Downloading image from WhatsApp...`);
@@ -258,7 +262,7 @@ async function processTimesheetUpload(supabase: any, params: any) {
             `• Ensuring good lighting\n` +
             `• Making sure all text is visible\n\n` +
             `Or submit via the Staff Portal:\n` +
-            `https://agilecaremanagement.netlify.app/staff/timesheets`
+            `${branding.siteUrl}/staff/timesheets`
         );
         return { success: false, error: 'OCR extraction failed' };
     }

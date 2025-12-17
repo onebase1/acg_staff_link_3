@@ -80,9 +80,49 @@ export const calculateStaffScore = async (staffId, reason = 'Manual Update') => 
 
         // Deductions
         // No-Show: -30 points
-        const penaltyPoints = (noShows || 0) * 30;
+        let penaltyPoints = (noShows || 0) * 30;
+
+        // === TIME DECAY FOR PENALTIES ===
+        // Reduce penalty impact based on time since last incident
+        let penaltyDecay = 0;
+        if (staff.last_incident_date && penaltyPoints > 0) {
+            const monthsSinceIncident = Math.floor(
+                (new Date() - new Date(staff.last_incident_date)) / (1000 * 60 * 60 * 24 * 30)
+            );
+
+            let decayMultiplier = 1;
+            if (monthsSinceIncident >= 12) decayMultiplier = 0.25; // 75% reduction after 1 year
+            else if (monthsSinceIncident >= 6) decayMultiplier = 0.5; // 50% reduction after 6 months
+            else if (monthsSinceIncident >= 1) decayMultiplier = 1 - (monthsSinceIncident * 0.05); // 5% per month
+
+            const originalPenalty = penaltyPoints;
+            penaltyPoints = Math.round(penaltyPoints * decayMultiplier);
+            penaltyDecay = originalPenalty - penaltyPoints;
+        }
+
         score -= penaltyPoints;
         breakdown.penalties = -penaltyPoints;
+        if (penaltyDecay > 0) {
+            breakdown.penalty_decay = penaltyDecay;
+        }
+
+        // === STREAK BONUS ===
+        // +10 for 3+ streak, +15 for 5+ streak, +25 for 10+ streak
+        const currentStreak = staff.current_streak || 0;
+        let streakBonus = 0;
+        if (currentStreak >= 10) streakBonus = 25;
+        else if (currentStreak >= 5) streakBonus = 15;
+        else if (currentStreak >= 3) streakBonus = 10;
+
+        score += streakBonus;
+        breakdown.streak_bonus = streakBonus;
+
+        // === URGENCY HERO BONUS ===
+        // +5 per urgent shift covered (max +25)
+        const urgentCovered = staff.urgent_shifts_covered || 0;
+        const urgencyBonus = Math.min(urgentCovered * 5, 25);
+        score += urgencyBonus;
+        breakdown.urgency_bonus = urgencyBonus;
 
         // Cap Score (0-100)
         score = Math.max(0, Math.min(100, score));

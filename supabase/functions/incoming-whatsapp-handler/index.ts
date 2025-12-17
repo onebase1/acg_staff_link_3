@@ -460,7 +460,7 @@ function formatTimesheetHelp(staffName: string): string {
         `*Timesheet Submission:*\n\n` +
         `1️⃣ *GPS Staff:* Your timesheets are auto-created when you clock in/out via the app. No action needed! ✅\n\n` +
         `2️⃣ *Non-GPS Staff:* Submit your paper timesheet via the Staff Portal:\n` +
-        `👉 https://agilecareemanagement.netlify.app/staff/timesheets\n\n` +
+        `👉 https://agilecaremanagement.netlify.app/staff/timesheets\n\n` +
         `Need help? Contact your agency admin! 📞`;
 }
 

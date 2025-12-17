@@ -7,6 +7,7 @@ import {
     logNotificationSkipped
 } from "../_shared/notificationLogger.ts";
 import { scheduleRetry } from "../_shared/retryHandler.ts";
+import { getBranding } from "../_shared/getBranding.ts";
 
 /**
  * 📬 SEND PROFILE REMINDERS
@@ -198,6 +199,9 @@ serve(async (req) => {
 
         console.log(`📧 Sending reminder to ${profile.name} (${profile.email}) - ${profile.completion_percentage}% complete`);
 
+        // Get dynamic branding for this agency
+        const branding = await getBranding(supabase, profile.agency_id);
+
         // Generate missing items HTML list
         const missingItemsHtml = profile.missing_items
           .map((item: string) => `<li style="margin-bottom: 8px;">${item}</li>`)
@@ -226,7 +230,7 @@ serve(async (req) => {
       </p>
 
       <p style="font-size: 16px; color: #333333; margin-bottom: 20px;">
-        Your ACG StaffLink profile is currently <strong>${profile.completion_percentage}% complete</strong>.
+        Your ${branding.saasName} profile is currently <strong>${profile.completion_percentage}% complete</strong>.
       </p>
 
       <!-- Progress Bar -->
@@ -266,15 +270,15 @@ serve(async (req) => {
       <p style="font-size: 14px; color: #666666; margin: 0;">
         Best regards,<br>
         <strong>${profile.agency_name}</strong><br>
-        ACG StaffLink Team
+        ${branding.saasName} Team
       </p>
     </div>
 
     <!-- Footer -->
     <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
       <p style="margin: 0; font-size: 12px; color: #9ca3af;">
-        This is an automated reminder from ACG StaffLink<br>
-        Powered by Agile Care Group
+        This is an automated reminder from ${branding.saasName}<br>
+        Powered by ${branding.companyName}
       </p>
     </div>
 
@@ -302,7 +306,7 @@ serve(async (req) => {
               to: profile.email,
               subject: `📋 Profile Update Required - ${profile.completion_percentage}% Complete`,
               html: emailHtml,
-              from_name: profile.agency_name || 'ACG StaffLink'
+              from_name: profile.agency_name || branding.saasName
             })
           }
         );

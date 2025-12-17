@@ -7,6 +7,7 @@ import {
     logNotificationSkipped
 } from "../_shared/notificationLogger.ts";
 import { scheduleRetry } from "../_shared/retryHandler.ts";
+import { getBranding } from "../_shared/getBranding.ts";
 
 /**
  * TIER 2B-4: Staff Daily Digest Engine
@@ -47,6 +48,9 @@ serve(async (req) => {
         const todayStr = now.toISOString().split('T')[0];
 
         for (const agency of agencies) {
+            // Get dynamic branding for this agency
+            const branding = await getBranding(supabase, agency.id);
+
             const settings = agency.settings?.automation_settings || {};
 
             // Check if feature enabled
@@ -193,7 +197,7 @@ serve(async (req) => {
                                                 <!-- Unsubscribe Link -->
                                                 <div style="background: #f9fafb; padding: 15px; text-align: center;">
                                                     <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                                                        <a href="https://agilecaremanagement.co.uk/preferences?email=${encodeURIComponent(staffMember.email)}" style="color: #64748b; text-decoration: underline;">
+                                                        <a href="${branding.siteUrl}/preferences?email=${encodeURIComponent(staffMember.email)}" style="color: #64748b; text-decoration: underline;">
                                                             Manage email preferences
                                                         </a>
                                                     </p>
@@ -201,9 +205,9 @@ serve(async (req) => {
 
                                                 <!-- Footer -->
                                                 <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
-                                                    <p style="margin: 0; font-size: 13px;">© ${now.getFullYear()} Agile Care Management. All rights reserved.</p>
+                                                    <p style="margin: 0; font-size: 13px;">© ${now.getFullYear()} ${branding.companyName}. All rights reserved.</p>
                                                     <p style="margin: 10px 0 0 0; font-size: 12px;">
-                                                        Need help? Contact us at <a href="mailto:support@agilecaremanagement.co.uk" style="color: #06b6d4; text-decoration: none;">support@agilecaremanagement.co.uk</a>
+                                                        Need help? Contact us at <a href="mailto:${branding.supportEmail}" style="color: #06b6d4; text-decoration: none;">${branding.supportEmail}</a>
                                                     </p>
                                                 </div>
                                             </div>
