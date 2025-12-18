@@ -24,7 +24,9 @@ function MandatoryTrainingSection({
   onChange,
   onOpenTrainingModal,
   additionalTraining = [],
+  staffId = null, // 🔧 FIX: Disable upload buttons if no staffId (unsaved staff)
 }) {
+  const canUpload = !!staffId; // Must have saved staff record to upload certificates
   const handleFieldChange = (key, field, value) => {
     const existing = training?.[key] || {};
     const updated = {
@@ -118,8 +120,12 @@ function MandatoryTrainingSection({
                       onClick={() =>
                         onOpenTrainingModal({ mode: "core", key, label })
                       }
+                      disabled={!canUpload}
+                      title={!canUpload ? "Save profile first, then upload certificates" : "Upload training certificate"}
                     >
-                      {hasCertificate
+                      {!canUpload
+                        ? "Save First"
+                        : hasCertificate
                         ? "View / Edit Certificate"
                         : hasDetails
                         ? "Edit / Attach Certificate"
@@ -197,8 +203,12 @@ function MandatoryTrainingSection({
                           onClick={() =>
                             onOpenTrainingModal({ mode: "core", key, label })
                           }
+                          disabled={!canUpload}
+                          title={!canUpload ? "Save profile first, then upload certificates" : "Upload training certificate"}
                         >
-                          {hasCertificate
+                          {!canUpload
+                            ? "Save First"
+                            : hasCertificate
                             ? "View / Edit"
                             : hasDetails
                             ? "Edit / Attach"
@@ -247,9 +257,11 @@ function MandatoryTrainingSection({
               size="sm"
               className="h-11 sm:h-8 text-sm sm:text-xs w-full sm:w-auto"
               onClick={() => onOpenTrainingModal({ mode: "additional" })}
+              disabled={!canUpload}
+              title={!canUpload ? "Save profile first, then add training" : "Add additional training"}
             >
               <Plus className="w-3 h-3 mr-1" />
-              Add other training / qualification
+              {!canUpload ? "Save First" : "Add other training / qualification"}
             </Button>
           </div>
         )}

@@ -18,6 +18,7 @@ import { Progress } from "@/components/ui/progress";
 import MandatoryTrainingSection from "@/components/staff/MandatoryTrainingSection";
 import TrainingCertificateModal from "@/components/staff/TrainingCertificateModal";
 import ComplianceDocumentUpload from "@/components/staff/ComplianceDocumentUpload";
+import { reconcileTrainingCertificates } from "@/utils/reconcileTrainingCertificates";
 
 
 export default function ProfileSetup() {
@@ -308,6 +309,34 @@ export default function ProfileSetup() {
 
   }, [linkedStaffRecord, linkedClientContact, isLinking, isLinkingClient, agencies]);
 
+  // 🔄 AUTO-RECOVERY: Reconcile orphaned training certificates on load
+  // Fixes cases where staff uploaded certificates but browser crashed before save
+  useEffect(() => {
+    const reconcileOrphanedCertificates = async () => {
+      if (!linkedStaff?.id) return;
+
+      console.log('🔄 [ProfileSetup] Checking for orphaned training certificates...');
+
+      const reconciledTraining = await reconcileTrainingCertificates(
+        supabase,
+        linkedStaff.id,
+        formData.mandatory_training
+      );
+
+      // Only update if reconciliation found orphans
+      if (JSON.stringify(reconciledTraining) !== JSON.stringify(formData.mandatory_training)) {
+        console.log('🔧 [ProfileSetup] Found orphaned certificates - updating form data');
+        setFormData(prev => ({
+          ...prev,
+          mandatory_training: reconciledTraining
+        }));
+        toast.info('📋 Recovered previously uploaded training certificates');
+      }
+    };
+
+    reconcileOrphanedCertificates();
+  }, [linkedStaff?.id]); // Only run when linkedStaff.id changes (on initial load)
+
   const updateMutation = useMutation({
     mutationFn: async (dataToUpdate) => {
       if (dataToUpdate.user_type === 'staff_member' && !dataToUpdate.profile_photo_url && !linkedStaff?.profile_photo_url) {
@@ -514,7 +543,14 @@ export default function ProfileSetup() {
 
     setUploadingPhoto(true);
     try {
-      const fileName = `${Date.now()}-${file.name}`;
+      // 🔧 FIX: Sanitize filename to avoid "Invalid key" error on mobile uploads
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const sanitizedName = file.name
+        .replace(/\.[^/.]+$/, '') // remove extension
+        .replace(/[^a-zA-Z0-9_-]/g, '_') // replace special chars with underscore
+        .substring(0, 50); // limit length
+      const fileName = `${linkedStaff?.id || 'new'}-${Date.now()}-${sanitizedName}.${ext}`;
+
       const { data, error: uploadError } = await supabase.storage
         .from('profile-photos')
         .upload(fileName, file);
@@ -1356,6 +1392,7 @@ export default function ProfileSetup() {
                 training={formData.mandatory_training}
                 additionalTraining={formData.mandatory_training?.additional || []}
                 onOpenTrainingModal={handleOpenTrainingModal}
+                staffId={linkedStaff?.id}
                 onChange={(updated) =>
                   setFormData((prev) => ({
                     ...prev,

@@ -134,12 +134,80 @@ export default function Staff() {
     refetchOnMount: 'always'
   });
 
+  // ✅ WHITELIST: Only these columns exist in staff table (prevents phantom field errors)
+  const VALID_STAFF_COLUMNS = [
+    'id', 'agency_id', 'user_id', 'first_name', 'last_name', 'email', 'phone', 'role',
+    'status', 'date_of_birth', 'address', 'emergency_contact', 'employment_type',
+    'hourly_rate', 'ni_number', 'bank_details', 'nmc_pin', 'nmc_register_part',
+    'medication_trained', 'medication_training_expiry', 'driving_license_number',
+    'driving_license_expiry', 'skills', 'groups', 'availability', 'mandatory_training',
+    'occupational_health', 'references', 'employment_history', 'months_of_experience',
+    'can_work_as_senior', 'role_hierarchy', 'date_joined', 'proposed_first_shift_date',
+    'profile_photo_url', 'profile_photo_uploaded_date', 'created_by', 'created_date',
+    'updated_date', 'rating', 'reliability_score', 'score_breakdown', 'last_score_update',
+    'total_shifts_completed', 'urgent_shifts_covered', 'current_streak', 'longest_streak',
+    'last_incident_date', 'suspension_reason', 'invite_token', 'invite_expires',
+    'last_invited_at', 'whatsapp_number', 'whatsapp_number_verified', 'whatsapp_pin',
+    'whatsapp_linked_at', 'gps_consent', 'gps_consent_status', 'gps_consent_date',
+    'last_known_location', 'opt_out_shift_reminders',
+    'profile_last_updated_at', 'profile_last_updated_by', 'profile_update_source'
+  ];
+
+  // Helper: Filter out phantom fields that don't exist in database
+  const filterValidColumns = (data) => {
+    const filtered = {};
+    for (const key of Object.keys(data)) {
+      if (VALID_STAFF_COLUMNS.includes(key)) {
+        filtered[key] = data[key];
+      }
+    }
+    return filtered;
+  };
+
   // ✅ FIXED: Create mutation using direct Supabase
   const createMutation = useMutation({
     mutationFn: async (data) => {
+      // 🔧 FIX: Convert empty string dates to null (PostgreSQL doesn't accept "" for date fields)
+      const dateFields = [
+        'date_of_birth',
+        'profile_photo_uploaded_date',
+        'medication_training_expiry',
+        'driving_license_expiry',
+        'date_joined',
+        'proposed_first_shift_date'
+      ];
+
+      // 🔧 FIX: Convert empty string numeric fields to null (PostgreSQL error 22P02)
+      const numericFields = [
+        'hourly_rate',
+        'months_of_experience',
+        'rating',
+        'reliability_score',
+        'total_shifts_completed',
+        'urgent_shifts_covered',
+        'current_streak',
+        'longest_streak',
+        'role_hierarchy'
+      ];
+
+      // 🔧 FIX: Filter out phantom fields first
+      const sanitizedData = filterValidColumns(data);
+
+      dateFields.forEach(field => {
+        if (sanitizedData[field] === '' || sanitizedData[field] === undefined) {
+          sanitizedData[field] = null;
+        }
+      });
+
+      numericFields.forEach(field => {
+        if (sanitizedData[field] === '' || sanitizedData[field] === undefined) {
+          sanitizedData[field] = null;
+        }
+      });
+
       const { data: result, error } = await supabase
         .from('staff')
-        .insert(data)
+        .insert(sanitizedData)
         .select()
         .single();
 
@@ -158,58 +226,80 @@ export default function Staff() {
   });
 
   // ✅ FIXED: Update mutation using direct Supabase
+  // ⚡ MODULE 21: Added audit trail fields
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates }) => {
+      console.log('🔄 [Staff] Updating staff:', id, updates);
+
+      // 🔧 FIX: Convert empty string dates to null (PostgreSQL doesn't accept "" for date fields)
+      const dateFields = [
+        'date_of_birth',
+        'profile_photo_uploaded_date',
+        'medication_training_expiry',
+        'driving_license_expiry',
+        'date_joined',
+        'proposed_first_shift_date'
+      ];
+
+      // 🔧 FIX: Convert empty string numeric fields to null (PostgreSQL error 22P02)
+      const numericFields = [
+        'hourly_rate',
+        'months_of_experience',
+        'rating',
+        'reliability_score',
+        'total_shifts_completed',
+        'urgent_shifts_covered',
+        'current_streak',
+        'longest_streak',
+        'role_hierarchy'
+      ];
+
+      // 🔧 FIX: Filter out phantom fields first (uses whitelist defined above)
+      const sanitizedUpdates = filterValidColumns(updates);
+
+      dateFields.forEach(field => {
+        if (sanitizedUpdates[field] === '' || sanitizedUpdates[field] === undefined) {
+          sanitizedUpdates[field] = null;
+        }
+      });
+
+      numericFields.forEach(field => {
+        if (sanitizedUpdates[field] === '' || sanitizedUpdates[field] === undefined) {
+          sanitizedUpdates[field] = null;
+        }
+      });
+
+      // ⚡ MODULE 21: Add audit trail to updates
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const auditedUpdates = {
+        ...sanitizedUpdates,
+        profile_last_updated_at: new Date().toISOString(),
+        profile_last_updated_by: currentUser?.id || null,
+        profile_update_source: 'admin_portal'
+      };
+
       const { data: updatedStaff, error } = await supabase
         .from('staff')
-        .update(updates)
+        .update(auditedUpdates)
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
 
-      // Send notification email about role change if role was changed
-      // Assumes updates object contains first_name and email from the form
-      if (updates.role) {
-        try {
-          await NotificationService.sendEmail({
-            to: updates.email,
-            subject: `Profile Updated - Role Changed to ${updates.role.replace('_', ' ')}`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%); padding: 30px; text-align: center;">
-                  <h1 style="color: white; margin: 0;">Profile Updated</h1>
-                </div>
-                <div style="padding: 30px; background: #f9fafb;">
-                  <p>Hi ${updates.first_name},</p>
-                  <p>Your profile has been updated by an administrator.</p>
-                  
-                  <div style="background: white; border-left: 4px solid #06b6d4; padding: 20px; margin: 20px 0;">
-                    <p><strong>Role Changed:</strong> ${updates.role.replace('_', ' ')}</p>
-                    ${updates.nmc_pin ? `<p><strong>NMC PIN:</strong> ${updates.nmc_pin}</p>` : ''}
-                  </div>
-                  
-                  <p>If you have any questions, please contact your agency administrator.</p>
-                </div>
-              </div>
-            `
-          });
-        } catch (emailError) {
-          console.error('Failed to send role change notification:', emailError);
-        }
-      }
+      // NOTE: Profile update email notification removed (MVP) - will re-add post-MVP
 
       return updatedStaff;
     },
-    onSuccess: () => {
+    onSuccess: (updatedStaff) => {
       queryClient.invalidateQueries(['staff']);
-      toast.success('✅ Staff member updated successfully');
+      toast.success(`✅ ${updatedStaff.first_name} ${updatedStaff.last_name} updated successfully!`);
       // ✅ Close form after successful update
       setShowForm(false);
       setEditingStaff(null);
     },
     onError: (error) => {
+      console.error('❌ [Staff] Update error:', error);
       toast.error(`Failed to update: ${error.message}`);
     }
   });

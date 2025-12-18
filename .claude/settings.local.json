@@ -65,7 +65,8 @@
       "Bash(/c/Users/gbase/superbasecli/supabase.exe migration repair:*)",
       "Bash(/c/Users/gbase/superbasecli/supabase.exe db pull:*)",
       "Bash(/c/Users/gbase/superbasecli/supabase.exe secrets list:*)",
-      "Bash(/c/Users/gbase/superbasecli/supabase.exe secrets set:*)"
+      "Bash(/c/Users/gbase/superbasecli/supabase.exe secrets set:*)",
+      "Bash(mkdir -p:*)"
     ],
     "deny": [],
     "ask": []
