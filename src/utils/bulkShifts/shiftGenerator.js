@@ -70,20 +70,24 @@ function createShiftObject(date, roleConfig, client, formData, agencyId, user, i
   const startTime = shiftTimes.start; // e.g., "08:00"
   const endTime = shiftTimes.end;     // e.g., "20:00"
 
-  // Calculate duration (need full timestamps temporarily for calculation only)
-  const startTimestamp = `${date}T${shiftTimes.start}:00`;
-  let endTimestamp = `${date}T${shiftTimes.end}:00`;
+  // ✅ FIX: Calculate actual duration from times (not hardcoded)
+  // Parse start and end times
+  const [startHour, startMin] = shiftTimes.start.split(':').map(Number);
+  const [endHour, endMin] = shiftTimes.end.split(':').map(Number);
 
-  // Handle overnight shifts (night shift crosses midnight)
-  if (roleConfig.shiftType === 'night' && shiftTimes.end < shiftTimes.start) {
-    const endDate = new Date(date);
-    endDate.setDate(endDate.getDate() + 1);
-    endTimestamp = `${endDate.toISOString().split('T')[0]}T${shiftTimes.end}:00`;
+  let durationHours;
+  if (endHour < startHour || (endHour === startHour && endMin < startMin)) {
+    // Overnight shift: end time is next day
+    // e.g., 22:00 to 08:00 = (24 - 22) + 8 = 10 hours
+    durationHours = (24 - startHour - startMin/60) + (endHour + endMin/60);
+  } else {
+    // Same day shift
+    // e.g., 08:00 to 20:00 = 12 hours
+    durationHours = (endHour + endMin/60) - (startHour + startMin/60);
   }
 
-  // ✅ SIMPLIFIED: Don't send duration_hours to database
-  // It's a calculated field - database can compute it or we calculate on read
-  // This avoids complex PostgreSQL type casting issues
+  // Round to 2 decimal places
+  durationHours = Math.round(durationHours * 100) / 100;
 
   return {
     // Temporary ID for preview (will be removed before insert)
@@ -97,7 +101,7 @@ function createShiftObject(date, roleConfig, client, formData, agencyId, user, i
     date: date,
     start_time: startTime, // ✅ FIXED: Send HH:MM only (e.g., "08:00")
     end_time: endTime,     // ✅ FIXED: Send HH:MM only (e.g., "20:00")
-    duration_hours: 12,    // ✅ SIMPLIFIED: Always 12 hours (all shifts are 12-hour shifts)
+    duration_hours: durationHours, // ✅ FIXED: Calculated from actual times (not hardcoded)
 
     // ✅ BATCH TRACKING: Assign booking_id to track which shifts belong together
     booking_id: batchId,
@@ -182,12 +186,23 @@ export function calculateFinancialSummary(shifts) {
 
 /**
  * Prepare shifts for database insertion
- * Removes temporary fields and validates required fields
+ * Removes temporary/display-only fields that don't exist in the database schema
  */
 export function prepareShiftsForInsert(shifts) {
   return shifts.map(shift => {
-    // Remove temp fields AND duration_hours (causes PostgreSQL ROUND() type errors)
-    const { temp_id, duration_hours, ...shiftData } = shift;
+    // Remove fields that don't exist in database or cause issues:
+    // - temp_id: preview-only identifier
+    // - shift_cost, client_charge: display-only calculated fields (not in DB)
+    // - role: legacy field (use role_required instead)
+    // NOTE: duration_hours is NOW included (calculated in generateShift)
+    const {
+      temp_id,
+      _tempId,
+      shift_cost,
+      client_charge,
+      role,  // Remove if role_required is present (role is legacy)
+      ...shiftData
+    } = shift;
     return shiftData;
   });
 }
