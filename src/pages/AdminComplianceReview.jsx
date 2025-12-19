@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,7 +32,40 @@ import { format } from 'date-fns';
 export default function AdminComplianceReview() {
   const [selectedTab, setSelectedTab] = useState('pending');
   const [viewingDoc, setViewingDoc] = useState(null);
+  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // 🛡️ RBAC: Block staff members
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      if (authError || !authUser) {
+        navigate(createPageUrl('Home'));
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (profileError || !profile) {
+        navigate(createPageUrl('Home'));
+        return;
+      }
+
+      // 🚫 Silent redirect for staff members
+      if (profile.user_type === 'staff_member') {
+        navigate(createPageUrl('StaffPortal'));
+        return;
+      }
+
+      setUser(profile);
+    };
+    fetchUser();
+  }, [navigate]);
 
   // Fetch all compliance documents
   const { data: documents = [], isLoading } = useQuery({
@@ -56,23 +91,6 @@ export default function AdminComplianceReview() {
     refetchInterval: 30000 // Refresh every 30 seconds
   });
 
-  // Fetch current user to check permissions
-  const { data: currentUser } = useQuery({
-    queryKey: ['current-user'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      return profile;
-    }
-  });
-
   // Update document status
   const updateStatusMutation = useMutation({
     mutationFn: async ({ documentId, status, notes }) => {
@@ -81,7 +99,7 @@ export default function AdminComplianceReview() {
         .update({
           status,
           notes: notes || null,
-          reviewed_by: currentUser?.email,
+          reviewed_by: user?.email,
           reviewed_at: new Date().toISOString()
         })
         .eq('id', documentId);
@@ -102,7 +120,7 @@ export default function AdminComplianceReview() {
       updateStatusMutation.mutate({
         documentId,
         status: 'verified',
-        notes: `Verified by ${currentUser?.email} on ${new Date().toLocaleDateString()}`
+        notes: `Verified by ${user?.email} on ${new Date().toLocaleDateString()}`
       });
     }
   };

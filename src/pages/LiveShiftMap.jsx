@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { createPageUrl } from "@/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
-import { 
-  MapPin, Users, CheckCircle, Navigation, AlertTriangle, 
+import {
+  MapPin, Users, CheckCircle, Navigation, AlertTriangle,
   RefreshCw, Calendar, Clock, Shield, Info, X
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
@@ -84,6 +86,7 @@ function MapBoundsUpdater({ mapData }) {
 }
 
 export default function LiveShiftMap() {
+  const navigate = useNavigate();
   const [currentAgency, setCurrentAgency] = useState(null);
   const [showHelp, setShowHelp] = useState(true);
 
@@ -91,7 +94,7 @@ export default function LiveShiftMap() {
     const fetchUser = async () => {
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
       if (authError || !authUser) {
-        console.error('❌ Not authenticated:', authError);
+        navigate(createPageUrl('Home'));
         return;
       }
 
@@ -102,19 +105,25 @@ export default function LiveShiftMap() {
         .single();
 
       if (profileError || !profile) {
-        console.error('❌ Profile not found:', profileError);
+        navigate(createPageUrl('Home'));
+        return;
+      }
+
+      // 🚫 Silent redirect for staff members
+      if (profile.user_type === 'staff_member') {
+        navigate(createPageUrl('StaffPortal'));
         return;
       }
 
       setCurrentAgency(profile.agency_id);
     };
     fetchUser();
-  }, []);
+  }, [navigate]);
 
   const today = new Date();
   const todayString = today.toISOString().split('T')[0];
   console.log('🗓️ Querying shifts for date:', todayString);
-  
+
   const { data: activeShifts = [], isLoading: shiftsLoading, refetch: refetchShifts } = useQuery({
     queryKey: ['active-shifts', todayString], // ✅ Removed currentAgency - show ALL agencies
     queryFn: async () => {
@@ -145,13 +154,13 @@ export default function LiveShiftMap() {
     queryKey: ['clients', currentAgency],
     queryFn: async () => {
       let query = supabase.from('clients').select('*');
-      
+
       if (currentAgency) {
         query = query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
-      
+
       if (error) {
         console.error('❌ Error fetching clients:', error);
         return [];
@@ -166,13 +175,13 @@ export default function LiveShiftMap() {
     queryKey: ['staff', currentAgency],
     queryFn: async () => {
       let query = supabase.from('staff').select('*');
-      
+
       if (currentAgency) {
         query = query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
-      
+
       if (error) {
         console.error('❌ Error fetching staff:', error);
         return [];
@@ -190,20 +199,20 @@ export default function LiveShiftMap() {
         .from('timesheets')
         .select('*')
         .eq('shift_date', todayString);
-      
+
       if (currentAgency) {
         query = query.eq('agency_id', currentAgency);
       }
-      
+
       const { data: allTimesheets, error } = await query;
-      
+
       if (error) {
         console.error('❌ Error fetching timesheets:', error);
         return [];
       }
-      
+
       console.log(`⏰ Found ${allTimesheets?.length || 0} timesheet(s) for ${todayString}`);
-      
+
       // 🔒 LOG DUPLICATE CHECK
       const timesheetsByBooking = {};
       (allTimesheets || []).forEach(t => {
@@ -212,13 +221,13 @@ export default function LiveShiftMap() {
         }
         timesheetsByBooking[t.booking_id].push(t);
       });
-      
+
       Object.entries(timesheetsByBooking).forEach(([bookingId, sheets]) => {
         if (sheets.length > 1) {
           console.error(`🚨 DUPLICATE TIMESHEETS DETECTED for booking ${bookingId}:`, sheets.map(s => s.id));
         }
       });
-      
+
       return allTimesheets || [];
     },
     enabled: true,
@@ -233,13 +242,13 @@ export default function LiveShiftMap() {
         .from('bookings')
         .select('*')
         .eq('shift_date', todayString);
-      
+
       if (currentAgency) {
         query = query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
-      
+
       if (error) {
         console.error('❌ Error fetching bookings:', error);
         return [];
@@ -253,12 +262,12 @@ export default function LiveShiftMap() {
 
   // 🔒 BUILD MAP DATA WITH DEDUPLICATION
   const clientGroupedData = {};
-  
+
   activeShifts.forEach(shift => {
     const client = clients.find(c => c.id === shift.client_id);
     // ✅ Validate client has GPS coordinates with lat/lng
     if (!client?.location_coordinates?.latitude || !client?.location_coordinates?.longitude) return;
-    
+
     const clientId = client.id;
     if (!clientGroupedData[clientId]) {
       clientGroupedData[clientId] = {
@@ -268,19 +277,19 @@ export default function LiveShiftMap() {
         clockedInStaff: []
       };
     }
-    
+
     const assignedStaff = shift.assigned_staff_id ? staff.find(s => s.id === shift.assigned_staff_id) : null;
-    
+
     // 🔒 CRITICAL FIX: Match timesheet via booking with DEDUPLICATION
     let timesheet = null;
     if (shift.booking_id) {
       const shiftTimesheets = timesheets.filter(t => t.booking_id === shift.booking_id);
       if (shiftTimesheets.length > 0) {
         // 🔒 Take most recent if duplicates exist
-        timesheet = shiftTimesheets.sort((a, b) => 
+        timesheet = shiftTimesheets.sort((a, b) =>
           new Date(b.created_date) - new Date(a.created_date)
         )[0];
-        
+
         if (shiftTimesheets.length > 1) {
           console.warn(`⚠️ ${shiftTimesheets.length} timesheets for booking ${shift.booking_id}, using latest: ${timesheet.id}`);
         }
@@ -291,17 +300,17 @@ export default function LiveShiftMap() {
       if (booking) {
         const bookingTimesheets = timesheets.filter(t => t.booking_id === booking.id);
         if (bookingTimesheets.length > 0) {
-          timesheet = bookingTimesheets.sort((a, b) => 
+          timesheet = bookingTimesheets.sort((a, b) =>
             new Date(b.created_date) - new Date(a.created_date)
           )[0];
-          
+
           if (bookingTimesheets.length > 1) {
             console.warn(`⚠️ ${bookingTimesheets.length} timesheets for booking ${booking.id}, using latest: ${timesheet.id}`);
           }
         }
       }
     }
-    
+
     clientGroupedData[clientId].shifts.push({
       shift,
       assignedStaff,
@@ -312,7 +321,7 @@ export default function LiveShiftMap() {
       distance: timesheet?.geofence_distance_meters,
       approaching: shift.approaching_staff_location
     });
-    
+
     // Track approaching/clocked-in staff separately (with dedup check)
     if (shift.approaching_staff_location && !timesheet?.clock_in_location) {
       // ✅ Validate GPS coordinates exist before adding
@@ -385,7 +394,7 @@ export default function LiveShiftMap() {
   };
 
   const notifications = mapData
-    .flatMap(site => 
+    .flatMap(site =>
       site.clockedInStaff
         .filter(s => !s.geofenceValidated)
         .map(s => ({
@@ -518,9 +527,9 @@ export default function LiveShiftMap() {
         </CardHeader>
         <CardContent className="p-0">
           <div style={{ height: '600px', width: '100%' }}>
-            <MapContainer 
-              center={defaultCenter} 
-              zoom={12} 
+            <MapContainer
+              center={defaultCenter}
+              zoom={12}
               style={{ height: '100%', width: '100%' }}
             >
               <TileLayer
@@ -534,21 +543,21 @@ export default function LiveShiftMap() {
               {mapData.map((site, idx) => {
                 const coords = site.client.location_coordinates;
                 const geofenceRadius = site.client.geofence_radius_meters || 100;
-                
+
                 return (
                   <React.Fragment key={idx}>
                     <Circle
                       center={[coords.latitude, coords.longitude]}
                       radius={geofenceRadius}
-                      pathOptions={{ 
-                        color: '#3b82f6', 
-                        fillColor: '#3b82f6', 
-                        fillOpacity: 0.1 
+                      pathOptions={{
+                        color: '#3b82f6',
+                        fillColor: '#3b82f6',
+                        fillOpacity: 0.1
                       }}
                     />
-                    
-                    <Marker 
-                      position={[coords.latitude, coords.longitude]} 
+
+                    <Marker
+                      position={[coords.latitude, coords.longitude]}
                       icon={clientIcon}
                     >
                       <Popup>
@@ -581,56 +590,56 @@ export default function LiveShiftMap() {
                     {site.approachingStaff
                       .filter(staff => staff.latitude && staff.longitude)
                       .map((staff, staffIdx) => (
-                      <Marker
-                        key={`approaching-${staffIdx}`}
-                        position={[staff.latitude, staff.longitude]}
-                        icon={staffApproachingIcon}
-                      >
-                        <Popup>
-                          <div className="p-2">
-                            <h4 className="font-bold text-orange-900">
-                              🟠 En Route
-                            </h4>
-                            <p className="text-sm">
-                              {staff.staffMember?.first_name} {staff.staffMember?.last_name}
-                            </p>
-                            <p className="text-xs text-gray-600">
-                              {Math.round(staff.distance_from_site)}m from site
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Manual update: {new Date(staff.recorded_at).toLocaleTimeString()}
-                            </p>
-                          </div>
-                        </Popup>
-                      </Marker>
-                    ))}
+                        <Marker
+                          key={`approaching-${staffIdx}`}
+                          position={[staff.latitude, staff.longitude]}
+                          icon={staffApproachingIcon}
+                        >
+                          <Popup>
+                            <div className="p-2">
+                              <h4 className="font-bold text-orange-900">
+                                🟠 En Route
+                              </h4>
+                              <p className="text-sm">
+                                {staff.staffMember?.first_name} {staff.staffMember?.last_name}
+                              </p>
+                              <p className="text-xs text-gray-600">
+                                {Math.round(staff.distance_from_site)}m from site
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Manual update: {new Date(staff.recorded_at).toLocaleTimeString()}
+                              </p>
+                            </div>
+                          </Popup>
+                        </Marker>
+                      ))}
 
                     {site.clockedInStaff
                       .filter(staff => staff.latitude && staff.longitude)
                       .map((staff, staffIdx) => (
-                      <Marker
-                        key={`clocked-in-${staffIdx}`}
-                        position={[staff.latitude, staff.longitude]}
-                        icon={staffClockedInIcon}
-                      >
-                        <Popup>
-                          <div className="p-2">
-                            <h4 className="font-bold text-green-900">
-                              🟢 LIVE NOW
-                            </h4>
-                            <p className="text-sm">
-                              {staff.staffMember?.first_name} {staff.staffMember?.last_name}
-                            </p>
-                            <Badge className={staff.geofenceValidated ? 'bg-green-100 text-green-800 text-xs' : 'bg-red-100 text-red-800 text-xs'}>
-                              {staff.geofenceValidated ? '✓ Geofence Verified' : `⚠️ ${Math.round(staff.distance)}m outside`}
-                            </Badge>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Accuracy: ±{Math.round(staff.accuracy)}m
-                            </p>
-                          </div>
-                        </Popup>
-                      </Marker>
-                    ))}
+                        <Marker
+                          key={`clocked-in-${staffIdx}`}
+                          position={[staff.latitude, staff.longitude]}
+                          icon={staffClockedInIcon}
+                        >
+                          <Popup>
+                            <div className="p-2">
+                              <h4 className="font-bold text-green-900">
+                                🟢 LIVE NOW
+                              </h4>
+                              <p className="text-sm">
+                                {staff.staffMember?.first_name} {staff.staffMember?.last_name}
+                              </p>
+                              <Badge className={staff.geofenceValidated ? 'bg-green-100 text-green-800 text-xs' : 'bg-red-100 text-red-800 text-xs'}>
+                                {staff.geofenceValidated ? '✓ Geofence Verified' : `⚠️ ${Math.round(staff.distance)}m outside`}
+                              </Badge>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Accuracy: ±{Math.round(staff.accuracy)}m
+                              </p>
+                            </div>
+                          </Popup>
+                        </Marker>
+                      ))}
                   </React.Fragment>
                 );
               })}

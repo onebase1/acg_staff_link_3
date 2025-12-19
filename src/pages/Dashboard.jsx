@@ -43,7 +43,7 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [agency, setAgency] = useState(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  
+
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -53,7 +53,7 @@ export default function Dashboard() {
       try {
         // Get authenticated user
         const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-        
+
         if (authError || !authUser) {
           console.error('❌ Not authenticated:', authError);
           navigate('/login');
@@ -81,17 +81,23 @@ export default function Dashboard() {
           full_name: profile.full_name,
           phone: profile.phone,
         };
-        
+
         setUser(currentUser);
-        
+
+        // 🚫 Silent redirect for staff members
+        if (currentUser.user_type === 'staff_member') {
+          navigate(createPageUrl('StaffPortal'));
+          return;
+        }
+
         const superAdminEmail = 'g.basera@yahoo.com';
         const isSuperAdminUser = currentUser.email === superAdminEmail;
         setIsSuperAdmin(isSuperAdminUser);
-        
+
         // Check ViewSwitcher mode
         const viewMode = localStorage.getItem('admin_view_mode');
         let agencyIdToUse = currentUser.agency_id;
-        
+
         if (isSuperAdminUser && viewMode) {
           try {
             const viewConfig = JSON.parse(viewMode);
@@ -106,7 +112,7 @@ export default function Dashboard() {
             console.error("Error parsing admin_view_mode from localStorage", e);
           }
         }
-        
+
         // Platform-wide view for super admin
         if (agencyIdToUse === 'super_admin') {
           setAgency({ id: 'super_admin', name: 'Platform Wide', logo_url: null, address: null, subscription_tier: 'SUPER_ADMIN' });
@@ -120,7 +126,7 @@ export default function Dashboard() {
           setAgency(null);
           return;
         }
-        
+
         // Load specific agency
         if (agencyIdToUse) {
           try {
@@ -305,14 +311,14 @@ export default function Dashboard() {
       }
       try {
         console.log('🔍 [Dashboard] Fetching agencies...');
-        
+
         const { data, error } = await supabase.from('agencies').select('*');
-        
+
         if (error) {
           console.error('❌ [Dashboard] Error fetching agencies:', error);
           return [];
         }
-        
+
         console.log(`✅ [Dashboard] Loaded ${data.length} agencies`);
         return data;
       } catch (error) {
@@ -387,7 +393,7 @@ export default function Dashboard() {
   const activeStaff = staff.filter(s => s.status === 'active').length;
   const openShifts = searchFilteredShifts.filter(s => s.status === 'open').length;
   const todayShifts = searchFilteredShifts.filter(s => s.date === format(new Date(), 'yyyy-MM-dd')).length;
-  
+
   // Helper for fillRate and completedThisWeek, now based on filtered shifts
   const weekShiftsForMetrics = searchFilteredShifts.filter(s => {
     const shiftDate = new Date(s.date);
@@ -397,7 +403,7 @@ export default function Dashboard() {
 
   const completedThisWeek = weekShiftsForMetrics.filter(s => s.status === 'completed').length;
   const fillRate = weekShiftsForMetrics.length > 0 ? ((weekShiftsForMetrics.length - weekShiftsForMetrics.filter(s => s.status === 'open').length) / weekShiftsForMetrics.length * 100) : 0;
-  
+
   // Revenue/Cost metrics are based on timesheets, not filtered by shift search
   const weekRevenue = timesheets
     .filter(t => {
@@ -421,7 +427,7 @@ export default function Dashboard() {
       const shiftDate = new Date(s.date);
       const weekAgo = subDays(new Date(), 7);
       return shiftDate >= weekAgo &&
-             (s.status === 'confirmed' || s.status === 'in_progress' || s.status === 'completed' || s.status === 'awaiting_admin_closure');
+        (s.status === 'confirmed' || s.status === 'in_progress' || s.status === 'completed' || s.status === 'awaiting_admin_closure');
     })
     .reduce((sum, s) => sum + calculateClientCharge(s), 0);
 
@@ -435,14 +441,14 @@ export default function Dashboard() {
   const pendingWorkflows = workflows.filter(w => w.status === 'pending').length;
 
   // ✅ FIX: Safely handle chart data with fallbacks
-  const monthlyTrend = Array.from({length: 30}, (_, i) => {
+  const monthlyTrend = Array.from({ length: 30 }, (_, i) => {
     const date = subDays(new Date(), 29 - i);
     const dateStr = format(date, 'yyyy-MM-dd');
     const dayShifts = shifts.filter(s => s.date === dateStr); // Use original 'shifts'
     const dayRevenue = timesheets
       .filter(t => t.shift_date === dateStr && (t.status === 'approved' || t.status === 'paid'))
       .reduce((sum, t) => sum + (t.client_charge_amount || 0), 0);
-    
+
     return {
       date: format(date, 'MMM d'),
       shifts: dayShifts.length || 0,
@@ -544,16 +550,16 @@ export default function Dashboard() {
       // Send appropriate notification based on bypass mode
       const emailResult = bypassConfirmation
         ? await NotificationService.notifyShiftConfirmedToStaff({
-            staff: assignedStaff,
-            shift: shift,
-            client: client,
-            agency: currentAgency
-          })
+          staff: assignedStaff,
+          shift: shift,
+          client: client,
+          agency: currentAgency
+        })
         : await NotificationService.notifyShiftAssignment({
-            staff: assignedStaff,
-            shift: shift,
-            client: client
-          });
+          staff: assignedStaff,
+          shift: shift,
+          client: client
+        });
 
       return {
         emailResult,
@@ -626,8 +632,8 @@ export default function Dashboard() {
               💬 ACG StaffLink AI Assistant
             </h3>
             <p className="text-sm text-gray-700 mb-4">
-              {isSuperAdmin 
-                ? "Get instant insights across all agencies, shifts, and staff via WhatsApp!" 
+              {isSuperAdmin
+                ? "Get instant insights across all agencies, shifts, and staff via WhatsApp!"
                 : "Query shifts, staff availability, compliance, and analytics instantly via WhatsApp!"}
             </p>
             <div className="bg-white rounded-lg p-3 mb-4 text-xs space-y-1">
@@ -647,8 +653,8 @@ export default function Dashboard() {
               )}
             </div>
             {whatsappConnectUrl ? (
-              <a 
-                href={whatsappConnectUrl} 
+              <a
+                href={whatsappConnectUrl}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -687,7 +693,7 @@ export default function Dashboard() {
             </Badge>
           )}
         </div>
-        
+
         {/* ✅ QUICK WIN 3: Enhanced Global Search Bar with Results Dropdown */}
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -971,9 +977,9 @@ export default function Dashboard() {
                     const healthScore = calculateAgencyHealth();
                     const healthColor = healthScore >= 80 ? 'green' : healthScore >= 60 ? 'yellow' : healthScore >= 40 ? 'orange' : 'red';
                     const healthBgColor = healthScore >= 80 ? 'bg-green-100 text-green-800 border-green-300' :
-                                         healthScore >= 60 ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
-                                         healthScore >= 40 ? 'bg-orange-100 text-orange-800 border-orange-300' :
-                                         'bg-red-100 text-red-800 border-red-300';
+                      healthScore >= 60 ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
+                        healthScore >= 40 ? 'bg-orange-100 text-orange-800 border-orange-300' :
+                          'bg-red-100 text-red-800 border-red-300';
 
                     return (
                       <div key={ag.id} className="p-5 border-2 rounded-xl hover:shadow-lg transition-all bg-gradient-to-br from-white to-gray-50">
@@ -1037,8 +1043,8 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   {agency.logo_url ? (
-                    <img 
-                      src={agency.logo_url} 
+                    <img
+                      src={agency.logo_url}
                       alt={agency.name}
                       className="w-16 h-16 rounded-lg object-contain bg-white p-2"
                     />

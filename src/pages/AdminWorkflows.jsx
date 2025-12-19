@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import ApproveUserModal from "@/components/admin/ApproveUserModal";
 
@@ -27,7 +27,45 @@ export default function AdminWorkflows() {
   const [shiftResolutionAction, setShiftResolutionAction] = useState('completed');
   const [viewMode, setViewMode] = useState('table'); // ✅ NEW: Default to table view
   const [approveUserWorkflow, setApproveUserWorkflow] = useState(null); // ✅ NEW: For user approval modal
-  
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+
+  // 🛡️ RBAC: Block staff members
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        if (authError || !authUser) {
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+
+        if (profileError || !profile) {
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        // 🚫 Silent redirect for staff members
+        if (profile.user_type === 'staff_member') {
+          navigate(createPageUrl('StaffPortal'));
+          return;
+        }
+
+        setUser(profile);
+      } catch (error) {
+        console.error("Auth error:", error);
+        navigate(createPageUrl('Home'));
+      }
+    };
+    checkAccess();
+  }, [navigate]);
+
   const queryClient = useQueryClient();
 
   const { data: workflows = [] } = useQuery({
@@ -60,7 +98,7 @@ export default function AdminWorkflows() {
       const { data, error } = await supabase
         .from('shifts')
         .select('*');
-      
+
       if (error) {
         console.error('❌ Error fetching shifts:', error);
         return [];
@@ -77,7 +115,7 @@ export default function AdminWorkflows() {
       const { data, error } = await supabase
         .from('timesheets')
         .select('*');
-      
+
       if (error) {
         console.error('❌ Error fetching timesheets:', error);
         return [];
@@ -93,30 +131,30 @@ export default function AdminWorkflows() {
     mutationFn: async ({ id, data, shiftId, shiftAction }) => {
       console.log('🔄 [Admin Workflow] Updating workflow:', id);
       console.log('🔄 [Admin Workflow] Shift action:', shiftAction, 'Shift ID:', shiftId);
-      
+
       // ✅ FIX: Update shift FIRST, then workflow (so validation can check shift status)
       if (shiftId && shiftAction) {
         console.log('🔄 [Admin Workflow] Updating shift status to:', shiftAction);
-        
+
         // 🔒 VALIDATION: If marking shift as completed, ensure timesheet exists
         if (shiftAction === 'completed') {
           const shiftTimesheets = timesheets.filter(
             t => t.shift_id === shiftId || (t.booking_id && shifts.some(s => s.id === shiftId && s.booking_id === t.booking_id))
           );
-          
+
           if (shiftTimesheets.length === 0) {
             throw new Error('❌ Cannot mark shift as completed: No timesheet exists. Staff must clock in/out first.');
           }
 
           const hasApprovedTimesheet = shiftTimesheets.some(t => t.status === 'approved' || t.status === 'submitted');
-          
+
           if (!hasApprovedTimesheet) {
             const confirm = window.confirm(
               '⚠️ WARNING: No approved timesheet found.\n\n' +
               'Timesheets: ' + shiftTimesheets.map(t => `${t.status}`).join(', ') + '\n\n' +
               'Mark as completed anyway?'
             );
-            
+
             if (!confirm) {
               throw new Error('Shift completion cancelled - awaiting timesheet approval');
             }
@@ -126,12 +164,12 @@ export default function AdminWorkflows() {
         // Update shift status
         const shiftUpdates = {
           status: shiftAction,
-          ...(shiftAction === 'completed' && { 
+          ...(shiftAction === 'completed' && {
             shift_ended_at: new Date().toISOString(),
             admin_closed_at: new Date().toISOString(),
             admin_closure_outcome: 'completed_as_planned'
           }),
-          ...(shiftAction === 'cancelled' && { 
+          ...(shiftAction === 'cancelled' && {
             cancelled_at: new Date().toISOString(),
             cancelled_by: 'agency',
             cancellation_reason: data.resolution_notes,
@@ -146,26 +184,26 @@ export default function AdminWorkflows() {
             admin_closed_at: new Date().toISOString()
           })
         };
-        
+
         console.log('💾 [Admin Workflow] Applying shift updates:', shiftUpdates);
         const { error: shiftError } = await supabase
           .from('shifts')
           .update(shiftUpdates)
           .eq('id', shiftId);
-        
+
         if (shiftError) {
           console.error('❌ [Admin Workflow] Shift update failed:', shiftError);
           throw shiftError;
         }
         console.log('✅ [Admin Workflow] Shift updated successfully');
       }
-      
+
       // Then update workflow
       const { error: workflowError } = await supabase
         .from('admin_workflows')
         .update(data)
         .eq('id', id);
-      
+
       if (workflowError) throw workflowError;
     },
     onSuccess: () => {
@@ -194,22 +232,22 @@ export default function AdminWorkflows() {
     }
 
     const workflow = workflows.find(w => w.id === workflowId);
-    
+
     const updates = {
       status: newStatus,
-      ...(newStatus === 'resolved' && { 
+      ...(newStatus === 'resolved' && {
         resolved_at: new Date().toISOString(),
         resolution_notes: resolutionNotes
       })
     };
-    
+
     // ✅ FIX: Extract shift ID and pass shift action
-    const shiftId = workflow?.related_entity?.entity_type === 'shift' 
-      ? workflow.related_entity.entity_id 
+    const shiftId = workflow?.related_entity?.entity_type === 'shift'
+      ? workflow.related_entity.entity_id
       : null;
-    
-    updateWorkflowMutation.mutate({ 
-      id: workflowId, 
+
+    updateWorkflowMutation.mutate({
+      id: workflowId,
       data: updates,
       shiftId: shiftId,
       shiftAction: shiftResolutionAction
@@ -263,13 +301,13 @@ export default function AdminWorkflows() {
   // ✅ NEW: Helper to detect pending user signup workflows
   const isPendingUserSignup = (workflow) => {
     return workflow?.related_entity?.entity_type === 'profile' &&
-           workflow?.title?.includes('New User Signup') &&
-           workflow?.status === 'pending';
+      workflow?.title?.includes('New User Signup') &&
+      workflow?.status === 'pending';
   };
 
   const getRelatedEntityLink = (workflow) => {
     if (!workflow.related_entity) return null;
-    
+
     const { entity_type, entity_id } = workflow.related_entity;
     const links = {
       shift: createPageUrl('Shifts', entity_id), // Assuming entity_id can be passed to createPageUrl for specific pages
@@ -280,7 +318,7 @@ export default function AdminWorkflows() {
       booking: createPageUrl('Bookings', entity_id),
       invoice: createPageUrl('Invoices', entity_id)
     };
-    
+
     // Fallback to a generic entity list if no specific link is found or entity_id is not useful
     return links[entity_type] || createPageUrl(entity_type);
   };
@@ -749,7 +787,7 @@ export default function AdminWorkflows() {
               </div>
 
               <div className="flex gap-3 pt-4">
-                <Button 
+                <Button
                   onClick={() => handleStatusChange(selectedWorkflow.id, 'resolved')}
                   disabled={!resolutionNotes || updateWorkflowMutation.isPending}
                   className="flex-1 bg-green-600 hover:bg-green-700"
@@ -763,7 +801,7 @@ export default function AdminWorkflows() {
                     'Mark as Resolved'
                   )}
                 </Button>
-                <Button 
+                <Button
                   variant="outline"
                   onClick={() => {
                     setSelectedWorkflow(null);

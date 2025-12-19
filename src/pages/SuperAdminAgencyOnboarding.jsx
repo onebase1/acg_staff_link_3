@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { createPageUrl } from "@/utils";
 import { agencyService } from "@/api/agencyService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -226,19 +227,12 @@ export default function SuperAdminAgencyOnboarding() {
   }
 
   if (!isSuperAdmin) {
-    return (
-      <div className="max-w-xl mx-auto mt-16">
-        <Alert variant="destructive">
-          <Shield className="h-5 w-5" />
-          <AlertDescription>
-            Only platform super admins can access the agency onboarding controls.
-          </AlertDescription>
-        </Alert>
-        <Button className="mt-6" onClick={() => navigate("/")}>
-          Return to dashboard
-        </Button>
-      </div>
-    );
+    if (user?.user_type === 'staff_member') {
+      navigate(createPageUrl('StaffPortal'));
+    } else {
+      navigate(createPageUrl('Dashboard'));
+    }
+    return null;
   }
 
   const pendingInvitations = invitations.filter((invite) => invite.status === "pending");

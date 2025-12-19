@@ -62,8 +62,6 @@ const formatTime = (isoString) => {
 export default function Shifts() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   const [statusFilter, setStatusFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
@@ -87,23 +85,18 @@ export default function Shifts() {
 
   const [editingCell, setEditingCell] = useState(null);
   const [cellEditValue, setCellEditValue] = useState('');
-  const [adminBypassMode, setAdminBypassMode] = useState(true); // Default to enabled - admin must untick for normal flow
+  const [adminBypassMode, setAdminBypassMode] = useState(true);
 
   const [completingShift, setCompletingShift] = useState(null);
-
-  // ✅ NEW: Track which shifts are sending timesheet requests
   const [sendingTimesheetRequest, setSendingTimesheetRequest] = useState(new Set());
 
-  // 🆕 MULTI-CHANNEL BROADCAST STATE
   const [showChannelSelector, setShowChannelSelector] = useState(false);
   const [pendingBroadcastShift, setPendingBroadcastShift] = useState(null);
 
-  // 🆕 NEWLY CREATED SHIFTS HIGHLIGHTING
   const [highlightedShiftIds, setHighlightedShiftIds] = useState(new Set());
   const highlightedShiftRefs = React.useRef(new Map());
-  const scrollPositionRef = React.useRef(null); // Store scroll position when highlighting
+  const scrollPositionRef = React.useRef(null);
 
-  // 🆕 MULTI-SELECT BROADCAST STATE
   const [selectedShiftIds, setSelectedShiftIds] = useState(new Set());
   const [isBroadcastingSelected, setIsBroadcastingSelected] = useState(false);
 
@@ -134,13 +127,12 @@ export default function Shifts() {
 
         // 🚫 Block staff members
         if (profile.user_type === 'staff_member') {
-          toast.error('Access Denied: This page is for agency admins only');
           navigate(createPageUrl('StaffPortal'));
           return;
         }
 
-        setUser(profile);
-        setLoading(false);
+        setCurrentUser(profile);
+        setUserLoading(false);
       } catch (error) {
         console.error('❌ Auth error:', error);
         toast.error('Authentication failed. Please log in again.');

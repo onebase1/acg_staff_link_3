@@ -11,10 +11,50 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 
 export default function DisputeResolution() {
   const [selectedShift, setSelectedShift] = useState(null);
   const [showAuditTrail, setShowAuditTrail] = useState(false);
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // 🛡️ RBAC: Block staff members
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        if (authError || !authUser) {
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+
+        if (profileError || !profile) {
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        // 🚫 Silent redirect for staff members
+        if (profile.user_type === 'staff_member') {
+          navigate(createPageUrl('StaffPortal'));
+          return;
+        }
+
+        setCurrentUser(profile);
+      } catch (error) {
+        console.error("Auth error:", error);
+        navigate(createPageUrl('Home'));
+      }
+    };
+    checkAccess();
+  }, [navigate]);
 
   const { data: shifts = [] } = useQuery({
     queryKey: ['shifts-disputed'],
@@ -24,7 +64,7 @@ export default function DisputeResolution() {
         .select('*')
         .in('status', ['disputed', 'completed', 'no_show'])
         .order('date', { ascending: false });
-      
+
       if (error) {
         console.error('❌ Error fetching shifts:', error);
         return [];
@@ -42,7 +82,7 @@ export default function DisputeResolution() {
         .from('change_logs')
         .select('*')
         .eq('change_type', 'shift_verification_email');
-      
+
       if (error) {
         console.error('❌ Error fetching change logs:', error);
         return [];
@@ -59,7 +99,7 @@ export default function DisputeResolution() {
       const { data, error } = await supabase
         .from('staff')
         .select('*');
-      
+
       if (error) {
         console.error('❌ Error fetching staff:', error);
         return [];
@@ -76,7 +116,7 @@ export default function DisputeResolution() {
       const { data, error } = await supabase
         .from('clients')
         .select('*');
-      
+
       if (error) {
         console.error('❌ Error fetching clients:', error);
         return [];
@@ -93,7 +133,7 @@ export default function DisputeResolution() {
       const { data, error } = await supabase
         .from('timesheets')
         .select('*');
-      
+
       if (error) {
         console.error('❌ Error fetching timesheets:', error);
         return [];
@@ -287,7 +327,7 @@ export default function DisputeResolution() {
           <div class="section">
             <h2>📧 Verification Chain (Email Audit Trail)</h2>
             ${evidenceData.verificationChain.length > 0 ?
-              evidenceData.verificationChain.map((log, idx) => `
+          evidenceData.verificationChain.map((log, idx) => `
                 <div class="evidence-item">
                   <p><span class="label">Step ${idx + 1}:</span> <span class="value">${log.event}</span></p>
                   <p><span class="label">Timestamp:</span> <span class="value">${log.timestamp}</span></p>
@@ -295,8 +335,8 @@ export default function DisputeResolution() {
                   <p><span class="label">Trigger:</span> <span class="value">${log.trigger}</span></p>
                 </div>
               `).join('')
-              : '<div class="warning">⚠️ No email audit trail found. This shift was created before the Verification Chain was enabled.</div>'
-            }
+          : '<div class="warning">⚠️ No email audit trail found. This shift was created before the Verification Chain was enabled.</div>'
+        }
           </div>
 
           ${evidenceData.timesheetStatus ? `
@@ -384,7 +424,7 @@ export default function DisputeResolution() {
       <Alert className="border-green-300 bg-green-50">
         <Shield className="h-5 w-5 text-green-600" />
         <AlertDescription className="text-green-900">
-          <strong>🛡️ Protected by Verification Chain:</strong> Every shift has an automated email audit trail sent to care homes at each stage. 
+          <strong>🛡️ Protected by Verification Chain:</strong> Every shift has an automated email audit trail sent to care homes at each stage.
           This irrefutable evidence prevents the common disputes that cost agencies thousands in unpaid invoices.
         </AlertDescription>
       </Alert>
@@ -452,8 +492,8 @@ export default function DisputeResolution() {
                       <div className="flex items-center gap-3 flex-wrap">
                         <Badge className={
                           shift.status === 'disputed' ? 'bg-red-600 text-white' :
-                          shift.status === 'no_show' ? 'bg-orange-600 text-white' :
-                          'bg-green-600 text-white'
+                            shift.status === 'no_show' ? 'bg-orange-600 text-white' :
+                              'bg-green-600 text-white'
                         }>
                           {shift.status?.replace('_', ' ')}
                         </Badge>
@@ -494,7 +534,7 @@ export default function DisputeResolution() {
                         <Alert className="border-amber-300 bg-amber-50">
                           <AlertTriangle className="h-4 w-4 text-amber-600" />
                           <AlertDescription className="text-amber-900 text-sm">
-                            <strong>⚠️ No email audit trail found.</strong> This shift was created before the Verification Chain was enabled. 
+                            <strong>⚠️ No email audit trail found.</strong> This shift was created before the Verification Chain was enabled.
                             Evidence may be limited.
                           </AlertDescription>
                         </Alert>
@@ -502,7 +542,7 @@ export default function DisputeResolution() {
                     </div>
 
                     <div className="flex flex-col gap-2 min-w-[200px]">
-                      <Button 
+                      <Button
                         size="sm"
                         onClick={() => handleViewAuditTrail(shift)}
                         className="bg-blue-600 hover:bg-blue-700"
@@ -510,7 +550,7 @@ export default function DisputeResolution() {
                         <Eye className="w-4 h-4 mr-2" />
                         View Audit Trail ({auditTrail.length})
                       </Button>
-                      <Button 
+                      <Button
                         size="sm"
                         variant="outline"
                         onClick={() => generateEvidencePDF(shift)}

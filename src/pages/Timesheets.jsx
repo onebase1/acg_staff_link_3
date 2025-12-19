@@ -55,7 +55,7 @@ export default function Timesheets() {
     const fetchUser = async () => {
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
       if (authError || !authUser) {
-        console.error('❌ Not authenticated:', authError);
+        navigate(createPageUrl('Home'));
         return;
       }
 
@@ -66,7 +66,13 @@ export default function Timesheets() {
         .single();
 
       if (profileError || !profile) {
-        console.error('❌ Profile not found:', profileError);
+        navigate(createPageUrl('Home'));
+        return;
+      }
+
+      // 🚫 Silent redirect for staff members
+      if (profile.user_type === 'staff_member') {
+        navigate(createPageUrl('StaffPortal'));
         return;
       }
 
@@ -293,7 +299,7 @@ export default function Timesheets() {
       queryClient.invalidateQueries(['timesheets']);
       queryClient.invalidateQueries(['shifts']);
       queryClient.invalidateQueries(['workflows']);
-      
+
       if (data.success) {
         toast.success(
           `✅ Batch Complete: ${data.approved} auto-approved, ${data.flagged} flagged for review`,
@@ -322,7 +328,7 @@ export default function Timesheets() {
       queryClient.invalidateQueries(['timesheets']);
       queryClient.invalidateQueries(['shifts']);
       queryClient.invalidateQueries(['workflows']);
-      
+
       if (data.success) {
         toast.success(data.message || 'Timesheet approved');
       } else {
@@ -772,7 +778,7 @@ export default function Timesheets() {
 
     // ✅ FIX 1: Only validate if shift has ended
     const shiftHasEnded = timesheet.shift_date ? new Date(timesheet.shift_date) < new Date() : false;
-    
+
     if (!shiftHasEnded) {
       // Don't show validation issues for future shifts
       return issues;
@@ -801,11 +807,11 @@ export default function Timesheets() {
     // ✅ GPS VERIFICATION BYPASS: Skip signature checks if GPS has verified both clock-in and clock-out
     // GPS verification confirms location and attendance, making signatures redundant
     // Only skip signatures if shift is complete (clocked out) AND both clock-in and clock-out are GPS verified
-    const isGPSFullyVerified = 
-      timesheet.geofence_validated === true && 
+    const isGPSFullyVerified =
+      timesheet.geofence_validated === true &&
       timesheet.clock_in_location &&
       timesheet.clock_out_time && // Shift must be completed (clocked out)
-      timesheet.clock_out_geofence_validated === true && 
+      timesheet.clock_out_geofence_validated === true &&
       timesheet.clock_out_location; // Both clock-in and clock-out GPS verified
 
     // Only skip signatures if GPS fully verified (both clock-in AND clock-out if shift completed)
@@ -841,15 +847,15 @@ export default function Timesheets() {
 
   const filteredTimesheets = timesheets.filter(t => {
     const matchesStatus = statusFilter === 'all' ||
-                         (statusFilter === 'pending' && (t.status === 'submitted' || t.status === 'draft')) ||
-                         (statusFilter === 'approved' && t.status === 'approved') ||
-                         (statusFilter === 'rejected' && t.status === 'rejected') ||
-                         (statusFilter === 'paid' && t.status === 'paid');
+      (statusFilter === 'pending' && (t.status === 'submitted' || t.status === 'draft')) ||
+      (statusFilter === 'approved' && t.status === 'approved') ||
+      (statusFilter === 'rejected' && t.status === 'rejected') ||
+      (statusFilter === 'paid' && t.status === 'paid');
 
     const staffName = getStaffName(t.staff_id).toLowerCase();
     const clientName = getClientName(t.client_id).toLowerCase();
     const matchesSearch = staffName.includes(searchTerm.toLowerCase()) ||
-                         clientName.includes(searchTerm.toLowerCase());
+      clientName.includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -971,7 +977,7 @@ export default function Timesheets() {
         }
         return value;
       }).join(','),
-      ...csvData.map(row => 
+      ...csvData.map(row =>
         headers.map(header => {
           const value = row[header];
           const stringValue = value === null || value === undefined ? '' : String(value);
@@ -992,7 +998,7 @@ export default function Timesheets() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     toast.success(`✅ Exported ${csvData.length} timesheets to CSV`);
   };
 
@@ -1017,10 +1023,10 @@ export default function Timesheets() {
         <div className="flex gap-2">
           {isAdmin && (
             <>
-              <Button 
-                variant="outline" 
-                className="gap-2" 
-                onClick={exportToCSV} 
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={exportToCSV}
                 disabled={filteredTimesheets.length === 0}
               >
                 <Download className="w-4 h-4" />
@@ -1210,10 +1216,10 @@ export default function Timesheets() {
                         <td className="px-4 py-3">
                           <Badge className={
                             timesheet.status === 'draft' ? 'bg-gray-100 text-gray-700' :
-                            timesheet.status === 'submitted' ? 'bg-yellow-100 text-yellow-800' :
-                            timesheet.status === 'approved' ? 'bg-green-100 text-green-800' :
-                            timesheet.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                            'bg-emerald-100 text-emerald-800'
+                              timesheet.status === 'submitted' ? 'bg-yellow-100 text-yellow-800' :
+                                timesheet.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                  timesheet.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                    'bg-emerald-100 text-emerald-800'
                           }>
                             {timesheet.status}
                           </Badge>
@@ -1273,18 +1279,18 @@ export default function Timesheets() {
                             <span className="text-xs text-gray-400">None</span>
                           )}
                         </td>
-                        
+
                         {/* ✅ NEW: Auto-Approval Status */}
                         {isAdmin && (
                           <td className="px-4 py-3">
-                            <AutoApprovalIndicator 
-                              timesheet={timesheet} 
-                              shift={shift} 
-                              staffMember={staffMember} 
+                            <AutoApprovalIndicator
+                              timesheet={timesheet}
+                              shift={shift}
+                              staffMember={staffMember}
                             />
                           </td>
                         )}
-                        
+
                         <td className="px-4 py-3 text-right">
                           <div className="flex justify-end gap-2">
                             <Link to={createPageUrl('TimesheetDetail') + `?id=${timesheet.id}`}>
@@ -1307,7 +1313,7 @@ export default function Timesheets() {
                                   <Zap className="w-3 h-3 mr-1" />
                                   Auto
                                 </Button>
-                                
+
                                 <Button
                                   size="sm"
                                   onClick={() => handleApprove(timesheet.id)}
@@ -1343,7 +1349,7 @@ export default function Timesheets() {
           {filteredTimesheets.map(timesheet => {
             const staffMember = staff.find(s => s.id === timesheet.staff_id);
             const shift = shifts.find(s => s.id === timesheet.booking_id);
-            
+
             return (
               <div key={timesheet.id} className="relative">
                 <TimesheetCard
@@ -1362,10 +1368,10 @@ export default function Timesheets() {
                 {/* ✅ NEW: Auto-Approval Indicator in Cards */}
                 {isAdmin && timesheet.status === 'submitted' && (
                   <div className="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                    <AutoApprovalIndicator 
-                      timesheet={timesheet} 
-                      shift={shift} 
-                      staffMember={staffMember} 
+                    <AutoApprovalIndicator
+                      timesheet={timesheet}
+                      shift={shift}
+                      staffMember={staffMember}
                     />
                     <Button
                       size="sm"
@@ -1490,8 +1496,8 @@ export default function Timesheets() {
               {isStaff
                 ? 'Your timesheets will appear here after you complete shifts'
                 : statusFilter === 'pending'
-                ? 'No timesheets awaiting approval'
-                : 'Timesheets will appear here after shifts are completed'}
+                  ? 'No timesheets awaiting approval'
+                  : 'Timesheets will appear here after shifts are completed'}
             </p>
           </CardContent>
         </Card>

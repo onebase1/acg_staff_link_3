@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
+import {
   TrendingUp, TrendingDown, Users, DollarSign, Calendar, AlertTriangle,
   Target, Clock, XCircle, CheckCircle, Award, Download, Shield
 } from "lucide-react";
@@ -260,8 +260,8 @@ export default function PerformanceAnalytics() {
   const getFilteredData = (data, dateField) => {
     const now = new Date();
     let startDate;
-    
-    switch(timeRange) {
+
+    switch (timeRange) {
       case 'week':
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         break;
@@ -277,7 +277,7 @@ export default function PerformanceAnalytics() {
       default:
         startDate = startOfMonth(now);
     }
-    
+
     return data.filter(item => {
       const itemDate = new Date(item[dateField]);
       return itemDate >= startDate;
@@ -306,7 +306,7 @@ export default function PerformanceAnalytics() {
   const shiftsCancelled = filteredShifts.filter(s => s.status === 'cancelled').length;
   const shiftsNoShow = filteredShifts.filter(s => s.status === 'no_show').length;
   const shiftsOpen = filteredShifts.filter(s => s.status === 'open').length;
-  
+
   const completionRate = totalShiftsBooked > 0 ? (shiftsCompleted / totalShiftsBooked * 100) : 0;
   const fillRate = totalShiftsBooked > 0 ? ((totalShiftsBooked - shiftsOpen) / totalShiftsBooked * 100) : 0;
   const cancellationRate = totalShiftsBooked > 0 ? (shiftsCancelled / totalShiftsBooked * 100) : 0;
@@ -314,7 +314,7 @@ export default function PerformanceAnalytics() {
 
   // LOSS ANALYSIS
   const avgShiftValue = filteredShifts.length > 0 ? filteredShifts.reduce((sum, s) => sum + (s.charge_rate * s.duration_hours), 0) / filteredShifts.length : 0;
-  
+
   const noShowLoss = shiftsNoShow * avgShiftValue;
   const cancellationLoss = shiftsCancelled * avgShiftValue * 0.3; // Assume 30% loss on cancellations
   const unfilledLoss = shiftsOpen * avgShiftValue;
@@ -351,7 +351,7 @@ export default function PerformanceAnalytics() {
     const staffShifts = filteredShifts.filter(shift => shift.assigned_staff_id === s.id);
     const completedShifts = staffShifts.filter(shift => shift.status === 'completed').length;
     const noShows = staffShifts.filter(shift => shift.status === 'no_show').length;
-    
+
     return {
       name: `${s.first_name} ${s.last_name}`,
       shifts: staffShifts.length,
@@ -369,13 +369,13 @@ export default function PerformanceAnalytics() {
   ];
 
   // MONTHLY TREND
-  const monthlyData = Array.from({length: 6}, (_, i) => {
+  const monthlyData = Array.from({ length: 6 }, (_, i) => {
     const month = subMonths(new Date(), 5 - i);
     const monthShifts = shifts.filter(s => {
       const shiftDate = new Date(s.date);
       return shiftDate >= startOfMonth(month) && shiftDate <= endOfMonth(month);
     });
-    
+
     const completed = monthShifts.filter(s => s.status === 'completed').length;
     const revenue = timesheets
       .filter(t => {
@@ -405,19 +405,8 @@ export default function PerformanceAnalytics() {
     );
   }
 
-  if (!user || user.user_type === 'staff_member') {
-    return (
-      <Card className="max-w-md mx-auto mt-20">
-        <CardContent className="p-12 text-center">
-          <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
-          <p className="text-gray-600 mb-6">Performance analytics is only accessible to agency administrators.</p>
-          <Button onClick={() => navigate(createPageUrl('StaffPortal'))}>
-            Go to Staff Portal
-          </Button>
-        </CardContent>
-      </Card>
-    );
+  if (!user) {
+    return null;
   }
 
   return (
@@ -546,7 +535,7 @@ export default function PerformanceAnalytics() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, value, count }) => `${name}: £${(value/1000).toFixed(1)}k (${count})`}
+                  label={({ name, value, count }) => `${name}: £${(value / 1000).toFixed(1)}k (${count})`}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
@@ -583,7 +572,7 @@ export default function PerformanceAnalytics() {
                   <span className="text-sm font-bold">{fillRate.toFixed(0)}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div className="bg-green-600 h-3 rounded-full transition-all" style={{width: `${fillRate}%`}}></div>
+                  <div className="bg-green-600 h-3 rounded-full transition-all" style={{ width: `${fillRate}%` }}></div>
                 </div>
               </div>
 
@@ -593,7 +582,7 @@ export default function PerformanceAnalytics() {
                   <span className="text-sm font-bold">{completionRate.toFixed(0)}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div className="bg-blue-600 h-3 rounded-full transition-all" style={{width: `${completionRate}%`}}></div>
+                  <div className="bg-blue-600 h-3 rounded-full transition-all" style={{ width: `${completionRate}%` }}></div>
                 </div>
               </div>
 
@@ -603,7 +592,7 @@ export default function PerformanceAnalytics() {
                   <span className="text-sm font-bold text-orange-600">{cancellationRate.toFixed(1)}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div className="bg-orange-500 h-3 rounded-full transition-all" style={{width: `${cancellationRate}%`}}></div>
+                  <div className="bg-orange-500 h-3 rounded-full transition-all" style={{ width: `${cancellationRate}%` }}></div>
                 </div>
               </div>
 
@@ -613,7 +602,7 @@ export default function PerformanceAnalytics() {
                   <span className="text-sm font-bold text-red-600">{noShowRate.toFixed(1)}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div className="bg-red-600 h-3 rounded-full transition-all" style={{width: `${noShowRate}%`}}></div>
+                  <div className="bg-red-600 h-3 rounded-full transition-all" style={{ width: `${noShowRate}%` }}></div>
                 </div>
               </div>
 
@@ -758,7 +747,7 @@ export default function PerformanceAnalytics() {
                 No-shows are costing £{noShowLoss.toFixed(0)} ({noShowRate.toFixed(1)}% rate). Implement automated reminder system 2 hours before shift start to reduce by 60%.
               </p>
             </div>
-            
+
             <div className="p-4 bg-white rounded-lg border border-orange-200">
               <p className="font-semibold text-orange-900">💰 Revenue Opportunity</p>
               <p className="text-sm text-gray-700 mt-1">

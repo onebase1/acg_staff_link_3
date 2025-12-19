@@ -20,12 +20,12 @@ export default function Invoices() {
   const navigate = useNavigate();
   const queryClient = useQueryClient(); // For invalidating queries after send
 
-  // Get current user and agency
+  // 🛡️ RBAC: Block staff members
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
       if (authError || !authUser) {
-        console.error('❌ Not authenticated:', authError);
+        navigate(createPageUrl('Home'));
         return;
       }
 
@@ -36,14 +36,20 @@ export default function Invoices() {
         .single();
 
       if (profileError || !profile) {
-        console.error('❌ Profile not found:', profileError);
+        navigate(createPageUrl('Home'));
+        return;
+      }
+
+      // 🚫 Silent redirect for staff members
+      if (profile.user_type === 'staff_member') {
+        navigate(createPageUrl('StaffPortal'));
         return;
       }
 
       setCurrentAgency(profile.agency_id);
     };
     fetchUser();
-  }, []);
+  }, [navigate]);
 
   const { data: invoices = [] } = useQuery({
     queryKey: ['invoices', currentAgency],
@@ -123,7 +129,7 @@ export default function Invoices() {
     },
     onSuccess: ({ invoiceId, data }) => { // ✅ FIX: Destructure invoiceId from result
       console.log('✅ [Send Invoice] Success for:', invoiceId, data);
-      
+
       // ✅ FIX: Remove this specific invoice from sending set
       setSendingInvoices(prev => {
         const newSet = new Set(prev);
@@ -142,7 +148,7 @@ export default function Invoices() {
     },
     onError: (error, invoiceId) => { // ✅ FIX: invoiceId is passed as variables
       console.error('❌ [Send Invoice] Error for:', invoiceId, error);
-      
+
       // ✅ FIX: Remove this specific invoice from sending set
       setSendingInvoices(prev => {
         const newSet = new Set(prev);

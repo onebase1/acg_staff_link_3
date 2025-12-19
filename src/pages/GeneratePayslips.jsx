@@ -31,20 +31,21 @@ export default function GeneratePayslips() {
   const [user, setUser] = useState(null);
   const [agency, setAgency] = useState(null);
   const [generating, setGenerating] = useState(false);
-  
+
   // Period selection
   const [periodStart, setPeriodStart] = useState(format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'));
   const [periodEnd, setPeriodEnd] = useState(format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'));
-  
+
   // Staff selection
   const [selectedStaff, setSelectedStaff] = useState(new Set());
   const [selectAll, setSelectAll] = useState(false);
 
+  // 🛡️ RBAC: Block staff members
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
       if (authError || !authUser) {
-        console.error('❌ Not authenticated:', authError);
+        navigate(createPageUrl('Home'));
         return;
       }
 
@@ -55,33 +56,39 @@ export default function GeneratePayslips() {
         .single();
 
       if (profileError || !profile) {
-        console.error('❌ Profile not found:', profileError);
+        navigate(createPageUrl('Home'));
+        return;
+      }
+
+      // 🚫 Silent redirect for staff members
+      if (profile.user_type === 'staff_member') {
+        navigate(createPageUrl('StaffPortal'));
         return;
       }
 
       setUser(profile);
-      
+
       if (profile.agency_id) {
         const { data: userAgency, error: agencyError } = await supabase
           .from('agencies')
           .select('*')
           .eq('id', profile.agency_id)
           .single();
-        
+
         if (!agencyError && userAgency) {
           setAgency(userAgency);
         }
       }
     };
     fetchUser();
-  }, []);
+  }, [navigate]);
 
   // Get approved timesheets for period
   const { data: timesheets = [] } = useQuery({
     queryKey: ['timesheets-for-payroll', periodStart, periodEnd],
     queryFn: async () => {
       if (!user?.agency_id) return [];
-      
+
       const { data, error } = await supabase
         .from('timesheets')
         .select('*')
@@ -106,12 +113,12 @@ export default function GeneratePayslips() {
     queryKey: ['staff'],
     queryFn: async () => {
       if (!user?.agency_id) return [];
-      
+
       const { data, error } = await supabase
         .from('staff')
         .select('*')
         .eq('agency_id', user.agency_id);
-      
+
       if (error) {
         console.error('❌ Error fetching staff:', error);
         return [];
@@ -126,12 +133,12 @@ export default function GeneratePayslips() {
     queryKey: ['compliance'],
     queryFn: async () => {
       if (!user?.agency_id) return [];
-      
+
       const { data, error } = await supabase
         .from('compliance')
         .select('*')
         .eq('agency_id', user.agency_id);
-      
+
       if (error) {
         console.error('❌ Error fetching compliance:', error);
         return [];
@@ -146,18 +153,18 @@ export default function GeneratePayslips() {
   const staffPayrollData = staff
     .map(staffMember => {
       const staffTimesheets = timesheets.filter(t => t.staff_id === staffMember.id);
-      
+
       if (staffTimesheets.length === 0) return null;
 
       const totalHours = staffTimesheets.reduce((sum, t) => sum + (t.total_hours || 0), 0);
       const grossPay = staffTimesheets.reduce((sum, t) => sum + (t.staff_pay_amount || 0), 0);
-      
+
       // Check compliance
       const criticalDocs = ['dbs_check', 'right_to_work', 'professional_registration'];
-      const hasCompliance = criticalDocs.every(docType => 
-        compliance.some(c => 
-          c.staff_id === staffMember.id && 
-          c.document_type === docType && 
+      const hasCompliance = criticalDocs.every(docType =>
+        compliance.some(c =>
+          c.staff_id === staffMember.id &&
+          c.document_type === docType &&
           c.status === 'verified' &&
           (!c.expiry_date || new Date(c.expiry_date) > new Date())
         )
@@ -169,7 +176,7 @@ export default function GeneratePayslips() {
       const taxableAmount = Math.max(0, taxableIncome - personalAllowance);
       const tax = taxableAmount * 0.20; // Basic rate 20%
       const ni = grossPay > 1048 ? (grossPay - 1048) * 0.12 : 0; // 12% NI on income above threshold
-      
+
       const totalDeductions = tax + ni;
       const netPay = grossPay - totalDeductions;
 
@@ -182,10 +189,10 @@ export default function GeneratePayslips() {
         totalDeductions,
         netPay,
         hasCompliance,
-        complianceIssues: hasCompliance ? [] : criticalDocs.filter(docType => 
-          !compliance.some(c => 
-            c.staff_id === staffMember.id && 
-            c.document_type === docType && 
+        complianceIssues: hasCompliance ? [] : criticalDocs.filter(docType =>
+          !compliance.some(c =>
+            c.staff_id === staffMember.id &&
+            c.document_type === docType &&
             c.status === 'verified'
           )
         )
@@ -224,7 +231,7 @@ export default function GeneratePayslips() {
 
     try {
       const staffToGenerate = staffPayrollData.filter(s => selectedStaff.has(s.staff.id));
-      
+
       console.log(`💰 [Payslips] Generating for ${staffToGenerate.length} staff members...`);
 
       for (const staffData of staffToGenerate) {
@@ -273,7 +280,7 @@ export default function GeneratePayslips() {
             ...payslipData,
             created_date: new Date().toISOString()
           });
-        
+
         if (createError) {
           console.error('❌ Error creating payslip:', createError);
           throw createError;
@@ -288,7 +295,7 @@ export default function GeneratePayslips() {
               status: 'paid'
             })
             .eq('id', timesheet.id);
-          
+
           if (updateError) {
             console.error('❌ Error updating timesheet:', updateError);
           }
@@ -345,7 +352,7 @@ export default function GeneratePayslips() {
     a.href = url;
     a.download = `payroll_export_${periodStart}_to_${periodEnd}.csv`;
     a.click();
-    
+
     toast.success(`✅ Exported payroll data for ${csvData.length} staff`);
   };
 
@@ -503,7 +510,7 @@ export default function GeneratePayslips() {
                   onCheckedChange={(checked) => handleSelectStaff(data.staff.id, checked)}
                   disabled={!data.hasCompliance}
                 />
-                
+
                 <div className="flex-1">
                   <div className="flex items-start justify-between mb-3">
                     <div>

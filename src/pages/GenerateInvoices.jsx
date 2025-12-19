@@ -47,12 +47,9 @@ export default function GenerateInvoices() {
           return;
         }
 
-        // 🔒 RBAC CHECK: Only Admins and Managers allowed
-        const allowedRoles = ['agency_admin', 'manager'];
-        if (!allowedRoles.includes(profile.user_type)) {
-          console.warn(`⛔ Access Denied: User role '${profile.user_type}' is not authorized.`);
-          toast.error('⛔ Access Denied: You do not have permission to view this page.');
-          navigate('/Dashboard'); // Redirect to safe page
+        // 🔒 RBAC CHECK: Silent redirect for staff members
+        if (profile.user_type === 'staff_member') {
+          navigate(createPageUrl('StaffPortal'));
           return;
         }
 
@@ -60,7 +57,6 @@ export default function GenerateInvoices() {
         console.log('✅ [Generate Invoices] User loaded & authorized:', profile.email);
       } catch (error) {
         console.error('❌ [Generate Invoices] Auth error:', error);
-        toast.error('Failed to load user data');
       }
     };
     fetchUser();

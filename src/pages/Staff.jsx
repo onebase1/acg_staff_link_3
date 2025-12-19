@@ -51,10 +51,14 @@ export default function Staff() {
           .eq('id', authUser.id)
           .single();
 
-        if (profileError) {
-          console.error('❌ Error fetching profile:', profileError);
-          toast.error('Failed to load profile');
+        if (profileError || !profile) {
           navigate(createPageUrl('Home'));
+          return;
+        }
+
+        // 🚫 Silent redirect for staff members
+        if (profile.user_type === 'staff_member') {
+          navigate(createPageUrl('StaffPortal'));
           return;
         }
 

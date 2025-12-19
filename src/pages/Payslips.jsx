@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   Receipt, User, Calendar, DollarSign, Download, Building2
 } from "lucide-react";
 import { format } from "date-fns";
@@ -16,7 +16,7 @@ const createPageUrl = (path) => {
   // Assuming 'GeneratePayslips' is meant to be a direct path like '/generatepayslips'
   // Or it could be a dynamic path construction based on your routing setup.
   // For this implementation, we'll assume it's directly the path.
-  return `/${path.toLowerCase()}`; 
+  return `/${path.toLowerCase()}`;
 };
 
 export default function Payslips() {
@@ -24,12 +24,13 @@ export default function Payslips() {
   const [currentUser, setCurrentUser] = useState(null);
   const navigate = useNavigate(); // Initialize useNavigate hook
 
+  // 🛡️ RBAC: Block staff members
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
         if (authError || !authUser) {
-          console.error('❌ Not authenticated:', authError);
+          navigate(createPageUrl('Home'));
           return;
         }
 
@@ -40,7 +41,13 @@ export default function Payslips() {
           .single();
 
         if (profileError || !profile) {
-          console.error('❌ Profile not found:', profileError);
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        // 🚫 Silent redirect for staff members
+        if (profile.user_type === 'staff_member') {
+          navigate(createPageUrl('StaffPortal'));
           return;
         }
 
@@ -50,7 +57,7 @@ export default function Payslips() {
       }
     };
     fetchUser();
-  }, []);
+  }, [navigate]);
 
   const { data: payslips = [] } = useQuery({
     queryKey: ['payslips', currentUser?.agency_id],
@@ -114,7 +121,7 @@ export default function Payslips() {
     return staffMember ? `${staffMember.first_name} ${staffMember.last_name}` : 'Unknown';
   };
 
-  const filteredPayslips = payslips.filter(p => 
+  const filteredPayslips = payslips.filter(p =>
     statusFilter === 'all' || p.status === statusFilter
   );
 
@@ -134,8 +141,8 @@ export default function Payslips() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-4">
           {agency?.logo_url && (
-            <img 
-              src={agency.logo_url} 
+            <img
+              src={agency.logo_url}
               alt={agency.name}
               className="h-12 w-12 rounded-lg object-contain border-2 border-gray-200 p-1"
             />
@@ -157,28 +164,28 @@ export default function Payslips() {
       <Card>
         <CardContent className="p-4">
           <div className="flex gap-2 overflow-x-auto">
-            <Button 
+            <Button
               variant={statusFilter === 'all' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setStatusFilter('all')}
             >
               All
             </Button>
-            <Button 
+            <Button
               variant={statusFilter === 'draft' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setStatusFilter('draft')}
             >
               Draft
             </Button>
-            <Button 
+            <Button
               variant={statusFilter === 'approved' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setStatusFilter('approved')}
             >
               Approved
             </Button>
-            <Button 
+            <Button
               variant={statusFilter === 'paid' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setStatusFilter('paid')}

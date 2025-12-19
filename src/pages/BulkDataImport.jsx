@@ -89,7 +89,6 @@ export default function BulkDataImport() {
         setUser(currentUser);
 
         if (currentUser.user_type === 'staff_member') {
-          toast.error('Access Denied: This page is for agency admins only');
           navigate(createPageUrl('StaffPortal'));
           return;
         }

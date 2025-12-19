@@ -5,8 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  Trophy, TrendingUp, Star, Clock, AlertCircle, 
+import {
+  Trophy, TrendingUp, Star, Clock, AlertCircle,
   Award, Flame, Target, Shield, Zap, ThumbsUp
 } from 'lucide-react';
 import { calculateImprovementTips } from '@/services/scoring/improvementCalculator';
@@ -31,7 +31,7 @@ export default function MyScore() {
   const fetchStaffData = async () => {
     try {
       setLoading(true);
-      
+
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -39,7 +39,7 @@ export default function MyScore() {
       // Get staff profile with score data
       const { data: staff, error: staffError } = await supabase
         .from('staff')
-        .select('id, first_name, last_name, reliability_score, score_breakdown, current_streak, longest_streak, urgent_shifts_covered, last_incident_date, created_at')
+        .select('id, first_name, last_name, reliability_score, score_breakdown, current_streak, longest_streak, urgent_shifts_covered, last_incident_date, created_date')
         .eq('user_id', user.id)
         .single();
 
@@ -172,7 +172,7 @@ export default function MyScore() {
         <StatCard icon={Flame} label="Current Streak" value={staffProfile?.current_streak || 0} suffix="shifts" color="text-orange-600" />
         <StatCard icon={Trophy} label="Longest Streak" value={staffProfile?.longest_streak || 0} suffix="shifts" color="text-amber-600" />
         <StatCard icon={Zap} label="Urgent Shifts" value={staffProfile?.urgent_shifts_covered || 0} suffix="covered" color="text-purple-600" />
-        <StatCard icon={Clock} label="Member Since" value={staffProfile?.created_at ? new Date(staffProfile.created_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : 'N/A'} color="text-blue-600" />
+        <StatCard icon={Clock} label="Member Since" value={staffProfile?.created_date ? new Date(staffProfile.created_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : 'N/A'} color="text-blue-600" />
       </div>
 
       {/* Badges Section */}

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
+import {
   Calendar, Clock, MapPin, AlertCircle, Star, CheckCircle,
   TrendingUp, Zap, Award, Building2
 } from "lucide-react";
@@ -50,13 +50,13 @@ export default function ShiftMarketplace() {
         }
 
         setUser(profile);
-        
+
         console.log('ShiftMarketplace - User:', {
           email: profile.email,
           user_type: profile.user_type,
           agency_id: profile.agency_id
         });
-        
+
         // CRITICAL: Check if user is admin - redirect to dashboard
         if (profile.user_type === 'agency_admin' || profile.user_type === 'manager') {
           console.log('Admin user detected - redirecting to Dashboard');
@@ -67,31 +67,31 @@ export default function ShiftMarketplace() {
           navigate(createPageUrl('Dashboard'));
           return;
         }
-        
+
         // Check if user is a staff member
         if (profile.user_type !== 'staff_member') {
           setError('This page is only accessible to staff members');
           setLoading(false);
           return;
         }
-        
+
         const { data: staffData, error: staffError } = await supabase
           .from('staff')
           .select('*')
           .or(`user_id.eq.${profile.id},email.eq.${profile.email}`);
-        
-        const staffProfile = staffData?.find(s => 
-          s.user_id === profile.id || 
+
+        const staffProfile = staffData?.find(s =>
+          s.user_id === profile.id ||
           s.email?.toLowerCase() === profile.email?.toLowerCase()
         );
-        
+
         if (!staffProfile) {
           console.log('No staff profile found');
           setError('Staff profile not found. Please contact your administrator.');
           setLoading(false);
           return;
         }
-        
+
         console.log('Staff profile found:', staffProfile.first_name, staffProfile.last_name);
         setStaffProfile(staffProfile);
         setLoading(false);
@@ -108,13 +108,13 @@ export default function ShiftMarketplace() {
     queryKey: ['agency', user?.agency_id],
     queryFn: async () => {
       if (!user?.agency_id) return null;
-      
+
       const { data, error } = await supabase
         .from('agencies')
         .select('*')
         .eq('id', user.agency_id)
         .single();
-      
+
       if (error) {
         console.error('❌ Error fetching agency:', error);
         return null;
@@ -198,7 +198,7 @@ export default function ShiftMarketplace() {
           const shiftDay = format(new Date(shift.date), 'EEEE').toLowerCase();
           const availability = staffProfile.availability?.[shiftDay] || [];
 
-          const isNightShift = shift.start_time >= '20:00' || shift.start_time <= '08:00';
+          const isNightShift = shift.start_time >= '20:00' || shift.start_time < '08:00';
           const shiftType = isNightShift ? 'night' : 'day';
 
           return availability.includes(shiftType);
@@ -206,7 +206,7 @@ export default function ShiftMarketplace() {
 
         return isAdminApproved || isAutoMatched;
       });
-      
+
       console.log('Marketplace shifts:', openShifts.length);
       return openShifts;
     },
@@ -221,7 +221,7 @@ export default function ShiftMarketplace() {
       const { data, error } = await supabase
         .from('clients')
         .select('*');
-      
+
       if (error) {
         console.error('❌ Error fetching clients:', error);
         return [];
@@ -457,7 +457,7 @@ export default function ShiftMarketplace() {
       <Alert className="border-blue-300 bg-blue-50">
         <AlertCircle className="h-5 w-5 text-blue-600" />
         <AlertDescription className="text-blue-900">
-          <strong>⚠️ Two-Step Process:</strong> When you accept a shift, you'll need to <strong>confirm your attendance</strong> in your Staff Portal. 
+          <strong>⚠️ Two-Step Process:</strong> When you accept a shift, you'll need to <strong>confirm your attendance</strong> in your Staff Portal.
           This ensures you're committed to the shift and reduces no-shows.
         </AlertDescription>
       </Alert>

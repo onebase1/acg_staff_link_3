@@ -75,9 +75,14 @@ export default function RateManagement() {
                 .eq('id', authUser.id)
                 .single();
 
-            if (!profile || profile.user_type === 'staff_member') {
-                toast.error('Access Denied');
+            if (!profile) {
                 navigate(createPageUrl('Home'));
+                return;
+            }
+
+            // 🚫 Silent redirect for staff members
+            if (profile.user_type === 'staff_member') {
+                navigate(createPageUrl('StaffPortal'));
                 return;
             }
 

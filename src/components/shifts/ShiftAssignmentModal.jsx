@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { X, Search, User, Star, Loader2, AlertTriangle } from "lucide-react";
+import { X, Search, User, Star, Loader2, AlertTriangle, Trophy, MapPin, Activity, Sparkles, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
@@ -66,10 +66,10 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
     queryKey: ['staff-for-assignment', currentAgency, shift.role_required],
     queryFn: async () => {
       if (!currentAgency) return [];
-      
+
       const { data, error } = await supabase
         .from('staff')
-        .select('*')
+        .select('*, reliability_score, total_shifts_completed, last_incident_date, current_streak')
         .eq('agency_id', currentAgency)
         .eq('status', 'active')
         .eq('role', shift.role_required);
@@ -110,7 +110,7 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
   // VALIDATION FUNCTION: Check staff overlap
   const validateStaffAvailability = (staffId) => {
     const staffShifts = allShifts.filter(s => s.assigned_staff_id === staffId);
-    
+
     if (staffShifts.length === 0) return { valid: true };
 
     const shiftStart = new Date(`${shift.date}T${shift.start_time}`);
@@ -429,10 +429,10 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
           }
         }
       } catch (emailError) {
-          // DON'T FAIL THE ASSIGNMENT - just log the error
-          console.error('⚠️ [ShiftAssignment] Notification failed (non-critical):', emailError.message);
-          // User will still see success toast, but email failure is logged
-        }
+        // DON'T FAIL THE ASSIGNMENT - just log the error
+        console.error('⚠️ [ShiftAssignment] Notification failed (non-critical):', emailError.message);
+        // User will still see success toast, but email failure is logged
+      }
 
       return updatedShift;
     },
@@ -479,7 +479,125 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
     });
   };
 
-  const filteredStaff = staff.filter(s =>
+  // 🤖 AI MATCHING ENGINE: Rank staff based on reliability, history, and fairness
+  const rankedStaff = useMemo(() => {
+    return (staff || []).map(s => {
+      let score = 0;
+      const reasons = [];
+
+      // 1. Reliability (40% Weight)
+      const relScore = s.reliability_score || 50;
+      score += (relScore * 0.4);
+      if (relScore >= 90) reasons.push("Elite reliability");
+      else if (relScore >= 70) reasons.push("Reliable history");
+
+      // 2. Client History (25% Weight)
+      const historyCount = (allShifts || []).filter(sh =>
+        sh.assigned_staff_id === s.id &&
+        sh.client_id === shift.client_id &&
+        sh.status === 'completed'
+      ).length;
+      const historyPoints = Math.min(historyCount * 20, 100);
+      score += (historyPoints * 0.25);
+      if (historyCount > 0) reasons.push(`Worked at this client ${historyCount}x before`);
+
+      // 3. Fairness / Fresh Start Boost (15% Weight)
+      // Helps new users compete with veterans
+      const isNew = (s.total_shifts_completed || 0) < 3;
+      if (isNew) {
+        score += 15;
+        reasons.push("Fresh Start boost (New Staff)");
+      } else if ((s.current_streak || 0) > 5) {
+        score += 10;
+        reasons.push("On Fire! (5+ streak)");
+      }
+
+      // 4. Proximity & Engagement (20% Weight)
+      // Mocked to 20 until GPS integration
+      score += 20;
+
+      return {
+        ...s,
+        matchScore: Math.round(score),
+        matchReasoning: reasons.slice(0, 2).join(" • ")
+      };
+    }).sort((a, b) => b.matchScore - a.matchScore);
+  }, [staff, allShifts, shift.client_id]);
+
+  // 🤖 AI MATCHING ENGINE: Get deep reasoning for top candidates (Phase 2)
+  const [aiReasonings, setAiReasonings] = useState({});
+  const aiCalledForShift = React.useRef(null);
+
+  useEffect(() => {
+    if (rankedStaff.length > 0 && shift.id && aiCalledForShift.current !== shift.id) {
+      aiCalledForShift.current = shift.id;
+      const topMatches = rankedStaff.slice(0, 3);
+
+      const fetchAndPersist = async () => {
+        try {
+          console.log("🤖 [AI Matcher] Fetching deep reasoning for top candidates...");
+
+          const prompt = `
+            Analyze these staffing matches for a care agency:
+            Shift: ${shift.role_required?.replace('_', ' ')} at ${shift.client_id}
+            
+            Candidates:
+            ${topMatches.map((c, i) => `${i + 1}. ${c.first_name}: Reliability ${c.reliability_score}/100, ${c.total_shifts_completed || 0} total shifts, ${c.current_streak || 0} streak.`).join('\n')}
+            
+            For each candidate, provide a 1-sentence professional "Match Reasoning" (max 15 words) that highlights their specific strength for this shift.
+          `;
+
+          const { data: aiResponse, error: aiError } = await supabase.functions.invoke('invoke-llm', {
+            body: {
+              prompt,
+              response_json_schema: {
+                type: "object",
+                properties: {
+                  reasons: {
+                    type: "array",
+                    items: { type: "string" },
+                    minItems: topMatches.length
+                  }
+                },
+                required: ["reasons"]
+              }
+            }
+          });
+
+          if (aiError) throw aiError;
+
+          const reasons = aiResponse?.data?.reasons || [];
+          const newReasonings = {};
+
+          topMatches.forEach((s, i) => {
+            if (reasons[i]) newReasonings[s.id] = reasons[i];
+          });
+
+          setAiReasonings(newReasonings);
+
+          const persistenceData = topMatches.map((s, i) => ({
+            shift_id: shift.id,
+            staff_id: s.id,
+            match_score: s.matchScore,
+            match_reasoning: reasons[i] || s.matchReasoning,
+            calculated_at: new Date().toISOString()
+          }));
+
+          const { error } = await supabase
+            .from('staff_match_scores')
+            .upsert(persistenceData, { onConflict: 'shift_id,staff_id' });
+
+          if (error) console.warn('⚠️ [MatchPersistence] Error saving scores:', error.message);
+        } catch (err) {
+          console.error('❌ [MatchPersistence] Unexpected error:', err);
+        }
+      };
+
+      fetchAndPersist();
+    }
+  }, [rankedStaff, shift.id]);
+
+  const filteredStaff = rankedStaff.filter(s =>
     s.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.last_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -570,21 +688,35 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
                             </span>
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">
-                              {staffMember.first_name} {staffMember.last_name}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-gray-900">
+                                {staffMember.first_name} {staffMember.last_name}
+                              </p>
+                              {staffMember.matchScore >= 80 && (
+                                <Badge className="bg-amber-100 text-amber-700 border-amber-200 flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3" />
+                                  Top Match
+                                </Badge>
+                              )}
+                            </div>
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                               <span className="capitalize">{staffMember.role?.replace('_', ' ')}</span>
-                              {staffMember.rating && (
+                              {staffMember.matchScore && (
                                 <>
                                   <span>•</span>
-                                  <div className="flex items-center gap-1">
-                                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                                    <span>{staffMember.rating.toFixed(1)}</span>
+                                  <div className="flex items-center gap-1 text-cyan-700 font-medium">
+                                    <Trophy className="w-3 h-3" />
+                                    <span>{staffMember.matchScore}% Match</span>
                                   </div>
                                 </>
                               )}
                             </div>
+                            {(aiReasonings[staffMember.id] || staffMember.matchReasoning) && (
+                              <p className="text-xs text-cyan-600 mt-1 flex items-center gap-1 italic">
+                                <TrendingUp className="w-3 h-3" />
+                                {aiReasonings[staffMember.id] || staffMember.matchReasoning}
+                              </p>
+                            )}
                           </div>
                         </div>
                         <Button

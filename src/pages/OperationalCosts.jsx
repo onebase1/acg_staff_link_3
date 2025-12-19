@@ -5,16 +5,56 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { 
-  DollarSign, TrendingUp, TrendingDown, PieChart, 
+import {
+  DollarSign, TrendingUp, TrendingDown, PieChart,
   Calendar, FileText, Plus, Download
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 
 export default function OperationalCosts() {
   const [periodFilter, setPeriodFilter] = useState('current');
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // 🛡️ RBAC: Block staff members
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        if (authError || !authUser) {
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+
+        if (profileError || !profile) {
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        // 🚫 Silent redirect for staff members
+        if (profile.user_type === 'staff_member') {
+          navigate(createPageUrl('StaffPortal'));
+          return;
+        }
+
+        setCurrentUser(profile);
+      } catch (error) {
+        console.error("Auth error:", error);
+        navigate(createPageUrl('Home'));
+      }
+    };
+    checkAccess();
+  }, [navigate]);
 
   const { data: costs = [] } = useQuery({
     queryKey: ['operational-costs'],
@@ -23,7 +63,7 @@ export default function OperationalCosts() {
         .from('operational_costs')
         .select('*')
         .order('billing_period', { ascending: false });
-      
+
       if (error) {
         console.error('❌ Error fetching operational costs:', error);
         return [];
@@ -37,15 +77,15 @@ export default function OperationalCosts() {
   const currentMonth = costs.filter(c => {
     const costDate = new Date(c.billing_period);
     const now = new Date();
-    return costDate.getMonth() === now.getMonth() && 
-           costDate.getFullYear() === now.getFullYear();
+    return costDate.getMonth() === now.getMonth() &&
+      costDate.getFullYear() === now.getFullYear();
   });
 
   const lastMonth = costs.filter(c => {
     const costDate = new Date(c.billing_period);
     const lastMonthDate = subMonths(new Date(), 1);
-    return costDate.getMonth() === lastMonthDate.getMonth() && 
-           costDate.getFullYear() === lastMonthDate.getFullYear();
+    return costDate.getMonth() === lastMonthDate.getMonth() &&
+      costDate.getFullYear() === lastMonthDate.getFullYear();
   });
 
   const totalCurrentMonth = currentMonth.reduce((sum, c) => sum + (c.amount || 0), 0);
@@ -58,8 +98,8 @@ export default function OperationalCosts() {
   }, {});
 
   const displayedCosts = periodFilter === 'current' ? currentMonth :
-                         periodFilter === 'last' ? lastMonth :
-                         costs;
+    periodFilter === 'last' ? lastMonth :
+      costs;
 
   return (
     <div className="space-y-6">
@@ -145,7 +185,7 @@ export default function OperationalCosts() {
                       </div>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
+                      <div
                         className="bg-gradient-to-r from-cyan-500 to-blue-600 h-2 rounded-full"
                         style={{ width: `${percentage}%` }}
                       />
@@ -200,22 +240,22 @@ export default function OperationalCosts() {
                     </Badge>
                     <Badge className={
                       cost.status === 'paid' ? 'bg-green-100 text-green-800' :
-                      cost.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
+                        cost.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
                     }>
                       {cost.status}
                     </Badge>
                     {cost.roi_impact && (
                       <Badge className={
                         cost.roi_impact === 'critical' ? 'bg-red-600 text-white' :
-                        cost.roi_impact === 'high' ? 'bg-orange-100 text-orange-800' :
-                        'bg-blue-100 text-blue-800'
+                          cost.roi_impact === 'high' ? 'bg-orange-100 text-orange-800' :
+                            'bg-blue-100 text-blue-800'
                       }>
                         {cost.roi_impact.toUpperCase()}
                       </Badge>
                     )}
                   </div>
-                  
+
                   <div className="grid md:grid-cols-3 gap-4 text-sm text-gray-600">
                     <div>
                       <span className="font-medium">Billing Period:</span>{' '}

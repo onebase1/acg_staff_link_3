@@ -39,6 +39,42 @@ export default function Clients() {
 
   const [editingClient, setEditingClient] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // 🛡️ RBAC: Block staff members
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        if (authError || !authUser) {
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+
+        if (profileError || !profile) {
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        // 🚫 Silent redirect for staff members
+        if (profile.user_type === 'staff_member') {
+          navigate(createPageUrl('StaffPortal'));
+          return;
+        }
+
+        setUser(profile);
+      } catch (error) {
+        console.error("Auth error:", error);
+        navigate(createPageUrl('Home'));
+      }
+    };
+    checkAccess();
+  }, [navigate]);
   // ✅ Initialize rates_by_role with STANDARD keys from STAFF_ROLES constant
   const getInitialRatesByRole = () => {
     const rates = {};

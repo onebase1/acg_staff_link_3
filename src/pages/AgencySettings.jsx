@@ -14,6 +14,8 @@ import {
   MessageSquare, Mail, MessageCircle
 } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 
 export default function AgencySettings() {
   const [user, setUser] = useState(null);
@@ -21,8 +23,43 @@ export default function AgencySettings() {
   const [pendingChanges, setPendingChanges] = useState({});
   const [uploading, setUploading] = useState(false);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
-  // Helper to safely get nested properties from an object
+  // 🛡️ RBAC: Block staff members
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        if (authError || !authUser) {
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+
+        if (profileError || !profile) {
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        // 🚫 Silent redirect for staff members
+        if (profile.user_type === 'staff_member') {
+          navigate(createPageUrl('StaffPortal'));
+          return;
+        }
+
+        setUser(profile);
+      } catch (error) {
+        console.error("Auth error:", error);
+        navigate(createPageUrl('Home'));
+      }
+    };
+    checkAccess();
+  }, [navigate]);
   const getNestedValue = (obj, path, defaultValue) => {
     const parts = path.split('.');
     let current = obj;
@@ -53,11 +90,11 @@ export default function AgencySettings() {
   };
 
   const hasChange = (field) => pendingChanges.hasOwnProperty(field);
-  
+
   // Existing getValue, handles top-level fields only
   const getValue = (field, defaultValue = '') => {
-    return pendingChanges.hasOwnProperty(field) 
-      ? pendingChanges[field] 
+    return pendingChanges.hasOwnProperty(field)
+      ? pendingChanges[field]
       : (agency?.[field] ?? defaultValue);
   };
 
@@ -106,33 +143,7 @@ export default function AgencySettings() {
     toast.info('All changes discarded');
   };
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-        if (authError || !authUser) {
-          console.error('❌ Not authenticated:', authError);
-          return;
-        }
 
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', authUser.id)
-          .single();
-
-        if (profileError || !profile) {
-          console.error('❌ Profile not found:', profileError);
-          return;
-        }
-
-        setUser(profile);
-      } catch (error) {
-        console.error("Error:", error);
-      }
-    };
-    fetchUser();
-  }, []);
 
   const { data: agencies = [], isLoading } = useQuery({
     queryKey: ['agencies'],
@@ -140,7 +151,7 @@ export default function AgencySettings() {
       const { data, error } = await supabase
         .from('agencies')
         .select('*');
-      
+
       if (error) {
         console.error('❌ Error fetching agencies:', error);
         return [];
@@ -165,14 +176,14 @@ export default function AgencySettings() {
       if (!agency?.id) {
         throw new Error("Agency ID is missing for update.");
       }
-      
+
       const { data, error } = await supabase
         .from('agencies')
         .update(updates)
         .eq('id', agency.id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -212,7 +223,7 @@ export default function AgencySettings() {
       const { data: { publicUrl } } = supabase.storage
         .from('profile-photos')
         .getPublicUrl(fileName);
-      
+
       setChange('logo_url', publicUrl);
       toast.success('✅ Logo uploaded! Click "Save Changes" to apply.');
     } catch (error) {
@@ -318,8 +329,8 @@ export default function AgencySettings() {
               <Badge variant="warning" className="bg-yellow-500 text-white text-sm px-3 py-1">
                 {Object.keys(pendingChanges).length} Unsaved
               </Badge>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={resetChanges}
                 disabled={updateAgencyMutation.isPending}
               >
@@ -328,8 +339,8 @@ export default function AgencySettings() {
               </Button>
             </>
           )}
-          <Button 
-            onClick={handleSaveChanges} 
+          <Button
+            onClick={handleSaveChanges}
             className="bg-cyan-600 hover:bg-cyan-700"
             disabled={!hasUnsavedChanges || updateAgencyMutation.isPending}
           >
@@ -382,7 +393,7 @@ export default function AgencySettings() {
           <Alert className="mb-4 border-purple-300 bg-purple-50">
             <Info className="h-5 w-5 text-purple-600" />
             <AlertDescription className="text-purple-900">
-              <strong>⚠️ CRITICAL:</strong> Your agency logo appears on all invoices sent to clients. 
+              <strong>⚠️ CRITICAL:</strong> Your agency logo appears on all invoices sent to clients.
               A professional logo builds trust and ensures invoices are not marked as spam.
             </AlertDescription>
           </Alert>
@@ -391,12 +402,11 @@ export default function AgencySettings() {
             <div className="flex-shrink-0">
               {getValue('logo_url') ? (
                 <div className="relative group">
-                  <img 
-                    src={getValue('logo_url')} 
+                  <img
+                    src={getValue('logo_url')}
                     alt="Agency Logo"
-                    className={`w-32 h-32 object-contain border-2 rounded-lg bg-white p-2 ${
-                      hasChange('logo_url') ? 'border-yellow-400' : 'border-gray-300'
-                    }`}
+                    className={`w-32 h-32 object-contain border-2 rounded-lg bg-white p-2 ${hasChange('logo_url') ? 'border-yellow-400' : 'border-gray-300'
+                      }`}
                   />
                   {hasChange('logo_url') && (
                     <Badge className="absolute -top-2 -right-2 bg-yellow-500 text-white text-xs">
@@ -542,7 +552,7 @@ export default function AgencySettings() {
             <Alert className="mt-6 border-red-300 bg-red-50">
               <AlertTriangle className="h-5 w-5 text-red-600" />
               <AlertDescription className="text-red-900">
-                <strong>⚠️ ACTION REQUIRED:</strong> Bank details are not configured. 
+                <strong>⚠️ ACTION REQUIRED:</strong> Bank details are not configured.
                 You cannot send invoices to clients until this is completed.
               </AlertDescription>
             </Alert>
@@ -863,7 +873,7 @@ export default function AgencySettings() {
           <Alert className="border-cyan-300 bg-cyan-50">
             <Info className="h-5 w-5 text-cyan-600" />
             <AlertDescription className="text-cyan-900">
-              <strong>🚀 Premium Features:</strong> Your agency has access to all automation and intelligence features. 
+              <strong>🚀 Premium Features:</strong> Your agency has access to all automation and intelligence features.
               These are designed to save you hours every day while ensuring compliance and profitability.
             </AlertDescription>
           </Alert>
@@ -877,7 +887,7 @@ export default function AgencySettings() {
               color="text-blue-600"
               bgColor="bg-blue-50"
             />
-            
+
             <FeatureCard
               icon={Zap}
               title="Smart Shift Matching"
@@ -885,7 +895,7 @@ export default function AgencySettings() {
               color="text-purple-600"
               bgColor="bg-purple-50"
             />
-            
+
             <FeatureCard
               icon={DollarSign}
               title="Automated Invoicing"
@@ -893,7 +903,7 @@ export default function AgencySettings() {
               color="text-green-600"
               bgColor="bg-green-50"
             />
-            
+
             <FeatureCard
               icon={Bell}
               title="Multi-Channel Notifications"
@@ -936,8 +946,8 @@ export default function AgencySettings() {
       {/* Bottom Save Button */}
       {hasUnsavedChanges && (
         <div className="flex justify-end gap-3 sticky bottom-6 z-10">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={resetChanges}
             size="lg"
             disabled={updateAgencyMutation.isPending}
@@ -946,8 +956,8 @@ export default function AgencySettings() {
             <RefreshCw className="w-5 h-5 mr-2" />
             Discard Changes
           </Button>
-          <Button 
-            onClick={handleSaveChanges} 
+          <Button
+            onClick={handleSaveChanges}
             size="lg"
             className="bg-cyan-600 hover:bg-cyan-700 shadow-lg"
             disabled={updateAgencyMutation.isPending}
@@ -994,13 +1004,11 @@ function FeatureCard({ icon: Icon, title, description, color, bgColor }) {
 function IntegrationStatus({ name, status, description }) {
   const isActive = status === 'active';
   return (
-    <div className={`flex items-center justify-between p-4 rounded-lg border ${
-      isActive ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
-    }`}>
+    <div className={`flex items-center justify-between p-4 rounded-lg border ${isActive ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
+      }`}>
       <div className="flex items-center gap-3">
-        <div className={`w-2 h-2 rounded-full ${
-          isActive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
-        }`}></div>
+        <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
+          }`}></div>
         <div>
           <p className={`font-medium ${isActive ? 'text-green-900' : 'text-gray-900'}`}>
             {name}

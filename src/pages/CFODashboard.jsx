@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  Shield, AlertTriangle, DollarSign, Lock, TrendingUp, 
+import {
+  Shield, AlertTriangle, DollarSign, Lock, TrendingUp,
   FileText, Calendar, User, CheckCircle, XCircle, Eye,
   RefreshCw, Download
 } from "lucide-react";
@@ -23,8 +23,7 @@ export default function CFODashboard() {
     const checkAccess = async () => {
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
       if (authError || !authUser) {
-        console.error('❌ Not authenticated:', authError);
-        navigate(createPageUrl('Dashboard'));
+        navigate(createPageUrl('Home'));
         return;
       }
 
@@ -35,18 +34,23 @@ export default function CFODashboard() {
         .single();
 
       if (profileError || !profile) {
-        console.error('❌ Profile not found:', profileError);
+        navigate(createPageUrl('Home'));
+        return;
+      }
+
+      // 🚫 Silent redirect for staff members
+      if (profile.user_type === 'staff_member') {
+        navigate(createPageUrl('StaffPortal'));
+        return;
+      }
+
+      // 🔒 CFO-Specific restriction: Only Admins can access (unless super admin)
+      if (profile.user_type !== 'agency_admin' && !profile.is_super_admin && profile.email !== 'g.basera@yahoo.com') {
         navigate(createPageUrl('Dashboard'));
         return;
       }
 
       setUser(profile);
-      
-      // Only CFO/Admin can access
-      if (profile.user_type !== 'agency_admin' && profile.email !== 'g.basera@yahoo.com') {
-        navigate(createPageUrl('Dashboard'));
-      }
-      
       setCurrentAgency(profile.agency_id);
     };
     checkAccess();
@@ -59,11 +63,11 @@ export default function CFODashboard() {
         .from('change_logs')
         .select('*')
         .order('changed_at', { ascending: false });
-      
+
       if (currentAgency) {
         query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching change logs:', error);
@@ -82,11 +86,11 @@ export default function CFODashboard() {
         .from('invoice_amendments')
         .select('*')
         .order('amendment_date', { ascending: false });
-      
+
       if (currentAgency) {
         query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching amendments:', error);
@@ -105,11 +109,11 @@ export default function CFODashboard() {
         .from('timesheets')
         .select('*')
         .order('created_date', { ascending: false });
-      
+
       if (currentAgency) {
         query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching timesheets:', error);
@@ -128,11 +132,11 @@ export default function CFODashboard() {
         .from('shifts')
         .select('*')
         .order('date', { ascending: false });
-      
+
       if (currentAgency) {
         query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching shifts:', error);
@@ -151,11 +155,11 @@ export default function CFODashboard() {
         .from('invoices')
         .select('*')
         .order('invoice_date', { ascending: false });
-      
+
       if (currentAgency) {
         query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching invoices:', error);
@@ -176,7 +180,7 @@ export default function CFODashboard() {
   // RECENT CRITICAL ACTIVITY (Last 7 days)
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  
+
   const recentCriticalChanges = changeLogs
     .filter(c => {
       const changeDate = new Date(c.changed_at);
@@ -192,8 +196,8 @@ export default function CFODashboard() {
     .slice(0, 5);
 
   // FINANCIAL LOCK VIOLATIONS (attempted edits)
-  const lockViolations = changeLogs.filter(c => 
-    c.change_type === 'timesheet_override' && 
+  const lockViolations = changeLogs.filter(c =>
+    c.change_type === 'timesheet_override' &&
     c.old_value?.includes('locked')
   ).slice(0, 5);
 
@@ -391,8 +395,8 @@ export default function CFODashboard() {
                         </span>
                         <Badge className={
                           amendment.status === 'approved' ? 'bg-green-100 text-green-800' :
-                          amendment.status === 'pending_approval' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
+                            amendment.status === 'pending_approval' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-gray-100 text-gray-800'
                         }>
                           {amendment.status}
                         </Badge>
@@ -403,9 +407,8 @@ export default function CFODashboard() {
                       <p className="text-sm text-gray-700">{amendment.amendment_reason}</p>
                     </div>
                     <div className="text-right">
-                      <p className={`text-2xl font-bold ${
-                        amendment.total_difference >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
+                      <p className={`text-2xl font-bold ${amendment.total_difference >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
                         {amendment.total_difference >= 0 ? '+' : ''}£{amendment.total_difference?.toFixed(2)}
                       </p>
                       <p className="text-xs text-gray-500">

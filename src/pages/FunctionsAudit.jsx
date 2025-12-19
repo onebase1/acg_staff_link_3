@@ -1,11 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Shield, AlertTriangle, CheckCircle, Clock, Archive, Search, 
+  Shield, AlertTriangle, CheckCircle, Clock, Archive, Search,
   Zap, Mail, MessageCircle, Phone, Database, FileText, TrendingUp,
   Users, Calendar, DollarSign, Settings, Eye, XCircle, AlertCircle,
   ChevronDown, ChevronRight, Info, Trash2, Activity
@@ -25,6 +28,44 @@ export default function FunctionsAudit() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [expandedFunctions, setExpandedFunctions] = useState(new Set());
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // 🛡️ RBAC: Block staff members
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        if (authError || !authUser) {
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+
+        if (profileError || !profile) {
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        // 🚫 Silent redirect for staff members
+        if (profile.user_type === 'staff_member') {
+          navigate(createPageUrl('StaffPortal'));
+          return;
+        }
+
+        setCurrentUser(profile);
+      } catch (error) {
+        console.error("Auth error:", error);
+        navigate(createPageUrl('Home'));
+      }
+    };
+    checkAccess();
+  }, [navigate]);
 
   const toggleFunction = (funcName) => {
     setExpandedFunctions(prev => {
@@ -1194,16 +1235,16 @@ export default function FunctionsAudit() {
   const stats = {
     total: functionsInventory.length,
     active: functionsInventory.filter(f => f.status === 'active').length,
-    orphaned: functionsInventory.filter(f => 
+    orphaned: functionsInventory.filter(f =>
       f.issues.some(i => i.status === 'ORPHANED')
     ).length,
-    needs_integration: functionsInventory.filter(f => 
+    needs_integration: functionsInventory.filter(f =>
       f.issues.some(i => i.status === 'NOT_INTEGRATED' || i.status === 'NOT_INTEGRATED_SECURITY_RISK')
     ).length,
     critical_priority: functionsInventory.filter(f => f.priority === 'critical').length,
     tested: functionsInventory.filter(f => f.tested).length,
     has_issues: functionsInventory.filter(f => f.issues.length > 0).length,
-    duplicates: functionsInventory.filter(f => 
+    duplicates: functionsInventory.filter(f =>
       f.issues.some(i => i.description.includes('DUPLICATE') || i.description.includes('OVERLAP'))
     ).length
   };
@@ -1222,12 +1263,12 @@ export default function FunctionsAudit() {
   ];
 
   const filteredFunctions = functionsInventory.filter(func => {
-    const matchesSearch = !searchTerm || 
+    const matchesSearch = !searchTerm ||
       func.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       func.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesCategory = selectedCategory === 'all' || func.category === selectedCategory;
-    
+
     return matchesSearch && matchesCategory;
   });
 
@@ -1265,11 +1306,11 @@ export default function FunctionsAudit() {
               </div>
             </div>
             <p className="text-purple-100 text-sm">
-              Last Updated: {new Date().toLocaleDateString('en-GB', { 
-                weekday: 'long', 
-                day: 'numeric', 
-                month: 'long', 
-                year: 'numeric' 
+              Last Updated: {new Date().toLocaleDateString('en-GB', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
               })}
             </p>
           </div>
@@ -1345,7 +1386,7 @@ export default function FunctionsAudit() {
           <p className="font-bold text-red-900 text-lg mb-3">🚨 IMMEDIATE ACTION REQUIRED</p>
           <div className="space-y-2">
             <p className="text-red-800">
-              <strong>1. Urgent Shift Notifications Not Sending:</strong> SMS/WhatsApp broadcasts not reaching staff despite function working in isolation. 
+              <strong>1. Urgent Shift Notifications Not Sending:</strong> SMS/WhatsApp broadcasts not reaching staff despite function working in isolation.
               Root cause: Suspected integration issue between UI and NotificationService.
             </p>
             <p className="text-red-800">
@@ -1398,7 +1439,7 @@ export default function FunctionsAudit() {
 
           return (
             <Card key={func.name} className={`border-2 ${hasCriticalIssues ? 'border-red-300' : 'border-gray-200'}`}>
-              <CardHeader 
+              <CardHeader
                 className="cursor-pointer hover:bg-gray-50 transition-colors"
                 onClick={() => toggleFunction(func.name)}
               >
@@ -1435,8 +1476,8 @@ export default function FunctionsAudit() {
                           <div className="flex items-start justify-between mb-2">
                             <Badge className={
                               issue.severity === 'critical' ? 'bg-red-600 text-white' :
-                              issue.severity === 'high' ? 'bg-orange-500 text-white' :
-                              'bg-yellow-500 text-white'
+                                issue.severity === 'high' ? 'bg-orange-500 text-white' :
+                                  'bg-yellow-500 text-white'
                             }>
                               {issue.severity?.toUpperCase()}
                             </Badge>
@@ -1543,12 +1584,11 @@ export default function FunctionsAudit() {
 
                   {/* Critical Notes */}
                   {func.critical_notes && (
-                    <div className={`p-4 border-2 rounded-lg ${
-                      func.critical_notes.includes('✅') ? 'bg-green-50 border-green-300' :
-                      func.critical_notes.includes('⚠️') ? 'bg-yellow-50 border-yellow-300' :
-                      func.critical_notes.includes('🔴') ? 'bg-red-50 border-red-300' :
-                      'bg-gray-50 border-gray-300'
-                    }`}>
+                    <div className={`p-4 border-2 rounded-lg ${func.critical_notes.includes('✅') ? 'bg-green-50 border-green-300' :
+                        func.critical_notes.includes('⚠️') ? 'bg-yellow-50 border-yellow-300' :
+                          func.critical_notes.includes('🔴') ? 'bg-red-50 border-red-300' :
+                            'bg-gray-50 border-gray-300'
+                      }`}>
                       <h4 className="font-bold mb-2 flex items-center gap-2">
                         <Info className="w-4 h-4" />
                         Critical Notes
@@ -1622,7 +1662,7 @@ export default function FunctionsAudit() {
                 <span className="text-sm">{stats.tested}/{stats.total} functions tested</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-4">
-                <div 
+                <div
                   className="bg-green-600 h-4 rounded-full transition-all"
                   style={{ width: `${(stats.tested / stats.total * 100).toFixed(0)}%` }}
                 ></div>

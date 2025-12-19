@@ -5,13 +5,15 @@ import { Timesheet, AdminWorkflow } from "@/api/entities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  TrendingUp, Zap, Clock, CheckCircle, AlertTriangle, 
+import {
+  TrendingUp, Zap, Clock, CheckCircle, AlertTriangle,
   Users, DollarSign, BarChart3, ArrowUpRight, Shield
 } from "lucide-react";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
+import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { supabase } from "@/lib/supabase";
 
 /**
  * 📊 TIMESHEET ANALYTICS DASHBOARD
@@ -27,13 +29,43 @@ export default function TimesheetAnalytics() {
   const [user, setUser] = useState(null);
   const [dateRange, setDateRange] = useState('month');
 
+  const navigate = useNavigate();
+
+  // 🛡️ RBAC: Block staff members
   useEffect(() => {
-    const fetchUser = async () => {
-      const currentUser = await supabaseAuth.me();
-      setUser(currentUser);
+    const checkAccess = async () => {
+      try {
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        if (authError || !authUser) {
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+
+        if (profileError || !profile) {
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        // 🚫 Silent redirect for staff members
+        if (profile.user_type === 'staff_member') {
+          navigate(createPageUrl('StaffPortal'));
+          return;
+        }
+
+        setUser(profile);
+      } catch (error) {
+        console.error("Auth error:", error);
+        navigate(createPageUrl('Home'));
+      }
     };
-    fetchUser();
-  }, []);
+    checkAccess();
+  }, [navigate]);
 
   const { data: timesheets = [] } = useQuery({
     queryKey: ['timesheets-analytics'],
@@ -71,25 +103,25 @@ export default function TimesheetAnalytics() {
   const filteredTimesheets = filterByDateRange(timesheets);
 
   // Calculate metrics
-  const totalSubmitted = filteredTimesheets.filter(t => 
+  const totalSubmitted = filteredTimesheets.filter(t =>
     t.status === 'submitted' || t.status === 'approved' || t.status === 'paid'
   ).length;
 
-  const autoApproved = filteredTimesheets.filter(t => 
+  const autoApproved = filteredTimesheets.filter(t =>
     t.notes?.includes('[AUTO-APPROVED')
   ).length;
 
-  const manuallyApproved = filteredTimesheets.filter(t => 
-    (t.status === 'approved' || t.status === 'paid') && 
+  const manuallyApproved = filteredTimesheets.filter(t =>
+    (t.status === 'approved' || t.status === 'paid') &&
     !t.notes?.includes('[AUTO-APPROVED')
   ).length;
 
-  const flaggedForReview = workflows.filter(w => 
+  const flaggedForReview = workflows.filter(w =>
     w.status === 'pending' || w.status === 'in_progress'
   ).length;
 
-  const autoApprovalRate = totalSubmitted > 0 
-    ? ((autoApproved / totalSubmitted) * 100).toFixed(1) 
+  const autoApprovalRate = totalSubmitted > 0
+    ? ((autoApproved / totalSubmitted) * 100).toFixed(1)
     : 0;
 
   // Time savings calculation
@@ -104,14 +136,14 @@ export default function TimesheetAnalytics() {
   const trendData = Array.from({ length: 30 }, (_, i) => {
     const date = subDays(new Date(), 29 - i);
     const dateStr = format(date, 'yyyy-MM-dd');
-    
+
     const dayTimesheets = timesheets.filter(t => {
       if (!t.created_date) return false;
       return format(new Date(t.created_date), 'yyyy-MM-dd') === dateStr;
     });
 
     const autoApprovedDay = dayTimesheets.filter(t => t.notes?.includes('[AUTO-APPROVED')).length;
-    const manualDay = dayTimesheets.filter(t => 
+    const manualDay = dayTimesheets.filter(t =>
       (t.status === 'approved' || t.status === 'paid') && !t.notes?.includes('[AUTO-APPROVED')
     ).length;
 

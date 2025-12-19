@@ -49,7 +49,7 @@ export default function ComplianceTracker() {
     const fetchUser = async () => {
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
       if (authError || !authUser) {
-        console.error('❌ Not authenticated:', authError);
+        navigate(createPageUrl('Home'));
         return;
       }
 
@@ -60,7 +60,13 @@ export default function ComplianceTracker() {
         .single();
 
       if (profileError || !profile) {
-        console.error('❌ Profile not found:', profileError);
+        navigate(createPageUrl('Home'));
+        return;
+      }
+
+      // 🚫 Silent redirect for staff members
+      if (profile.user_type === 'staff_member') {
+        navigate(createPageUrl('StaffPortal'));
         return;
       }
 
@@ -549,8 +555,8 @@ export default function ComplianceTracker() {
 
     const searchLower = searchTerm.toLowerCase();
     const searchMatch = doc.document_name?.toLowerCase().includes(searchLower) ||
-                       doc.document_type?.toLowerCase().includes(searchLower) ||
-                       getStaffName(doc.staff_id).toLowerCase().includes(searchLower);
+      doc.document_type?.toLowerCase().includes(searchLower) ||
+      getStaffName(doc.staff_id).toLowerCase().includes(searchLower);
 
     return statusMatch && typeMatch && searchMatch;
   });

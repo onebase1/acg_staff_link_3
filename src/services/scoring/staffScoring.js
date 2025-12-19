@@ -67,8 +67,8 @@ export const calculateStaffScore = async (staffId, reason = 'Manual Update') => 
         breakdown.ratings = ratingPoints;
 
         // Loyalty: +1 point per month active (Max +5)
-        const monthsActive = staff.created_at
-            ? Math.floor((new Date() - new Date(staff.created_at)) / (1000 * 60 * 60 * 24 * 30))
+        const monthsActive = staff.created_date
+            ? Math.floor((new Date() - new Date(staff.created_date)) / (1000 * 60 * 60 * 24 * 30))
             : 0;
         const loyaltyPoints = Math.min(monthsActive, 5);
         score += loyaltyPoints;

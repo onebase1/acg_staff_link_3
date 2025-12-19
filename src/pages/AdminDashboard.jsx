@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
+import {
   Users, Calendar, Clock, FileText, TrendingUp, TrendingDown,
   AlertTriangle, DollarSign, Star, Award, Download, Filter, Shield
 } from "lucide-react";
@@ -47,20 +47,20 @@ export default function AdminDashboard() {
         }
 
         setUser(profile);
-        
+
         // Block staff members from accessing this page
         if (profile.user_type === 'staff_member') {
           navigate(createPageUrl('StaffPortal'));
           return;
         }
-        
+
         setCurrentAgency(profile.agency_id);
         console.log('AdminDashboard - Agency:', profile.agency_id);
-        
+
         setLoading(false);
       } catch (error) {
         console.error("Auth error:", error);
-        navigate(createPageUrl('Home')); 
+        navigate(createPageUrl('Home'));
       }
     };
     checkAccess();
@@ -72,11 +72,11 @@ export default function AdminDashboard() {
       const query = supabase
         .from('staff')
         .select('*');
-      
+
       if (currentAgency) {
         query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching staff:', error);
@@ -96,11 +96,11 @@ export default function AdminDashboard() {
         .from('shifts')
         .select('*')
         .order('date', { ascending: false });
-      
+
       if (currentAgency) {
         query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching shifts:', error);
@@ -119,11 +119,11 @@ export default function AdminDashboard() {
         .from('bookings')
         .select('*')
         .order('created_date', { ascending: false });
-      
+
       if (currentAgency) {
         query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching bookings:', error);
@@ -142,11 +142,11 @@ export default function AdminDashboard() {
         .from('timesheets')
         .select('*')
         .order('created_date', { ascending: false });
-      
+
       if (currentAgency) {
         query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching timesheets:', error);
@@ -165,11 +165,11 @@ export default function AdminDashboard() {
         .from('invoices')
         .select('*')
         .order('invoice_date', { ascending: false });
-      
+
       if (currentAgency) {
         query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching invoices:', error);
@@ -188,11 +188,11 @@ export default function AdminDashboard() {
         .from('payslips')
         .select('*')
         .order('period_end', { ascending: false });
-      
+
       if (currentAgency) {
         query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching payslips:', error);
@@ -210,11 +210,11 @@ export default function AdminDashboard() {
       const query = supabase
         .from('compliance')
         .select('*');
-      
+
       if (currentAgency) {
         query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching compliance:', error);
@@ -232,11 +232,11 @@ export default function AdminDashboard() {
       const query = supabase
         .from('clients')
         .select('*');
-      
+
       if (currentAgency) {
         query.eq('agency_id', currentAgency);
       }
-      
+
       const { data, error } = await query;
       if (error) {
         console.error('❌ Error fetching clients:', error);
@@ -282,7 +282,7 @@ export default function AdminDashboard() {
     .slice(0, 5);
 
   // Problem staff (low ratings or lateness)
-  const staffNeedingAttention = staff.filter(s => 
+  const staffNeedingAttention = staff.filter(s =>
     (s.rating && s.rating < 4.0) || s.status === 'suspended'
   );
 
@@ -303,20 +303,7 @@ export default function AdminDashboard() {
     );
   }
 
-  if (!user || user.user_type === 'staff_member') {
-    return (
-      <Card className="max-w-md mx-auto mt-20">
-        <CardContent className="p-12 text-center">
-          <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
-          <p className="text-gray-600 mb-6">Analytics dashboard is only accessible to agency administrators.</p>
-          <Button onClick={() => navigate(createPageUrl('StaffPortal'))}>
-            Go to Staff Portal
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+
 
   return (
     <div className="space-y-6">
@@ -342,8 +329,8 @@ export default function AdminDashboard() {
       {criticalAlerts.length > 0 && (
         <div className="space-y-3">
           {criticalAlerts.map((alert, index) => (
-            <Alert key={index} variant={alert.severity === 'high' ? 'destructive' : 'default'} 
-                   className={alert.severity === 'high' ? 'border-red-500' : 'border-orange-400'}>
+            <Alert key={index} variant={alert.severity === 'high' ? 'destructive' : 'default'}
+              className={alert.severity === 'high' ? 'border-red-500' : 'border-orange-400'}>
               <AlertTriangle className="h-5 w-5" />
               <AlertDescription className="flex items-center justify-between">
                 <span><strong>Alert:</strong> {alert.message}</span>
@@ -455,11 +442,11 @@ export default function AdminDashboard() {
                 <span className="text-sm text-orange-600">Expiring Soon</span>
                 <span className="font-bold text-orange-600">{expiringSoon}</span>
               </div>
-              
+
               <div className="pt-2">
                 <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div 
-                    className="bg-green-600 h-3 rounded-full transition-all" 
+                  <div
+                    className="bg-green-600 h-3 rounded-full transition-all"
                     style={{ width: `${(compliance.filter(d => d.status === 'verified').length / compliance.length * 100)}%` }}
                   />
                 </div>
@@ -516,7 +503,7 @@ export default function AdminDashboard() {
             <div className="space-y-4">
               <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
                 <span className="text-sm font-medium">Total Shifts (MTD)</span>
-                <span className="font-bold text-lg">{shifts.filter(s => 
+                <span className="font-bold text-lg">{shifts.filter(s =>
                   new Date(s.date).getMonth() === new Date().getMonth()
                 ).length}</span>
               </div>
