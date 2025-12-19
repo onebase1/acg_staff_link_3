@@ -93,8 +93,20 @@ serve(async (req) => {
                     );
 
                     // Generate shift cards HTML
-                    const shiftCardsHtml = queue.pending_items.map(item => `
-                        <div style="border-left: 4px solid ${headerColor}; padding: 15px; background: #f9fafb; border-radius: 8px; margin-bottom: 15px;">
+                    const shiftCardsHtml = queue.pending_items.map(item => {
+                        const deadlineStr = item.confirmation_deadline 
+                            ? new Date(item.confirmation_deadline).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+                            : null;
+                        
+                        const isUrgent = item.urgency === 'high' || (item.status === 'assigned' && deadlineStr);
+
+                        return `
+                        <div style="border-left: 4px solid ${isUrgent ? '#ef4444' : headerColor}; padding: 15px; background: #f9fafb; border-radius: 8px; margin-bottom: 15px;">
+                            ${isUrgent ? `
+                                <div style="display: inline-block; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px; text-transform: uppercase;">
+                                    ${deadlineStr ? `⏰ Confirm by ${deadlineStr}` : '🔥 Urgent'}
+                                </div>
+                            ` : ''}
                             <div style="font-weight: bold; color: #1f2937; margin-bottom: 8px;">
                                 ${new Date(item.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} • ${item.start_time} - ${item.end_time} (${item.duration_hours}h)
                             </div>
@@ -108,7 +120,7 @@ serve(async (req) => {
                                 💰 £${item.pay_rate}/hr = £${((item.pay_rate || 0) * (item.duration_hours || 0)).toFixed(2)}
                             </div>
                         </div>
-                    `).join('');
+                    `}).join('');
 
                     // ✅ FIXED: Complete professional template with proper header, footer, and dark mode support
                     emailHtml = `
@@ -143,7 +155,7 @@ serve(async (req) => {
                                     <p style="font-size: 16px; color: #374151; margin: 0 0 25px 0;">
                                         ${isAllConfirmed 
                                             ? `You have been assigned to <strong>${shiftCount} confirmed shift${shiftCount > 1 ? 's' : ''}</strong>. Please ensure you arrive on time.`
-                                            : `You have been assigned to <strong>${shiftCount} shift${shiftCount > 1 ? 's' : ''}</strong>. Please review the details below and confirm your availability.`
+                                            : `You have been assigned to <strong>${shiftCount} shift${shiftCount > 1 ? 's' : ''}</strong>. Please review the details below and <strong>confirm by the deadlines shown</strong> to secure your spot.`
                                         }
                                     </p>
 
@@ -161,16 +173,27 @@ serve(async (req) => {
 
                                     <!-- Action Required Box (Only if NOT confirmed) -->
                                     ${!isAllConfirmed ? `
-                                    <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 15px; margin: 20px 0;">
-                                        <div style="font-weight: bold; color: #92400e; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                                    <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 20px; margin: 25px 0;">
+                                        <div style="font-weight: bold; color: #92400e; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
                                             <span style="font-size: 20px;">⚠️</span>
                                             <span>ACTION REQUIRED</span>
                                         </div>
-                                        <p style="margin: 0; font-size: 14px; color: #78350f;">
-                                            Please confirm your availability as soon as possible. Contact us immediately if you cannot attend any of these shifts.
+                                        <p style="margin: 0 0 20px 0; font-size: 15px; color: #78350f; line-height: 1.5;">
+                                            Please confirm your availability in the staff portal before the deadlines to secure these bookings.
                                         </p>
+                                        <div style="text-align: center;">
+                                            <a href="${branding.appUrl}/shifts" style="display: inline-block; background-color: #0284c7; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                                                Confirm Shifts in Staff Portal
+                                            </a>
+                                        </div>
                                     </div>
-                                    ` : ''}
+                                    ` : `
+                                    <div style="text-align: center; margin: 30px 0;">
+                                        <a href="${branding.appUrl}/shifts" style="display: inline-block; background-color: #10b981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                                            View Shifts in Staff Portal
+                                        </a>
+                                    </div>
+                                    `}
 
                                     <p style="font-size: 14px; color: #6b7280; margin: 20px 0 0 0;">
                                         Questions? Contact us at <a href="mailto:${agency?.contact_email || branding.supportEmail}" style="color: #0284c7; text-decoration: none;">${agency?.contact_email || branding.supportEmail}</a> or ${agency?.contact_phone || branding.supportPhone}

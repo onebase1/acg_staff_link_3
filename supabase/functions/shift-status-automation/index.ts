@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getBranding } from "../_shared/getBranding.ts";
 
 /**
  * 🤖 SHIFT STATUS AUTOMATION ENGINE
@@ -395,144 +396,228 @@ serve(async (req) => {
             }
         }
 
-        // ✅ NEW: AUTOMATION 4: Auto-move unconfirmed shifts to marketplace after 24 hours
-        console.log(`🔍 [Shift Automation] Checking for unconfirmed shifts (>24h)...`);
+        // ✅ NEW: AUTOMATION 4: Smarter Recursive Re-assignment & Urgency Ladder
+        console.log(`🔍 [Shift Automation] Checking for unconfirmed assignments via Urgency Ladder...`);
 
         const { data: unconfirmedShifts, error: unconfirmedError } = await supabase
             .from("shifts")
-            .select("*, staff:assigned_staff_id(first_name, last_name, email, phone)")
+            .select("*, agency:agency_id(settings), staff:assigned_staff_id(first_name, last_name, email, phone)")
             .eq('status', 'assigned')
-            .gte('date', today) // Only future shifts
+            .gte('date', today)
             .not('assigned_staff_id', 'is', null);
 
         if (unconfirmedError) {
             console.error(`❌ [Shift Automation] Failed to fetch unconfirmed shifts:`, unconfirmedError);
         } else if (unconfirmedShifts && unconfirmedShifts.length > 0) {
-            console.log(`📊 [Shift Automation] Found ${unconfirmedShifts.length} assigned shifts`);
+            console.log(`📊 [Shift Automation] Found ${unconfirmedShifts.length} assigned shifts to check`);
 
             for (const shift of unconfirmedShifts) {
                 try {
-                    // ✅ FIX: Find when shift was assigned from journey log (not created_date!)
-                    // Look for the most recent 'assigned' state in shift_journey_log
-                    type JourneyEntry = { state: string; timestamp: string; [key: string]: unknown };
+                    // Get branding for this agency
+                    const branding = await getBranding(supabase, shift.agency_id);
+                    const agencyName = shift.agency?.settings?.name || "Agile Care Management";
+
+                    // 1. Check for confirmation_deadline in Journey Log
+                    type JourneyEntry = { state: string; timestamp: string; confirmation_deadline?: string; staff_id?: string; [key: string]: unknown };
                     const journeyLog = (shift.shift_journey_log || []) as JourneyEntry[];
-                    const assignedEntry = journeyLog
-                        .filter((entry) => entry.state === 'assigned')
+                    
+                    const lastAssignedEntry = journeyLog
+                        .filter(e => e.state === 'assigned')
                         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
 
-                    if (!assignedEntry) {
-                        console.log(`⚠️ [Shift Automation] Shift ${shift.id.substring(0, 8)} has status 'assigned' but no journey log entry - skipping`);
-                        continue;
-                    }
+                    if (!lastAssignedEntry) continue;
 
-                    const assignedAt = new Date(assignedEntry.timestamp);
-                    const hoursAssigned = (now.getTime() - assignedAt.getTime()) / (1000 * 60 * 60);
+                    // Fallback to 24h if no explicit deadline found
+                    const deadline = lastAssignedEntry.confirmation_deadline 
+                        ? new Date(lastAssignedEntry.confirmation_deadline) 
+                        : new Date(new Date(lastAssignedEntry.timestamp).getTime() + 24 * 60 * 60 * 1000);
 
-                    console.log(`🔍 [Shift Automation] Shift ${shift.id.substring(0, 8)} assigned ${hoursAssigned.toFixed(1)}h ago (at ${assignedAt.toISOString()})`);
+                    const isExpired = now > deadline;
+                    const hoursUntilStart = (new Date(`${shift.date}T${shift.start_time}`).getTime() - now.getTime()) / 3600000;
 
-                    // 12h: Send reminder
-                    if (hoursAssigned >= 12 && hoursAssigned < 24 && !shift.confirmation_reminder_sent) {
-                        console.log(`📧 [Shift Automation] Sending 12h reminder for shift ${shift.id.substring(0, 8)}`);
+                    // 2. Handle Expiry or High Urgency
+                    if (isExpired || hoursUntilStart < 6) {
+                        const reason = isExpired ? 'Confirmation deadline expired' : 'Shift starting soon (< 6h)';
+                        console.log(`🛒 [Shift Automation] Shift ${shift.id.substring(0, 8)}: ${reason} - triggering re-assignment`);
 
-                        // Send reminder via NotificationService
-                        try {
-                            await supabase.functions.invoke('send-email', {
-                                body: {
-                                    to: shift.staff?.email,
-                                    subject: `⏰ Reminder: Please confirm your shift on ${shift.date}`,
-                                    html: `
-                                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                                            <div style="background-color: #3b82f6; color: white; padding: 40px 30px; text-align: center;" bgcolor="#3b82f6">
-                                                <h1 style="margin: 0; font-size: 28px; font-weight: bold;">⏰ Shift Confirmation Reminder</h1>
-                                            </div>
-                                            <div style="background: #fff; padding: 40px 30px;">
-                                                <p style="font-size: 16px; color: #1f2937; margin-bottom: 20px;">Hi ${shift.staff?.first_name},</p>
-                                                <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 25px 0;">
-                                                    <p style="margin: 0 0 15px 0; color: #92400e; font-weight: bold;">You have a shift pending confirmation:</p>
-                                                    <p style="margin: 0; color: #78350f; line-height: 1.8;">
-                                                        <strong>Date:</strong> ${shift.date}<br/>
-                                                        <strong>Time:</strong> ${shift.start_time} - ${shift.end_time}<br/>
-                                                        <strong>⚠️ Please confirm within 12 hours or this shift will be offered to other staff.</strong>
-                                                    </p>
-                                                </div>
-                                                <p style="color: #6b7280; font-size: 13px; margin-top: 30px;">
-                                                    Log in to your staff portal to confirm this shift.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    `
-                                }
-                            });
+                        const previousAssignments = journeyLog
+                            .filter(e => e.state === 'assigned' && e.staff_id)
+                            .map(e => e.staff_id as string);
+                        
+                        const uniqueExcluded = [...new Set(previousAssignments)];
 
+                        if (uniqueExcluded.length >= 3 || hoursUntilStart < 4) {
+                            // FALLBACK TO MARKETPLACE: Too many failures or too close to start
+                            console.log(`🛒 [Shift Automation] Shift ${shift.id.substring(0, 8)} - Fallback to Marketplace`);
                             await supabase
                                 .from("shifts")
-                                .update({ confirmation_reminder_sent: true })
+                                .update({
+                                    status: 'open',
+                                    assigned_staff_id: null,
+                                    marketplace_visible: true,
+                                    marketplace_added_at: now.toISOString(),
+                                    urgency: hoursUntilStart < 24 ? 'high' : shift.urgency,
+                                    shift_journey_log: [
+                                        ...journeyLog,
+                                        {
+                                            state: 'open',
+                                            timestamp: now.toISOString(),
+                                            method: 'automated_reassignment_failed',
+                                            notes: `Max recursive attempts (${uniqueExcluded.length}) reached or time critical (${hoursUntilStart.toFixed(1)}h). Moved to marketplace.`
+                                        }
+                                    ]
+                                })
                                 .eq("id", shift.id);
+                            
+                                    results.unconfirmed_to_marketplace++;
 
-                            results.confirmation_reminders_sent++;
-                        } catch (reminderError) {
-                            console.error(`⚠️ [Shift Automation] Failed to send reminder:`, reminderError);
-                        }
-                    }
+                                    // 📧 NOTIFY STAFF: Recursive re-assignment rotation or fallback
+                                    try {
+                                        await supabase.functions.invoke('send-email', {
+                                            body: {
+                                                to: shift.staff?.email,
+                                                subject: `Shift Update: Assignment Released - ${shift.date}`,
+                                                html: `
+                                                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb;">
+                                                        <div style="background-color: #ef4444; color: white; padding: 30px; text-align: center;">
+                                                            <h1 style="margin: 0; font-size: 24px;">Shift Assignment Released</h1>
+                                                        </div>
+                                                        <div style="padding: 30px; background: #fff;">
+                                                            <p style="font-size: 16px; color: #374151;">Hi ${shift.staff?.first_name || 'there'},</p>
+                                                            <p>Your assignment for the shift on <strong>${shift.date}</strong> has been released because it was not confirmed within the required time window.</p>
+                                                            
+                                                            <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 20px; margin: 20px 0;">
+                                                                <strong>Reason:</strong> No confirmation received by deadline.<br/>
+                                                                <strong>Status:</strong> Shift released to other staff/marketplace.
+                                                            </div>
 
-                    // 24h: Move to marketplace
-                    if (hoursAssigned >= 24) {
-                        console.log(`🛒 [Shift Automation] Moving shift ${shift.id.substring(0, 8)} to marketplace (24h unconfirmed)`);
-                        console.log(`📊 [Marketplace] Shift ${shift.id.substring(0, 8)} - Setting marketplace_visible: true (reason: 24h unconfirmed)`);
-                        console.log(`📊 [Marketplace] Previous state - status: ${shift.status}, assigned_staff: ${shift.assigned_staff_id?.substring(0, 8) || 'none'}, marketplace_visible: ${shift.marketplace_visible}`);
+                                                            <p>To avoid losing shifts in the future, please ensure you confirm them promptly in the staff portal.</p>
 
-                        await supabase
-                            .from("shifts")
-                            .update({
-                                status: 'open',
-                                assigned_staff_id: null,
-                                marketplace_visible: true,
-                                marketplace_added_at: now.toISOString(),
-                                shift_journey_log: [
-                                    ...(shift.shift_journey_log || []),
-                                    {
-                                        state: 'open',
-                                        timestamp: now.toISOString(),
-                                        method: 'automated',
-                                        notes: `Auto-moved to marketplace - staff did not confirm within 24 hours (assigned to ${shift.staff?.first_name} ${shift.staff?.last_name})`
+                                                            <div style="text-align: center; margin: 30px 0;">
+                                                                <a href="${branding.appUrl}/marketplace" style="display: inline-block; background-color: #ef4444; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                                                                    View Available Shifts
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                        <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
+                                                            <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} ${agencyName}. All rights reserved.</p>
+                                                        </div>
+                                                    </div>
+                                                `
+                                            }
+                                        });
+                                    } catch (notifyErr) {
+                                        console.error(`❌ [Shift Automation] Failed to notify staff of unassignment:`, notifyErr);
                                     }
-                                ]
-                            })
-                            .eq("id", shift.id);
+                                } else {
+                                    // RECURSIVE RE-ASSIGNMENT: Call the SQL engine with exclusion
+                                    console.log(`🔄 [Shift Automation] Attempting recursive re-assignment for ${shift.id.substring(0, 8)}...`);
+                                    const { data: reassignResult, error: reassignError } = await supabase
+                                        .rpc('auto_assign_shift', { 
+                                            target_shift_id: shift.id,
+                                            exclude_staff_ids: uniqueExcluded
+                                        });
 
-                        // Notify original staff they lost the shift
-                        try {
-                            await supabase.functions.invoke('send-email', {
-                                body: {
-                                    to: shift.staff?.email,
-                                    subject: `Shift Unassigned - ${shift.date}`,
-                                    html: `
-                                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                                            <div style="background-color: #3b82f6; color: white; padding: 40px 30px; text-align: center;" bgcolor="#3b82f6">
-                                                <h1 style="margin: 0; font-size: 28px; font-weight: bold;">Shift Update</h1>
-                                            </div>
-                                            <div style="background: #fff; padding: 40px 30px;">
-                                                <p style="font-size: 16px; color: #1f2937; margin-bottom: 20px;">Hi ${shift.staff?.first_name},</p>
-                                                <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 20px; margin: 25px 0;">
-                                                    <p style="margin: 0 0 15px 0; color: #991b1b; font-weight: bold;">Your shift on ${shift.date} has been unassigned.</p>
-                                                    <p style="margin: 0; color: #7f1d1d; line-height: 1.8;">
-                                                        <strong>Reason:</strong> No confirmation received within 24 hours<br/>
-                                                        <strong>Status:</strong> Shift moved to marketplace for other staff
-                                                    </p>
-                                                </div>
-                                                <p style="color: #6b7280; font-size: 13px; margin-top: 30px;">
-                                                    Please confirm shifts promptly to avoid losing them in the future.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    `
+                                    if (reassignError) {
+                                        console.error(`❌ [Shift Automation] Re-assignment failed for ${shift.id}:`, reassignError);
+                                    } else {
+                                        console.log(`✅ [Shift Automation] Re-assignment successful for ${shift.id}:`, reassignResult);
+                                    }
+                                    
+                                    // 📧 NOTIFY PREVIOUS STAFF: They lost the shift due to rotation
+                                    try {
+                                        await supabase.functions.invoke('send-email', {
+                                            body: {
+                                                to: shift.staff?.email,
+                                                subject: `Shift Update: Assignment Released - ${shift.date}`,
+                                                html: `
+                                                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb;">
+                                                        <div style="background-color: #ef4444; color: white; padding: 30px; text-align: center;">
+                                                            <h1 style="margin: 0; font-size: 24px;">Shift Assignment Released</h1>
+                                                        </div>
+                                                        <div style="padding: 30px; background: #fff;">
+                                                            <p style="font-size: 16px; color: #374151;">Hi ${shift.staff?.first_name || 'there'},</p>
+                                                            <p>Your assignment for the shift on <strong>${shift.date}</strong> has been released because it was not confirmed within the required time window.</p>
+                                                            
+                                                            <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 20px; margin: 20px 0;">
+                                                                <strong>Reason:</strong> Confirmation deadline expired.<br/>
+                                                                <strong>Action:</strong> Shift offered to next available candidate.
+                                                            </div>
+
+                                                            <div style="text-align: center; margin: 30px 0;">
+                                                                <a href="${branding.appUrl}/marketplace" style="display: inline-block; background-color: #ef4444; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                                                                    View Marketplace
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                        <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
+                                                            <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} ${agencyName}. All rights reserved.</p>
+                                                        </div>
+                                                    </div>
+                                                `
+                                            }
+                                        });
+                                    } catch (notifyErr) {
+                                        console.error(`❌ [Shift Automation] Failed to notify staff of rotation:`, notifyErr);
+                                    }
                                 }
-                            });
-                        } catch (emailError) {
-                            console.error(`⚠️ [Shift Automation] Failed to notify staff:`, emailError);
-                        }
+                            } else {
+                        // 3. Optional: Send Reminder if at 50% of window
+                        const totalWindow = deadline.getTime() - new Date(lastAssignedEntry.timestamp).getTime();
+                        const timePassed = now.getTime() - new Date(lastAssignedEntry.timestamp).getTime();
+                        
+                        if (timePassed > totalWindow / 2 && !shift.confirmation_reminder_sent && shift.staff?.email) {
+                            console.log(`📧 [Shift Automation] Window 50% reached for ${shift.id.substring(0, 8)} - sending reminder...`);
+                            
+                            const deadlineStr = deadline.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                            const deadlineDateStr = deadline.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
-                        results.unconfirmed_to_marketplace++;
+                            try {
+                                await supabase.functions.invoke('send-email', {
+                                    body: {
+                                        to: shift.staff.email,
+                                        subject: `⏰ Action Required: Confirm your shift on ${shift.date}`,
+                                        html: `
+                                            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb;">
+                                                <div style="background-color: #f59e0b; color: white; padding: 30px; text-align: center;">
+                                                    <h1 style="margin: 0; font-size: 24px;">⏰ Shift Confirmation Reminder</h1>
+                                                </div>
+                                                <div style="padding: 30px; background: #fff;">
+                                                    <p style="font-size: 16px; color: #374151;">Hi ${shift.staff.first_name},</p>
+                                                    <p>You have an assigned shift that needs confirmation. Please confirm <strong>to secure this booking</strong>.</p>
+                                                    
+                                                    <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0;">
+                                                        <strong>Date:</strong> ${shift.date}<br/>
+                                                        <strong>Time:</strong> ${shift.start_time} - ${shift.end_time}<br/>
+                                                        <p style="color: #b45309; font-weight: bold; margin-top: 10px;">
+                                                            ⚠️ Deadline: Please confirm by ${deadlineStr} (${deadlineDateStr}) or this shift will be offered to other staff.
+                                                        </p>
+                                                    </div>
+
+                                                    <div style="text-align: center; margin: 30px 0;">
+                                                        <a href="${branding.appUrl}/shifts" style="display: inline-block; background-color: #f59e0b; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                                                            Confirm Shift in Staff Portal
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
+                                                    <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} ${agencyName}. All rights reserved.</p>
+                                                </div>
+                                            </div>
+                                        `
+                                    }
+                                });
+
+                                await supabase
+                                    .from("shifts")
+                                    .update({ confirmation_reminder_sent: true })
+                                    .eq("id", shift.id);
+
+                                results.confirmation_reminders_sent++;
+                            } catch (err) {
+                                console.error(`❌ [Shift Automation] Failed to send reminder for ${shift.id}:`, err);
+                            }
+                        }
                     }
                 } catch (shiftError) {
                     console.error(`❌ [Shift Automation] Error processing unconfirmed shift ${shift.id}:`, shiftError);
