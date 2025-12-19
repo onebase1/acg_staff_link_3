@@ -57,8 +57,9 @@ export default function EditShiftModal({ shift, isOpen, onClose, onSave }) {
       const endTime = extractTime(shift.end_time, '20:00');
       const shiftDate = shift.date || shift.start_time?.split('T')[0] || '';
 
+      // ✅ FIX: Use role_required (database field name) not role
       setFormData({
-        role: shift.role || '',
+        role: shift.role_required || shift.role || '',  // role_required is the DB field
         date: shiftDate,
         start_time: startTime,
         end_time: endTime,
@@ -120,35 +121,28 @@ export default function EditShiftModal({ shift, isOpen, onClose, onSave }) {
     }
 
     // Build updated shift object
+    // ✅ FIX: Use correct database field names
+    // - role_required (not role) - database column name
+    // - HH:MM format for times (not timestamps)
+    // - Don't add client_charge/shift_cost (not in DB, calculated at display time)
     const updatedShift = {
       ...shift,
-      role: formData.role,
+      role_required: formData.role,     // ✅ Correct DB field name
       date: formData.date,
-      start_time: `${formData.date}T${formData.start_time}:00`,
-      end_time: duration >= 12 && formData.end_time < formData.start_time
-        ? calculateNextDay(formData.date, formData.end_time)
-        : `${formData.date}T${formData.end_time}:00`,
+      start_time: formData.start_time,  // ✅ HH:MM only (e.g., "08:00")
+      end_time: formData.end_time,      // ✅ HH:MM only (e.g., "20:00")
       pay_rate: parseFloat(formData.pay_rate),
       charge_rate: parseFloat(formData.charge_rate),
       work_location_within_site: formData.work_location_within_site,
       urgency: formData.urgency,
       notes: formData.notes,
       duration_hours: duration,
-      shift_cost: duration * parseFloat(formData.pay_rate),
-      client_charge: duration * parseFloat(formData.charge_rate)
+      // ✅ Track overnight shifts via shift_type (database uses date + start_time/end_time)
+      shift_type: duration >= 12 && formData.end_time < formData.start_time ? 'night' : (shift.shift_type || 'day')
     };
 
     onSave(updatedShift);
-    toast.success('Shift updated successfully');
     onClose();
-  };
-
-  // Helper: Calculate next day for overnight shifts
-  const calculateNextDay = (dateStr, timeStr) => {
-    const date = new Date(dateStr + 'T00:00:00');
-    date.setDate(date.getDate() + 1);
-    const nextDay = date.toISOString().split('T')[0];
-    return `${nextDay}T${timeStr}:00`;
   };
 
   // Get role display name
@@ -172,12 +166,16 @@ export default function EditShiftModal({ shift, isOpen, onClose, onSave }) {
             <Label htmlFor="role">Role *</Label>
             <Select value={formData.role} onValueChange={(value) => handleChange('role', value)}>
               <SelectTrigger>
-                <SelectValue placeholder="Select role" />
+                {/* ✅ FIX: Show formatted role name instead of raw key */}
+                <SelectValue placeholder="Select role">
+                  {formData.role ? getRoleDisplayName(formData.role) : 'Select role'}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {Object.keys(STAFF_ROLES).map(roleKey => (
-                  <SelectItem key={roleKey} value={roleKey}>
-                    {getRoleDisplayName(roleKey)}
+                {/* ✅ FIX: STAFF_ROLES is an array, not object - iterate properly */}
+                {STAFF_ROLES.map(role => (
+                  <SelectItem key={role.value} value={role.value}>
+                    {role.label}
                   </SelectItem>
                 ))}
               </SelectContent>

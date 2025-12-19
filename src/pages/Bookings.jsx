@@ -6,25 +6,28 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
+import {
   Calendar, User, Building2, Clock, Archive, AlertCircle, Eye, Briefcase, MapPin
 } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { toast } from "sonner";
 
 export default function Bookings() {
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState('upcoming');
   const [user, setUser] = useState(null);
   const [currentAgency, setCurrentAgency] = useState(null);
 
-  // ✅ FIX 1: Fetch real user and agency using Supabase
+  // 🛡️ RBAC: Fetch user and block staff members
   useEffect(() => {
     const fetchUserAndAgency = async () => {
       try {
         const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
         if (authError || !authUser) {
           console.error('❌ [Bookings] Not authenticated:', authError);
+          navigate(createPageUrl('Home'));
           return;
         }
 
@@ -36,11 +39,19 @@ export default function Bookings() {
 
         if (profileError || !profile) {
           console.error('❌ [Bookings] Profile not found:', profileError);
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        // 🚫 Block staff members
+        if (profile.user_type === 'staff_member') {
+          toast.error('Access Denied: This page is for agency admins only');
+          navigate(createPageUrl('StaffPortal'));
           return;
         }
 
         setUser(profile);
-        
+
         if (profile.agency_id) {
           setCurrentAgency(profile.agency_id);
           console.log('✅ [Bookings] Loaded agency:', profile.agency_id);
@@ -49,10 +60,12 @@ export default function Bookings() {
         }
       } catch (error) {
         console.error('❌ [Bookings] Error loading user:', error);
+        toast.error('Authentication failed. Please log in again.');
+        navigate(createPageUrl('Home'));
       }
     };
     fetchUserAndAgency();
-  }, []);
+  }, [navigate]);
 
   const { data: bookings = [], isLoading: isLoadingBookings } = useQuery({
     queryKey: ['bookings', currentAgency],
@@ -101,7 +114,7 @@ export default function Bookings() {
         .from('clients')
         .select('*')
         .eq('agency_id', currentAgency)
-        .order('name', { ascending: true});
+        .order('name', { ascending: true });
 
       if (error) {
         console.error('❌ Error fetching clients:', error);
@@ -166,9 +179,9 @@ export default function Bookings() {
   });
 
   const filteredBookings = statusFilter === 'upcoming' ? upcomingBookings :
-                          statusFilter === 'past' ? pastBookings :
-                          statusFilter === 'all' ? bookings :
-                          bookings.filter(b => b.status === statusFilter);
+    statusFilter === 'past' ? pastBookings :
+      statusFilter === 'all' ? bookings :
+        bookings.filter(b => b.status === statusFilter);
 
   // ✅ FIX: Calculate filter counts safely
   const filterCounts = {
@@ -194,7 +207,7 @@ export default function Bookings() {
       console.error('Date parsing error in getStatusBadge:', shiftDate);
       return { className: 'bg-red-100 text-red-800', label: 'Invalid Date' };
     }
-    
+
     const variants = {
       pending: { className: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
       confirmed: { className: 'bg-green-100 text-green-800', label: 'Confirmed' },
@@ -234,35 +247,35 @@ export default function Bookings() {
       <Card>
         <CardContent className="p-4">
           <div className="flex gap-2 overflow-x-auto">
-            <Button 
+            <Button
               variant={statusFilter === 'upcoming' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setStatusFilter('upcoming')}
             >
               Upcoming ({filterCounts.upcoming})
             </Button>
-            <Button 
+            <Button
               variant={statusFilter === 'past' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setStatusFilter('past')}
             >
               Past ({filterCounts.past})
             </Button>
-            <Button 
+            <Button
               variant={statusFilter === 'confirmed' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setStatusFilter('confirmed')}
             >
               Confirmed ({filterCounts.confirmed})
             </Button>
-            <Button 
+            <Button
               variant={statusFilter === 'awaiting_verification' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setStatusFilter('awaiting_verification')}
             >
               Awaiting Verification ({filterCounts.awaiting_verification})
             </Button>
-            <Button 
+            <Button
               variant={statusFilter === 'all' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setStatusFilter('all')}
@@ -378,9 +391,9 @@ export default function Bookings() {
             <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No Bookings Found</h3>
             <p className="text-gray-600">
-              {statusFilter === 'upcoming' ? 'No upcoming bookings.' : 
-               statusFilter === 'past' ? 'No past bookings.' :
-               'No bookings found matching your criteria.'}
+              {statusFilter === 'upcoming' ? 'No upcoming bookings.' :
+                statusFilter === 'past' ? 'No past bookings.' :
+                  'No bookings found matching your criteria.'}
             </p>
           </CardContent>
         </Card>

@@ -66,9 +66,12 @@
       "Bash(/c/Users/gbase/superbasecli/supabase.exe db pull:*)",
       "Bash(/c/Users/gbase/superbasecli/supabase.exe secrets list:*)",
       "Bash(/c/Users/gbase/superbasecli/supabase.exe secrets set:*)",
-      "Bash(mkdir -p:*)"
+      "Bash(mkdir -p:*)",
+      "Bash(test:*)",
+      "Bash(.gitignore)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true
 }

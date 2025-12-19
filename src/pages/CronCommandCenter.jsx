@@ -194,8 +194,10 @@ export default function CronCommandCenter() {
     return runs.filter(r => r.jobname === jobName).slice(0, 5);
   };
 
-  // Check if user is SuperAdmin
-  if (profile?.role !== "super_admin") {
+  // Check if user is SuperAdmin (Fixed: was checking wrong field)
+  const isSuperAdmin = profile?.is_super_admin === true || profile?.email === 'g.basera@yahoo.com';
+
+  if (!isSuperAdmin) {
     return (
       <div className="flex items-center justify-center h-96">
         <Card className="p-6">

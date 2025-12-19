@@ -249,19 +249,15 @@ export default function BulkShiftCreation() {
 
   // Handle shift update from edit modal
   const handleShiftUpdate = (updatedShift) => {
-    // Find and replace the shift in generatedShifts array
+    // ✅ FIX: Match by temp_id (from shiftGenerator) which is preserved on the shift object
+    // The shift passed to EditShiftModal retains its temp_id, so we use that for reliable matching
     const updatedShifts = formData.generatedShifts.map(shift => {
-      // Match by _tempId if available, otherwise by all key fields
-      if (shift._tempId && shift._tempId === updatedShift._tempId) {
-        return updatedShift;
+      // Primary match: by temp_id (unique identifier from shiftGenerator)
+      if (shift.temp_id && shift.temp_id === updatedShift.temp_id) {
+        return { ...updatedShift, temp_id: shift.temp_id }; // Preserve temp_id
       }
-      // Fallback: match by date, role, and start_time
-      if (
-        shift.date === updatedShift.date &&
-        shift.role === updatedShift.role &&
-        shift.start_time === updatedShift.start_time &&
-        !updatedShift._tempId
-      ) {
+      // Secondary match: by _tempId (legacy/fallback)
+      if (shift._tempId && shift._tempId === updatedShift._tempId) {
         return { ...updatedShift, _tempId: shift._tempId };
       }
       return shift;

@@ -172,7 +172,7 @@ BEGIN
       NULL::TEXT,
       'https://agilecaremanagement.co.uk'::TEXT,
       'https://agilecaremanagement.co.uk/portal'::TEXT,
-      'https://app.agilecaremanagement.co.uk'::TEXT,
+      'https://agilecaremanagement.co.uk'::TEXT,
       NULL::TEXT,
       '#667eea'::TEXT,
       '#764ba2'::TEXT,

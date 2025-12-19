@@ -60,6 +60,11 @@ const formatTime = (isoString) => {
 };
 
 export default function Shifts() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   const [statusFilter, setStatusFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
   const [dateRange, setDateRange] = useState('month');
@@ -103,8 +108,47 @@ export default function Shifts() {
   const [isBroadcastingSelected, setIsBroadcastingSelected] = useState(false);
 
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const location = useLocation();
+
+  // 🛡️ RBAC: Block staff members from accessing this admin-only page
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        if (authError || !authUser) {
+          console.error('❌ Not authenticated:', authError);
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+
+        if (profileError || !profile) {
+          console.error('❌ Profile not found:', profileError);
+          navigate(createPageUrl('Home'));
+          return;
+        }
+
+        // 🚫 Block staff members
+        if (profile.user_type === 'staff_member') {
+          toast.error('Access Denied: This page is for agency admins only');
+          navigate(createPageUrl('StaffPortal'));
+          return;
+        }
+
+        setUser(profile);
+        setLoading(false);
+      } catch (error) {
+        console.error('❌ Auth error:', error);
+        toast.error('Authentication failed. Please log in again.');
+        navigate(createPageUrl('Home'));
+      }
+    };
+    checkAccess();
+  }, [navigate]);
 
   const getDateRangeFilter = () => {
     const today = new Date();
