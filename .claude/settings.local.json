@@ -68,7 +68,9 @@
       "Bash(/c/Users/gbase/superbasecli/supabase.exe secrets set:*)",
       "Bash(mkdir -p:*)",
       "Bash(test:*)",
-      "Bash(.gitignore)"
+      "Bash(.gitignore)",
+      "Bash(git rm:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []
