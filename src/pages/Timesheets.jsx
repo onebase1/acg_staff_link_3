@@ -12,34 +12,28 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import TimesheetCard from "../components/timesheets/TimesheetCard";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { format } from "date-fns";
 import AutoApprovalIndicator from "../components/timesheets/AutoApprovalIndicator";
-import ConfirmOCRModal from "../components/timesheets/ConfirmOCRModal";
-import { calculateDurationHours, calculateBillableHoursWithRule } from "@/utils/shiftCalculations";
+import TimesheetUploader from "../components/timesheets/TimesheetUploader";
 
 export default function Timesheets() {
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [user, setUser] = useState(null);
-  const [uploadingFile, setUploadingFile] = useState(null);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadData, setUploadData] = useState({
-    timesheet_id: null,
-    file_url: '',
-    notes: ''
-  });
   const [viewMode, setViewMode] = useState('cards'); // NEW: Card or Table view
 
   // OCR Modal state (for advanced timesheet upload with AI extraction)
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [pendingOcrData, setPendingOcrData] = useState(null);
-  const [pendingDocument, setPendingDocument] = useState(null);
-  const [pendingFile, setPendingFile] = useState(null);
-  const [pendingTimesheetId, setPendingTimesheetId] = useState(null);
-  const [confirming, setConfirming] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
+  // These states are now managed within TimesheetUploader component
+  // const [showConfirmModal, setShowConfirmModal] = useState(false);
+  // const [pendingOcrData, setPendingOcrData] = useState(null);
+  // const [pendingDocument, setPendingDocument] = useState(null);
+  // const [pendingFile, setPendingFile] = useState(null);
+  // const [pendingTimesheetId, setPendingTimesheetId] = useState(null);
+  // const [confirming, setConfirming] = useState(false);
+  // const [rejecting, setRejecting] = useState(false);
   const [processingTimesheets, setProcessingTimesheets] = useState({
     approving: new Set(),
     rejecting: new Set()
@@ -70,11 +64,6 @@ export default function Timesheets() {
         return;
       }
 
-      // 🚫 Silent redirect for staff members
-      if (profile.user_type === 'staff_member') {
-        navigate(createPageUrl('StaffPortal'));
-        return;
-      }
 
       setUser(profile);
     };
@@ -250,43 +239,6 @@ export default function Timesheets() {
     }
   });
 
-  const uploadFileMutation = useMutation({
-    mutationFn: async ({ timesheetId, fileUrl, notes }) => {
-      const timesheet = timesheets.find(t => t.id === timesheetId);
-      if (!timesheet) {
-        throw new Error('Timesheet not found. Please refresh the page and try again.');
-      }
-      const existingFiles = timesheet.uploaded_documents || [];
-      const newDoc = {
-        file_url: fileUrl,
-        uploaded_at: new Date().toISOString(),
-        uploaded_by: user.email,
-        notes: notes || ''
-      };
-
-      const { error } = await supabase
-        .from('timesheets')
-        .update({
-          uploaded_documents: [...existingFiles, newDoc]
-        })
-        .eq('id', timesheetId);
-
-      if (error) throw error;
-
-      return newDoc;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['timesheets']);
-      setShowUploadModal(false);
-      setUploadData({ timesheet_id: null, file_url: '', notes: '' });
-      setUploadingFile(null);
-      toast.success('✅ Timesheet document uploaded successfully!');
-    },
-    onError: (error) => {
-      toast.error(`Failed to upload: ${error.message}`);
-      setUploadingFile(null);
-    }
-  });
 
   // ✅ NEW: Bulk auto-approval mutation
   const bulkAutoApproveMutation = useMutation({
@@ -342,426 +294,6 @@ export default function Timesheets() {
     }
   });
 
-  // 🔍 OCR-ENABLED FILE UPLOAD (ported from TimesheetDetail.jsx)
-  const handleFileUpload = async (e, timesheetId) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('File size must be less than 10MB');
-      return;
-    }
-
-    setUploadingFile(timesheetId);
-    setPendingTimesheetId(timesheetId);
-    toast.info('📤 Uploading document and extracting data with AI...');
-
-    try {
-      // Find the timesheet data for context
-      const timesheet = timesheets.find(t => t.id === timesheetId);
-      if (!timesheet) {
-        throw new Error('Timesheet not found');
-      }
-
-      // Fetch related shift data
-      let shift = null;
-      let shiftData = null;
-      if (timesheet.shift_id) {
-        const { data, error } = await supabase
-          .from('shifts')
-          .select('*')
-          .eq('id', timesheet.shift_id)
-          .single();
-        if (!error && data) {
-          shift = data;
-          shiftData = data;
-        }
-      }
-
-      // Get staff and client names for OCR context
-      const staffMember = staff.find(s => s.id === timesheet.staff_id);
-      const client = clients.find(c => c.id === timesheet.client_id);
-
-      console.log('📤 Starting document upload...');
-
-      // Upload to Supabase Storage
-      const fileName = `timesheets/${Date.now()}-${file.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(fileName, file);
-
-      if (uploadError) {
-        console.error('❌ Upload error:', uploadError);
-        throw uploadError;
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('documents')
-        .getPublicUrl(fileName);
-
-      const file_url = publicUrl;
-      console.log('✅ File uploaded:', file_url);
-
-      console.log('🔍 Extracting timesheet data with OCR...');
-
-      // Calculate scheduled hours (duration minus break)
-      const scheduledFromShift =
-        shift && typeof shift.duration_hours === 'number'
-          ? shift.duration_hours - (shift.break_duration_minutes || 0) / 60
-          : null;
-
-      // Call OCR extraction function
-      const { data: ocrResult, error: ocrError } = await supabase.functions.invoke('extract-timesheet-data', {
-        body: {
-          file_url,
-          expected_data: {
-            staff_name: staffMember ? `${staffMember.first_name} ${staffMember.last_name}` : null,
-            client_name: client?.name || null,
-            shift_date: timesheet?.shift_date || null,
-            scheduled_hours: scheduledFromShift ?? timesheet?.total_hours ?? null,
-            expected_start: shift?.start_time || null,
-            expected_end: shift?.end_time || null,
-          },
-        },
-      });
-
-      // Parse OCR result
-      const isSuccess = ocrResult?.success === true;
-      const extracted = ocrResult?.extracted_data || null;
-
-      // Handle failed OCR
-      if (ocrError || !ocrResult || !isSuccess || !extracted) {
-        console.error('❌ OCR invocation failed or returned no data:', ocrError || ocrResult);
-        const errorMsg =
-          ocrError?.message ||
-          (typeof ocrResult?.error === 'string' ? ocrResult.error : 'OCR extraction service unavailable');
-        toast.error(`Failed to extract timesheet data: ${errorMsg}`);
-
-        // Save document without OCR data
-        const newDocument = {
-          file_url,
-          uploaded_at: new Date().toISOString(),
-          uploaded_by: user?.email || 'unknown',
-          file_name: file.name,
-          file_type: file.type,
-          file_size: file.size,
-          notes: `OCR failed: ${errorMsg}`,
-          extracted_data: null,
-        };
-
-        const existingDocs = timesheet.uploaded_documents || [];
-        const { error: updateError } = await supabase
-          .from('timesheets')
-          .update({
-            uploaded_documents: [...existingDocs, newDocument],
-            status: 'pending_admin_review',
-          })
-          .eq('id', timesheetId);
-
-        if (updateError) throw updateError;
-
-        // Link shift to timesheet
-        if (shiftData?.id) {
-          await supabase
-            .from('shifts')
-            .update({
-              timesheet_id: timesheetId,
-              timesheet_received: true,
-              timesheet_received_at: new Date().toISOString(),
-            })
-            .eq('id', shiftData.id);
-        }
-
-        toast.warning('⚠️ Document saved, but OCR extraction failed. Admin review required.');
-        setUploadingFile(null);
-        queryClient.invalidateQueries(['timesheets']);
-        return;
-      }
-
-      console.log('📊 OCR Result:', extracted);
-
-      // Show confidence feedback
-      const confidenceFromExtractor = extracted.confidence_score ?? extracted.confidence?.overall;
-      if (typeof confidenceFromExtractor === 'number') {
-        if (confidenceFromExtractor >= 80) {
-          toast.success(`✅ High confidence extraction (${confidenceFromExtractor}%)`);
-        } else if (confidenceFromExtractor >= 60) {
-          toast.warning(`⚠️ Medium confidence extraction (${confidenceFromExtractor}%) - Please review`);
-        } else {
-          toast.error(`❌ Low confidence extraction (${confidenceFromExtractor}%) - Manual review required`);
-        }
-      }
-
-      const newDocument = {
-        file_url,
-        uploaded_at: new Date().toISOString(),
-        uploaded_by: user?.email || 'unknown',
-        file_name: file.name,
-        file_type: file.type,
-        file_size: file.size,
-        notes: `OCR Status: ${isSuccess ? 'ok' : 'failed'}`,
-        extracted_data: extracted,
-      };
-
-      // Show confirmation modal for user review
-      if (isSuccess && extracted) {
-        console.log('✅ OCR succeeded - showing confirmation modal');
-        setPendingOcrData(extracted);
-        setPendingDocument(newDocument);
-        setPendingFile(file);
-        setShowConfirmModal(true);
-        setUploadingFile(null);
-      }
-
-    } catch (error) {
-      console.error('❌ Upload failed:', error);
-      toast.error(`Upload failed: ${error.message}`);
-      setUploadingFile(null);
-    }
-  };
-
-  const handleUploadSubmit = () => {
-    if (!uploadData.file_url) {
-      toast.error('No file selected');
-      return;
-    }
-
-    uploadFileMutation.mutate({
-      timesheetId: uploadData.timesheet_id,
-      fileUrl: uploadData.file_url,
-      notes: uploadData.notes
-    });
-  };
-
-  // 🔍 OCR CONFIRMATION HANDLERS (ported from TimesheetDetail.jsx)
-  const handleConfirmOCR = async (staffNote, overrideRowData) => {
-    if (!pendingOcrData || !pendingDocument || !pendingTimesheetId) return;
-
-    setConfirming(true);
-    try {
-      const timesheet = timesheets.find(t => t.id === pendingTimesheetId);
-      if (!timesheet) {
-        throw new Error('Timesheet not found');
-      }
-
-      // Fetch shift data for linking
-      let shift = null;
-      if (timesheet.shift_id) {
-        const { data } = await supabase
-          .from('shifts')
-          .select('*')
-          .eq('id', timesheet.shift_id)
-          .single();
-        if (data) shift = data;
-      }
-
-      const extracted = pendingOcrData;
-      const existingDocs = timesheet.uploaded_documents || [];
-
-      // PRIORITIZE USER SELECTION (overrideRowData) -> then Auto-Match -> then Raw Extraction
-      const rowData = overrideRowData || extracted.matched_row_info || extracted;
-
-      console.log('✅ Confirming with Row Data:', rowData);
-
-      const updateData = {
-        uploaded_documents: [...existingDocs, pendingDocument],
-        staff_confirmed: true,
-        staff_confirmed_at: new Date().toISOString()
-      };
-
-      // Populate actual times from OCR
-      if (rowData.start_time) {
-        updateData.actual_start_time = rowData.start_time;
-      }
-      if (rowData.end_time) {
-        updateData.actual_end_time = rowData.end_time;
-      }
-      if (rowData.break_minutes !== undefined && rowData.break_minutes !== null) {
-        updateData.break_duration_minutes = rowData.break_minutes;
-      }
-
-      // Calculate hours from times if available
-      let calculatedHours = null;
-      if (updateData.actual_start_time && updateData.actual_end_time) {
-        const rawDuration = calculateDurationHours(updateData.actual_start_time, updateData.actual_end_time);
-        calculatedHours = calculateBillableHoursWithRule(rawDuration);
-        const calculatedBreakMinutes = rawDuration >= 10 ? 60 : 0;
-
-        updateData.hours_worked = calculatedHours;
-        updateData.total_hours = calculatedHours;
-        updateData.break_duration_minutes = calculatedBreakMinutes;
-      } else {
-        // Fallback to OCR hours
-        const ocrHours = rowData.hours ?? rowData.hours_worked ?? extracted.total_hours ?? null;
-        if (ocrHours !== null && ocrHours !== undefined) {
-          updateData.hours_worked = ocrHours;
-          updateData.total_hours = ocrHours;
-        }
-      }
-
-      // Preserve raw_total_hours if provided
-      if (typeof extracted.raw_total_hours === 'number') {
-        updateData.raw_total_hours = extracted.raw_total_hours;
-      }
-
-      // Signature fields
-      if (extracted.staff_signature) {
-        updateData.staff_signature = `ocr_present_${new Date().toISOString()}`;
-      }
-      if (extracted.supervisor_signature || extracted.client_signature) {
-        updateData.client_signature = `ocr_present_${new Date().toISOString()}`;
-      }
-
-      // Staff note
-      if (staffNote && staffNote.trim()) {
-        const note = staffNote.trim();
-        updateData.notes = `${timesheet.notes || ''}\n[Staff note from OCR confirmation]: ${note}`;
-      }
-
-      // AUTO-APPROVAL LOGIC
-      const canAutoApprove = (
-        extracted.confidence?.overall >= 80 &&
-        extracted.validation_status === 'match' &&
-        !extracted.mismatches?.some(m => m.severity === 'critical')
-      );
-
-      if (canAutoApprove) {
-        updateData.status = 'approved';
-        updateData.approved_by = 'auto_approved_by_staff';
-        updateData.approved_at = new Date().toISOString();
-        updateData.auto_approved = true;
-        console.log('✅ Auto-approving timesheet (high confidence + staff confirmed)');
-      } else {
-        updateData.status = 'pending_admin_review';
-        console.log('⏳ Sending to admin review (low confidence or mismatches detected)');
-      }
-
-      const { error: updateError } = await supabase
-        .from('timesheets')
-        .update(updateData)
-        .eq('id', pendingTimesheetId);
-
-      if (updateError) throw updateError;
-
-      // Link shift to timesheet
-      if (shift?.id) {
-        await supabase
-          .from('shifts')
-          .update({
-            timesheet_id: pendingTimesheetId,
-            timesheet_received: true,
-            timesheet_received_at: new Date().toISOString(),
-          })
-          .eq('id', shift.id);
-      }
-
-      // Invalidate queries
-      queryClient.invalidateQueries(['timesheets']);
-
-      // Success toast
-      if (canAutoApprove) {
-        toast.success('✅ Timesheet approved automatically! High confidence extraction confirmed.');
-      } else {
-        toast.info('⏳ Sent to admin for review. Thank you for confirming!');
-      }
-
-      // Close modal and reset state
-      setShowConfirmModal(false);
-      setPendingOcrData(null);
-      setPendingDocument(null);
-      setPendingFile(null);
-      setPendingTimesheetId(null);
-
-    } catch (error) {
-      console.error('❌ Failed to confirm timesheet:', error);
-      toast.error(`Failed to save: ${error.message}`);
-    } finally {
-      setConfirming(false);
-    }
-  };
-
-  const handleRejectOCR = async (staffNote) => {
-    if (!pendingDocument || !pendingTimesheetId) return;
-
-    setRejecting(true);
-    try {
-      const timesheet = timesheets.find(t => t.id === pendingTimesheetId);
-      if (!timesheet) {
-        throw new Error('Timesheet not found');
-      }
-
-      // Save staff note if provided
-      if (staffNote && staffNote.trim()) {
-        const note = staffNote.trim();
-        await supabase
-          .from('timesheets')
-          .update({
-            notes: `${timesheet.notes || ''}\n[Staff note from OCR rejection]: ${note}`
-          })
-          .eq('id', pendingTimesheetId);
-      }
-
-      const existingDocs = timesheet.uploaded_documents || [];
-
-      const { error: updateError } = await supabase
-        .from('timesheets')
-        .update({
-          uploaded_documents: [...existingDocs, pendingDocument],
-          status: 'pending_admin_review',
-          staff_confirmed: false,
-          staff_confirmed_at: new Date().toISOString()
-        })
-        .eq('id', pendingTimesheetId);
-
-      if (updateError) throw updateError;
-
-      // Link shift if available
-      if (timesheet.shift_id) {
-        await supabase
-          .from('shifts')
-          .update({
-            timesheet_id: pendingTimesheetId,
-            timesheet_received: true,
-            timesheet_received_at: new Date().toISOString(),
-          })
-          .eq('id', timesheet.shift_id);
-      }
-
-      queryClient.invalidateQueries(['timesheets']);
-
-      toast.info('⏳ Timesheet sent to admin for manual review.');
-
-      setShowConfirmModal(false);
-      setPendingOcrData(null);
-      setPendingDocument(null);
-      setPendingFile(null);
-      setPendingTimesheetId(null);
-
-    } catch (error) {
-      console.error('❌ Failed to reject timesheet:', error);
-      toast.error(`Failed to save: ${error.message}`);
-    } finally {
-      setRejecting(false);
-    }
-  };
-
-  const handleReUpload = () => {
-    // Close modal and trigger file picker again
-    setShowConfirmModal(false);
-    setPendingOcrData(null);
-    setPendingDocument(null);
-    setPendingFile(null);
-
-    // Trigger file input click
-    setTimeout(() => {
-      const fileInput = document.querySelector('input[type="file"]');
-      if (fileInput) {
-        fileInput.click();
-      }
-    }, 100);
-
-    toast.info('📸 Please upload a better quality photo');
-  };
 
   const getStaffName = (staffId) => {
     const staffMember = staff.find(s => s.id === staffId);
@@ -870,71 +402,46 @@ export default function Timesheets() {
     .filter(t => t.status === 'approved' || t.status === 'paid')
     .reduce((sum, t) => sum + (t.client_charge_amount || 0), 0);
 
-  // ✅ ENHANCED: Approve with debouncing and single-call protection
-  const handleApprove = (timesheetId) => {
-    // ✅ FIX: Prevent double-click and concurrent calls
-    if (processingTimesheets.approving.has(timesheetId) || updateMutation.isPending) {
-      console.log('⏸️ [Timesheets] Approve already in progress, ignoring duplicate call');
-      return;
+  // ✅ HANDLERS FOR TIMESHEET ACTIONS (Approve/Reject)
+  const handleApprove = async (timesheetId) => {
+    setProcessingTimesheets(prev => ({ ...prev, approving: new Set(prev.approving).add(timesheetId) }));
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-timesheet-approval-engine', {
+        body: { timesheet_id: timesheetId, manual_trigger: true }
+      });
+      if (error) throw error;
+      toast.success(data.message || 'Timesheet approved');
+      queryClient.invalidateQueries(['timesheets']);
+    } catch (error) {
+      toast.error(`Approval failed: ${error.message}`);
+    } finally {
+      setProcessingTimesheets(prev => {
+        const next = new Set(prev.approving);
+        next.delete(timesheetId);
+        return { ...prev, approving: next };
+      });
     }
-
-    console.log('✅ [Timesheets] Approving timesheet:', timesheetId);
-    setProcessingTimesheets(prev => ({
-      ...prev,
-      approving: new Set([...prev.approving, timesheetId])
-    }));
-
-    updateMutation.mutate(
-      {
-        id: timesheetId,
-        data: { status: 'approved', client_approved_at: new Date().toISOString() }
-      },
-      {
-        onSettled: () => {
-          console.log('🏁 [Timesheets] Approve settled for:', timesheetId);
-          setProcessingTimesheets(prev => {
-            const newSet = new Set(prev.approving);
-            newSet.delete(timesheetId);
-            return { ...prev, approving: newSet };
-          });
-        }
-      }
-    );
   };
 
-  // ✅ ENHANCED: Reject with debouncing
-  const handleReject = (timesheetId) => {
-    // ✅ FIX: Prevent double-click
-    if (processingTimesheets.rejecting.has(timesheetId) || updateMutation.isPending) {
-      console.log('⏸️ [Timesheets] Reject already in progress, ignoring duplicate call');
-      return;
+  const handleReject = async (timesheetId) => {
+    setProcessingTimesheets(prev => ({ ...prev, rejecting: new Set(prev.rejecting).add(timesheetId) }));
+    try {
+      const { error } = await supabase
+        .from('timesheets')
+        .update({ status: 'rejected' })
+        .eq('id', timesheetId);
+      if (error) throw error;
+      toast.success('Timesheet rejected');
+      queryClient.invalidateQueries(['timesheets']);
+    } catch (error) {
+      toast.error(`Rejection failed: ${error.message}`);
+    } finally {
+      setProcessingTimesheets(prev => {
+        const next = new Set(prev.rejecting);
+        next.delete(timesheetId);
+        return { ...prev, rejecting: next };
+      });
     }
-
-    const reason = prompt('Please enter rejection reason:');
-    if (!reason) return;
-
-    console.log('✅ [Timesheets] Rejecting timesheet:', timesheetId);
-    setProcessingTimesheets(prev => ({
-      ...prev,
-      rejecting: new Set([...prev.rejecting, timesheetId])
-    }));
-
-    updateMutation.mutate(
-      {
-        id: timesheetId,
-        data: { status: 'rejected', rejection_reason: reason }
-      },
-      {
-        onSettled: () => {
-          console.log('🏁 [Timesheets] Reject settled for:', timesheetId);
-          setProcessingTimesheets(prev => {
-            const newSet = new Set(prev.rejecting);
-            newSet.delete(timesheetId);
-            return { ...prev, rejecting: newSet };
-          });
-        }
-      }
-    );
   };
 
   // ✅ NEW: CSV Export Function
@@ -1349,6 +856,7 @@ export default function Timesheets() {
           {filteredTimesheets.map(timesheet => {
             const staffMember = staff.find(s => s.id === timesheet.staff_id);
             const shift = shifts.find(s => s.id === timesheet.booking_id);
+            const clientObj = clients.find(c => c.id === timesheet.client_id);
 
             return (
               <div key={timesheet.id} className="relative">
@@ -1385,31 +893,18 @@ export default function Timesheets() {
                   </div>
                 )}
 
-                {/* Upload/View Documents Section */}
+                {/* Shared Timesheet Uploader */}
                 <div className="mt-2 flex gap-2">
-                  {/* Upload Button */}
-                  <label className="flex-1 cursor-pointer">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      disabled={uploadingFile === timesheet.id}
-                      asChild
-                    >
-                      <span>
-                        <Upload className="w-3 h-3 mr-2" />
-                        {uploadingFile === timesheet.id ? 'Uploading...' : 'Upload Doc'}
-                      </span>
-                    </Button>
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileUpload(e, timesheet.id)}
-                      disabled={uploadingFile === timesheet.id}
-                    />
-                  </label>
+                  <TimesheetUploader
+                    timesheetId={timesheet.id}
+                    timesheet={timesheet}
+                    shift={shift}
+                    staff={staffMember}
+                    client={clientObj}
+                    user={user}
+                    mode="inline"
+                    onSuccess={() => queryClient.invalidateQueries(['timesheets'])}
+                  />
 
                   {/* View Uploaded Documents */}
                   {timesheet.uploaded_documents && timesheet.uploaded_documents.length > 0 && (
@@ -1503,78 +998,7 @@ export default function Timesheets() {
         </Card>
       )}
 
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-6">
-          <Card className="max-w-md w-full">
-            <CardHeader className="border-b">
-              <CardTitle>Add Notes (Optional)</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Notes</label>
-                <Input
-                  placeholder="Add any notes about this document..."
-                  value={uploadData.notes}
-                  onChange={(e) => setUploadData({ ...uploadData, notes: e.target.value })}
-                />
-              </div>
-
-              <div className="bg-green-50 p-3 rounded border border-green-200">
-                <p className="text-sm text-green-800">
-                  ✓ File uploaded successfully
-                </p>
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowUploadModal(false);
-                    setUploadData({ timesheet_id: null, file_url: '', notes: '' });
-                    setUploadingFile(null);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleUploadSubmit}
-                  disabled={uploadFileMutation.isPending}
-                  className="bg-green-600"
-                >
-                  {uploadFileMutation.isPending ? 'Saving...' : 'Save'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* 🔍 OCR Confirmation Modal */}
-      {showConfirmModal && pendingOcrData && pendingTimesheetId && (() => {
-        const timesheet = timesheets.find(t => t.id === pendingTimesheetId);
-        const staffMember = staff.find(s => s.id === timesheet?.staff_id);
-        const client = clients.find(c => c.id === timesheet?.client_id);
-
-        return (
-          <ConfirmOCRModal
-            isOpen={showConfirmModal}
-            onClose={() => setShowConfirmModal(false)}
-            extractedData={pendingOcrData}
-            expectedData={{
-              staff_name: staffMember ? `${staffMember.first_name} ${staffMember.last_name}` : null,
-              client_name: client?.name || null,
-              shift_date: timesheet?.shift_date || null,
-              scheduled_hours: timesheet?.total_hours || null,
-            }}
-            onConfirm={handleConfirmOCR}
-            onReject={handleRejectOCR}
-            onReUpload={handleReUpload}
-            confirming={confirming}
-            rejecting={rejecting}
-          />
-        );
-      })()}
+      {/* Modal containers removed - now handled by TimesheetUploader and sub-components */}
     </div>
   );
 }

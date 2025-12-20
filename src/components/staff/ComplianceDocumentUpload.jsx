@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,6 +96,7 @@ function DocumentUploadModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation(); // 🛡️ Prevent bubbling to parent forms
 
     if (!staffId) {
       toast.error("Missing staff record - please save your profile first.");
@@ -153,7 +155,7 @@ function DocumentUploadModal({
 
   const Icon = docConfig.icon;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6">
       <Card className="w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-t-xl sm:rounded-xl">
         <CardHeader className={`border-b sticky top-0 bg-${docConfig.color}-50 z-10`}>
@@ -276,7 +278,8 @@ function DocumentUploadModal({
           </form>
         </CardContent>
       </Card>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -412,8 +415,8 @@ export default function ComplianceDocumentUpload({ compliance, staffId, agencyId
 
   const allComplete = dbsDoc && idDoc && rtwDoc;
   const allVerified = dbsDoc?.status === 'verified' &&
-                      idDoc?.status === 'verified' &&
-                      rtwDoc?.status === 'verified';
+    idDoc?.status === 'verified' &&
+    rtwDoc?.status === 'verified';
 
   return (
     <>

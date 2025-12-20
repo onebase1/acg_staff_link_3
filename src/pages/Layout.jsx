@@ -142,6 +142,7 @@ const clientPortalItems = [
 
 // Super admin only items
 const superAdminItems = [
+  { title: "Pitch Command Center", url: createPageUrl("PitchCommandCenter"), icon: Trophy }, // 🎯 Sales toolkit - hooks, objections, demos
   { title: "Agency Onboarding", url: createPageUrl("SuperAdminAgencyOnboarding"), icon: Building2 },
   { title: "Agency Management", url: createPageUrl("SuperAdminAgencyManagement"), icon: Users }, // ✅ ADDED: Manage existing agencies/admins
   { title: "Cron Command Center", url: createPageUrl("CronCommandCenter"), icon: Clock }, // 🤖 MODULE 6: Cron job monitoring

@@ -1,5 +1,7 @@
 
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils/index";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { BUCKETS, createSignedUrl } from "@/api/supabaseStorage";
@@ -32,6 +34,7 @@ import { toast } from "sonner";
 
 export default function ComplianceTracker() {
   const [user, setUser] = useState(null);
+  const navigate = useNavigate();
   const [agency, setAgency] = useState(null);
   const [staffRecord, setStaffRecord] = useState(null);
   const [isStaff, setIsStaff] = useState(false);
@@ -64,12 +67,7 @@ export default function ComplianceTracker() {
         return;
       }
 
-      // 🚫 Silent redirect for staff members
-      if (profile.user_type === 'staff_member') {
-        navigate(createPageUrl('StaffPortal'));
-        return;
-      }
-
+      // Show for everyone (Staff, Agency Admin, Super Admin)
       setUser(profile);
 
       const isStaffUser = profile.user_type === 'staff_member';

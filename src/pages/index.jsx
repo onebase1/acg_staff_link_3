@@ -134,6 +134,8 @@ import GPSAccuracyMonitoring from "./GPSAccuracyMonitoring";
 
 import AdminComplianceReview from "./AdminComplianceReview";
 
+import PitchCommandCenter from "./PitchCommandCenter";
+
 import RateManagement from "./RateManagement";
 
 import ClientManagement from "./ClientManagement";
@@ -284,6 +286,8 @@ const PAGES = {
     ResetPassword: ResetPassword,
 
     CronCommandCenter: CronCommandCenter,
+
+    PitchCommandCenter: PitchCommandCenter,
 
 }
 

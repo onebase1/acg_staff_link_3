@@ -14,7 +14,9 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { formatShiftTimeRange } from "../utils/shiftTimeFormatter";
+import { formatShiftTimeRange, formatTodayShiftTime, getShiftType } from "../utils/shiftTimeFormatter";
+import { calculateStaffEarnings } from "../utils/shiftCalculations";
+import NotificationService from "../components/notifications/NotificationService";
 
 export default function ShiftMarketplace() {
   const navigate = useNavigate();
@@ -233,7 +235,8 @@ export default function ShiftMarketplace() {
   });
 
   // ✅ Track which shift is being accepted to show loading state per-shift
-  const [acceptingShiftId, setAcceptingShiftId] = React.useState(null);
+  const [acceptingShiftId, setAcceptingShiftId] = useState(null);
+  const [recentlyAcceptedIds, setRecentlyAcceptedIds] = useState(new Set());
 
   const acceptShiftMutation = useMutation({
     mutationFn: async (shiftId) => {
@@ -278,7 +281,7 @@ export default function ShiftMarketplace() {
       if (shiftError) throw shiftError;
 
       // Create booking with confirmed status (staff accepted themselves)
-      const { error: bookingError } = await supabase
+      const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert({
           agency_id: shift.agency_id,
@@ -292,27 +295,72 @@ export default function ShiftMarketplace() {
           end_time: shift.end_time,
           confirmation_method: 'app',
           created_date: new Date().toISOString()
-        });
+        })
+        .select()
+        .single();
 
       if (bookingError) throw bookingError;
 
-      return { shift, client: clients.find(c => c.id === shift.client_id) };
+      // 🚨 CRITICAL FIX: Create timesheet when staff accepts shift from marketplace
+      try {
+        if (booking?.id) {
+          console.log('✅ [Marketplace Accept] Triggering timesheet creation for booking:', booking.id);
+          await supabase.functions.invoke('auto-timesheet-creator', {
+            body: {
+              booking_id: booking.id,
+              shift_id: shiftId,
+              staff_id: staffProfile.id,
+              client_id: shift.client_id,
+              agency_id: shift.agency_id
+            }
+          });
+        }
+      } catch (tsError) {
+        console.error('❌ [Marketplace Accept] Timesheet creation failed:', tsError);
+      }
+
+      // 🚀 NOTIFY STAFF (Batched)
+      try {
+        if (agency && staffProfile) {
+          console.log('📧 [Marketplace Accept] Queueing confirmation email for staff:', staffProfile.email);
+          await NotificationService.notifyShiftAssignment({
+            staff: staffProfile,
+            shift: shift,
+            client: client,
+            agency: agency,
+            useBatching: true
+          });
+        }
+      } catch (notifyError) {
+        console.error('❌ [Marketplace Accept] Notification failed:', notifyError);
+      }
+
+      return { shift, client };
     },
     onSuccess: ({ shift, client }) => {
       setAcceptingShiftId(null);
-      queryClient.invalidateQueries(['available-shifts']);
-      queryClient.invalidateQueries(['my-shifts']);
-      queryClient.invalidateQueries(['my-bookings']);
-      queryClient.invalidateQueries(['shifts']); // Admin view
 
-      toast.success('🎉 Shift Confirmed!', {
-        description: `${client?.name || 'Client'} on ${format(new Date(shift.date), 'MMM d, yyyy')} - You're all set! Remember to clock in on the day.`,
-        duration: 6000,
-        position: 'top-center',
-        action: {
-          label: 'View My Shifts',
-          onClick: () => navigate(createPageUrl('StaffPortal'))
-        }
+      // ✅ NEW: Add to recently accepted set for visual feedback
+      setRecentlyAcceptedIds(prev => new Set([...prev, shift.id]));
+
+      // ✅ NEW: Remove after 3 seconds to let the list refresh naturally
+      setTimeout(() => {
+        setRecentlyAcceptedIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(shift.id);
+          return newSet;
+        });
+
+        // Invalidate queries only after the feedback period to avoid jarring jumps
+        queryClient.invalidateQueries(['available-shifts']);
+        queryClient.invalidateQueries(['my-shifts']);
+        queryClient.invalidateQueries(['my-bookings']);
+        queryClient.invalidateQueries(['shifts']);
+      }, 3000);
+
+      toast.success('🎉 Shift Accepted!', {
+        description: `You've accepted ${client?.name || 'the shift'} on ${format(new Date(shift.date), 'MMM d')}. Check "My Shifts" to confirm attendance.`,
+        duration: 4000
       });
     },
     onError: (error) => {
@@ -338,10 +386,7 @@ export default function ShiftMarketplace() {
     return client?.rating || 0;
   };
 
-  const calculateEarnings = (shift) => {
-    const hours = shift.duration_hours - (shift.break_duration_minutes / 60);
-    return hours * shift.pay_rate;
-  };
+
 
   const urgentShifts = availableShifts.filter(s => s.urgency === 'urgent' || s.urgency === 'critical');
   const regularShifts = availableShifts.filter(s => s.urgency === 'normal');
@@ -444,7 +489,7 @@ export default function ShiftMarketplace() {
               <div>
                 <p className="text-sm text-amber-700 font-medium">Potential Earnings</p>
                 <p className="text-3xl font-bold text-amber-600">
-                  £{availableShifts.reduce((sum, s) => sum + calculateEarnings(s), 0).toFixed(0)}
+                  £{availableShifts.reduce((sum, s) => sum + calculateStaffEarnings(s), 0).toFixed(0)}
                 </p>
               </div>
               <TrendingUp className="w-10 h-10 text-amber-500 opacity-30" />
@@ -518,29 +563,38 @@ export default function ShiftMarketplace() {
                       <div className="text-right p-4 bg-white rounded-lg border-2 border-green-300">
                         <p className="text-sm text-gray-600">You'll earn</p>
                         <p className="text-3xl font-bold text-green-600">
-                          £{calculateEarnings(shift).toFixed(2)}
+                          £{calculateStaffEarnings(shift).toFixed(2)}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
                           £{shift.pay_rate}/hr
                         </p>
                       </div>
-                      <Button
-                        onClick={() => acceptShiftMutation.mutate(shift.id)}
-                        disabled={acceptingShiftId === shift.id}
-                        className="bg-red-600 hover:bg-red-700 text-lg py-6"
-                      >
-                        {acceptingShiftId === shift.id ? (
-                          <>
-                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-                            Accepting...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="w-5 h-5 mr-2" />
-                            Accept Shift
-                          </>
-                        )}
-                      </Button>
+
+                      {recentlyAcceptedIds.has(shift.id) ? (
+                        <div className="bg-green-100 text-green-700 font-bold py-6 px-4 rounded-md flex items-center justify-center gap-2 border-2 border-green-500 animate-in zoom-in duration-300">
+                          <CheckCircle className="w-6 h-6" />
+                          <span>Shift Accepted!</span>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={() => acceptShiftMutation.mutate(shift.id)}
+                          disabled={acceptingShiftId === shift.id}
+                          className="bg-red-600 hover:bg-red-700 text-lg py-6"
+                        >
+                          {acceptingShiftId === shift.id ? (
+                            <>
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
+                              Accepting...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="w-5 h-5 mr-2" />
+                              Accept Shift
+                            </>
+                          )}
+                        </Button>
+                      )}
+
                       <p className="text-xs text-center text-gray-600">
                         ⚠️ You'll need to confirm after accepting
                       </p>
@@ -599,23 +653,31 @@ export default function ShiftMarketplace() {
                     </p>
                   )}
 
-                  <Button
-                    onClick={() => acceptShiftMutation.mutate(shift.id)}
-                    disabled={acceptingShiftId === shift.id}
-                    className="w-full bg-gradient-to-r from-cyan-500 to-blue-600"
-                  >
-                    {acceptingShiftId === shift.id ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                        Accepting...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Accept This Shift
-                      </>
-                    )}
-                  </Button>
+                  {recentlyAcceptedIds.has(shift.id) ? (
+                    <div className="bg-green-100 text-green-700 font-bold py-3 px-4 rounded-md flex items-center justify-center gap-2 border-2 border-green-500 animate-in zoom-in duration-300 mt-4">
+                      <CheckCircle className="w-5 h-5" />
+                      <span>Accepted!</span>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={() => acceptShiftMutation.mutate(shift.id)}
+                      disabled={acceptingShiftId === shift.id}
+                      className="w-full mt-4 bg-sky-600 hover:bg-sky-700"
+                    >
+                      {acceptingShiftId === shift.id ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                          Accepting...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Accept This Shift
+                        </>
+                      )}
+                    </Button>
+                  )}
+
                   <p className="text-xs text-center text-gray-500 mt-2">
                     You'll need to confirm attendance after accepting
                   </p>
