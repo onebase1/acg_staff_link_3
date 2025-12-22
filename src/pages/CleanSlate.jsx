@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,10 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Trash2, AlertTriangle, CheckCircle, Calendar,
   Clock, FileText, Users, Building2, Loader2, Database,
-  Bell, Receipt, DollarSign
+  Bell, Receipt, DollarSign, Filter, Search
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -17,6 +20,9 @@ export default function CleanSlate() {
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteProgress, setDeleteProgress] = useState({ current: 0, total: 0, entity: '' });
+  const [deleteMode, setDeleteMode] = useState('all'); // 'all' or 'selective'
+  const [selectedClients, setSelectedClients] = useState([]);
+  const [clientSearch, setClientSearch] = useState('');
   const queryClient = useQueryClient();
 
   // Fetch counts for display
@@ -76,36 +82,118 @@ export default function CleanSlate() {
     }
   });
 
+  // Fetch clients with their shift counts for selective deletion
+  const { data: clientsWithShifts = [], isLoading: loadingClients } = useQuery({
+    queryKey: ['clients-with-shift-counts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select(`
+          id,
+          name,
+          status,
+          shifts:shifts(count)
+        `)
+        .order('name');
+
+      if (error) throw error;
+
+      // Transform to include shift count
+      return data.map(client => ({
+        ...client,
+        shiftCount: client.shifts?.[0]?.count || 0
+      })).filter(c => c.shiftCount > 0); // Only show clients with shifts
+    }
+  });
+
+  // Filter clients by search
+  const filteredClients = useMemo(() => {
+    if (!clientSearch) return clientsWithShifts;
+    return clientsWithShifts.filter(c =>
+      c.name.toLowerCase().includes(clientSearch.toLowerCase())
+    );
+  }, [clientsWithShifts, clientSearch]);
+
+  // Calculate selected shift count
+  const selectedShiftCount = useMemo(() => {
+    return clientsWithShifts
+      .filter(c => selectedClients.includes(c.id))
+      .reduce((sum, c) => sum + c.shiftCount, 0);
+  }, [clientsWithShifts, selectedClients]);
+
+  const toggleClientSelection = (clientId) => {
+    setSelectedClients(prev =>
+      prev.includes(clientId)
+        ? prev.filter(id => id !== clientId)
+        : [...prev, clientId]
+    );
+  };
+
+  const selectAllFiltered = () => {
+    const filteredIds = filteredClients.map(c => c.id);
+    setSelectedClients(prev => {
+      const allSelected = filteredIds.every(id => prev.includes(id));
+      if (allSelected) {
+        return prev.filter(id => !filteredIds.includes(id));
+      }
+      return [...new Set([...prev, ...filteredIds])];
+    });
+  };
+
   const handleDelete = async () => {
-    const CONFIRM_PHRASE = 'DELETE ALL SHIFTS';
+    const CONFIRM_PHRASE = deleteMode === 'all' ? 'DELETE ALL SHIFTS' : 'DELETE SELECTED';
 
     if (confirmText !== CONFIRM_PHRASE) {
       toast.error(`Please type "${CONFIRM_PHRASE}" exactly to confirm`);
       return;
     }
 
+    // Validate selective mode has selections
+    if (deleteMode === 'selective' && selectedClients.length === 0) {
+      toast.error('Please select at least one client');
+      return;
+    }
+
     setIsDeleting(true);
 
     try {
-      console.log('🗑️ Starting Clean Slate deletion...');
-
-      // Try RPC first (faster, atomic)
+      console.log(`🗑️ Starting Clean Slate deletion (mode: ${deleteMode})...`);
       setDeleteProgress({ current: 0, total: 100, entity: 'Initializing...' });
 
-      const { data, error: rpcError } = await supabase.rpc('delete_all_shift_data');
+      let data, rpcError;
+
+      if (deleteMode === 'all') {
+        // Delete ALL shifts
+        const result = await supabase.rpc('delete_all_shift_data');
+        data = result.data;
+        rpcError = result.error;
+      } else {
+        // Delete only selected clients' shifts
+        const result = await supabase.rpc('delete_client_shift_data', {
+          target_client_ids: selectedClients
+        });
+        data = result.data;
+        rpcError = result.error;
+      }
 
       if (rpcError) {
         console.error('❌ RPC deletion error:', rpcError);
-        console.log('⚠️ RPC failed, falling back to manual deletion...');
-        await handleManualDelete();
+        if (deleteMode === 'all') {
+          console.log('⚠️ RPC failed, falling back to manual deletion...');
+          await handleManualDelete();
+        } else {
+          throw rpcError;
+        }
       } else {
         console.log('✅ RPC deletion success:', data);
-        toast.success('🎉 All shift data deleted successfully via RPC!');
+        const deletedCount = data?.deleted_shifts || 0;
+        toast.success(`🎉 ${deletedCount} shifts deleted successfully!`);
       }
 
       // Refresh all queries
       await queryClient.invalidateQueries();
       setConfirmText('');
+      setSelectedClients([]);
 
     } catch (error) {
       console.error('❌ Clean slate error:', error);
@@ -172,7 +260,8 @@ export default function CleanSlate() {
   };
 
   const totalToDelete = shifts.length + bookings.length + timesheets.length + invoices.length + notifications.length;
-  const canDelete = confirmText === 'DELETE ALL SHIFTS';
+  const CONFIRM_PHRASE = deleteMode === 'all' ? 'DELETE ALL SHIFTS' : 'DELETE SELECTED';
+  const canDelete = confirmText === CONFIRM_PHRASE;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -263,6 +352,106 @@ export default function CleanSlate() {
         </CardContent>
       </Card>
 
+      {/* Delete Mode Selection */}
+      <Card className="border-2 border-orange-400">
+        <CardHeader className="bg-orange-50">
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="w-5 h-5" />
+            Delete Mode
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <Tabs value={deleteMode} onValueChange={(v) => { setDeleteMode(v); setConfirmText(''); }}>
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="all" className="data-[state=active]:bg-red-600 data-[state=active]:text-white">
+                🗑️ Delete ALL Shifts
+              </TabsTrigger>
+              <TabsTrigger value="selective" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">
+                🎯 Select Clients
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="all">
+              <Alert className="border-red-400 bg-red-50 mb-4">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <AlertDescription className="text-red-900">
+                  <strong>⚠️ NUCLEAR OPTION:</strong> This will delete ALL {shifts.length} shifts across ALL clients. Use for full system reset only.
+                </AlertDescription>
+              </Alert>
+            </TabsContent>
+
+            <TabsContent value="selective">
+              <Alert className="border-orange-400 bg-orange-50 mb-4">
+                <Building2 className="h-5 w-5 text-orange-600" />
+                <AlertDescription className="text-orange-900">
+                  <strong>🎯 TARGETED:</strong> Select specific test clients below. Only their shifts will be deleted.
+                </AlertDescription>
+              </Alert>
+
+              {/* Client Search */}
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="Search clients..."
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              {/* Select All Button */}
+              <div className="flex items-center justify-between mb-2">
+                <Button variant="outline" size="sm" onClick={selectAllFiltered}>
+                  {filteredClients.every(c => selectedClients.includes(c.id)) ? 'Deselect All' : 'Select All Visible'}
+                </Button>
+                <Badge variant="secondary">
+                  {selectedClients.length} selected • {selectedShiftCount} shifts
+                </Badge>
+              </div>
+
+              {/* Client List */}
+              <ScrollArea className="h-64 border rounded-lg p-2">
+                {loadingClients ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                  </div>
+                ) : filteredClients.length === 0 ? (
+                  <p className="text-center py-8 text-gray-500">No clients with shifts found</p>
+                ) : (
+                  <div className="space-y-1">
+                    {filteredClients.map(client => (
+                      <div
+                        key={client.id}
+                        className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors ${
+                          selectedClients.includes(client.id)
+                            ? 'bg-orange-100 border border-orange-300'
+                            : 'hover:bg-gray-50'
+                        }`}
+                        onClick={() => toggleClientSelection(client.id)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={selectedClients.includes(client.id)}
+                            onCheckedChange={() => toggleClientSelection(client.id)}
+                          />
+                          <span className="font-medium">{client.name}</span>
+                          {client.name.toLowerCase().includes('test') && (
+                            <Badge variant="outline" className="text-xs">Test</Badge>
+                          )}
+                        </div>
+                        <Badge className="bg-red-100 text-red-800">
+                          {client.shiftCount} shifts
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
       {/* Confirmation Section */}
       <Card className="border-2 border-orange-400">
         <CardHeader className="bg-orange-50">
@@ -272,7 +461,10 @@ export default function CleanSlate() {
           <Alert className="border-orange-400 bg-orange-50">
             <AlertTriangle className="h-5 w-5 text-orange-600" />
             <AlertDescription className="text-orange-900">
-              <strong>Type the phrase exactly:</strong> <code className="bg-orange-200 px-2 py-1 rounded font-mono">DELETE ALL SHIFTS</code>
+              <strong>Type the phrase exactly:</strong>{' '}
+              <code className="bg-orange-200 px-2 py-1 rounded font-mono">
+                {deleteMode === 'all' ? 'DELETE ALL SHIFTS' : 'DELETE SELECTED'}
+              </code>
             </AlertDescription>
           </Alert>
 
@@ -281,7 +473,7 @@ export default function CleanSlate() {
             <Input
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="Type: DELETE ALL SHIFTS"
+              placeholder={`Type: ${deleteMode === 'all' ? 'DELETE ALL SHIFTS' : 'DELETE SELECTED'}`}
               className={`text-lg font-mono ${canDelete ? 'border-red-600 border-2' : ''}`}
               disabled={isDeleting}
             />
@@ -309,21 +501,31 @@ export default function CleanSlate() {
 
           <Button
             onClick={handleDelete}
-            disabled={!canDelete || isDeleting}
-            className={`w-full h-14 text-lg font-bold ${canDelete && !isDeleting
-              ? 'bg-red-600 hover:bg-red-700'
-              : 'bg-gray-400'
-              }`}
+            disabled={!canDelete || isDeleting || (deleteMode === 'selective' && selectedClients.length === 0)}
+            className={`w-full h-14 text-lg font-bold ${
+              canDelete && !isDeleting && (deleteMode === 'all' || selectedClients.length > 0)
+                ? deleteMode === 'all' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'
+                : 'bg-gray-400'
+            }`}
           >
             {isDeleting ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 Deleting... Please wait
               </>
-            ) : (
+            ) : deleteMode === 'all' ? (
               <>
                 <Trash2 className="w-5 h-5 mr-2" />
-                {canDelete ? `DELETE ${totalToDelete} RECORDS` : 'Enter Confirmation Phrase'}
+                {canDelete ? `DELETE ALL ${totalToDelete} RECORDS` : 'Enter Confirmation Phrase'}
+              </>
+            ) : (
+              <>
+                <Filter className="w-5 h-5 mr-2" />
+                {canDelete && selectedClients.length > 0
+                  ? `DELETE ${selectedShiftCount} SHIFTS (${selectedClients.length} clients)`
+                  : selectedClients.length === 0
+                    ? 'Select clients above'
+                    : 'Enter Confirmation Phrase'}
               </>
             )}
           </Button>
@@ -342,13 +544,26 @@ export default function CleanSlate() {
           <CardTitle className="text-lg">💡 When to Use This</CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <ul className="space-y-2 text-sm text-gray-700">
-            <li>✅ <strong>Starting fresh for UAT testing</strong> - Remove all test shifts while keeping staff/client data</li>
-            <li>✅ <strong>Data reset after demo</strong> - Clean slate for real production data</li>
-            <li>✅ <strong>Fixing bulk import errors</strong> - Delete bad data and re-import correctly</li>
-            <li>❌ <strong>NOT for individual shift cleanup</strong> - Use normal delete buttons for that</li>
-            <li>❌ <strong>NOT for live production</strong> - Only use in testing environments</li>
-          </ul>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+              <h4 className="font-bold text-red-900 mb-2">🗑️ Delete ALL (Nuclear)</h4>
+              <ul className="space-y-1 text-sm text-gray-700">
+                <li>✅ Starting fresh for UAT testing</li>
+                <li>✅ Full data reset after demos</li>
+                <li>✅ Fixing bulk import errors</li>
+                <li>❌ NOT for live production</li>
+              </ul>
+            </div>
+            <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+              <h4 className="font-bold text-orange-900 mb-2">🎯 Select Clients (Targeted)</h4>
+              <ul className="space-y-1 text-sm text-gray-700">
+                <li>✅ Delete test client shifts only</li>
+                <li>✅ Clean up "Divine Care Center" test data</li>
+                <li>✅ Production-safe: real clients untouched</li>
+                <li>✅ Perfect for ongoing testing</li>
+              </ul>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
