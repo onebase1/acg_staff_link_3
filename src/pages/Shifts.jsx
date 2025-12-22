@@ -1149,6 +1149,18 @@ export default function Shifts() {
         }
       }
 
+      // 🆕 UPDATE STAFF RELIABILITY SCORE
+      if (shift.assigned_staff_id) {
+        try {
+          const { calculateStaffScore } = await import('@/services/scoring/staffScoring');
+          await calculateStaffScore(shift.assigned_staff_id, 'Shift Completed');
+          console.log('✅ [Scoring] Staff score updated for completed shift');
+        } catch (scoreError) {
+          console.error('⚠️ [Scoring] Failed to update staff score:', scoreError);
+          // Don't fail the mutation - scoring is non-critical
+        }
+      }
+
       return { shiftId, staffName: getStaffName(shift.assigned_staff_id) };
     },
     onSuccess: ({ staffName }) => {

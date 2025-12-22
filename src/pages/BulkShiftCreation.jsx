@@ -336,6 +336,11 @@ export default function BulkShiftCreation() {
 
       toast.success(`🎉 Successfully created ${totalInserted} shifts!`);
 
+      // ✅ AUTO-ASSIGNMENT TRIGGER: Call engine for non-urgent shifts (runs in background)
+      if (createdShiftIds.length > 0) {
+        triggerAutoAssignment(createdShiftIds, currentAgencyId).catch(console.error);
+      }
+
       // ✅ NOTIFICATION TRIGGER: Send Receipt to Creator
       if (totalInserted > 0) {
         // Enriched shifts with friendly role names (DB has keys, we might want labels but DB roles are usually readable)
@@ -413,6 +418,48 @@ export default function BulkShiftCreation() {
       }
     }
     console.log(`✅ Queued ${queuedCount} assignment notifications`);
+  };
+
+  // ✅ AUTO-ASSIGNMENT: Trigger the auto-assignment engine for created shifts
+  const triggerAutoAssignment = async (shiftIds, agencyId) => {
+    console.log(`🤖 [Auto-Assignment] Triggering engine for ${shiftIds.length} shifts...`);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-shift-assignment-engine', {
+        body: {
+          shift_ids: shiftIds,
+          agency_id: agencyId
+        }
+      });
+
+      if (error) {
+        console.error('❌ Auto-assignment engine error:', error);
+        return;
+      }
+
+      if (data?.skipped) {
+        console.log('⏭️ Auto-assignment skipped (feature disabled)');
+        return;
+      }
+
+      console.log(`✅ Auto-assignment complete:`, data?.summary);
+
+      // Show toast with results
+      if (data?.summary?.assigned > 0) {
+        toast.success(`🤖 Auto-assigned ${data.summary.assigned} shifts to available staff!`, {
+          duration: 5000
+        });
+      }
+
+      if (data?.summary?.overflow > 0) {
+        toast.info(`📢 ${data.summary.overflow} shifts moved to marketplace (no match)`, {
+          duration: 5000
+        });
+      }
+
+    } catch (err) {
+      console.error('❌ Auto-assignment trigger failed:', err);
+    }
   };
 
   // Navigation handlers

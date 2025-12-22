@@ -194,13 +194,24 @@ export function prepareShiftsForInsert(shifts) {
     // - temp_id: preview-only identifier
     // - shift_cost, client_charge: display-only calculated fields (not in DB)
     // - role: legacy field (use role_required instead)
+    // - staff_id: wrong column name (DB uses assigned_staff_id)
+    // - client: object reference (not a DB column)
     // NOTE: duration_hours is NOW included (calculated in generateShift)
     const {
       temp_id,
       _tempId,
       shift_cost,
       client_charge,
-      role,  // Remove if role_required is present (role is legacy)
+      role,           // Remove - legacy field (use role_required instead)
+      staff_id,       // Remove - wrong column name (DB uses assigned_staff_id)
+      client,         // Remove - object reference, not a DB column
+      activeRoles,    // Remove - form state, not a DB column
+      gridData,       // Remove - form state, not a DB column
+      ratesByRole,    // Remove - form state, not a DB column
+      shiftTimes,     // Remove - form state, not a DB column
+      validation,     // Remove - form state, not a DB column
+      dateRange,      // Remove - form state, not a DB column
+      generatedShifts, // Remove - form state, not a DB column
       ...shiftData
     } = shift;
     return shiftData;

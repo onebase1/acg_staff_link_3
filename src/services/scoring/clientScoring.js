@@ -1,4 +1,4 @@
-import { supabase } from '../../supabaseClient';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Calculates and updates the desirability score for a client.

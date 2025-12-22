@@ -1,12 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
-import { 
-    logNotificationSent, 
-    logNotificationFailed, 
-    logNotificationSkipped 
+import {
+    logNotificationSent,
+    logNotificationFailed,
+    logNotificationSkipped
 } from "../_shared/notificationLogger.ts";
 import { scheduleRetry } from "../_shared/retryHandler.ts";
+import { shiftRequiresGPS } from "../_shared/gpsHelper.ts";
 
 /**
  * 🔔 SHIFT REMINDER ENGINE - MULTI-CHANNEL - ENHANCED
@@ -330,16 +331,16 @@ serve(async (req) => {
                     const agencyName = agency?.name || 'Your Agency';
                     const locationText = shift.work_location_within_site ? ` at ${shift.work_location_within_site}` : '';
 
-                    // 🎯 GPS-OPTIMIZED: Different reminders for GPS vs non-GPS staff
-                    const hasGPSConsent = staff.gps_consent === true;
+                    // 🆕 GPS-OPTIMIZED: Check CLIENT'S geofence setting (not staff consent)
+                    const requiresGPS = shiftRequiresGPS(shift, client);
 
                     let message;
-                    if (hasGPSConsent) {
-                        // GPS-enabled staff - remind to turn on GPS and clock in
+                    if (requiresGPS) {
+                        // GPS-required shift - remind to turn on GPS and clock in
                         message = `🏥 SHIFT STARTING SOON [${agencyName}]: ${client.name}${locationText} in 2 HOURS (${shift.start_time}). 📍 REMEMBER: Turn on GPS & clock in via app when you arrive. Arrive 10 min early. Good luck! 👍`;
                     } else {
-                        // Non-GPS staff - remind to bring paper timesheet
-                        message = `🏥 SHIFT STARTING SOON [${agencyName}]: ${client.name}${locationText} in 2 HOURS (${shift.start_time}). 📋 REMEMBER: Bring paper timesheet & get client signature. Arrive 10 min early. Good luck! 👍`;
+                        // Non-GPS shift - simpler message, no GPS mention
+                        message = `🏥 SHIFT STARTING SOON [${agencyName}]: ${client.name}${locationText} in 2 HOURS (${shift.start_time}). Arrive 10 min early. Good luck! 👍`;
                     }
 
                     // SMS + WhatsApp (instant)
@@ -379,7 +380,7 @@ serve(async (req) => {
                                 preferenceStatus: preferenceCheck.preferenceStatus,
                                 relatedEntityId: shift.id,
                                 relatedEntityType: 'shift',
-                                metadata: { shift_date: shift.date, client_name: client.name, gps_enabled: hasGPSConsent }
+                                metadata: { shift_date: shift.date, client_name: client.name, gps_required: requiresGPS }
                             });
                         }
                         if (whatsappSuccess) {
@@ -398,7 +399,7 @@ serve(async (req) => {
                                 preferenceStatus: preferenceCheck.preferenceStatus,
                                 relatedEntityId: shift.id,
                                 relatedEntityType: 'shift',
-                                metadata: { shift_date: shift.date, client_name: client.name, gps_enabled: hasGPSConsent }
+                                metadata: { shift_date: shift.date, client_name: client.name, gps_required: requiresGPS }
                             });
                         }
                         

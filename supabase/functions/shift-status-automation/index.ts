@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getBranding } from "../_shared/getBranding.ts";
+import { shiftRequiresGPS } from "../_shared/gpsHelper.ts";
 
 /**
  * 🤖 SHIFT STATUS AUTOMATION ENGINE
@@ -191,26 +192,44 @@ serve(async (req) => {
                 if (shift.status === 'in_progress' && now >= twoHoursAfterEnd) {
                     console.log(`🟠 [Shift Automation] Ending shift ${shift.id.substring(0, 8)} (2h grace period expired) - checking for auto-verification...`);
 
+                    // 🆕 Get client to check GPS requirement
+                    const { data: client } = await supabase
+                        .from('clients')
+                        .select('id, name, geofence_enabled')
+                        .eq('id', shift.client_id)
+                        .single();
+
+                    const requiresGPS = shiftRequiresGPS(shift, client);
+
                     // ✅ SMART AUTO-VERIFICATION: Check if shift can be auto-completed
                     let canAutoComplete = false;
                     let autoCompleteReason = '';
 
-                    // Check 1: Is there an approved timesheet?
-                    const { data: timesheet } = await supabase
-                        .from('timesheets')
-                        .select('id, status, clock_in_time, clock_out_time, actual_start_time, actual_end_time')
-                        .eq('shift_id', shift.id)
-                        .eq('status', 'approved')
-                        .single();
-
-                    if (timesheet) {
+                    // 🆕 Check 0: Non-GPS shift - auto-complete without GPS verification
+                    if (!requiresGPS) {
                         canAutoComplete = true;
-                        autoCompleteReason = 'Approved timesheet exists';
-                        console.log(`✅ [Shift Automation] Shift ${shift.id.substring(0, 8)} has approved timesheet - auto-completing`);
+                        autoCompleteReason = 'Non-GPS shift (manual timesheet mode)';
+                        console.log(`✅ [Shift Automation] Shift ${shift.id.substring(0, 8)} is non-GPS shift - auto-completing`);
                     }
 
-                    // Check 2: Is there GPS clock-in/out data?
+                    // Check 1: Is there an approved timesheet?
                     if (!canAutoComplete) {
+                        const { data: timesheet } = await supabase
+                            .from('timesheets')
+                            .select('id, status, clock_in_time, clock_out_time, actual_start_time, actual_end_time')
+                            .eq('shift_id', shift.id)
+                            .eq('status', 'approved')
+                            .single();
+
+                        if (timesheet) {
+                            canAutoComplete = true;
+                            autoCompleteReason = 'Approved timesheet exists';
+                            console.log(`✅ [Shift Automation] Shift ${shift.id.substring(0, 8)} has approved timesheet - auto-completing`);
+                        }
+                    }
+
+                    // Check 2: Is there GPS clock-in/out data? (Only for GPS-required shifts)
+                    if (!canAutoComplete && requiresGPS) {
                         const { data: gpsData } = await supabase
                             .from('timesheets')
                             .select('id, clock_in_time, clock_out_time, clock_in_location, clock_out_location')

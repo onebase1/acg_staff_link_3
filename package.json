@@ -23,6 +23,8 @@
     "test:pipeline:communication": "tsx tests/pipeline/cli.ts --pipeline='Communication Pipeline'",
     "test:pipeline:analytics": "tsx tests/pipeline/cli.ts --pipeline='Data & Analytics Pipeline'",
     "test:pipeline:integrations": "tsx tests/pipeline/cli.ts --pipeline='External Integrations Pipeline'",
+    "test:pipeline:scoring": "tsx tests/pipeline/cli.ts --pipeline='Scoring Pipeline'",
+    "test:scoring": "tsx tests/run-scoring-tests.ts",
     "test:ai-shift": "tsx tests/run-ai-shift-tests.ts"
   },
   "dependencies": {

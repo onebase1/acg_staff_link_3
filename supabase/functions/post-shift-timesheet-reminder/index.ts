@@ -7,6 +7,7 @@ import {
     logNotificationSkipped
 } from "../_shared/notificationLogger.ts";
 import { scheduleRetry } from "../_shared/retryHandler.ts";
+import { shiftRequiresGPS } from "../_shared/gpsHelper.ts";
 
 /**
  * 📋 POST-SHIFT TIMESHEET REMINDER
@@ -156,6 +157,13 @@ async function sendTimesheetReminder(supabase, shift) {
         .select("*");
 
     const client = allClients?.find(c => c.id === shift.client_id);
+
+    // 🆕 Skip timesheet reminders for non-GPS shifts (Option A - admin handles manually)
+    const requiresGPS = shiftRequiresGPS(shift, client);
+    if (!requiresGPS) {
+        console.log(`⏭️ [Reminder] Shift ${shift.id} - GPS not required, skipping timesheet reminder (admin will handle)`);
+        return { skipped: true, reason: 'Non-GPS shift - admin handles timesheet' };
+    }
 
     const { data: allAgencies } = await supabase
         .from("agencies")

@@ -8,6 +8,7 @@ import * as Communication from './implementations/communication';
 import * as DataAnalytics from './implementations/data-analytics';
 import * as Integrations from './implementations/integrations';
 import * as AIShiftCreator from './implementations/ai-shift-creator';
+import * as Scoring from './implementations/scoring';
 
 /**
  * Central registry mapping test IDs to implementation functions
@@ -74,7 +75,17 @@ export const testRegistry: TestRegistry = {
   'ai-001': AIShiftCreator.testAIShiftExtraction,
   'ai-002': AIShiftCreator.testAIShiftCreationInDatabase,
   'ai-003': AIShiftCreator.testAIShiftCreationWithValidation,
-  'ai-004': AIShiftCreator.testAIBulkMultiDayShiftCreation
+  'ai-004': AIShiftCreator.testAIBulkMultiDayShiftCreation,
+
+  // Scoring Pipeline (score-001 through score-008)
+  'score-001': Scoring.testStaffScoreColumnFix,
+  'score-002': Scoring.testScoreVisibilitySetting,
+  'score-003': Scoring.testScoreBandsInterpretation,
+  'score-004': Scoring.testShiftCompletionScoreIncrement,
+  'score-005': Scoring.testClientScoringQuery,
+  'score-006': Scoring.testScoreHistoryTracking,
+  'score-007': Scoring.testNoShowScorePenalty,
+  'score-008': Scoring.testTimesheetRatingQuery
 };
 
 /**

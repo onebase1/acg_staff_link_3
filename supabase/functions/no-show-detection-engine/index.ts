@@ -7,6 +7,7 @@ import {
     logNotificationSkipped
 } from "../_shared/notificationLogger.ts";
 import { scheduleRetry } from "../_shared/retryHandler.ts";
+import { shiftRequiresGPS, logGPSDecision } from "../_shared/gpsHelper.ts";
 
 /**
  * OPTION A: No-Show Detection Engine
@@ -64,7 +65,12 @@ serve(async (req) => {
 
         console.log(`📊 Found ${potentialNoShows.length} shifts to check for no-shows`);
 
-        const results = {
+        const results: {
+            checked: number;
+            noShows: { shift_id: string; staff_name: string; client_name: string | undefined; workflow_id: string; action: string }[];
+            reminded: { shift_id: string; staff_name: string; action: string }[];
+            errors: { shift_id: string; error: string }[];
+        } = {
             checked: potentialNoShows.length,
             noShows: [],
             reminded: [],
@@ -99,6 +105,15 @@ serve(async (req) => {
                     const staffMember = staffResult.data?.[0];
                     const clientData = clientResult.data?.[0];
 
+                    // 🆕 Check if this shift requires GPS clock-in
+                    const requiresGPS = shiftRequiresGPS(shift, clientData);
+                    logGPSDecision(shift.id, shift.requires_gps, clientData?.geofence_enabled, requiresGPS);
+
+                    if (!requiresGPS) {
+                        console.log(`⏭️ [No-Show] Skipping shift ${shift.id} - GPS clock-in not required for this client`);
+                        continue; // Skip no-show detection for non-GPS shifts
+                    }
+
                     // Check if we've already sent a reminder
                     const { data: workflows, error: workflowsError } = await supabase
                         .from("admin_workflows")
@@ -110,9 +125,14 @@ serve(async (req) => {
                         throw workflowsError;
                     }
 
+                    // Check if we already sent a no-show reminder (using shift flag)
+                    const alreadySentReminder = shift.no_show_reminder_sent === true;
+
                     if (workflows.length === 0) {
-                        // First detection - send reminder to staff
-                        if (staffMember?.phone) {
+                        // First detection - send reminder to staff (only if not already sent)
+                        if (alreadySentReminder) {
+                            console.log(`⏭️ [No-Show] Skipping reminder for shift ${shift.id} - already sent previously`);
+                        } else if (staffMember?.phone) {
                             try {
                                 const preferenceCheck = await shouldSendNotification(
                                     supabase,
@@ -133,7 +153,7 @@ serve(async (req) => {
                                         channel: 'sms',
                                         preferenceChecked: preferenceCheck.preferenceChecked,
                                         preferenceStatus: preferenceCheck.preferenceStatus,
-                                        skippedReason: preferenceCheck.reason,
+                                        skippedReason: preferenceCheck.reason || 'notification_disabled',
                                         metadata: { shift_id: shift.id, action: 'no_show_reminder' }
                                     });
                                 } else {
@@ -159,6 +179,12 @@ serve(async (req) => {
                                         metadata: { shift_id: shift.id, action: 'no_show_reminder' }
                                     });
 
+                                    // ✅ Mark shift as reminded to prevent duplicates
+                                    await supabase
+                                        .from('shifts')
+                                        .update({ no_show_reminder_sent: true })
+                                        .eq('id', shift.id);
+
                                     results.reminded.push({
                                         shift_id: shift.id,
                                         staff_name: `${staffMember.first_name} ${staffMember.last_name}`,
@@ -167,8 +193,9 @@ serve(async (req) => {
 
                                     console.log(`📱 Reminder sent to ${staffMember.first_name} ${staffMember.last_name}`);
                                 }
-                            } catch (smsError: any) {
-                                console.error('SMS send failed:', smsError);
+                            } catch (smsError) {
+                                const errorMsg = smsError instanceof Error ? smsError.message : 'Unknown error';
+                                console.error('SMS send failed:', errorMsg);
                                 await logNotificationFailed(supabase, {
                                     recipientEmail: staffMember.email,
                                     recipientType: 'staff',
@@ -176,7 +203,7 @@ serve(async (req) => {
                                     agencyId: shift.agency_id,
                                     notificationType: 'system_update',
                                     channel: 'sms',
-                                    errorMessage: smsError.message,
+                                    errorMessage: errorMsg,
                                     errorCode: 'send_failed'
                                 });
                                 // Retry logic for SMS? Maybe not for immediate no-show, but let's add it for consistency
@@ -274,10 +301,11 @@ serve(async (req) => {
                     }
                 }
             } catch (error) {
-                console.error(`Error processing shift ${shift.id}:`, error);
+                const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+                console.error(`Error processing shift ${shift.id}:`, errorMsg);
                 results.errors.push({
                     shift_id: shift.id,
-                    error: error.message
+                    error: errorMsg
                 });
             }
         }
@@ -293,11 +321,12 @@ serve(async (req) => {
         );
 
     } catch (error) {
-        console.error('❌ [No-Show Detection] Fatal error:', error);
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error('❌ [No-Show Detection] Fatal error:', errorMsg);
         return new Response(
             JSON.stringify({
                 success: false,
-                error: error.message
+                error: errorMsg
             }),
             { status: 500, headers: { "Content-Type": "application/json" } }
         );

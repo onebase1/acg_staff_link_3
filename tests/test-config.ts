@@ -5,9 +5,9 @@ config();
 
 export const TEST_CONFIG = {
   dominion: {
-    email: 'info@agilecaremanagement.co.uk',
-    password: 'Dominion#2025',
-    agency_name: 'Dominion Healthcare Services Ltd'
+    email: process.env.TEST_AGENCY_EMAIL || 'info@guest-glow.com',
+    password: process.env.TEST_AGENCY_PASSWORD || 'Dominion#2025',
+    agency_name: process.env.TEST_AGENCY_NAME || 'Guest Glow Healthcare'
   },
   staff: {
     email: process.env.TEST_STAFF_EMAIL || 'g.basera5+chadaira@gmail.com',

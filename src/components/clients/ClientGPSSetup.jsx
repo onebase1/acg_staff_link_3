@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
-  MapPin, Loader2, CheckCircle, Search, AlertTriangle
+  MapPin, Loader2, CheckCircle, Search, AlertTriangle, Smartphone, FileText
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -52,6 +53,11 @@ export default function ClientGPSSetup({ client, onComplete }) {
   });
   const [radius, setRadius] = useState(
     client?.geofence_radius_meters || 100
+  );
+
+  // 🆕 GPS Clock-In Enforcement Toggle
+  const [requireGPSClockIn, setRequireGPSClockIn] = useState(
+    client?.geofence_enabled !== false // Default to true unless explicitly false
   );
 
   const [selectedAddressDetails, setSelectedAddressDetails] = useState(null);
@@ -324,7 +330,7 @@ export default function ClientGPSSetup({ client, onComplete }) {
         longitude: lng
       },
       geofence_radius_meters: parseInt(radius),
-      geofence_enabled: true
+      geofence_enabled: requireGPSClockIn // 🆕 Uses toggle value instead of always true
     };
 
     // If we have captured address details from the search, update the client address too
@@ -492,6 +498,45 @@ export default function ClientGPSSetup({ client, onComplete }) {
         )}
 
         <div className="space-y-4 pt-4 border-t">
+          {/* 🆕 GPS Clock-In Enforcement Toggle */}
+          <div className="p-4 rounded-lg border bg-gray-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {requireGPSClockIn ? (
+                  <Smartphone className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <FileText className="w-5 h-5 text-amber-600" />
+                )}
+                <div>
+                  <Label htmlFor="require-gps" className="text-base font-semibold cursor-pointer">
+                    Require GPS Clock-In
+                  </Label>
+                  <p className="text-sm text-gray-600 mt-0.5">
+                    {requireGPSClockIn
+                      ? "Staff must clock in/out via the app with GPS verification"
+                      : "Timesheets managed manually (no GPS clock-in required)"
+                    }
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="require-gps"
+                checked={requireGPSClockIn}
+                onCheckedChange={setRequireGPSClockIn}
+              />
+            </div>
+
+            {!requireGPSClockIn && (
+              <Alert className="mt-3 border-amber-300 bg-amber-50">
+                <FileText className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-900 text-sm">
+                  <strong>Manual Timesheet Mode:</strong> Staff won't receive clock-in/out reminders.
+                  Timesheets will be created automatically but hours must be entered by admin.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+
           <div>
             <Label htmlFor="geofence-radius">Geofence Radius (meters)</Label>
             <div className="flex items-center gap-4">
@@ -538,12 +583,14 @@ export default function ClientGPSSetup({ client, onComplete }) {
             </div>
           </div>
 
-          <Alert className="border-blue-300 bg-blue-50">
-            <AlertTriangle className="h-5 w-5 text-blue-600" />
-            <AlertDescription className="text-blue-900">
-              <strong>Info:</strong> Geofencing will be enabled automatically for this client upon saving.
-            </AlertDescription>
-          </Alert>
+          {requireGPSClockIn && (
+            <Alert className="border-blue-300 bg-blue-50">
+              <Smartphone className="h-5 w-5 text-blue-600" />
+              <AlertDescription className="text-blue-900">
+                <strong>GPS Mode:</strong> Staff will receive clock-in/out reminders and must use the app to verify attendance.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         <div className="flex gap-3">

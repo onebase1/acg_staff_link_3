@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -10,40 +11,62 @@ import {
   Award, Flame, Target, Shield, Zap, ThumbsUp
 } from 'lucide-react';
 import { calculateImprovementTips } from '@/services/scoring/improvementCalculator';
+import { createPageUrl } from '@/utils';
 
 /**
  * 🏆 MY SCORE - Staff Reliability Dashboard
- * 
+ *
  * Shows staff their current reliability score, breakdown,
  * earned badges, and personalized tips to improve.
+ *
+ * 🔒 Visibility controlled by agency setting: show_score_to_staff
  */
 
 export default function MyScore() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [staffProfile, setStaffProfile] = useState(null);
   const [badges, setBadges] = useState([]);
   const [error, setError] = useState(null);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   useEffect(() => {
-    fetchStaffData();
+    checkAccessAndFetchData();
   }, []);
 
-  const fetchStaffData = async () => {
+  const checkAccessAndFetchData = async () => {
     try {
       setLoading(true);
 
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      if (!user) {
+        navigate(createPageUrl('Login'));
+        return;
+      }
 
-      // Get staff profile with score data
+      // Get staff record to find agency_id
       const { data: staff, error: staffError } = await supabase
         .from('staff')
-        .select('id, first_name, last_name, reliability_score, score_breakdown, current_streak, longest_streak, urgent_shifts_covered, last_incident_date, created_date')
+        .select('id, agency_id, first_name, last_name, reliability_score, score_breakdown, current_streak, longest_streak, urgent_shifts_covered, last_incident_date, created_date')
         .eq('user_id', user.id)
         .single();
 
       if (staffError) throw staffError;
+
+      // Check if agency allows score visibility
+      const { data: agency, error: agencyError } = await supabase
+        .from('agencies')
+        .select('show_score_to_staff')
+        .eq('id', staff.agency_id)
+        .single();
+
+      if (!agency?.show_score_to_staff) {
+        setAccessDenied(true);
+        setLoading(false);
+        return;
+      }
+
       setStaffProfile(staff);
 
       // Get earned badges
@@ -76,7 +99,7 @@ export default function MyScore() {
   const getScoreBand = (score) => {
     if (score >= 90) return { label: 'Elite', color: 'bg-emerald-100 text-emerald-800', icon: Trophy };
     if (score >= 70) return { label: 'Reliable', color: 'bg-blue-100 text-blue-800', icon: Shield };
-    if (score >= 50) return { label: 'Average', color: 'bg-amber-100 text-amber-800', icon: Target };
+    if (score >= 50) return { label: 'Building', color: 'bg-blue-50 text-blue-700', icon: TrendingUp }; // 🆕 Changed from "Average" to "Building" - more positive for new staff
     return { label: 'At Risk', color: 'bg-red-100 text-red-800', icon: AlertCircle };
   };
 
@@ -106,6 +129,29 @@ export default function MyScore() {
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>Error loading score: {error}</AlertDescription>
       </Alert>
+    );
+  }
+
+  // 🔒 Access denied - agency has disabled score visibility for staff
+  if (accessDenied) {
+    return (
+      <div className="max-w-4xl mx-auto p-4">
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-8 text-center">
+            <Shield className="w-16 h-16 text-amber-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Score Not Available</h2>
+            <p className="text-gray-600 mb-4">
+              Your agency has not enabled staff score visibility. Contact your administrator if you have questions.
+            </p>
+            <button
+              onClick={() => navigate(createPageUrl('StaffPortal'))}
+              className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+            >
+              Back to Staff Portal
+            </button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -151,7 +197,7 @@ export default function MyScore() {
           <CardDescription>How your score is calculated</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <ScoreItem label="Base Score" value={breakdown.base || 50} max={50} color="bg-gray-500" />
+          <ScoreItem label="Starting Score" value={breakdown.base || 50} max={50} color="bg-indigo-400" suffix="✓" isBase />
           <ScoreItem label="Attendance" value={breakdown.attendance || 0} max={20} color="bg-green-500" suffix={`+${breakdown.attendance || 0}`} />
           <ScoreItem label="Client Ratings" value={breakdown.ratings || 0} max={20} color="bg-yellow-500" suffix={`+${breakdown.ratings || 0}`} />
           <ScoreItem label="Loyalty" value={breakdown.loyalty || 0} max={5} color="bg-blue-500" suffix={`+${breakdown.loyalty || 0}`} />
@@ -239,13 +285,16 @@ export default function MyScore() {
 }
 
 // Helper Components
-function ScoreItem({ label, value, max, color, suffix, isNegative }) {
+function ScoreItem({ label, value, max, color, suffix, isNegative, isBase }) {
   const percentage = Math.min((value / max) * 100, 100);
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-sm">
-        <span className="text-gray-600">{label}</span>
-        <span className={isNegative ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}>{suffix}</span>
+        <span className="text-gray-600">
+          {label}
+          {isBase && <span className="text-xs text-indigo-500 ml-2">(Everyone starts here)</span>}
+        </span>
+        <span className={isNegative ? 'text-red-600 font-medium' : isBase ? 'text-indigo-600 font-medium' : 'text-green-600 font-medium'}>{suffix}</span>
       </div>
       <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
         <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${percentage}%` }} />

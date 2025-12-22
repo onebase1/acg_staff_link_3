@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Settings, Save, Info, Bell, AlertTriangle, Upload, Building2,
   Shield, Zap, DollarSign, RefreshCw, CheckCircle, Rocket, Star, MapPin, XCircle,
-  MessageSquare, Mail, MessageCircle
+  MessageSquare, Mail, MessageCircle, Users
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -717,6 +717,94 @@ export default function AgencySettings() {
             </div>
           </div>
 
+
+          {/* Auto-Assign Shifts */}
+          <div className="border-l-4 border-blue-500 pl-4 py-2 hover:bg-blue-50/50 transition-colors">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <Users className="w-5 h-5 text-blue-600" />
+                <div>
+                  <h4 className="font-semibold text-gray-900">🤖 Auto-Assign Shifts</h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Automatically assign shifts to preferred/qualified staff immediately upon creation
+                  </p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={getCurrentValue('settings.automation_settings.auto_assign_enabled', false)}
+                  onChange={(e) => updateField('settings.automation_settings.auto_assign_enabled', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+
+            {/* Auto-Confirm Mode Sub-Toggle (only visible when auto-assign enabled) */}
+            {getCurrentValue('settings.automation_settings.auto_assign_enabled', false) && (
+              <div className="ml-8 mt-3 p-3 bg-blue-50/50 rounded-lg border border-blue-200">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">⚡</span>
+                    <div>
+                      <h5 className="font-medium text-gray-900 text-sm">Auto-Confirm Mode</h5>
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        Skip staff confirmation step (staff is immediately confirmed)
+                      </p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={getCurrentValue('settings.automation_settings.auto_confirm_mode', false)}
+                      onChange={(e) => updateField('settings.automation_settings.auto_confirm_mode', e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500"></div>
+                  </label>
+                </div>
+
+                {/* Explanation based on mode */}
+                <div className="mt-2 text-xs">
+                  {getCurrentValue('settings.automation_settings.auto_confirm_mode', false) ? (
+                    <div className="flex items-center gap-2 text-orange-700 bg-orange-100 p-2 rounded">
+                      <span>⚡</span>
+                      <span>Staff will be <strong>auto-confirmed</strong> without needing to accept. Use for trusted regulars.</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-blue-700 bg-blue-100 p-2 rounded">
+                      <span>📩</span>
+                      <span>Staff must <strong>confirm within 24h</strong> or shift reassigns to next best match.</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Details */}
+            <div className="ml-8 space-y-2 text-sm mt-3">
+              <p className="font-medium text-gray-700 mb-2">How it works:</p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span>AI scores staff: reliability (40%), client history (25%), availability (20%), fairness (15%)</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span>Top scorer (60+ points) is auto-assigned or auto-confirmed</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span>No match? Shift moves to marketplace for staff to claim</span>
+                </div>
+              </div>
+              <p className="text-xs text-blue-700 mt-3 bg-blue-100 p-2 rounded">
+                💡 Default is Disabled. Enable this to speed up fulfillment for trusted staff lists.
+              </p>
+            </div>
+          </div>
+
           {/* GPS Auto-Completion Setting */}
           <div className="border-l-4 border-green-500 pl-4 py-2">
             <div className="flex items-start justify-between mb-4">
@@ -865,6 +953,49 @@ export default function AgencySettings() {
 
               <p className="text-xs text-red-700 mt-3 bg-red-100 p-2 rounded">
                 💡 <strong>Testing Mode:</strong> Enable all 3 channels to test, then disable unwanted ones for production. Manual override lets you choose channels per broadcast.
+              </p>
+            </div>
+          </div>
+
+          {/* Staff Portal Settings */}
+          <div className="border-t pt-6 mt-6">
+            <div className="mb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <Users className="w-5 h-5 text-indigo-600" />
+                <div>
+                  <h4 className="font-semibold text-gray-900">👤 Staff Portal Settings</h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Control what staff can see in their portal
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="ml-8 space-y-4">
+              {/* Show Score Toggle */}
+              <div className="flex items-start justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+                <div className="flex items-start gap-3">
+                  <Star className="w-5 h-5 text-indigo-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-gray-900">Show Reliability Score</p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Allow staff to see their reliability score in the Staff Portal
+                    </p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={getCurrentValue('show_score_to_staff', false)}
+                    onChange={(e) => updateField('show_score_to_staff', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+              </div>
+
+              <p className="text-xs text-indigo-700 mt-3 bg-indigo-100 p-2 rounded">
+                💡 <strong>Note:</strong> When enabled, staff will see a "My Score" link in their sidebar showing their reliability score (0-100), breakdown, and tips to improve.
               </p>
             </div>
           </div>

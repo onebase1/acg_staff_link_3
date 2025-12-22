@@ -8,6 +8,7 @@ import {
 } from "../_shared/notificationLogger.ts";
 import { scheduleRetry } from "../_shared/retryHandler.ts";
 import { getBranding } from "../_shared/getBranding.ts";
+import { shiftRequiresGPS } from "../_shared/gpsHelper.ts";
 
 /**
  * 📲 SMART CLOCK-OUT REMINDER SYSTEM (Phase 2)
@@ -117,9 +118,16 @@ serve(async (req) => {
                 // Get client details for better messaging
                 const { data: client } = await supabase
                     .from('clients')
-                    .select('name')
+                    .select('name, geofence_enabled')
                     .eq('id', shift.client_id)
                     .single();
+
+                // 🆕 Check if this shift requires GPS clock-in
+                const requiresGPS = shiftRequiresGPS(shift, client);
+                if (!requiresGPS) {
+                    console.log(`⏭️ [Smart Reminders] Shift ${shift.id.substring(0, 8)} - GPS not required for this client, skipping`);
+                    continue;
+                }
 
                 const clientName = client?.name || 'the facility';
 

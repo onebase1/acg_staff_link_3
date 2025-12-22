@@ -20,9 +20,9 @@ export const onShiftUpdate = async (payload) => {
     if (newStatus === 'completed' && oldStatus !== 'completed') {
         console.log(`Shift ${record.id} completed. Recalculating scores.`);
 
-        // Recalculate Staff Score (+Attendance)
-        if (record.staff_id) {
-            await calculateStaffScore(record.staff_id, 'Shift Completed');
+        // 🆕 FIXED: Use assigned_staff_id (correct column name)
+        if (record.assigned_staff_id) {
+            await calculateStaffScore(record.assigned_staff_id, 'Shift Completed');
         }
 
         // Recalculate Client Score (Fill Rate)
@@ -44,8 +44,15 @@ export const onShiftUpdate = async (payload) => {
     // 3. No-Show Recorded
     if (newStatus === 'no_show' && oldStatus !== 'no_show') {
         console.log(`No-show recorded for shift ${record.id}. Recalculating staff score.`);
-        if (record.staff_id) {
-            await calculateStaffScore(record.staff_id, 'No-Show Penalty');
+        // 🆕 FIXED: Use assigned_staff_id (correct column name)
+        if (record.assigned_staff_id) {
+            await calculateStaffScore(record.assigned_staff_id, 'No-Show Penalty');
         }
+    }
+
+    // 4. 🆕 Shift Confirmed (staff accepted)
+    if (newStatus === 'confirmed' && oldStatus !== 'confirmed') {
+        console.log(`Shift ${record.id} confirmed. Updating staff streak.`);
+        // Streak updates happen in the scoring calculation
     }
 };

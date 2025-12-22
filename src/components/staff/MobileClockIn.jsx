@@ -528,6 +528,18 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
 
       await supabase.from('shifts').update({ status: 'completed', shift_ended_at: clockOutTime }).eq('id', shift.id);
 
+      // 🆕 UPDATE STAFF RELIABILITY SCORE
+      if (shift.assigned_staff_id) {
+        try {
+          const { calculateStaffScore } = await import('@/services/scoring/staffScoring');
+          await calculateStaffScore(shift.assigned_staff_id, 'Shift Completed (GPS Clock-Out)');
+          console.log('✅ [Scoring] Staff score updated for GPS clock-out');
+        } catch (scoreError) {
+          console.error('⚠️ [Scoring] Failed to update staff score:', scoreError);
+          // Don't fail - scoring is non-critical
+        }
+      }
+
       // Call intelligent validator
       try {
         const { data: validatorData } = await invokeFunction('intelligent-timesheet-validator', {

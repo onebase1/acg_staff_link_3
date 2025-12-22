@@ -1,4 +1,4 @@
-import { supabase } from '../../supabaseClient';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Calculates and updates the reliability score for a staff member.
@@ -17,29 +17,43 @@ export const calculateStaffScore = async (staffId, reason = 'Manual Update') => 
 
         if (staffError) throw staffError;
 
-        // 2. Fetch Metrics (This would ideally be a complex query or aggregation)
-        // For now, we'll simulate fetching metrics or assume some are stored/calculated
-        // In a real implementation, we would query shifts, ratings, etc.
+        // 2. Fetch Metrics
+        // 🆕 FIXED: Use assigned_staff_id (correct column name in shifts table)
         const { count: completedShifts } = await supabase
             .from('shifts')
             .select('id', { count: 'exact', head: true })
-            .eq('staff_id', staffId)
+            .eq('assigned_staff_id', staffId)
             .eq('status', 'completed');
 
-        const { data: ratings } = await supabase
-            .from('ratings') // Assuming a ratings table exists or we query shifts with ratings
-            .select('rating')
-            .eq('staff_id', staffId);
+        // Get ratings - try multiple sources (graceful degradation)
+        // Future: Add client_rating column to timesheets or use post_shift_feedback
+        let averageRating = 0;
+        let ratings = [];
 
-        const averageRating = ratings?.length
-            ? ratings.reduce((acc, curr) => acc + curr.rating, 0) / ratings.length
-            : 0;
+        try {
+            // Try post_shift_feedback table first (if exists)
+            const { data: feedbackData, error: feedbackError } = await supabase
+                .from('post_shift_feedback')
+                .select('rating')
+                .eq('staff_id', staffId)
+                .not('rating', 'is', null);
 
+            if (!feedbackError && feedbackData?.length) {
+                ratings = feedbackData;
+                averageRating = ratings.reduce((acc, curr) => acc + (curr.rating || 0), 0) / ratings.length;
+            }
+        } catch (ratingError) {
+            // Ratings feature not available - default to 0
+            console.log('📊 [Scoring] Rating feature not available, defaulting to 0');
+            averageRating = 0;
+        }
+
+        // 🆕 FIXED: Use assigned_staff_id for no-show count
         const { count: noShows } = await supabase
             .from('shifts')
             .select('id', { count: 'exact', head: true })
-            .eq('staff_id', staffId)
-            .eq('status', 'no_show'); // Assuming 'no_show' status exists
+            .eq('assigned_staff_id', staffId)
+            .eq('status', 'no_show');
 
         // 3. Calculate Score
         let score = 50; // Base Score

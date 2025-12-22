@@ -189,6 +189,13 @@ export default function PostShiftV3() {
         </div>,
         { duration: 6000 }
       );
+
+      // ✅ AUTO-ASSIGNMENT: Trigger engine for non-urgent shifts (runs in background)
+      if (data && data.length > 0 && urgency !== 'urgent') {
+        const shiftIds = data.map(s => s.id);
+        triggerAutoAssignment(shiftIds, user?.agency_id);
+      }
+
       navigate(createPageUrl('Shifts'));
     },
     onError: (error) => {

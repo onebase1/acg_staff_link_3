@@ -607,7 +607,15 @@ export default function Layout({ children, currentPageName }) {
           {/* Staff Portal (for staff users) */}
           {user?.user_type === 'staff_member' && (
             <div className="mb-4">
-              {staffPortalItems.map((item) => (
+              {staffPortalItems
+                .filter(item => {
+                  // Hide "My Score" if agency has disabled it
+                  if (item.title === 'My Score' && !agency?.show_score_to_staff) {
+                    return false;
+                  }
+                  return true;
+                })
+                .map((item) => (
                 <Link
                   key={item.title}
                   to={item.url}
