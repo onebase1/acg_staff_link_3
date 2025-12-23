@@ -96,7 +96,7 @@ const staffPortalItems = [
   { title: "My Shifts", url: createPageUrl("MyShifts"), icon: Calendar, staffOnly: true },
   { title: "My Score", url: createPageUrl("MyScore"), icon: Trophy, staffOnly: true },
   { title: "My Timesheets", url: createPageUrl("Timesheets"), icon: FileText, staffOnly: true },
-  { title: "Find Shifts", url: createPageUrl("ShiftMarketplace"), icon: Calendar, staffOnly: true },
+  { title: "Shift Marketplace", url: createPageUrl("ShiftMarketplace"), icon: Calendar, staffOnly: true },
   { title: "My Availability", url: createPageUrl("MyAvailability"), icon: Clock, staffOnly: true },
   { title: "My Compliance", url: createPageUrl("ComplianceTracker"), icon: Shield, staffOnly: true },
 ];

@@ -1591,13 +1591,13 @@ export default function StaffPortal() {
 
       {/* Quick Actions - MOBILE: Single column, DESKTOP: 2 columns */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="h-24 flex flex-col gap-2 border-2"
           onClick={() => navigate(createPageUrl('ShiftMarketplace'))}
         >
           <Calendar className="w-6 h-6 text-purple-600" />
-          <span className="font-semibold">Find Shifts</span>
+          <span className="font-semibold">Shift Marketplace</span>
         </Button>
         <Button 
           variant="outline" 
