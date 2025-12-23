@@ -191,8 +191,9 @@ export default function ShiftMarketplace() {
           return false;
         }
 
-        // EITHER: Admin has marked it visible in marketplace
-        // OR: Matches staff availability (auto-matched)
+        // BOTH conditions must be true:
+        // 1. Admin has marked it visible in marketplace (primary requirement)
+        // 2. Matches staff availability (secondary filter)
         const isAdminApproved = shift.marketplace_visible === true;
 
         const isAutoMatched = (() => {
@@ -206,7 +207,7 @@ export default function ShiftMarketplace() {
           return availability.includes(shiftType);
         })();
 
-        return isAdminApproved || isAutoMatched;
+        return isAdminApproved && isAutoMatched;
       });
 
       console.log('Marketplace shifts:', openShifts.length);
