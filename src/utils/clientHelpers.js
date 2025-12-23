@@ -19,20 +19,27 @@ import { normalizeRole } from '@/constants/staffRoles';
  */
 export function getEnabledRoles(client) {
   if (!client) return [];
-  
+
   // Check enabled_roles field first (new approach)
-  if (client.enabled_roles && typeof client.enabled_roles === 'object') {
-    return Object.keys(client.enabled_roles)
-      .filter(role => client.enabled_roles[role] === true)
+  // Must have actual entries - empty object {} should fall through to rates_by_role
+  const enabledRolesKeys = client.enabled_roles ? Object.keys(client.enabled_roles) : [];
+  if (enabledRolesKeys.length > 0) {
+    return enabledRolesKeys
+      .filter(role => {
+        const val = client.enabled_roles[role];
+        // Handle both formats: { enabled: true } or just true
+        return val === true || (val && val.enabled === true);
+      })
       .map(role => normalizeRole(role));
   }
-  
-  // Fallback: derive from rates_by_role (legacy)
+
+  // Fallback: derive from rates_by_role
+  // A role is enabled if it has charge_rate > 0 (contractually agreed rate)
   const rates = client.contract_terms?.rates_by_role || {};
   return Object.keys(rates)
     .filter(role => {
       const rate = rates[role];
-      return rate && (rate.charge_rate > 0 || rate.pay_rate > 0);
+      return rate && rate.charge_rate > 0;
     })
     .map(role => normalizeRole(role));
 }
