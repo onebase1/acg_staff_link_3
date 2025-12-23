@@ -320,6 +320,7 @@ export default function ShiftMarketplace() {
       }
 
       // 🚀 NOTIFY STAFF (Batched)
+      const client = clients.find(c => c.id === shift.client_id);
       try {
         if (agency && staffProfile) {
           console.log('📧 [Marketplace Accept] Queueing confirmation email for staff:', staffProfile.email);
@@ -631,7 +632,7 @@ export default function ShiftMarketplace() {
                     <div className="text-right">
                       <p className="text-sm text-gray-600">Earn</p>
                       <p className="text-2xl font-bold text-green-600">
-                        £{calculateEarnings(shift).toFixed(0)}
+                        £{calculateStaffEarnings(shift).toFixed(0)}
                       </p>
                     </div>
                   </div>
