@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import PayDisplay from "../components/timesheets/PayDisplay";
 import TimesheetUploader from "../components/timesheets/TimesheetUploader";
+import { GPSDetails } from "../components/timesheets/GPSIndicator";
 import timesheetService from "@/services/timesheetService";
 
 export default function TimesheetDetail() {
