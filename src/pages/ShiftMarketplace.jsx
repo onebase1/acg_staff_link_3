@@ -444,7 +444,7 @@ export default function ShiftMarketplace() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2">
-              Available Shifts
+              Shift Marketplace
             </h1>
             <p className="text-purple-50">
               {availableShifts.length} shifts matched to your profile
@@ -694,7 +694,7 @@ export default function ShiftMarketplace() {
         <Card>
           <CardContent className="p-12 text-center">
             <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Available Shifts</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Shifts in Marketplace</h3>
             <p className="text-gray-600">
               Check back soon! New shifts matching your profile will appear here.
             </p>

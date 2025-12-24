@@ -417,7 +417,7 @@ export default function QuickActions() {
               <Link to={createPageUrl('ShiftMarketplace')}>
                 <Button variant="outline" className="w-full h-24 flex flex-col gap-2 hover:bg-purple-50">
                   <Calendar className="w-6 h-6 text-purple-600" />
-                  <span className="text-sm font-medium">Available Shifts</span>
+                  <span className="text-sm font-medium">Shift Marketplace</span>
                 </Button>
               </Link>
 

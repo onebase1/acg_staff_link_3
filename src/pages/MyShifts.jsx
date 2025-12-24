@@ -842,7 +842,7 @@ export default function MyShifts() {
                     onClick={() => navigate(createPageUrl('ShiftMarketplace'))}
                   >
                     <CalendarCheck className="w-4 h-4 mr-2" />
-                    Find Available Shifts
+                    Browse Shift Marketplace
                   </Button>
                 </div>
               </CardContent>
