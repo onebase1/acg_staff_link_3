@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,16 +112,21 @@ const getClientShiftTemplates = (client) => {
 
 export default function PostShiftV2() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentAgency, setCurrentAgency] = useState(null);
 
+  // ✅ Pre-fill from URL params if available (e.g., from Live Rota)
+  const initialClientId = searchParams.get('client_id') || '';
+  const initialDate = searchParams.get('date') || '';
+
   // ✅ REMOVED: Add location modal (locations managed in /clients only)
   const [formData, setFormData] = useState({
-    client_id: '',
+    client_id: initialClientId,
     role_required: '',
-    date: '',
+    date: initialDate,
     shift_template: '',
     start_time: '08:00',
     end_time: '20:00',

@@ -15,7 +15,19 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * - ✅ Financial lock only happens when invoice is SENT
  */
 
+// CORS headers for browser requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 serve(async (req) => {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders });
+    }
+
     try {
         const supabase = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",
@@ -29,7 +41,7 @@ serve(async (req) => {
             if (authError || !user) {
                 return new Response(JSON.stringify({ error: 'Unauthorized' }), {
                     status: 401,
-                    headers: { "Content-Type": "application/json" }
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
                 });
             }
         }
@@ -71,7 +83,7 @@ serve(async (req) => {
                 error: 'Must provide either timesheet_ids or auto_mode=true'
             }), {
                 status: 400,
-                headers: { "Content-Type": "application/json" }
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
         }
 
@@ -81,7 +93,7 @@ serve(async (req) => {
                 message: 'No timesheets to invoice',
                 invoices_created: 0
             }), {
-                headers: { "Content-Type": "application/json" }
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
         }
 
@@ -100,7 +112,7 @@ serve(async (req) => {
                     locked_count: lockedTimesheets.length
                 }), {
                     status: 400,
-                    headers: { "Content-Type": "application/json" }
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
                 });
             }
         }
@@ -174,7 +186,7 @@ serve(async (req) => {
                 }
             }), {
                 status: 400,
-                headers: { "Content-Type": "application/json" }
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
         }
 
@@ -459,7 +471,7 @@ serve(async (req) => {
                     ? '🚫 Invoice generation blocked due to validation errors. Resolve issues and try again.'
                     : 'No invoices created.'
         }), {
-            headers: { "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
 
     } catch (error) {
@@ -469,7 +481,7 @@ serve(async (req) => {
             error: error.message
         }), {
             status: 500,
-            headers: { "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
     }
 });

@@ -544,6 +544,66 @@ export default function Shifts() {
         }).catch(console.error);
       }
 
+      // 4. ✅ NEW: Handle staff unassignment (CONFIRMED/ASSIGNED → OPEN)
+      if (originalShift.assigned_staff_id &&
+          !updated.assigned_staff_id &&
+          ['assigned', 'confirmed'].includes(originalShift.status)) {
+
+        const unassignedStaff = staff.find(s => s.id === originalShift.assigned_staff_id);
+
+        console.log(`🔔 [Unassignment] Staff removed from shift: ${unassignedStaff?.first_name} ${unassignedStaff?.last_name}`);
+
+        // Send multi-channel unassignment notification
+        if (unassignedStaff?.email) {
+          supabase.functions.invoke('critical-change-notifier', {
+            body: {
+              change_type: 'shift_reassigned', // Reuse existing template
+              staff_email: unassignedStaff.email,
+              staff_name: `${unassignedStaff.first_name} ${unassignedStaff.last_name}`,
+              client_name: client?.name || 'Unknown Client',
+              shift_date: originalShift.date,
+              shift_time: `${originalShift.start_time} - ${originalShift.end_time}`,
+              reason: 'Admin removed you from this shift',
+              agency_id: originalShift.agency_id
+            }
+          }).catch(console.error);
+
+          toast.warning(`📧 Sent unassignment notification to ${unassignedStaff.first_name} via Email + SMS + WhatsApp`);
+        }
+
+        // ✅ Clean up orphaned DRAFT timesheets
+        try {
+          const { data: orphanedTimesheets, error: fetchError } = await supabase
+            .from('timesheets')
+            .select('id, status')
+            .eq('staff_id', originalShift.assigned_staff_id)
+            .eq('shift_date', originalShift.date)
+            .eq('client_id', originalShift.client_id)
+            .in('status', ['draft', 'pending']);
+
+          if (!fetchError && orphanedTimesheets && orphanedTimesheets.length > 0) {
+            console.log(`🗑️ [Cleanup] Found ${orphanedTimesheets.length} orphaned draft timesheet(s)`);
+
+            const { error: deleteError } = await supabase
+              .from('timesheets')
+              .delete()
+              .in('id', orphanedTimesheets.map(t => t.id));
+
+            if (!deleteError) {
+              console.log(`✅ [Cleanup] Deleted ${orphanedTimesheets.length} orphaned timesheet(s)`);
+              toast.info(`🗑️ Cleaned up ${orphanedTimesheets.length} draft timesheet(s)`);
+            } else {
+              console.error('❌ [Cleanup] Failed to delete timesheets:', deleteError);
+            }
+          } else {
+            console.log('ℹ️ [Cleanup] No orphaned draft timesheets found');
+          }
+        } catch (cleanupError) {
+          console.error('❌ [Cleanup] Error during timesheet cleanup:', cleanupError);
+          // Don't block the main flow if cleanup fails
+        }
+      }
+
       setEditingShift(null);
     },
     onError: (error) => {
@@ -672,10 +732,20 @@ export default function Shifts() {
           console.log('📧 [Shifts] Calling NotificationService.notifyShiftAssignment...');
           console.log('📧 [Shifts] Staff:', assignedStaff.first_name, assignedStaff.phone);
           console.log('📧 [Shifts] Shift:', shift.id, shift.date);
+          console.log('📧 [Shifts] New status:', newStatus);
+
+          // ✅ FIX: Pass updated shift with new status (not stale shift object)
+          const updatedShift = {
+            ...shift,
+            status: newStatus,
+            assigned_staff_id: staffId,
+            staff_confirmed_at: bypassConfirmation ? new Date().toISOString() : shift.staff_confirmed_at,
+            staff_confirmation_method: bypassConfirmation ? 'admin_bypass' : shift.staff_confirmation_method
+          };
 
           const staffResult = await NotificationService.notifyShiftAssignment({
             staff: assignedStaff,
-            shift: shift,
+            shift: updatedShift, // ✅ Use updated shift, not stale one
             client: client,
             agency: agency,
             useBatching: true
@@ -1235,7 +1305,7 @@ export default function Shifts() {
   // ✅ NEW: Handle request timesheet
   const handleRequestTimesheet = (shift) => {
     if (!shift.assigned_staff_id) {
-      toast.error('No staff assigned to this shift');
+      toast.error('❌ Cannot request timesheet - no staff currently assigned to this shift. Please assign staff first.');
       return;
     }
 
@@ -2567,14 +2637,28 @@ export default function Shifts() {
                         </div>
                       </div>
                       {editingShift.assigned_staff_id && (
-                        <div>
-                          <span className="text-gray-600">Currently Assigned:</span>
-                          <p className="font-semibold">
-                            {(() => {
-                              const assignedStaff = staff.find(s => s.id === editingShift.assigned_staff_id);
-                              return assignedStaff ? `${assignedStaff.first_name} ${assignedStaff.last_name} - ${assignedStaff.role}` : 'Unknown';
-                            })()}
-                          </p>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-gray-600">Currently Assigned:</span>
+                            <p className="font-semibold">
+                              {(() => {
+                                const assignedStaff = staff.find(s => s.id === editingShift.assigned_staff_id);
+                                return assignedStaff ? `${assignedStaff.first_name} ${assignedStaff.last_name} - ${assignedStaff.role}` : 'Unknown';
+                              })()}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingShift(null);
+                              setAssigningShift(editingShift.id);
+                            }}
+                            className="ml-2"
+                          >
+                            <UserPlus className="w-4 h-4 mr-1" />
+                            Reassign
+                          </Button>
                         </div>
                       )}
                     </div>

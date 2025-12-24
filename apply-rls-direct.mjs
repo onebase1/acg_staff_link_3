@@ -27,7 +27,7 @@ async function applyRLS() {
     console.log('✅ Connected successfully!\n');
 
     // Read SQL file
-    const sqlFile = './supabase/migrations/20251112000000_enable_rls_policies.sql';
+    const sqlFile = './supabase/migrations/20251224_update_magic_tokens_and_cron.sql';
     console.log(`📄 Reading: ${sqlFile}`);
     const sql = readFileSync(sqlFile, 'utf8');
     console.log(`✅ Loaded ${sql.length} characters\n`);

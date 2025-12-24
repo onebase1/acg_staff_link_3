@@ -70,7 +70,9 @@
       "Bash(test:*)",
       "Bash(.gitignore)",
       "Bash(git rm:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(git show:*)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []

@@ -26,6 +26,15 @@ export default function ShiftCalendar() {
   const [selectedStaff, setSelectedStaff] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all'); // ✅ NEW: Status filter
   const [currentAgency, setCurrentAgency] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [selectedDayShifts, setSelectedDayShifts] = useState(null); // For mobile month view
+
+  // Handle Resize
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Get current user and agency
   useEffect(() => {
@@ -201,8 +210,8 @@ export default function ShiftCalendar() {
     try {
       const today = new Date();
       return date.getDate() === today.getDate() &&
-             date.getMonth() === today.getMonth() &&
-             date.getFullYear() === today.getFullYear();
+        date.getMonth() === today.getMonth() &&
+        date.getFullYear() === today.getFullYear();
     } catch (error) {
       return false;
     }
@@ -211,7 +220,7 @@ export default function ShiftCalendar() {
   const isInCurrentMonth = (date) => {
     try {
       return date.getMonth() === currentDate.getMonth() &&
-             date.getFullYear() === currentDate.getFullYear();
+        date.getFullYear() === currentDate.getFullYear();
     } catch (error) {
       return false;
     }
@@ -291,14 +300,14 @@ export default function ShiftCalendar() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Agency Calendar</h2>
-          <p className="text-gray-600 mt-1">Holistic overview of all shifts and staffing coverage</p>
+          <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">Agency Calendar</h2>
+          <p className="text-slate-500 text-xs md:text-sm font-bold uppercase tracking-widest mt-1">Holistic Overview</p>
         </div>
-        <div className="flex gap-2">
-          <Link to={createPageUrl('PostShiftV2')}>
-            <Button className="bg-gradient-to-r from-cyan-500 to-blue-600">
+        <div className="flex w-full md:w-auto gap-2">
+          <Link to={createPageUrl('PostShiftV2')} className="flex-1 md:flex-none">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 rounded-xl font-black shadow-lg shadow-blue-200">
               <UserPlus className="w-4 h-4 mr-2" />
               Create Shift
             </Button>
@@ -306,64 +315,54 @@ export default function ShiftCalendar() {
         </div>
       </div>
 
-      {/* ✅ ENHANCED: Stats Row with ALL statuses */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setSelectedStatus('all')}>
+      {/* ✅ ENHANCED: Stats Row - Scrollable on Mobile */}
+      <div className="flex md:grid md:grid-cols-5 gap-3 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 no-scrollbar">
+        <Card className="min-w-[140px] cursor-pointer hover:shadow-md transition-all border-slate-200 rounded-2xl" onClick={() => setSelectedStatus('all')}>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-600">Total Shifts</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-              </div>
-              <CalendarIcon className="w-8 h-8 text-gray-400" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setSelectedStatus('open')}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-red-600 font-semibold">Open</p>
-                <p className="text-2xl font-bold text-red-600">{stats.open}</p>
-              </div>
-              <AlertCircle className="w-8 h-8 text-red-400" />
+            <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Total</p>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-black text-slate-800">{stats.total}</p>
+              <CalendarIcon className="w-5 h-5 text-slate-300 mb-1" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setSelectedStatus('assigned')}>
+        <Card className="min-w-[140px] cursor-pointer hover:shadow-md transition-all border-red-100 bg-red-50/30 rounded-2xl" onClick={() => setSelectedStatus('all')}>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-blue-600 font-semibold">Assigned</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.assigned}</p>
-              </div>
-              <Clock className="w-8 h-8 text-blue-400" />
+            <p className="text-[10px] font-black uppercase text-red-600 tracking-widest mb-1">Open</p>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-black text-red-600">{stats.open}</p>
+              <AlertCircle className="w-5 h-5 text-red-300 mb-1" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setSelectedStatus('confirmed')}>
+        <Card className="min-w-[140px] cursor-pointer hover:shadow-md transition-all border-blue-100 bg-blue-50/30 rounded-2xl" onClick={() => setSelectedStatus('assigned')}>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-green-600 font-semibold">Confirmed</p>
-                <p className="text-2xl font-bold text-green-600">{stats.confirmed}</p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-green-400" />
+            <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest mb-1">Assigned</p>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-black text-blue-600">{stats.assigned}</p>
+              <Clock className="w-5 h-5 text-blue-300 mb-1" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setSelectedStatus('completed')}>
+        <Card className="min-w-[140px] cursor-pointer hover:shadow-md transition-all border-emerald-100 bg-emerald-50/30 rounded-2xl" onClick={() => setSelectedStatus('confirmed')}>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-green-700 font-semibold">Completed</p>
-                <p className="text-2xl font-bold text-green-700">{stats.completed}</p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-green-500" />
+            <p className="text-[10px] font-black uppercase text-emerald-600 tracking-widest mb-1">Confirmed</p>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-black text-emerald-600">{stats.confirmed}</p>
+              <CheckCircle className="w-5 h-5 text-emerald-300 mb-1" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="min-w-[140px] cursor-pointer hover:shadow-md transition-all border-slate-200 rounded-2xl" onClick={() => setSelectedStatus('completed')}>
+          <CardContent className="p-4">
+            <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Done</p>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-black text-slate-700">{stats.completed}</p>
+              <CheckCircle className="w-5 h-5 text-slate-300 mb-1" />
             </div>
           </CardContent>
         </Card>
@@ -476,7 +475,7 @@ export default function ShiftCalendar() {
             <CardTitle className="flex items-center gap-2">
               <CalendarIcon className="w-5 h-5" />
               {view === 'day' && format(currentDate, 'EEEE, MMMM d, yyyy')}
-              {view === 'week' && `${format(startOfWeek(currentDate, {weekStartsOn: 1}), 'MMM d')} - ${format(endOfWeek(currentDate, {weekStartsOn: 1}), 'MMM d, yyyy')}`}
+              {view === 'week' && `${format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'MMM d')} - ${format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'MMM d, yyyy')}`}
               {view === 'month' && format(currentDate, 'MMMM yyyy')}
             </CardTitle>
             <div className="flex gap-2">
@@ -495,40 +494,59 @@ export default function ShiftCalendar() {
         <CardContent className="p-0">
           {/* Week/Day View */}
           {(view === 'week' || view === 'day') && (
-            <div className="grid" style={{ gridTemplateColumns: `repeat(${getDatesToDisplay().length}, minmax(0, 1fr))` }}>
+            <div className={`grid ${isMobile && view === 'week' ? 'grid-cols-1 divide-y' : ''}`} style={!isMobile || view === 'day' ? { gridTemplateColumns: `repeat(${getDatesToDisplay().length}, minmax(0, 1fr))` } : {}}>
               {getDatesToDisplay().map((date, idx) => {
                 const dayShifts = getShiftsForDate(date);
                 const isTodayDate = isToday(date);
 
+                if (isMobile && view === 'week' && dayShifts.length === 0) return null;
+
                 return (
                   <div
                     key={idx}
-                    className={`border-r last:border-r-0 min-h-[500px] ${isTodayDate ? 'bg-cyan-50' : 'bg-white'}`}
+                    className={`border-r last:border-r-0 min-h-[100px] md:min-h-[500px] ${isTodayDate ? 'bg-indigo-50/50' : 'bg-white'}`}
                   >
-                    <div className={`p-3 border-b font-semibold text-center ${isTodayDate ? 'bg-cyan-600 text-white' : 'bg-gray-50 text-gray-900'}`}>
-                      <div className="text-xs uppercase tracking-wide">{format(date, 'EEE')}</div>
-                      <div className="text-lg">{format(date, 'd')}</div>
+                    <div className={`p-3 border-b flex md:flex-col items-center gap-3 md:gap-0 font-black ${isTodayDate ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-700'}`}>
+                      <div className="text-[10px] uppercase tracking-widest opacity-80">{format(date, 'EEE')}</div>
+                      <div className="text-lg md:text-xl leading-none">{format(date, 'd')}</div>
+                      {isMobile && view === 'week' && (
+                        <div className="ml-auto text-[10px] font-black uppercase tracking-tighter text-slate-400">
+                          {dayShifts.length} {dayShifts.length === 1 ? 'Shift' : 'Shifts'}
+                        </div>
+                      )}
                     </div>
-                    <div className="p-2 space-y-2">
+                    <div className="p-3 md:p-2 space-y-3 md:space-y-2">
                       {dayShifts.length === 0 ? (
-                        <p className="text-xs text-gray-400 text-center py-4">No shifts</p>
+                        <p className="text-[10px] font-bold text-slate-400 text-center py-6 italic uppercase tracking-widest">No shifts</p>
                       ) : (
                         dayShifts.map(shift => (
                           <Link key={shift.id} to={`${createPageUrl('Shifts')}?id=${shift.id}`}>
                             <div
-                              className={`p-2 rounded-lg cursor-pointer hover:shadow-md transition-all text-xs border-l-4 ${getStatusColor(shift.status)}`}
+                              className={`p-3 md:p-2 rounded-2xl md:rounded-lg cursor-pointer hover:shadow-md transition-all text-xs border md:border-l-4 shadow-sm ${getStatusColor(shift.status)} active:scale-[0.98]`}
                             >
-                              <div className="font-semibold truncate">{getClientName(shift.client_id)}</div>
-                              <div className="text-gray-600 text-[10px]">{shift.start_time} - {shift.end_time}</div>
-                              <div className="text-gray-500 text-[10px] truncate capitalize">{shift.role_required?.replace('_', ' ')}</div>
-                              {shift.assigned_staff_id && (
-                                <div className="text-gray-700 text-[10px] font-medium mt-1 truncate">
-                                  👤 {getStaffName(shift.assigned_staff_id)}
-                                </div>
-                              )}
-                              <Badge className={`${getStatusColor(shift.status)} text-[9px] mt-1 px-1 py-0`}>
-                                {shift.status?.replace('_', ' ')}
-                              </Badge>
+                              <div className="font-black text-slate-800 truncate mb-1">{getClientName(shift.client_id)}</div>
+                              <div className="flex items-center gap-1.5 text-slate-600 text-[10px] font-bold mb-1">
+                                <Clock className="w-2.5 h-2.5" />
+                                {shift.start_time} - {shift.end_time}
+                              </div>
+                              <p className="text-[9px] font-bold uppercase tracking-tighter text-slate-500 truncate mb-2">
+                                {shift.role_display || shift.role_required?.replace('_', ' ')}
+                              </p>
+                              <div className="flex items-center justify-between">
+                                {shift.assigned_staff_id ? (
+                                  <div className="text-slate-700 text-[9px] font-black flex items-center gap-1">
+                                    <div className="w-4 h-4 rounded-full bg-white/50 flex items-center justify-center border font-black">
+                                      {getStaffName(shift.assigned_staff_id)[0]}
+                                    </div>
+                                    {getStaffName(shift.assigned_staff_id)}
+                                  </div>
+                                ) : (
+                                  <span className="text-[8px] font-black uppercase text-red-500 bg-red-50 px-1 rounded">Open REQ</span>
+                                )}
+                                <Badge className={`text-[8px] font-black uppercase tracking-tighter px-1.5 py-0 border-none shadow-none ${getStatusColor(shift.status)}`}>
+                                  {shift.status?.replace('_', ' ')}
+                                </Badge>
+                              </div>
                             </div>
                           </Link>
                         ))
@@ -542,10 +560,10 @@ export default function ShiftCalendar() {
 
           {/* Month View */}
           {view === 'month' && (
-            <div>
-              <div className="grid grid-cols-7 border-b">
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                  <div key={day} className="p-2 text-center font-semibold text-sm bg-gray-50">
+            <div className="bg-white">
+              <div className="grid grid-cols-7 border-b bg-slate-50">
+                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => (
+                  <div key={i} className="py-2 text-center font-black text-[10px] text-slate-400 uppercase tracking-widest">
                     {day}
                   </div>
                 ))}
@@ -555,33 +573,41 @@ export default function ShiftCalendar() {
                   const dayShifts = getShiftsForDate(date);
                   const isTodayDate = isToday(date);
                   const isCurrentMonth = isInCurrentMonth(date);
+                  const hasOpen = dayShifts.some(s => s.status === 'open');
 
                   return (
                     <div
                       key={idx}
-                      className={`border-r border-b min-h-[120px] p-2 ${
-                        isTodayDate ? 'bg-cyan-50' :
-                        !isCurrentMonth ? 'bg-gray-50 opacity-50' : 'bg-white'
-                      }`}
+                      onClick={() => isMobile && setSelectedDayShifts({ date, shifts: dayShifts })}
+                      className={`border-r border-b aspect-square md:aspect-auto md:min-h-[120px] p-1 md:p-2 relative transition-colors cursor-pointer ${isTodayDate ? 'bg-indigo-50/50' :
+                        !isCurrentMonth ? 'bg-slate-50/50 opacity-40' : 'bg-white hover:bg-slate-50'
+                        }`}
                     >
-                      <div className={`text-sm font-semibold mb-1 ${isTodayDate ? 'text-cyan-600' : 'text-gray-700'}`}>
+                      <div className={`text-xs font-black ${isTodayDate ? 'text-indigo-600' : 'text-slate-600'}`}>
                         {format(date, 'd')}
                       </div>
-                      <div className="space-y-1">
+
+                      {/* Mobile Dots */}
+                      <div className="flex md:hidden justify-center gap-0.5 mt-1">
+                        {dayShifts.slice(0, 3).map((s, i) => (
+                          <div key={i} className={`w-1 h-1 rounded-full ${s.status === 'open' ? 'bg-red-400' : 'bg-blue-400'}`} />
+                        ))}
+                      </div>
+
+                      <div className="hidden md:block space-y-1 mt-1">
                         {dayShifts.slice(0, 3).map(shift => {
                           const statusColor = getStatusColor(shift.status);
                           return (
                             <Link key={shift.id} to={`${createPageUrl('Shifts')}?id=${shift.id}`}>
-                              <div className={`text-[10px] p-1 rounded cursor-pointer hover:opacity-80 ${statusColor}`}>
-                                <div className="font-medium truncate">{getClientName(shift.client_id)}</div>
-                                <div className="text-gray-600">{shift.start_time}</div>
+                              <div className={`text-[9px] font-bold p-1 rounded-md cursor-pointer hover:opacity-80 transition-opacity truncate ${statusColor}`}>
+                                {getClientName(shift.client_id)} • {shift.start_time}
                               </div>
                             </Link>
                           );
                         })}
                         {dayShifts.length > 3 && (
-                          <div className="text-[10px] text-gray-500 font-semibold">
-                            +{dayShifts.length - 3} more
+                          <div className="text-[8px] text-slate-400 font-black uppercase text-center">
+                            +{dayShifts.length - 3} MORE
                           </div>
                         )}
                       </div>
@@ -589,6 +615,41 @@ export default function ShiftCalendar() {
                   );
                 })}
               </div>
+
+              {/* Mobile Selected Day Detail Drawer/Section */}
+              {isMobile && selectedDayShifts && (
+                <div className="p-4 border-t bg-slate-50/80 animate-in slide-in-from-bottom duration-300">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-black text-slate-800 uppercase tracking-tight">
+                      {format(selectedDayShifts.date, 'EEEE, MMM d')}
+                    </h3>
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedDayShifts(null)}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {selectedDayShifts.shifts.length === 0 ? (
+                      <p className="text-xs text-slate-400 italic">No shifts on this date.</p>
+                    ) : (
+                      selectedDayShifts.shifts.map(shift => (
+                        <Link key={shift.id} to={`${createPageUrl('Shifts')}?id=${shift.id}`}>
+                          <div className={`p-4 rounded-2xl border bg-white shadow-sm flex justify-between items-center ${getStatusColor(shift.status)}`}>
+                            <div>
+                              <p className="font-black text-slate-800 text-sm mb-1">{getClientName(shift.client_id)}</p>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {shift.start_time} - {shift.end_time}
+                              </p>
+                            </div>
+                            <Badge className={`font-black uppercase text-[8px] ${getStatusColor(shift.status)}`}>
+                              {shift.status}
+                            </Badge>
+                          </div>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -641,12 +702,14 @@ export default function ShiftCalendar() {
         </CardContent>
       </Card>
 
-      {isLoading && (
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="text-gray-600 mt-4">Loading calendar...</p>
-        </div>
-      )}
-    </div>
+      {
+        isLoading && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="text-gray-600 mt-4">Loading calendar...</p>
+          </div>
+        )
+      }
+    </div >
   );
 }

@@ -13,6 +13,7 @@ import {
   Shield, Zap, DollarSign, RefreshCw, CheckCircle, Rocket, Star, MapPin, XCircle,
   MessageSquare, Mail, MessageCircle, Users
 } from "lucide-react";
+import ManualEmailTrigger from "@/components/ManualEmailTrigger";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -1073,6 +1074,9 @@ export default function AgencySettings() {
           <IntegrationStatus name="OpenAI (AI)" status="active" description="Intelligent shift matching and automation" />
         </CardContent>
       </Card>
+
+      {/* Manual Email Triggers - For sending on-demand client emails */}
+      {agency?.id && <ManualEmailTrigger agencyId={agency.id} />}
 
       {/* Bottom Save Button */}
       {hasUnsavedChanges && (

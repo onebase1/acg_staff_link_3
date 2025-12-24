@@ -8,7 +8,7 @@ import {
   UserCog, FileText, Receipt, TrendingUp, Clock, CalendarCheck, Building2, Shield,
   UsersRound, LogOut, HelpCircle, UserPlus, Menu, X, Bell, ChevronDown, ChevronRight, Upload,
   CheckSquare, Rocket, DollarSign, Trash2, Mail, Shuffle, MessageCircle, CheckCircle, BookOpen,
-  Phone, GitBranch, Trophy // ✅ Added Trophy icon for My Score
+  Phone, GitBranch, Trophy, Activity // ✅ Added Activity icon for Live Rota
 } from "lucide-react";
 import { useAppVersion } from "@/hooks/useAppVersion";
 import { supabaseAuth } from "@/api/supabaseAuth";
@@ -37,6 +37,7 @@ const navigationStructure = [
       { title: "Bulk Shift Creation", url: createPageUrl("BulkShiftCreation"), icon: Upload, adminOnly: true },
       { title: "Shift Calendar", url: createPageUrl("ShiftCalendar"), icon: CalendarCheck, adminOnly: true },
       { title: "Live Shift Map", url: createPageUrl("LiveShiftMap"), icon: MapPin, adminOnly: true },
+      { title: "Live Rota (Mobile)", url: createPageUrl("LiveRota"), icon: Activity, adminOnly: true },
       { title: "Bookings", url: createPageUrl("Bookings"), icon: CalendarCheck, adminOnly: true },
       { title: "Timesheets", url: createPageUrl("Timesheets"), icon: Clock, adminOnly: true },
     ]
@@ -616,16 +617,16 @@ export default function Layout({ children, currentPageName }) {
                   return true;
                 })
                 .map((item) => (
-                <Link
-                  key={item.title}
-                  to={item.url}
-                  className={`sidebar-link ${isActive(item.url) ? 'active' : ''}`}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span className="ml-3">{item.title}</span>
-                </Link>
-              ))}
+                  <Link
+                    key={item.title}
+                    to={item.url}
+                    className={`sidebar-link ${isActive(item.url) ? 'active' : ''}`}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    <span className="ml-3">{item.title}</span>
+                  </Link>
+                ))}
             </div>
           )}
 

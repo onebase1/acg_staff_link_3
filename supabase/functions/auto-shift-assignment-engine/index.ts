@@ -3,10 +3,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
  * AUTO SHIFT ASSIGNMENT ENGINE
- * 
+ *
  * Uber-style intelligent shift auto-assignment system.
  * Called after bulk shift creation when agency has auto_assign_shifts enabled.
- * 
+ *
  * FLOW:
  * 1. Check agency setting (auto_assign_shifts)
  * 2. For each shift:
@@ -18,15 +18,27 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  *    f. Create booking record
  *    g. Send notification to assigned staff
  * 3. Overflow shifts (no match) → set marketplace_visible = true
- * 
+ *
  * INPUT: { shift_ids: string[], agency_id: string }
  * OUTPUT: { assigned: [...], overflow: [...], errors: [...] }
  */
+
+// CORS headers for browser requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
 
 const MINIMUM_SCORE_THRESHOLD = 60;
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -38,14 +50,14 @@ serve(async (req) => {
     if (!shift_ids || !Array.isArray(shift_ids) || shift_ids.length === 0) {
       return new Response(
         JSON.stringify({ success: false, error: 'shift_ids array required' }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (!agency_id) {
       return new Response(
         JSON.stringify({ success: false, error: 'agency_id required' }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -80,7 +92,7 @@ serve(async (req) => {
           overflow: [],
           errors: []
         }),
-        { headers: { "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -110,7 +122,7 @@ serve(async (req) => {
           overflow: [],
           errors: []
         }),
-        { headers: { "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -255,14 +267,14 @@ serve(async (req) => {
           errors: results.errors.length
         }
       }),
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error: any) {
     console.error('❌ [Auto-Assignment] Fatal error:', error);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

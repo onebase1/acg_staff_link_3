@@ -313,6 +313,95 @@ export default function MyShifts() {
     }
   });
 
+  // ✅ MODULE 35: Staff self-decline mutation
+  const declineShiftMutation = useMutation({
+    mutationFn: async (shift) => {
+      console.log('🚫 [Staff Decline] Declining shift:', shift.id);
+
+      // Calculate time until shift
+      const shiftDateTime = new Date(`${shift.date}T${shift.start_time}`);
+      const now = new Date();
+      const hoursUntilShift = (shiftDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      // Prevent declining past shifts
+      if (hoursUntilShift < 0) {
+        throw new Error('Cannot decline a shift that has already started or ended.');
+      }
+
+      // Show warning based on urgency
+      const warningMessage = hoursUntilShift < 24
+        ? `⚠️ URGENT: This shift starts in ${Math.round(hoursUntilShift)} hours!\n\n` +
+          `Declining this shift may:\n` +
+          `• Affect your reliability rating\n` +
+          `• Reduce future shift offers\n` +
+          `• Impact your relationship with the agency\n\n` +
+          `This shift will be broadcast as URGENT to all available staff.\n\n` +
+          `Are you absolutely sure?`
+        : `You are declining this shift.\n\n` +
+          `The shift will be offered to other available staff.\n\n` +
+          `Continue?`;
+
+      if (!window.confirm(warningMessage)) {
+        throw new Error('Decline cancelled by user');
+      }
+
+      // Optional: Ask for reason
+      const decline_reason = window.prompt('Please provide a brief reason for declining (optional):');
+
+      // Call edge function
+      const { data, error } = await supabase.functions.invoke('staff-decline-shift', {
+        body: {
+          shift_id: shift.id,
+          staff_id: staffRecord.id,
+          hours_until_shift: hoursUntilShift,
+          decline_reason: decline_reason || 'No reason provided'
+        }
+      });
+
+      if (error) {
+        console.error('❌ [Staff Decline] Error:', error);
+        throw error;
+      }
+
+      return { shift, data };
+    },
+    onSuccess: ({ shift, data }) => {
+      queryClient.invalidateQueries(['myShifts']);
+      queryClient.invalidateQueries(['my-shifts']);
+      queryClient.invalidateQueries(['shifts']);
+      queryClient.invalidateQueries(['bookings']);
+      queryClient.invalidateQueries(['myTimesheets']);
+
+      const shiftDateFormatted = format(new Date(shift.date), 'EEE, MMM d');
+      const actionTaken = data?.action_taken || 'none';
+
+      let description = 'You will receive confirmation via email.';
+      if (actionTaken === 'urgent_broadcast') {
+        description = 'Shift marked as URGENT and broadcast to all staff.';
+      } else if (actionTaken === 'auto_assignment') {
+        description = 'Auto-assignment engine will try to find a replacement.';
+      } else if (actionTaken === 'marketplace') {
+        description = 'Shift added to marketplace for other staff to claim.';
+      }
+
+      toast.success(`✅ Shift Declined - ${shiftDateFormatted}`, {
+        description,
+        duration: 5000
+      });
+    },
+    onError: (error) => {
+      // Don't show error if user cancelled
+      if (error.message === 'Decline cancelled by user') {
+        return;
+      }
+
+      console.error('❌ [Staff Decline] Error:', error);
+      toast.error('Failed to decline shift', {
+        description: error.message || 'An unexpected error occurred'
+      });
+    }
+  });
+
   // Get shifts for selected date (no filtering by status - staff sees everything for the date)
   const shiftsForSelectedDate = allShifts.filter(shift => {
     try {
@@ -885,6 +974,28 @@ export default function MyShifts() {
                             <>
                               <CheckCircle className="w-4 h-4 mr-2" />
                               Confirm Shift
+                            </>
+                          )}
+                        </Button>
+                      )}
+                      {/* ✅ MODULE 35: Decline Shift Button */}
+                      {(shift.status === 'assigned' || shift.status === 'confirmed') && !isPastShift && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="font-semibold shadow-md w-full sm:w-auto"
+                          onClick={() => declineShiftMutation.mutate(shift)}
+                          disabled={declineShiftMutation.isPending}
+                        >
+                          {declineShiftMutation.isPending ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Declining...
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="w-4 h-4 mr-2" />
+                              Decline Shift
                             </>
                           )}
                         </Button>

@@ -7,6 +7,7 @@ import {
     logNotificationSkipped
 } from "../_shared/notificationLogger.ts";
 import { getBranding } from "../_shared/getBranding.ts";
+import { generateDownloadUrls, generateStaffProfileLink } from "../_shared/magic-tokens.ts";
 
 /**
  * 📧 NOTIFICATION DIGEST ENGINE - ENHANCED
@@ -75,15 +76,15 @@ serve(async (req) => {
                 // ✅ BATCHED SHIFT ASSIGNMENTS
                 if (queue.notification_type === 'shift_assignment') {
                     const shiftCount = queue.pending_items.length;
-                    
+
                     // ✅ CHECK STATUS: If all shifts are already confirmed, change template
                     const isAllConfirmed = queue.pending_items.every((item: any) => item.status === 'confirmed');
-                    
+
                     const title = isAllConfirmed ? 'Shift Confirmed' : 'New Shift Assignment';
                     const icon = isAllConfirmed ? '✅' : '📅';
                     const headerColor = isAllConfirmed ? '#10b981' : '#0284c7';
-                    
-                    subject = isAllConfirmed 
+
+                    subject = isAllConfirmed
                         ? `Shift${shiftCount > 1 ? 's' : ''} Confirmed - ${agency?.name || 'Your Agency'}`
                         : `${shiftCount} New Shift${shiftCount > 1 ? 's' : ''} Assigned - ${agency?.name || 'Your Agency'}`;
 
@@ -94,10 +95,10 @@ serve(async (req) => {
 
                     // Generate shift cards HTML
                     const shiftCardsHtml = queue.pending_items.map(item => {
-                        const deadlineStr = item.confirmation_deadline 
+                        const deadlineStr = item.confirmation_deadline
                             ? new Date(item.confirmation_deadline).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
                             : null;
-                        
+
                         const isUrgent = item.urgency === 'high' || (item.status === 'assigned' && deadlineStr);
 
                         return `
@@ -153,7 +154,7 @@ serve(async (req) => {
                                     </p>
 
                                     <p style="font-size: 16px; color: #374151; margin: 0 0 25px 0;">
-                                        ${isAllConfirmed 
+                                        ${isAllConfirmed
                                             ? `You have been assigned to <strong>${shiftCount} confirmed shift${shiftCount > 1 ? 's' : ''}</strong>. Please ensure you arrive on time.`
                                             : `You have been assigned to <strong>${shiftCount} shift${shiftCount > 1 ? 's' : ''}</strong>. Please review the details below and <strong>confirm by the deadlines shown</strong> to secure your spot.`
                                         }
@@ -289,34 +290,80 @@ serve(async (req) => {
                     `;
                 }
 
-                // ✅ BATCHED SHIFT CONFIRMATIONS TO CLIENT
+                // ✅ BATCHED SHIFT CONFIRMATIONS TO CLIENT (GROUPED TABLE FORMAT)
                 else if (queue.notification_type === 'shift_confirmation') {
                     const shiftCount = queue.pending_items.length;
                     subject = `${shiftCount} Shift${shiftCount > 1 ? 's' : ''} Confirmed - ${agency?.name || 'Your Agency'}`;
 
-                    const totalHours = queue.pending_items.reduce((sum, item) => sum + (item.duration_hours || 0), 0);
-                    const totalCharge = queue.pending_items.reduce((sum, item) =>
-                        sum + ((item.charge_rate || 0) * (item.duration_hours || 0)), 0
-                    );
+                    const totalHours = queue.pending_items.reduce((sum: number, item: ShiftItem) => sum + (item.duration_hours || 0), 0);
 
-                    const shiftCardsHtml = queue.pending_items.map(item => `
-                        <div style="border-left: 4px solid #10b981; padding: 15px; background: #f0fdf4; border-radius: 8px; margin-bottom: 15px;">
-                            <div style="font-weight: bold; color: #1f2937; margin-bottom: 8px;">
-                                ${new Date(item.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} • ${item.start_time} - ${item.end_time}
+                    // 1. Pre-generate staff profile links (Async)
+                    const enrichedPendingItems = await Promise.all(queue.pending_items.map(async (item: any) => {
+                        if (item.staff_id) {
+                            try {
+                                const profileLink = await generateStaffProfileLink(
+                                    supabase, 
+                                    item.staff_id, 
+                                    queue.client_id, 
+                                    queue.agency_id
+                                );
+                                return { ...item, staff_profile_link: profileLink };
+                            } catch (err) {
+                                console.warn(`⚠️ [Digest Engine] Failed to generate profile link for staff ${item.staff_id}:`, err);
+                                return item;
+                            }
+                        }
+                        return item;
+                    }));
+
+                    // Group shifts by date -> time slot -> role
+                    const groupedShifts = groupShiftsByDateTimeRole(enrichedPendingItems);
+                    const dateRange = getDateRange(enrichedPendingItems);
+                    const roleCounts = getRoleCounts(enrichedPendingItems);
+
+                    // Build grouped HTML
+                    const groupedHtml = buildGroupedShiftHtml(groupedShifts);
+
+                    // Generate magic link download URLs
+                    let downloadUrls = { pdf: '', csv: '', ics: '' };
+                    try {
+                        // Extract date range from pending items
+                        const dates = queue.pending_items.map((i: ShiftItem) => i.date).sort();
+                        downloadUrls = await generateDownloadUrls(supabase, {
+                            agency_id: queue.agency_id,
+                            metadata: {
+                                date_from: dates[0],
+                                date_to: dates[dates.length - 1],
+                                notification_queue_id: queue.id
+                            }
+                        });
+                        console.log(`✅ [Digest Engine] Generated download URLs for queue ${queue.id}`);
+                    } catch (err) {
+                        console.warn(`⚠️ [Digest Engine] Failed to generate download URLs:`, err);
+                    }
+
+                    // Build download buttons HTML
+                    const downloadButtonsHtml = downloadUrls.pdf ? `
+                        <div style="background: #f0f9ff; border: 1px solid #0284c7; border-radius: 12px; padding: 20px; margin: 25px 0;">
+                            <div style="font-size: 16px; color: #0369a1; font-weight: bold; margin-bottom: 12px; text-align: center;">
+                                📥 Download Schedule
                             </div>
-                            <div style="font-size: 14px; color: #6b7280; margin-bottom: 4px;">
-                                👤 ${item.staff_name} (${item.role})
+                            <div style="text-align: center;">
+                                <a href="${downloadUrls.pdf}" style="display: inline-block; background: #0284c7; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 5px;">
+                                    📄 View/Print PDF
+                                </a>
+                                <a href="${downloadUrls.csv}" style="display: inline-block; background: #059669; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 5px;">
+                                    📊 Excel/CSV
+                                </a>
+                                <a href="${downloadUrls.ics}" style="display: inline-block; background: #7c3aed; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 5px;">
+                                    📅 Add to Calendar
+                                </a>
                             </div>
-                            ${item.location ? `
-                                <div style="font-size: 14px; color: #6b7280; margin-bottom: 4px;">
-                                    📍 ${item.location}
-                                </div>
-                            ` : ''}
-                            <div style="font-size: 14px; color: #6b7280;">
-                                📞 ${item.staff_phone || 'Contact via agency'}
-                            </div>
+                            <p style="font-size: 11px; color: #6b7280; text-align: center; margin: 10px 0 0 0;">
+                                Links expire in 30 days. No login required.
+                            </p>
                         </div>
-                    `).join('');
+                    ` : '';
 
                     emailHtml = `
                         <!DOCTYPE html>
@@ -331,10 +378,7 @@ serve(async (req) => {
 
                                 <!-- HEADER -->
                                 <div style="background-color: #10b981; padding: 30px 20px; text-align: center;" bgcolor="#10b981">
-                                    <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-                                        <span style="font-size: 32px;">✅</span>
-                                        <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">Shift${shiftCount > 1 ? 's' : ''} Confirmed</h1>
-                                    </div>
+                                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">✅ Shifts Confirmed</h1>
                                 </div>
 
                                 <!-- CONTENT -->
@@ -344,13 +388,39 @@ serve(async (req) => {
                                     </p>
 
                                     <p style="font-size: 16px; color: #374151; margin: 0 0 25px 0;">
-                                        We're pleased to confirm that ${shiftCount} shift${shiftCount > 1 ? 's have' : ' has'} been successfully filled for your facility.
+                                        We're pleased to confirm that <strong>${shiftCount} shift${shiftCount > 1 ? 's have' : ' has'}</strong> been successfully filled for your facility${dateRange ? ` across <strong>${dateRange}</strong>` : ''}.
                                     </p>
 
-                                    ${shiftCardsHtml}
+                                    <!-- SUMMARY BOX -->
+                                    <div style="background-color: #d1fae5; border: 2px solid #059669; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 25px;">
+                                        <div style="font-size: 18px; color: #065f46; font-weight: bold; margin-bottom: 8px;">
+                                            📊 Coverage Summary
+                                        </div>
+                                        <div style="display: flex; justify-content: center; gap: 30px; margin-top: 12px; flex-wrap: wrap;">
+                                            ${Object.entries(roleCounts).map(([role, count]) => `
+                                                <div style="text-align: center;">
+                                                    <div style="font-size: 24px; font-weight: bold; color: #059669;">${count}</div>
+                                                    <div style="font-size: 12px; color: #047857;">${role} Shifts</div>
+                                                </div>
+                                            `).join('')}
+                                            <div style="text-align: center;">
+                                                <div style="font-size: 24px; font-weight: bold; color: #059669;">${totalHours}</div>
+                                                <div style="font-size: 12px; color: #047857;">Total Hours</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- GROUPED SHIFTS -->
+                                    <h2 style="color: #1f2937; font-size: 18px; margin: 30px 0 15px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">
+                                        📅 Detailed Schedule
+                                    </h2>
+
+                                    ${groupedHtml}
+
+                                    ${downloadButtonsHtml}
 
                                     <p style="font-size: 14px; color: #6b7280; margin: 20px 0 0 0;">
-                                        The assigned staff ${shiftCount > 1 ? 'members' : 'member'} will arrive at the scheduled time${shiftCount > 1 ? 's' : ''}.
+                                        Questions? Contact ${agency?.name || branding.companyName} at <a href="mailto:${agency?.contact_email || branding.supportEmail}" style="color: #0284c7; text-decoration: none;">${agency?.contact_email || branding.supportEmail}</a>
                                     </p>
                                 </div>
 
@@ -368,6 +438,9 @@ serve(async (req) => {
                                     <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} ${branding.companyName}. All rights reserved.</p>
                                     <p style="margin: 10px 0 0 0; font-size: 12px;">
                                         Need help? Contact us at <a href="mailto:${branding.supportEmail}" style="color: #06b6d4; text-decoration: none;">${branding.supportEmail}</a>
+                                    </p>
+                                    <p style="margin: 10px 0 0 0; font-size: 10px; color: #64748b;">
+                                        Sent on behalf of ${agency?.name || branding.companyName} • Powered by ACG StaffLink
                                     </p>
                                 </div>
 
@@ -389,7 +462,7 @@ serve(async (req) => {
                 // If user opted out, log and skip
                 if (!preferenceCheck.allowed) {
                     console.log(`⏭️ [Queue ${queue.id}] Skipping - ${preferenceCheck.reason}`);
-                    
+
                     // Log skipped notification
                     await logNotificationSkipped(supabase, {
                         recipientEmail: queue.recipient_email,
@@ -537,3 +610,204 @@ serve(async (req) => {
         });
     }
 });
+
+
+
+// ============================================================================
+// HELPER FUNCTIONS FOR GROUPED SHIFT CONFIRMATION EMAILS
+// ============================================================================
+
+interface ShiftItem {
+    date: string;
+    start_time: string;
+    end_time: string;
+    role: string;
+    staff_name: string;
+    staff_phone?: string;
+    staff_id?: string;
+    staff_profile_link?: string;
+    location?: string;
+    duration_hours?: number;
+}
+
+interface GroupedShift {
+    date: string;
+    dateFormatted: string;
+    timeSlots: Map<string, TimeSlotGroup>;
+}
+
+interface TimeSlotGroup {
+    startTime: string;
+    endTime: string;
+    shiftType: 'Day' | 'Night';
+    roles: Map<string, StaffGroup>;
+}
+
+interface StaffGroup {
+    role: string;
+    staff: Array<{ name: string; phone: string; profile_link?: string }>;
+}
+
+/** Group shifts by Date -> Time Slot -> Role */
+function groupShiftsByDateTimeRole(items: ShiftItem[]): Map<string, GroupedShift> {
+    const grouped = new Map<string, GroupedShift>();
+
+    for (const item of items) {
+        const dateKey = item.date;
+        const dateFormatted = new Date(item.date).toLocaleDateString('en-GB', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long'
+        });
+
+        if (!grouped.has(dateKey)) {
+            grouped.set(dateKey, {
+                date: dateKey,
+                dateFormatted,
+                timeSlots: new Map()
+            });
+        }
+
+        const dateGroup = grouped.get(dateKey)!;
+        const timeKey = `${item.start_time}-${item.end_time}`;
+        const shiftType = isNightShift(item.start_time) ? 'Night' : 'Day';
+
+        if (!dateGroup.timeSlots.has(timeKey)) {
+            dateGroup.timeSlots.set(timeKey, {
+                startTime: item.start_time,
+                endTime: item.end_time,
+                shiftType,
+                roles: new Map()
+            });
+        }
+
+        const timeSlot = dateGroup.timeSlots.get(timeKey)!;
+        const roleKey = item.role || 'Staff';
+
+        if (!timeSlot.roles.has(roleKey)) {
+            timeSlot.roles.set(roleKey, {
+                role: roleKey,
+                staff: []
+            });
+        }
+
+        timeSlot.roles.get(roleKey)!.staff.push({
+            name: item.staff_name || 'TBC',
+            phone: item.staff_phone || 'Contact via agency',
+            profile_link: item.staff_profile_link
+        });
+    }
+
+    return grouped;
+}
+
+/** Check if shift is a night shift based on start time */
+function isNightShift(startTime: string): boolean {
+    if (!startTime) return false;
+    const hour = parseInt(startTime.split(':')[0], 10);
+    return hour >= 18 || hour < 6;
+}
+
+/** Get date range string from items */
+function getDateRange(items: ShiftItem[]): string {
+    if (!items || items.length === 0) return '';
+
+    const dates = items.map(i => new Date(i.date)).sort((a, b) => a.getTime() - b.getTime());
+    const firstDate = dates[0];
+    const lastDate = dates[dates.length - 1];
+
+    if (firstDate.getTime() === lastDate.getTime()) {
+        return firstDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    const formatDate = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    return `${formatDate(firstDate)} - ${formatDate(lastDate)}`;
+}
+
+/** Get counts by role */
+function getRoleCounts(items: ShiftItem[]): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const item of items) {
+        const role = formatRoleName(item.role || 'Staff');
+        counts[role] = (counts[role] || 0) + 1;
+    }
+    return counts;
+}
+
+/** Format role name for display */
+function formatRoleName(role: string): string {
+    const roleMap: Record<string, string> = {
+        'healthcare_assistant': 'HCA',
+        'registered_nurse': 'RN',
+        'senior_carer': 'Senior Carer',
+        'support_worker': 'Support Worker'
+    };
+    return roleMap[role.toLowerCase()] || role;
+}
+
+/** Build grouped HTML for shifts */
+function buildGroupedShiftHtml(grouped: Map<string, GroupedShift>): string {
+    let html = '';
+
+    // Sort dates
+    const sortedDates = Array.from(grouped.entries()).sort((a, b) =>
+        new Date(a[0]).getTime() - new Date(b[0]).getTime()
+    );
+
+    for (const [_, dateGroup] of sortedDates) {
+        // Date header
+        html += `
+            <div style="background: #f9fafb; padding: 10px 15px; border-left: 4px solid #0284c7; margin-bottom: 10px; margin-top: 15px;">
+                <strong style="color: #1f2937; font-size: 16px;">${dateGroup.dateFormatted}</strong>
+            </div>
+        `;
+
+        // Time slots
+        for (const [_, timeSlot] of dateGroup.timeSlots) {
+            const shiftIcon = timeSlot.shiftType === 'Night' ? '🌙' : '🌞';
+            const badgeColor = timeSlot.shiftType === 'Night' ? '#1e293b' : '#fef3c7';
+            const badgeTextColor = timeSlot.shiftType === 'Night' ? '#e0f2fe' : '#92400e';
+
+            // Role sections within time slot
+            for (const [_, roleGroup] of timeSlot.roles) {
+                const staffCount = roleGroup.staff.length;
+
+                html += `
+                    <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin-bottom: 10px; background: #fefefe;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px;">
+                            <div style="flex: 1; min-width: 150px;">
+                                <div style="font-weight: bold; color: #1f2937; margin-bottom: 4px;">
+                                    ${shiftIcon} ${timeSlot.shiftType} Shift • ${timeSlot.startTime} - ${timeSlot.endTime}
+                                </div>
+                                <div style="font-size: 13px; color: #6b7280;">${formatRoleName(roleGroup.role)}</div>
+                            </div>
+                            <div style="text-align: right; min-width: 80px;">
+                                <div style="display: inline-block; background: ${badgeColor}; color: ${badgeTextColor}; padding: 4px 12px; border-radius: 6px; font-weight: bold; font-size: 14px;">
+                                    ${staffCount} Staff
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 12px; padding: 12px; background: #f0fdf4; border-radius: 6px; border-left: 3px solid #10b981;">
+                            <div style="font-size: 13px; color: #065f46; font-weight: 600; margin-bottom: 6px;">👥 Assigned Staff:</div>
+                            <div style="font-size: 13px; color: #047857; line-height: 1.6;">
+                                ${roleGroup.staff.map(s => `
+                                    <div style="margin-bottom: 8px;">
+                                        • <strong>${s.name}</strong> (${s.phone})
+                                        ${s.profile_link ? `
+                                            <br>
+                                            <a href="${s.profile_link}" style="display: inline-block; color: #0284c7; text-decoration: none; font-size: 11px; font-weight: bold; background: #e0f2fe; padding: 2px 8px; border-radius: 4px; margin-top: 4px;">
+                                                🔍 View Digital Profile & Compliance
+                                            </a>
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    return html;
+}

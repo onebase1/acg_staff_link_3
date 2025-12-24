@@ -11,7 +11,19 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * Settings: automation_settings.ai_shift_matcher
  */
 
+// CORS headers for browser requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 serve(async (req) => {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders });
+    }
+
     try {
         // Initialize Supabase client
         const supabase = createClient(
@@ -27,7 +39,7 @@ serve(async (req) => {
                     success: false,
                     error: 'shift_id required'
                 }),
-                { status: 400, headers: { "Content-Type": "application/json" } }
+                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
         }
 
@@ -46,7 +58,7 @@ serve(async (req) => {
         if (!shifts || shifts.length === 0) {
             return new Response(
                 JSON.stringify({ success: false, error: 'Shift not found' }),
-                { status: 404, headers: { "Content-Type": "application/json" } }
+                { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
         }
         const shift = shifts[0];
@@ -73,7 +85,7 @@ serve(async (req) => {
                     reason: 'Feature disabled in settings',
                     matches: []
                 }),
-                { headers: { "Content-Type": "application/json" } }
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
         }
 
@@ -108,7 +120,7 @@ serve(async (req) => {
                     matches: [],
                     message: 'No active staff found with required role'
                 }),
-                { headers: { "Content-Type": "application/json" } }
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
         }
 
@@ -342,7 +354,7 @@ serve(async (req) => {
                     total_candidates_evaluated: scoredStaff.length
                 }
             }),
-            { headers: { "Content-Type": "application/json" } }
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
 
     } catch (error) {
@@ -352,7 +364,7 @@ serve(async (req) => {
                 success: false,
                 error: error.message
             }),
-            { status: 500, headers: { "Content-Type": "application/json" } }
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
     }
 });

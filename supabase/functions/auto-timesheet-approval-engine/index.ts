@@ -29,7 +29,19 @@ import { scheduleRetry } from "../_shared/retryHandler.ts";
  * Created: 2025-01-08
  */
 
+// CORS headers for browser requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   try {
     // Initialize Supabase client
     const supabase = createClient(
@@ -42,7 +54,7 @@ serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -52,7 +64,7 @@ serve(async (req) => {
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -64,7 +76,7 @@ serve(async (req) => {
           success: false,
           error: 'timesheet_id is required'
         }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -81,7 +93,7 @@ serve(async (req) => {
           success: false,
           error: 'Timesheet not found'
         }),
-        { status: 404, headers: { "Content-Type": "application/json" } }
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -93,7 +105,7 @@ serve(async (req) => {
           reason: 'already_processed',
           message: 'Timesheet already approved or paid'
         }),
-        { headers: { "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -125,7 +137,7 @@ serve(async (req) => {
           reason: 'disabled',
           message: 'Auto-approval disabled for this agency'
         }),
-        { headers: { "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -403,7 +415,7 @@ serve(async (req) => {
           message: '✅ Timesheet auto-approved - all criteria met',
           timesheet_id: timesheet_id
         }),
-        { headers: { "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -553,7 +565,7 @@ serve(async (req) => {
         message: `⚠️ Timesheet flagged for manual review (${issues.length} issue${issues.length > 1 ? 's' : ''})`,
         timesheet_id: timesheet_id
       }),
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error) {
@@ -563,7 +575,8 @@ serve(async (req) => {
         success: false,
         error: error.message
       }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
+

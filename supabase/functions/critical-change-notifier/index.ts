@@ -24,7 +24,19 @@ import { getBranding } from "../_shared/getBranding.ts";
  * Call this from frontend whenever a critical change is made.
  */
 
+// CORS headers for browser requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 serve(async (req) => {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders });
+    }
+
     try {
         // Initialize Supabase client
         const supabase = createClient(
@@ -37,7 +49,7 @@ serve(async (req) => {
         if (!authHeader) {
             return new Response(
                 JSON.stringify({ error: 'Unauthorized' }),
-                { status: 401, headers: { "Content-Type": "application/json" } }
+                { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
         }
 
@@ -47,7 +59,7 @@ serve(async (req) => {
         if (authError || !user) {
             return new Response(
                 JSON.stringify({ error: 'Unauthorized' }),
-                { status: 401, headers: { "Content-Type": "application/json" } }
+                { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
         }
 
@@ -564,13 +576,14 @@ serve(async (req) => {
                 notifications_sent: sentCount,
                 change_log: changeLog
             }),
-            { headers: { "Content-Type": "application/json" } }
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
 
     } catch (error) {
         return new Response(
             JSON.stringify({ error: error.message }),
-            { status: 500, headers: { "Content-Type": "application/json" } }
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
     }
 });
+

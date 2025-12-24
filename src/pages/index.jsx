@@ -139,6 +139,7 @@ import PitchCommandCenter from "./PitchCommandCenter";
 import RateManagement from "./RateManagement";
 
 import ClientManagement from "./ClientManagement";
+import LiveRota from "./LiveRota";
 
 import Login from "./Login";
 import ResetPassword from "./ResetPassword";
@@ -282,6 +283,7 @@ const PAGES = {
     RateManagement: RateManagement,
 
     ClientManagement: ClientManagement,
+    LiveRota: LiveRota,
 
     ResetPassword: ResetPassword,
 
@@ -456,6 +458,8 @@ function PagesContent() {
                 <Route path="/RateManagement" element={<RateManagement />} />
 
                 <Route path="/ClientManagement" element={<ClientManagement />} />
+
+                <Route path="/LiveRota" element={<LiveRota />} />
 
                 <Route path="/CronCommandCenter" element={<CronCommandCenter />} />
 
