@@ -174,8 +174,8 @@ export default function Layout({ children, currentPageName }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { checkForUpdate, isChecking, currentVersion } = useAppVersion();
-  const authPaths = ['/login', '/reset-password'];
-  const isAuthRoute = authPaths.some((path) => location.pathname.toLowerCase().startsWith(path));
+  const authPaths = ['/login', '/reset-password', '/auth/magic', '/staffprofilesimulation'];
+  const isAuthRoute = authPaths.some((path) => location.pathname.toLowerCase().startsWith(path.toLowerCase()));
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [agency, setAgency] = useState(null);

@@ -16,12 +16,12 @@ import { format, differenceInYears, differenceInDays } from "date-fns";
 
 export default function StaffProfileSimulation() {
   const navigate = useNavigate();
-  const [staffId, setStaffId] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [token, setToken] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setStaffId(params.get('id'));
+    setToken(params.get('token'));
 
     // Get current user profile to determine access level
     const fetchCurrentUser = async () => {
@@ -40,9 +40,30 @@ export default function StaffProfileSimulation() {
     fetchCurrentUser();
   }, []);
 
-  const { data: staff, isLoading: loadingStaff, error: staffError } = useQuery({
-    queryKey: ['staff-profile', staffId],
+  // Fetch all data for the public profile if a token is present
+  const { data: publicProfileData } = useQuery({
+    queryKey: ['public-profile', token],
     queryFn: async () => {
+      if (!token) return null;
+      console.log('🔒 Fetching profile via secure token...');
+      const { data, error } = await supabase.rpc('get_staff_public_profile', { p_token: token });
+      if (error) {
+        console.error('❌ RPC Error:', error);
+        return null;
+      }
+      return data;
+    },
+    enabled: !!token
+  });
+
+  const { data: staff, isLoading: loadingStaff, error: staffError } = useQuery({
+    queryKey: ['staff-profile', staffId, token],
+    queryFn: async () => {
+      if (publicProfileData?.staff) {
+        console.log('✅ Using staff data from public profile RPC');
+        return publicProfileData.staff;
+      }
+
       if (!staffId) return null;
       console.log('📊 Querying single staff member:', staffId);
 
@@ -96,13 +117,18 @@ export default function StaffProfileSimulation() {
       console.error('❌ No staff record found for ID:', staffId);
       return null;
     },
-    enabled: !!staffId,
+    enabled: !!staffId || !!token,
     retry: false
   });
 
   const { data: agency } = useQuery({
     queryKey: ['simulation-agency', staff?.agency_id],
     queryFn: async () => {
+      if (publicProfileData?.agency) {
+        console.log('✅ Using agency data from public profile RPC');
+        return publicProfileData.agency;
+      }
+
       if (!staff?.agency_id) return null;
       console.log('📊 Querying single agency:', staff.agency_id);
       const { data, error } = await supabase
@@ -118,12 +144,17 @@ export default function StaffProfileSimulation() {
 
       return data;
     },
-    enabled: !!staff?.agency_id
+    enabled: !!staff?.agency_id || !!publicProfileData?.agency
   });
 
   const { data: complianceDocs = [] } = useQuery({
     queryKey: ['simulation-compliance', staff?.id, staff?.agency_id],
     queryFn: async () => {
+      if (publicProfileData?.compliance) {
+        console.log('✅ Using compliance data from public profile RPC');
+        return publicProfileData.compliance;
+      }
+
       if (!staff?.id) return [];
 
       // Always filter by both agency_id AND staff_id for maximum RLS compatibility
@@ -148,7 +179,7 @@ export default function StaffProfileSimulation() {
 
       return data || [];
     },
-    enabled: !!staff?.id,
+    enabled: !!staff?.id || !!publicProfileData?.compliance,
     initialData: []
   });
 
@@ -366,7 +397,7 @@ export default function StaffProfileSimulation() {
       .filter(t => t.days >= 0)
       .sort((a, b) => a.days - b.days);
 
-    const allExpiring = [...expiringDocs, ...expiringTraining].sort((a,b) => a.days - b.days);
+    const allExpiring = [...expiringDocs, ...expiringTraining].sort((a, b) => a.days - b.days);
 
     return allExpiring[0];
   };

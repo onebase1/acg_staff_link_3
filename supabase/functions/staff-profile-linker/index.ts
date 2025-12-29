@@ -40,11 +40,12 @@ serve(async (req) => {
             return new Response("Invalid token type", { status: 400 });
         }
 
-        // 2. Log access (Trackable)
+        // 2. Log access (Trackable) - For profiles, we DON'T mark it as totally used immediately 
+        // so that the client can refresh the page or share the link securely.
         await supabase
             .from('magic_link_tokens')
             .update({ 
-                used_at: new Date().toISOString(),
+                // used_at: new Date().toISOString(), // Remove for profiles to allow multi-read
                 metadata: { 
                     ...data.metadata, 
                     last_access: new Date().toISOString(),
@@ -56,21 +57,14 @@ serve(async (req) => {
 
         // 3. Redirect to staff profile simulation
         // The frontend page is at /staffprofilesimulation?id=[STAFF_ID]
-        // We derive the app URL from the request origin or a setting
+        // We include the token so the frontend can securely fetch data anonymously
         let appUrl = Deno.env.get('VITE_APP_URL');
         
-        // Fallback: If we don't have VITE_APP_URL, we try to guess based on the Supabase URL
-        // or just use a relative redirect if possible (but we are in a different domain usually)
         if (!appUrl) {
-           const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-           // Common pattern: project-ref.supabase.co -> project-ref.netlify.app or similar
-           // But safer to assume the user has configured it. 
-           // For now, let's look at what we have in metadata or use a hardcoded fallback 
-           // that the user can change.
-           appUrl = 'https://agilecaremanagement.co.uk'; // From user screenshot
+           appUrl = 'https://agilecaremanagement.co.uk'; 
         }
 
-        const redirectUrl = `${appUrl}/staffprofilesimulation?id=${data.staff_id}`;
+        const redirectUrl = `${appUrl}/staffprofilesimulation?id=${data.staff_id}&token=${token}`;
         
         console.log(`✅ Redirecting to staff profile: ${redirectUrl}`);
 
