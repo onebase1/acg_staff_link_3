@@ -16,7 +16,9 @@ import { format, differenceInYears, differenceInDays } from "date-fns";
 
 export default function StaffProfileSimulation() {
   const navigate = useNavigate();
+  const [staffId, setStaffId] = useState(null);
   const [token, setToken] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
