@@ -22,25 +22,32 @@ export default function StaffProfileSimulation() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    setStaffId(params.get('id'));
-    setToken(params.get('token'));
+    const id = params.get('id');
+    const t = params.get('token');
+
+    setStaffId(id);
+    setToken(t);
 
     // Get current user profile to determine access level
     const fetchCurrentUser = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, user_type, agency_id')
-          .eq('id', authUser.id)
-          .single();
-        if (profile) {
-          setCurrentUser(profile);
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, user_type, agency_id')
+            .eq('id', authUser.id)
+            .maybeSingle();
+          if (profile) {
+            setCurrentUser(profile);
+          }
         }
+      } catch (e) {
+        console.error('❌ [Layout] Auth check error:', e);
       }
     };
     fetchCurrentUser();
-  }, []);
+  }, [window.location.search]);
 
   // Fetch all data for the public profile if a token is present
   const { data: publicProfileData } = useQuery({
@@ -160,7 +167,6 @@ export default function StaffProfileSimulation() {
       if (!staff?.id) return [];
 
       // Always filter by both agency_id AND staff_id for maximum RLS compatibility
-      // This works for both agency admins and staff members
       let query = supabase
         .from('compliance')
         .select('*')
@@ -173,6 +179,10 @@ export default function StaffProfileSimulation() {
       }
 
       const { data, error } = await query;
+
+      console.log('📊 [Diagnostics] Staff ID:', staff.id);
+      console.log('📊 [Diagnostics] Agency ID:', staff.agency_id);
+      console.log('📊 [Diagnostics] Query Result Count:', data?.length || 0);
 
       if (error) {
         console.error('❌ Error fetching compliance docs:', error);
@@ -192,6 +202,24 @@ export default function StaffProfileSimulation() {
   const handleDownload = () => {
     window.print(); // In production, this would generate a proper PDF
   };
+
+  if (!staffId && !token) {
+    return (
+      <div className="p-8 text-center">
+        <Alert variant="destructive" className="max-w-md mx-auto">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertDescription>
+            <strong>Invalid Request</strong>
+            <br />
+            Missing staff ID or secure token. Please return to the staff management page and try again.
+          </AlertDescription>
+        </Alert>
+        <Button onClick={() => navigate(createPageUrl('Staff'))} className="mt-4">
+          Go to Staff Management
+        </Button>
+      </div>
+    );
+  }
 
   if (loadingStaff) {
     return (
@@ -338,7 +366,7 @@ export default function StaffProfileSimulation() {
     },
     {
       item: "Two written references detailing recent work experience",
-      status: staff.references && staff.references.length >= 2,
+      status: (staff.references || []).length >= 2,
       required: true
     },
     {
@@ -346,13 +374,13 @@ export default function StaffProfileSimulation() {
       status: mandatoryTraining.filter(t => {
         const completedDate = t.data?.completed_date;
         const expiryDate = t.data?.expiry_date;
-        return completedDate && (!expiryDate || new Date(expiryDate) > new Date());
+        return completedDate && (!expiryDate || new Date(expiryDate).setHours(0, 0, 0, 0) >= new Date().setHours(0, 0, 0, 0));
       }).length >= 8,
       required: true
     },
     {
       item: "Full employment history with explanations for gaps",
-      status: staff.employment_history && staff.employment_history.length > 0,
+      status: (staff.employment_history || []).length > 0,
       required: true
     },
     {
@@ -382,26 +410,36 @@ export default function StaffProfileSimulation() {
     }
   ];
 
-  const complianceRate = (complianceChecks.filter(c => c.status).length / complianceChecks.filter(c => c.required).length) * 100;
+  // ✅ FIXED: Only count required items in both numerator and denominator to prevent overcounting (125% bug)
+  const requiredChecks = complianceChecks.filter(c => c.required);
+  const passedRequiredChecks = requiredChecks.filter(c => c.status);
+
+  const complianceRate = requiredChecks.length > 0
+    ? Math.round((passedRequiredChecks.length / requiredChecks.length) * 100)
+    : 100;
+
   const isFullyCompliant = complianceRate === 100;
 
   // Calculate days until next expiry
   const getNextExpiry = () => {
-    const expiringDocs = complianceDocs
-      .filter(d => d.expiry_date && d.status === 'verified')
-      .map(d => ({ name: d.document_name, days: differenceInDays(new Date(d.expiry_date), new Date()) }))
-      .filter(d => d.days >= 0)
-      .sort((a, b) => a.days - b.days);
+    try {
+      const expiringDocs = (complianceDocs || [])
+        .filter(d => d.expiry_date && d.status === 'verified')
+        .map(d => ({ name: d.document_name, days: differenceInDays(new Date(d.expiry_date), new Date()) }))
+        .filter(d => d.days >= 0);
 
-    const expiringTraining = mandatoryTraining
-      .filter(t => t.data?.expiry_date)
-      .map(t => ({ name: t.name, days: differenceInDays(new Date(t.data.expiry_date), new Date()) }))
-      .filter(t => t.days >= 0)
-      .sort((a, b) => a.days - b.days);
+      const expiringTraining = mandatoryTraining
+        .filter(t => t.data?.expiry_date)
+        .map(t => ({ name: t.name, days: differenceInDays(new Date(t.data.expiry_date), new Date()) }))
+        .filter(t => t.days >= 0);
 
-    const allExpiring = [...expiringDocs, ...expiringTraining].sort((a, b) => a.days - b.days);
+      const allExpiring = [...expiringDocs, ...expiringTraining].sort((a, b) => a.days - b.days);
 
-    return allExpiring[0];
+      return allExpiring[0];
+    } catch (e) {
+      console.error('❌ Error calculating next expiry:', e);
+      return null;
+    }
   };
 
   const nextExpiry = getNextExpiry();
@@ -466,7 +504,7 @@ export default function StaffProfileSimulation() {
               {!agency?.logo_url && (
                 <div className="w-20 h-20 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-2xl">
-                    {agency?.name?.[0] || 'ACG'}
+                    {agency?.name?.[0] || ''}
                   </span>
                 </div>
               )}
@@ -570,14 +608,7 @@ export default function StaffProfileSimulation() {
                     </span>
                   </div>
                 </div>
-                <div className="p-3">
-                  <p className="text-sm font-semibold text-gray-700">Proposed First Shift Date:</p>
-                  <p className="text-gray-900">
-                    {staff.proposed_first_shift_date
-                      ? format(new Date(staff.proposed_first_shift_date), 'dd/MM/yyyy')
-                      : '[To be confirmed]'}
-                  </p>
-                </div>
+
               </div>
 
               {/* Right Column - Photo - FIXED SQUARE GRID */}
@@ -754,21 +785,7 @@ export default function StaffProfileSimulation() {
           )}
 
 
-          {/* Experience */}
-          <div className="mb-8">
-            <div className="border p-4">
-              <div className="grid grid-cols-2">
-                <div>
-                  <p className="text-sm font-semibold text-gray-700 mb-2">Relevant Experience</p>
-                  <p className="text-gray-900">Healthcare - {staff.months_of_experience || 0} months</p>
-                </div>
-                <div className="border-l pl-4">
-                  <p className="text-sm font-semibold text-gray-700 mb-2">Total Months</p>
-                  <p className="text-gray-900 text-lg font-bold">{staff.months_of_experience || 0}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+
 
           {/* Next Expiry Alert */}
           {nextExpiry && nextExpiry.days <= 60 && (
@@ -788,10 +805,8 @@ export default function StaffProfileSimulation() {
                 Based on the information above, I confirm that:
               </p>
               <ul className="text-sm space-y-2 ml-6 mb-6">
-                <li>• The candidate has the required qualifications, experience and training for the role</li>
-                <li>• All CQC regulatory requirements have been met and verified</li>
-                <li>• Enhanced DBS disclosure has been obtained and is satisfactory</li>
-                <li>• We will immediately notify the care home of any changes to the staffing requirement</li>
+                <li>• The candidate has the required qualifications, experience and training</li>
+                <li>• We will immediately notify the client of any changes to the staffing requirement</li>
               </ul>
 
               <div className="grid md:grid-cols-2 gap-6 mt-6 pt-6 border-t">
@@ -800,7 +815,7 @@ export default function StaffProfileSimulation() {
                   <p className="text-sm mb-2">Name: {staff.first_name} {staff.last_name}</p>
                   <p className="text-sm mb-2">Date: {format(new Date(), 'dd/MM/yyyy')}</p>
                   <div className="mt-3 p-2 bg-green-50 border border-green-300 rounded text-center">
-                    <p className="text-xs text-green-800 font-semibold">✓ Digitally Confirmed via ACG StaffLink</p>
+                    <p className="text-xs text-green-800 font-semibold">✓ Digitally Confirmed</p>
                   </div>
                 </div>
                 <div className="bg-white p-4 rounded border">
@@ -808,7 +823,7 @@ export default function StaffProfileSimulation() {
                   <p className="text-sm mb-2">On behalf of: {agency?.name}</p>
                   <p className="text-sm mb-2">Date: {format(new Date(), 'dd/MM/yyyy')}</p>
                   <div className="mt-3 p-2 bg-blue-50 border border-blue-300 rounded text-center">
-                    <p className="text-xs text-blue-800 font-semibold">✓ Digitally Verified via ACG StaffLink</p>
+                    <p className="text-xs text-blue-800 font-semibold">✓ Digitally Verified</p>
                   </div>
                 </div>
               </div>
@@ -817,10 +832,10 @@ export default function StaffProfileSimulation() {
 
           {/* Footer */}
           <div className="text-xs text-gray-600 text-center pt-6 border-t">
-            <p>All supply of staffing is in accordance with CQC regulations and our standard terms of business.</p>
+            <p>All supply of staffing is in accordance with our standard terms of business.</p>
             <p className="mt-2">This is a digitally generated profile. Manual signatures are not required.</p>
             <p className="mt-4 text-gray-500">
-              Generated on {format(new Date(), 'dd/MM/yyyy HH:mm')} via ACG StaffLink Platform
+              Generated on {format(new Date(), 'dd/MM/yyyy HH:mm')}
             </p>
           </div>
         </CardContent>

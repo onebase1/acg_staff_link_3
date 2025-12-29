@@ -174,8 +174,13 @@ export default function Layout({ children, currentPageName }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { checkForUpdate, isChecking, currentVersion } = useAppVersion();
-  const authPaths = ['/login', '/reset-password', '/auth/magic', '/staffprofilesimulation'];
-  const isAuthRoute = authPaths.some((path) => location.pathname.toLowerCase().startsWith(path.toLowerCase()));
+  // ✅ FIXED: Routes that bypass the layout (no sidebar/header)
+  // We only bypass layout for staff profile simulation if a magic token is present (anonymous view)
+  const bypassPaths = ['/login', '/reset-password', '/auth/magic'];
+  const isProfileSim = location.pathname.toLowerCase().startsWith('/staffprofilesimulation');
+  const hasMagicToken = new URLSearchParams(location.search).has('token');
+
+  const isAuthRoute = bypassPaths.some((path) => location.pathname.toLowerCase().startsWith(path.toLowerCase())) || (isProfileSim && hasMagicToken);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [agency, setAgency] = useState(null);
