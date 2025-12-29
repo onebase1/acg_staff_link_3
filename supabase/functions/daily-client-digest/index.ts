@@ -1,13 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Database } from "../_shared/database-types.ts";
-import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
-import {
+// Database import removed to reduce deployment size
+import { 
+    shouldSendNotification,
     logNotificationSent,
     logNotificationFailed,
-    logNotificationSkipped
-} from "../_shared/notificationLogger.ts";
+    logNotificationSkipped,
+    getBranding,
+    loadTemplate,
+    generateStaffProfileLink
+} from "../_shared/all.ts";
 import { scheduleRetry } from "../_shared/retryHandler.ts";
+
 /**
  * DAILY CLIENT DIGEST
  *
@@ -26,17 +30,37 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    console.log("📧 [Client Digest] Starting daily client digest job...");
+    // Check for trigger type
+    let body: { manual_trigger?: boolean; client_id?: string; agency_id?: string } = {};
+    try {
+        const json = await req.json();
+        body = json;
+    } catch {
+        // No body
+    }
+
+    const isManualTrigger = body.manual_trigger === true;
+    const targetClientId = body.client_id;
+
+    console.log(`📧 [Client Digest] Starting daily client digest job... Manual: ${isManualTrigger}`);
 
     // 1. Calculate tomorrow's date
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    
+    // ...
+    const tomorrowDisplay = tomorrow.toLocaleDateString('en-GB', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+    });
 
     // 2. Fetch all shifts for tomorrow that are confirmed or in_progress
     const { data: shifts, error: shiftsError } = await supabase
       .from("shifts")
-      .select("*, staff:assigned_staff_id(first_name, last_name)")
+      .select("*, staff:assigned_staff_id(first_name, last_name)") // removed phone
       .eq("date", tomorrowStr)
       .in("status", ["confirmed", "in_progress"]);
 
@@ -54,19 +78,12 @@ serve(async (req) => {
     console.log(`📊 [Client Digest] Found ${shifts.length} shifts for ${tomorrowStr}.`);
 
     // 3. Group shifts by client
-    const shiftsByClient = shifts.reduce((acc, shift) => {
-      if (!acc[shift.client_id]) {
-        acc[shift.client_id] = [];
-      }
-      acc[shift.client_id].push(shift);
-      return acc;
-    }, {});
+    const clientIds = [...new Set(shifts.map(s => s.client_id))];
 
-    // 4. Fetch all clients
-    const clientIds = Object.keys(shiftsByClient);
+    // 4. Fetch all clients and their linked agencies
     const { data: clients, error: clientsError } = await supabase
       .from("clients")
-      .select("id, name, contact_person, agency_id")
+      .select("id, name, contact_person, agency_id, agencies(name, email, phone, address)")
       .in("id", clientIds);
 
     if (clientsError) {
@@ -78,57 +95,84 @@ serve(async (req) => {
 
     // 5. Loop through clients and send digest emails
     for (const client of clients) {
-      if (!client.contact_person?.email) {
+      const recipientEmail = client.contact_person?.email;
+      if (!recipientEmail) {
         console.warn(`⚠️ [Client Digest] Skipping client ${client.name} (ID: ${client.id}) - no contact email.`);
         continue;
       }
 
-      const clientShifts = shiftsByClient[client.id];
-      const subject = `Your ACG Staffing Schedule for Tomorrow, ${tomorrowStr}`;
-      const shiftsHtml = clientShifts
-        .map(
-          (shift) => `
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${shift.start_time} - ${shift.end_time}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${shift.role_required.replace(/_/g, ' ')}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${shift.staff?.first_name || 'Staff'} ${shift.staff?.last_name || ''}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">✅ Confirmed</td>
-            </tr>
-          `
-        )
-        .join("");
+      const agency = (client as any).agencies;
+      const clientShifts = shifts.filter(s => s.client_id === client.id);
+      
+      // Get branding for this agency
+      const branding = await getBranding(supabase, client.agency_id);
+      
+      // Override SaaS branding with Agency specific "From" name as requested by user
+      // "from needs to be {{agency_name}} not our saas name"
+      const { from_name } = getEmailFrom(branding, agency?.name || branding.saasName);
 
-      const body_html = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: #f3f4f6; padding: 20px; text-align: center;">
-                <h2 style="margin: 0; color: #1f2937;">Your Schedule for Tomorrow</h2>
-            </div>
-            <div style="padding: 30px;">
-                <p>Hi ${client.contact_person.name || 'Team'},</p>
-                <p>Here is a summary of your scheduled staff for tomorrow, <strong>${tomorrowStr}</strong>. All staff have confirmed their attendance and have been sent automated reminders.</p>
-                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-                    <thead>
-                        <tr>
-                            <th style="padding: 8px; border-bottom: 2px solid #e5e7eb; text-align: left;">Time</th>
-                            <th style="padding: 8px; border-bottom: 2px solid #e5e7eb; text-align: left;">Role</th>
-                            <th style="padding: 8px; border-bottom: 2px solid #e5e7eb; text-align: left;">Staff Member</th>
-                            <th style="padding: 8px; border-bottom: 2px solid #e5e7eb; text-align: left;">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${shiftsHtml}
-                    </tbody>
-                </table>
-                <p style="margin-top: 20px; color: #6b7280; font-size: 12px;">This is an automated daily summary from ACG StaffLink.</p>
-            </div>
-        </div>
-      `;
+      const subject = `Your ${agency?.name || 'Staffing'} Schedule for Tomorrow, ${tomorrowStr}`;
+      
+      // Build shift rows HTML
+      const shiftsHtml = await Promise.all(clientShifts.map(async (shift) => {
+        let profileLinkHtml = '';
+        if (shift.assigned_staff_id) {
+          try {
+            const profileLink = await generateStaffProfileLink(
+              supabase,
+              shift.assigned_staff_id,
+              client.id,
+              client.agency_id
+            );
+            profileLinkHtml = `<br><a href="${profileLink}" style="color: #0284c7; text-decoration: none; font-size: 11px; font-weight: bold;">[📋 View Profile]</a>`;
+          } catch (err) {
+            console.warn(`⚠️ [Client Digest] Failed to generate profile link for staff ${shift.assigned_staff_id}:`, err);
+          }
+        }
+
+        const staffName = shift.staff ? (([shift.staff.first_name, shift.staff.last_name].filter(Boolean).join(' ')) || 'Staff') : 'TBC';
+
+        return `
+            <tr>
+              <td style="padding: 12px 15px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: #374151;">
+                <strong>${shift.start_time} - ${shift.end_time}</strong>
+              </td>
+              <td style="padding: 12px 15px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: #374151;">
+                ${shift.role_required.replace(/_/g, ' ')}
+              </td>
+              <td style="padding: 12px 15px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: #374151;">
+                <strong>${staffName}</strong>${profileLinkHtml}
+              </td>
+              <td style="padding: 12px 15px; border-bottom: 1px solid #e5e7eb; text-align: right;">
+                <span style="display: inline-block; background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 12px;">
+                  ✅ Confirmed
+                </span>
+              </td>
+            </tr>
+          `;
+      }));
+
+      const shiftsHtmlString = shiftsHtml.join("");
+
+      // Populate template
+      const body_html = await loadTemplate('daily_client_digest', {
+        contact_name: client.contact_person.name || 'Team',
+        tomorrow_date: tomorrowDisplay,
+        shift_rows: shiftsHtmlString,
+        portal_url: branding.clientPortalUrl,
+        client_name: client.name,
+        agency_name: agency?.name || branding.saasName,
+        agency_email: agency?.email || branding.supportEmail,
+        agency_phone: agency?.phone || branding.supportPhone,
+        agency_address: agency?.address || '',
+        current_year: new Date().getFullYear().toString()
+      });
 
       try {
         // Check preference
         const preferenceCheck = await shouldSendNotification(
             supabase,
-            client.contact_person.email,
+            recipientEmail,
             'daily_digest',
             'email',
             'client'
@@ -137,7 +181,7 @@ serve(async (req) => {
         if (!preferenceCheck.allowed) {
             console.log(`⏭️ [Client Digest] Skipped for ${client.name} - ${preferenceCheck.reason}`);
             await logNotificationSkipped(supabase, {
-                recipientEmail: client.contact_person.email,
+                recipientEmail: recipientEmail,
                 recipientType: 'client',
                 clientId: client.id,
                 agencyId: client.agency_id,
@@ -153,7 +197,8 @@ serve(async (req) => {
 
         const emailResult = await supabase.functions.invoke('send-email', {
           body: {
-            to: client.contact_person.email,
+            to: recipientEmail,
+            from_name: from_name, // Use the agency-branded name
             subject: subject,
             html: body_html,
           },
@@ -163,7 +208,7 @@ serve(async (req) => {
 
         // Log success
         await logNotificationSent(supabase, {
-            recipientEmail: client.contact_person.email,
+            recipientEmail: recipientEmail,
             recipientType: 'client',
             clientId: client.id,
             agencyId: client.agency_id,
@@ -183,7 +228,7 @@ serve(async (req) => {
         
         // Log failure
         await logNotificationFailed(supabase, {
-            recipientEmail: client.contact_person.email,
+            recipientEmail: recipientEmail,
             recipientType: 'client',
             clientId: client.id,
             agencyId: client.agency_id,
@@ -196,7 +241,7 @@ serve(async (req) => {
         // Schedule retry
         await scheduleRetry(supabase, {
             notificationType: 'daily_digest',
-            recipientEmail: client.contact_person.email,
+            recipientEmail: recipientEmail,
             recipientId: client.id,
             agencyId: client.agency_id,
             channel: 'email',

@@ -302,12 +302,12 @@ export default function ShiftCalendar() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border">
         <div>
-          <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">Agency Calendar</h2>
-          <p className="text-slate-500 text-xs md:text-sm font-bold uppercase tracking-widest mt-1">Holistic Overview</p>
+          <h2 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">Agency Calendar</h2>
+          <p className="text-slate-500 text-xs md:text-sm font-semibold mt-1">Holistic Overview</p>
         </div>
         <div className="flex w-full md:w-auto gap-2">
           <Link to={createPageUrl('PostShiftV2')} className="flex-1 md:flex-none">
-            <Button className="w-full bg-blue-600 hover:bg-blue-700 rounded-xl font-black shadow-lg shadow-blue-200">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 rounded-xl font-bold shadow-lg shadow-blue-200">
               <UserPlus className="w-4 h-4 mr-2" />
               Create Shift
             </Button>
@@ -319,9 +319,9 @@ export default function ShiftCalendar() {
       <div className="flex md:grid md:grid-cols-5 gap-3 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 no-scrollbar">
         <Card className="min-w-[140px] cursor-pointer hover:shadow-md transition-all border-slate-200 rounded-2xl" onClick={() => setSelectedStatus('all')}>
           <CardContent className="p-4">
-            <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Total</p>
+            <p className="text-[10px] font-bold text-slate-500 tracking-widest mb-1">Total</p>
             <div className="flex items-end justify-between">
-              <p className="text-2xl font-black text-slate-800">{stats.total}</p>
+              <p className="text-2xl font-bold text-slate-800">{stats.total}</p>
               <CalendarIcon className="w-5 h-5 text-slate-300 mb-1" />
             </div>
           </CardContent>
@@ -329,9 +329,9 @@ export default function ShiftCalendar() {
 
         <Card className="min-w-[140px] cursor-pointer hover:shadow-md transition-all border-red-100 bg-red-50/30 rounded-2xl" onClick={() => setSelectedStatus('all')}>
           <CardContent className="p-4">
-            <p className="text-[10px] font-black uppercase text-red-600 tracking-widest mb-1">Open</p>
+            <p className="text-[10px] font-bold text-red-600 tracking-widest mb-1">Open</p>
             <div className="flex items-end justify-between">
-              <p className="text-2xl font-black text-red-600">{stats.open}</p>
+              <p className="text-2xl font-bold text-red-600">{stats.open}</p>
               <AlertCircle className="w-5 h-5 text-red-300 mb-1" />
             </div>
           </CardContent>
@@ -339,9 +339,9 @@ export default function ShiftCalendar() {
 
         <Card className="min-w-[140px] cursor-pointer hover:shadow-md transition-all border-blue-100 bg-blue-50/30 rounded-2xl" onClick={() => setSelectedStatus('assigned')}>
           <CardContent className="p-4">
-            <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest mb-1">Assigned</p>
+            <p className="text-[10px] font-bold text-blue-600 tracking-widest mb-1">Assigned</p>
             <div className="flex items-end justify-between">
-              <p className="text-2xl font-black text-blue-600">{stats.assigned}</p>
+              <p className="text-2xl font-bold text-blue-600">{stats.assigned}</p>
               <Clock className="w-5 h-5 text-blue-300 mb-1" />
             </div>
           </CardContent>
@@ -349,9 +349,9 @@ export default function ShiftCalendar() {
 
         <Card className="min-w-[140px] cursor-pointer hover:shadow-md transition-all border-emerald-100 bg-emerald-50/30 rounded-2xl" onClick={() => setSelectedStatus('confirmed')}>
           <CardContent className="p-4">
-            <p className="text-[10px] font-black uppercase text-emerald-600 tracking-widest mb-1">Confirmed</p>
+            <p className="text-[10px] font-bold text-emerald-600 tracking-widest mb-1">Confirmed</p>
             <div className="flex items-end justify-between">
-              <p className="text-2xl font-black text-emerald-600">{stats.confirmed}</p>
+              <p className="text-2xl font-bold text-emerald-600">{stats.confirmed}</p>
               <CheckCircle className="w-5 h-5 text-emerald-300 mb-1" />
             </div>
           </CardContent>
@@ -359,9 +359,9 @@ export default function ShiftCalendar() {
 
         <Card className="min-w-[140px] cursor-pointer hover:shadow-md transition-all border-slate-200 rounded-2xl" onClick={() => setSelectedStatus('completed')}>
           <CardContent className="p-4">
-            <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Done</p>
+            <p className="text-[10px] font-bold text-slate-500 tracking-widest mb-1">Done</p>
             <div className="flex items-end justify-between">
-              <p className="text-2xl font-black text-slate-700">{stats.completed}</p>
+              <p className="text-2xl font-bold text-slate-700">{stats.completed}</p>
               <CheckCircle className="w-5 h-5 text-slate-300 mb-1" />
             </div>
           </CardContent>
@@ -506,44 +506,44 @@ export default function ShiftCalendar() {
                     key={idx}
                     className={`border-r last:border-r-0 min-h-[100px] md:min-h-[500px] ${isTodayDate ? 'bg-indigo-50/50' : 'bg-white'}`}
                   >
-                    <div className={`p-3 border-b flex md:flex-col items-center gap-3 md:gap-0 font-black ${isTodayDate ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-700'}`}>
-                      <div className="text-[10px] uppercase tracking-widest opacity-80">{format(date, 'EEE')}</div>
+                    <div className={`p-3 border-b flex md:flex-col items-center gap-3 md:gap-0 font-bold ${isTodayDate ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-700'}`}>
+                      <div className="text-[10px] tracking-widest opacity-80">{format(date, 'EEE')}</div>
                       <div className="text-lg md:text-xl leading-none">{format(date, 'd')}</div>
                       {isMobile && view === 'week' && (
-                        <div className="ml-auto text-[10px] font-black uppercase tracking-tighter text-slate-400">
+                        <div className="ml-auto text-[10px] font-bold tracking-tighter text-slate-400">
                           {dayShifts.length} {dayShifts.length === 1 ? 'Shift' : 'Shifts'}
                         </div>
                       )}
                     </div>
                     <div className="p-3 md:p-2 space-y-3 md:space-y-2">
                       {dayShifts.length === 0 ? (
-                        <p className="text-[10px] font-bold text-slate-400 text-center py-6 italic uppercase tracking-widest">No shifts</p>
+                        <p className="text-[10px] font-bold text-slate-400 text-center py-6 italic tracking-widest">No shifts</p>
                       ) : (
                         dayShifts.map(shift => (
                           <Link key={shift.id} to={`${createPageUrl('Shifts')}?id=${shift.id}`}>
                             <div
                               className={`p-3 md:p-2 rounded-2xl md:rounded-lg cursor-pointer hover:shadow-md transition-all text-xs border md:border-l-4 shadow-sm ${getStatusColor(shift.status)} active:scale-[0.98]`}
                             >
-                              <div className="font-black text-slate-800 truncate mb-1">{getClientName(shift.client_id)}</div>
+                              <div className="font-bold text-slate-800 truncate mb-1">{getClientName(shift.client_id)}</div>
                               <div className="flex items-center gap-1.5 text-slate-600 text-[10px] font-bold mb-1">
                                 <Clock className="w-2.5 h-2.5" />
                                 {shift.start_time} - {shift.end_time}
                               </div>
-                              <p className="text-[9px] font-bold uppercase tracking-tighter text-slate-500 truncate mb-2">
+                              <p className="text-[9px] font-bold tracking-tighter text-slate-500 truncate mb-2">
                                 {shift.role_display || shift.role_required?.replace('_', ' ')}
                               </p>
                               <div className="flex items-center justify-between">
                                 {shift.assigned_staff_id ? (
-                                  <div className="text-slate-700 text-[9px] font-black flex items-center gap-1">
-                                    <div className="w-4 h-4 rounded-full bg-white/50 flex items-center justify-center border font-black">
+                                  <div className="text-slate-700 text-[9px] font-bold flex items-center gap-1">
+                                    <div className="w-4 h-4 rounded-full bg-white/50 flex items-center justify-center border font-bold">
                                       {getStaffName(shift.assigned_staff_id)[0]}
                                     </div>
                                     {getStaffName(shift.assigned_staff_id)}
                                   </div>
                                 ) : (
-                                  <span className="text-[8px] font-black uppercase text-red-500 bg-red-50 px-1 rounded">Open REQ</span>
+                                  <span className="text-[8px] font-bold uppercase text-red-500 bg-red-50 px-1 rounded">Open REQ</span>
                                 )}
-                                <Badge className={`text-[8px] font-black uppercase tracking-tighter px-1.5 py-0 border-none shadow-none ${getStatusColor(shift.status)}`}>
+                                <Badge className={`text-[8px] font-bold uppercase tracking-tighter px-1.5 py-0 border-none shadow-none ${getStatusColor(shift.status)}`}>
                                   {shift.status?.replace('_', ' ')}
                                 </Badge>
                               </div>
@@ -563,7 +563,7 @@ export default function ShiftCalendar() {
             <div className="bg-white">
               <div className="grid grid-cols-7 border-b bg-slate-50">
                 {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => (
-                  <div key={i} className="py-2 text-center font-black text-[10px] text-slate-400 uppercase tracking-widest">
+                  <div key={i} className="py-2 text-center font-bold text-[10px] text-slate-400 tracking-widest">
                     {day}
                   </div>
                 ))}
@@ -583,7 +583,7 @@ export default function ShiftCalendar() {
                         !isCurrentMonth ? 'bg-slate-50/50 opacity-40' : 'bg-white hover:bg-slate-50'
                         }`}
                     >
-                      <div className={`text-xs font-black ${isTodayDate ? 'text-indigo-600' : 'text-slate-600'}`}>
+                      <div className={`text-xs font-bold ${isTodayDate ? 'text-indigo-600' : 'text-slate-600'}`}>
                         {format(date, 'd')}
                       </div>
 
@@ -606,7 +606,7 @@ export default function ShiftCalendar() {
                           );
                         })}
                         {dayShifts.length > 3 && (
-                          <div className="text-[8px] text-slate-400 font-black uppercase text-center">
+                          <div className="text-[8px] text-slate-400 font-bold uppercase text-center">
                             +{dayShifts.length - 3} MORE
                           </div>
                         )}
@@ -620,7 +620,7 @@ export default function ShiftCalendar() {
               {isMobile && selectedDayShifts && (
                 <div className="p-4 border-t bg-slate-50/80 animate-in slide-in-from-bottom duration-300">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-black text-slate-800 uppercase tracking-tight">
+                    <h3 className="font-bold text-slate-800 tracking-tight">
                       {format(selectedDayShifts.date, 'EEEE, MMM d')}
                     </h3>
                     <Button variant="ghost" size="sm" onClick={() => setSelectedDayShifts(null)}>
@@ -635,12 +635,12 @@ export default function ShiftCalendar() {
                         <Link key={shift.id} to={`${createPageUrl('Shifts')}?id=${shift.id}`}>
                           <div className={`p-4 rounded-2xl border bg-white shadow-sm flex justify-between items-center ${getStatusColor(shift.status)}`}>
                             <div>
-                              <p className="font-black text-slate-800 text-sm mb-1">{getClientName(shift.client_id)}</p>
-                              <p className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                              <p className="font-bold text-slate-800 text-sm mb-1">{getClientName(shift.client_id)}</p>
+                              <p className="text-[10px] font-semibold text-slate-500 flex items-center gap-1">
                                 <Clock className="w-3 h-3" /> {shift.start_time} - {shift.end_time}
                               </p>
                             </div>
-                            <Badge className={`font-black uppercase text-[8px] ${getStatusColor(shift.status)}`}>
+                            <Badge className={`font-bold uppercase text-[8px] ${getStatusColor(shift.status)}`}>
                               {shift.status}
                             </Badge>
                           </div>

@@ -143,6 +143,7 @@ import LiveRota from "./LiveRota";
 
 import Login from "./Login";
 import ResetPassword from "./ResetPassword";
+import AuthMagicLink from "./AuthMagicLink";
 
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
@@ -286,6 +287,7 @@ const PAGES = {
     LiveRota: LiveRota,
 
     ResetPassword: ResetPassword,
+    AuthMagicLink: AuthMagicLink,
 
     CronCommandCenter: CronCommandCenter,
 
@@ -319,6 +321,7 @@ function PagesContent() {
 
                 <Route path="/login" element={<Login />} />
                 <Route path="/Login" element={<Login />} />
+                <Route path="/auth/magic" element={<AuthMagicLink />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
 
                 <Route path="/Home" element={<Home />} />

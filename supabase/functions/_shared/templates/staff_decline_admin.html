@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+</head>
+
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+
+        <!-- HEADER -->
+        <div style="background-color: #dc2626; padding: 30px 20px; text-align: center;" bgcolor="#dc2626">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <span style="font-size: 32px;">⚠️</span>
+                <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">Staff Declined Shift</h1>
+            </div>
+        </div>
+
+        <!-- CONTENT -->
+        <div style="padding: 30px 20px;">
+            <p style="font-size: 16px; color: #374151; margin: 0 0 10px 0;">
+                Dear {{agency_name}} Admin,
+            </p>
+
+            <p style="font-size: 16px; color: #374151; margin: 0 0 25px 0;">
+                Staff member <strong>{{staff_name}}</strong> has declined a shift.
+            </p>
+
+            <!-- SHIFT DETAILS BOX -->
+            <div
+                style="background-color: #fef2f2; border: 2px solid #dc2626; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+                <div style="font-size: 18px; color: #991b1b; font-weight: bold; margin-bottom: 15px;">
+                    🚫 Declined Shift Details
+                </div>
+                <ul style="margin: 0; padding-left: 20px; color: #7f1d1d; line-height: 1.8;">
+                    <li><strong>Client:</strong> {{client_name}}</li>
+                    <li><strong>Date:</strong> {{shift_date}}</li>
+                    <li><strong>Time:</strong> {{shift_time}}</li>
+                    <li><strong>Time until shift:</strong> {{hours_until_shift}} hours</li>
+                </ul>
+            </div>
+
+            <!-- REASON BOX -->
+            <div
+                style="background-color: #fff7ed; border-left: 4px solid #f59e0b; padding: 15px 20px; margin-bottom: 25px; border-radius: 6px;">
+                <div style="font-size: 14px; color: #92400e; font-weight: bold; margin-bottom: 8px;">
+                    💬 Decline Reason:
+                </div>
+                <div style="font-size: 15px; color: #78350f; font-style: italic;">
+                    "{{decline_reason}}"
+                </div>
+            </div>
+
+            <!-- ACTION TAKEN BOX -->
+            <div
+                style="background-color: #dbeafe; border: 2px solid #0284c7; border-radius: 12px; padding: 20px; margin-bottom: 25px; text-align: center;">
+                <div style="font-size: 16px; color: #0c4a6e; font-weight: bold; margin-bottom: 10px;">
+                    ⚙️ Automated Action Taken
+                </div>
+                <div style="font-size: 15px; color: #075985;">
+                    {{action_description}}
+                </div>
+            </div>
+
+            <!-- NEXT STEPS -->
+            <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 15px 20px; border-radius: 6px;">
+                <div style="font-size: 14px; color: #065f46; font-weight: bold; margin-bottom: 8px;">
+                    ✅ Next Steps:
+                </div>
+                <ul style="margin: 5px 0 0 0; padding-left: 20px; color: #047857; line-height: 1.6;">
+                    <li>Review the shift status in your dashboard</li>
+                    <li>Monitor for replacement staff assignments</li>
+                    <li>Contact the client if needed to inform them of the change</li>
+                </ul>
+            </div>
+
+            <p style="font-size: 14px; color: #6b7280; margin: 20px 0 0 0;">
+                Questions? Contact <a href="mailto:{{agency_email}}"
+                    style="color: #0284c7; text-decoration: none;">{{agency_email}}</a>
+            </p>
+        </div>
+
+        <!-- Unsubscribe Link -->
+        <div style="background: #f9fafb; padding: 15px; text-align: center;">
+            <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                <a href="#" style="color: #64748b; text-decoration: underline;">
+                    Manage email preferences
+                </a>
+            </p>
+        </div>
+
+        <!-- FOOTER -->
+        <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
+            <p style="margin: 0; font-size: 13px;">© 2025 {{agency_name}}. All rights reserved.</p>
+            <p style="margin: 10px 0 0 0; font-size: 12px;">
+                Need help? Contact us at <a href="mailto:{{agency_email}}"
+                    style="color: #06b6d4; text-decoration: none;">{{agency_email}}</a>
+            </p>
+            <p style="margin: 10px 0 0 0; font-size: 10px; color: #64748b;">
+                Sent on behalf of {{agency_name}} • Powered by ACG StaffLink
+            </p>
+        </div>
+
+    </div>
+</body>
+
+</html>

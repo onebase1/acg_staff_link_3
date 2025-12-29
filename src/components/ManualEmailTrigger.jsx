@@ -84,6 +84,15 @@ export default function ManualEmailTrigger({ agencyId }) {
             force_send: true
           }
         });
+      } else if (emailType === 'daily_digest') {
+        // Trigger daily digest
+        response = await supabase.functions.invoke('daily-client-digest', {
+          body: {
+            manual_trigger: true,
+            client_id: selectedClient,
+            agency_id: agencyId
+          }
+        });
       }
 
       if (response.error) throw response.error;
@@ -141,6 +150,12 @@ export default function ManualEmailTrigger({ agencyId }) {
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-indigo-600" />
                     <span>Batch Shift Confirmation (Who is Coming)</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="daily_digest">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-orange-600" />
+                    <span>Daily Client Digest (Ready for Tomorrow)</span>
                   </div>
                 </SelectItem>
               </SelectContent>

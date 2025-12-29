@@ -21,7 +21,19 @@ import { shiftRequiresGPS } from "../_shared/gpsHelper.ts";
  * Creates admin_workflows for all shifts moved to awaiting_admin_closure
  */
 
+// CORS headers for browser requests
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 serve(async (req) => {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders });
+    }
+
     try {
         // Initialize Supabase client
         const supabase = createClient(
@@ -747,7 +759,7 @@ serve(async (req) => {
                 timestamp: now.toISOString(),
                 results
             }),
-            { headers: { "Content-Type": "application/json" } }
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
 
     } catch (error) {
@@ -757,7 +769,7 @@ serve(async (req) => {
                 success: false,
                 error: error.message
             }),
-            { status: 500, headers: { "Content-Type": "application/json" } }
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
     }
 });

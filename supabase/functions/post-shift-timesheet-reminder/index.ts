@@ -25,7 +25,19 @@ import { shiftRequiresGPS } from "../_shared/gpsHelper.ts";
  * NO CRON NEEDED: Triggered by shift status change
  */
 
+// CORS headers for browser requests
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 serve(async (req) => {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders });
+    }
+
     try {
         const supabase = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",
@@ -47,13 +59,13 @@ serve(async (req) => {
             if (error || shifts.length === 0) {
                 return new Response(JSON.stringify({ error: 'Shift not found' }), {
                     status: 404,
-                    headers: { "Content-Type": "application/json" }
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
                 });
             }
 
             const result = await sendTimesheetReminder(supabase, shifts[0]);
             return new Response(JSON.stringify({ success: true, result }), {
-                headers: { "Content-Type": "application/json" }
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
         }
 
@@ -120,7 +132,7 @@ serve(async (req) => {
 
         console.log(`✅ [Post-Shift Reminder] Complete: ${results.reminders_sent}/${results.shifts_processed} sent`);
         return new Response(JSON.stringify(results), {
-            headers: { "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
 
     } catch (error) {
@@ -130,7 +142,7 @@ serve(async (req) => {
             error: error.message
         }), {
             status: 500,
-            headers: { "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
     }
 });

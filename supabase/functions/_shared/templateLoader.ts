@@ -16,17 +16,8 @@ export async function loadTemplate(
 ): Promise<string> {
   try {
     // Read the template file
-    const templatePath = new URL(
-      `./templates/${templateName}.html`,
-      import.meta.url
-    );
-    
-    const response = await fetch(templatePath);
-    if (!response.ok) {
-      throw new Error(`Template ${templateName} not found`);
-    }
-    
-    let html = await response.text();
+    const url = new URL(`./templates/${templateName}.html`, import.meta.url);
+    const html = await Deno.readTextFile(url);
     
     // Replace all template variables {{variable_name}}
     for (const [key, value] of Object.entries(variables)) {

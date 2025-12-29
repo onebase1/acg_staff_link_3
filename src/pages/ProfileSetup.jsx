@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -23,6 +23,7 @@ import { reconcileTrainingCertificates } from "@/utils/reconcileTrainingCertific
 
 export default function ProfileSetup() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
   const [agency, setAgency] = useState(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -150,6 +151,105 @@ export default function ProfileSetup() {
   // ✅ FIXED: Only show "Awaiting Approval" for self-signup users WITHOUT staff/client record
   // If user has linked staff/client record, they were invited by admin and are NOT pending
   const isPendingUser = user?.user_type === 'pending' && !linkedStaff && !linkedClient;
+
+  // 📱 MOBILE FIX: Auto-save form state to localStorage to prevent data loss
+  // Fixes "spooky action" where inputs are lost when switching apps
+  useEffect(() => {
+    const STORAGE_KEY = 'profileSetup_draft';
+    const STORAGE_TIMESTAMP_KEY = 'profileSetup_draft_timestamp';
+
+    // Restore from localStorage on mount
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      const savedTimestamp = localStorage.getItem(STORAGE_TIMESTAMP_KEY);
+      
+      if (saved && savedTimestamp) {
+        const ageInMinutes = (Date.now() - parseInt(savedTimestamp)) / 1000 / 60;
+        
+        // Only restore if draft is less than 24 hours old
+        if (ageInMinutes < 1440) {
+          const parsedData = JSON.parse(saved);
+          
+          // Only restore if we don't have data loaded from server yet
+          if (!formData.full_name || formData.full_name === '') {
+            setFormData(parsedData);
+            toast.info('📋 Draft restored from previous session');
+            console.log('✅ Restored form data from localStorage');
+          }
+        } else {
+          // Clear old draft
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(STORAGE_TIMESTAMP_KEY);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to restore form data:', error);
+    }
+  }, []); // Run once on mount
+
+  // Auto-save to localStorage when formData changes (debounced)
+  useEffect(() => {
+    const STORAGE_KEY = 'profileSetup_draft';
+    const STORAGE_TIMESTAMP_KEY = 'profileSetup_draft_timestamp';
+    
+    // Debounce to avoid excessive writes
+    const timeoutId = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+        localStorage.setItem(STORAGE_TIMESTAMP_KEY, Date.now().toString());
+        console.log('💾 Auto-saved form data to localStorage');
+      } catch (error) {
+        console.error('Failed to save form data:', error);
+      }
+    }, 2000); // Save 2 seconds after last change
+
+    return () => clearTimeout(timeoutId);
+  }, [formData]);
+
+  // Save immediately when user backgrounds the app (mobile)
+  useEffect(() => {
+    const STORAGE_KEY = 'profileSetup_draft';
+    const STORAGE_TIMESTAMP_KEY = 'profileSetup_draft_timestamp';
+
+    const saveImmediately = () => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+        localStorage.setItem(STORAGE_TIMESTAMP_KEY, Date.now().toString());
+        console.log('💾 Emergency save on page hide');
+      } catch (error) {
+        console.error('Failed to emergency save:', error);
+      }
+    };
+
+    // Handle mobile app switching
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        saveImmediately();
+      }
+    };
+
+    // Handle page unload
+    window.addEventListener('pagehide', saveImmediately);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('pagehide', saveImmediately);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [formData]);
+
+  // Clear localStorage draft when save is successful
+  useEffect(() => {
+    if (updateMutation.isSuccess) {
+      try {
+        localStorage.removeItem('profileSetup_draft');
+        localStorage.removeItem('profileSetup_draft_timestamp');
+        console.log('✅ Cleared localStorage draft after successful save');
+      } catch (error) {
+        console.error('Failed to clear localStorage:', error);
+      }
+    }
+  }, [updateMutation.isSuccess]);
 
   useEffect(() => {
     const initSetup = async () => {
@@ -368,6 +468,34 @@ export default function ProfileSetup() {
 
       // ✅ NEW: Update staff record with ALL onboarding data
       if (linkedStaff && linkedStaff.id) {
+        // 🚀 DEFAULT 24/7 AVAILABILITY: Set all users available by default for auto-assign
+        // Users can change this later in My Availability page
+        const default24_7Availability = {
+          monday: ['day', 'night'],
+          tuesday: ['day', 'night'],
+          wednesday: ['day', 'night'],
+          thursday: ['day', 'night'],
+          friday: ['day', 'night'],
+          saturday: ['day', 'night'],
+          sunday: ['day', 'night']
+        };
+
+        // Check if availability is truly empty (all days have empty arrays)
+        const isAvailabilityEmpty = (avail) => {
+          if (!avail || typeof avail !== 'object') return true;
+          const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+          return days.every(day => !avail[day] || avail[day].length === 0);
+        };
+
+        // Set default 24/7 availability if empty or not set
+        // Zero availability should ONLY be possible if user manually clears it
+        const needsDefaultAvailability = isAvailabilityEmpty(linkedStaff.availability);
+        const finalAvailability = needsDefaultAvailability ? default24_7Availability : linkedStaff.availability;
+
+        if (needsDefaultAvailability) {
+          console.log('🚀 Setting default 24/7 availability - ready for auto-assign! (was empty or unset)');
+        }
+
         const staffUpdatePayload = {
           user_id: user.id,
           status: 'active',
@@ -380,7 +508,8 @@ export default function ProfileSetup() {
           references: dataToUpdate.references,
           employment_history: dataToUpdate.employment_history,
           occupational_health: dataToUpdate.occupational_health,
-          mandatory_training: dataToUpdate.mandatory_training
+          mandatory_training: dataToUpdate.mandatory_training,
+          availability: finalAvailability
         };
 
         if (dataToUpdate.profile_photo_url) {
@@ -410,7 +539,7 @@ export default function ProfileSetup() {
             .eq('document_type', 'training_certificate');
 
           if (!certsError && trainingCerts) {
-            // Sync core training
+            // Sync core training - OPTIMIZED: Parallel updates
             const coreTrainingMap = {
               manual_handling: 'Manual Handling',
               safeguarding_children: 'Safeguarding Children',
@@ -424,6 +553,9 @@ export default function ProfileSetup() {
               moving_and_handling: 'Moving and Handling'
             };
 
+            // 🚀 MOBILE OPTIMIZATION: Collect all updates and run in parallel
+            const updatePromises = [];
+
             for (const [key, displayName] of Object.entries(coreTrainingMap)) {
               const trainingData = mandatoryTraining[key];
               if (trainingData?.certificate_ids && trainingData.certificate_ids.length > 0) {
@@ -431,17 +563,18 @@ export default function ProfileSetup() {
                 for (const certId of trainingData.certificate_ids) {
                   const cert = trainingCerts.find(c => c.id === certId);
                   if (cert) {
-                    // Sync dates from staff.mandatory_training to compliance
-                    await supabase
-                      .from('compliance')
-                      .update({
-                        issue_date: trainingData.completed_date || cert.issue_date,
-                        expiry_date: trainingData.expiry_date || cert.expiry_date,
-                        reference_number: trainingData.certificate_ref || cert.reference_number
-                      })
-                      .eq('id', certId);
-
-                    console.log(`✅ Synced ${displayName} to compliance record ${certId}`);
+                    // Collect promise instead of awaiting immediately
+                    updatePromises.push(
+                      supabase
+                        .from('compliance')
+                        .update({
+                          issue_date: trainingData.completed_date || cert.issue_date,
+                          expiry_date: trainingData.expiry_date || cert.expiry_date,
+                          reference_number: trainingData.certificate_ref || cert.reference_number
+                        })
+                        .eq('id', certId)
+                        .then(() => console.log(`✅ Synced ${displayName} to compliance record ${certId}`))
+                    );
                   }
                 }
               }
@@ -457,21 +590,29 @@ export default function ProfileSetup() {
                 for (const certId of additionalItem.certificate_ids) {
                   const cert = trainingCerts.find(c => c.id === certId);
                   if (cert) {
-                    await supabase
-                      .from('compliance')
-                      .update({
-                        document_name: additionalItem.name || cert.document_name,
-                        issue_date: additionalItem.completed_date || cert.issue_date,
-                        expiry_date: additionalItem.expiry_date || cert.expiry_date,
-                        reference_number: additionalItem.certificate_ref || cert.reference_number,
-                        issuing_authority: additionalItem.provider || cert.issuing_authority
-                      })
-                      .eq('id', certId);
-
-                    console.log(`✅ Synced additional training ${additionalItem.name} to compliance record ${certId}`);
+                    // Collect promise instead of awaiting immediately
+                    updatePromises.push(
+                      supabase
+                        .from('compliance')
+                        .update({
+                          document_name: additionalItem.name || cert.document_name,
+                          issue_date: additionalItem.completed_date || cert.issue_date,
+                          expiry_date: additionalItem.expiry_date || cert.expiry_date,
+                          reference_number: additionalItem.certificate_ref || cert.reference_number,
+                          issuing_authority: additionalItem.provider || cert.issuing_authority
+                        })
+                        .eq('id', certId)
+                        .then(() => console.log(`✅ Synced additional training ${additionalItem.name} to compliance record ${certId}`))
+                    );
                   }
                 }
               }
+            }
+
+            // Execute all updates in parallel (much faster on mobile!)
+            if (updatePromises.length > 0) {
+              await Promise.all(updatePromises);
+              console.log(`🚀 Synced ${updatePromises.length} training records in parallel`);
             }
           }
         } catch (syncError) {
@@ -479,26 +620,6 @@ export default function ProfileSetup() {
           // Don't fail the main update if sync fails
         }
 
-        // Send admin notification
-        try {
-          const { data: staffAgency, error: agencyError } = await supabase
-            .from('agencies')
-            .select('*')
-            .eq('id', linkedStaff.agency_id)
-            .single();
-
-          if (!agencyError && staffAgency?.contact_email) {
-            const { error: emailError } = await supabase.functions.invoke('send-email', {
-              body: {
-                to: staffAgency.contact_email,
-                subject: `✅ Staff Onboarding Complete: ${dataToUpdate.full_name}`,
-                text: `Staff member ${dataToUpdate.full_name} has completed their profile setup.`
-              }
-            });
-          }
-        } catch (emailError) {
-          console.error('Failed to send admin notification:', emailError);
-        }
       }
 
       return dataToUpdate;
@@ -519,7 +640,10 @@ export default function ProfileSetup() {
           navigate(createPageUrl('Dashboard'));
         }
 
-        window.location.reload();
+        // Invalidate queries to refetch fresh data
+        queryClient.invalidateQueries({ queryKey: ['link-staff-record'] });
+        queryClient.invalidateQueries({ queryKey: ['link-client-contact'] });
+        queryClient.invalidateQueries({ queryKey: ['compliance'] });
       }, 1500);
     },
     onError: (error) => {
@@ -563,10 +687,10 @@ export default function ProfileSetup() {
 
       const file_url = publicUrl;
 
-      setFormData({
-        ...formData,
+      setFormData(prev => ({
+        ...prev,
         profile_photo_url: file_url
-      });
+      }));
 
       toast.success('✅ Photo uploaded successfully!');
     } catch (error) {
@@ -578,50 +702,54 @@ export default function ProfileSetup() {
 
   // ✅ NEW: Reference management
   const addReference = () => {
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       references: [
-        ...formData.references,
+        ...prev.references,
         { referee_name: '', referee_position: '', referee_company: '', referee_email: '', referee_phone: '' }
       ]
-    });
+    }));
   };
 
   const updateReference = (index, field, value) => {
-    const updated = [...formData.references];
-    updated[index] = { ...updated[index], [field]: value };
-    setFormData({ ...formData, references: updated });
+    setFormData(prev => {
+      const updated = [...prev.references];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, references: updated };
+    });
   };
 
   const removeReference = (index) => {
-    setFormData({
-      ...formData,
-      references: formData.references.filter((_, i) => i !== index)
-    });
+    setFormData(prev => ({
+      ...prev,
+      references: prev.references.filter((_, i) => i !== index)
+    }));
   };
 
   // ✅ NEW: Employment history management
   const addEmployment = () => {
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       employment_history: [
-        ...formData.employment_history,
+        ...prev.employment_history,
         { employer: '', position: '', start_date: '', end_date: '', responsibilities: '' }
       ]
-    });
+    }));
   };
 
   const updateEmployment = (index, field, value) => {
-    const updated = [...formData.employment_history];
-    updated[index] = { ...updated[index], [field]: value };
-    setFormData({ ...formData, employment_history: updated });
+    setFormData(prev => {
+      const updated = [...prev.employment_history];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, employment_history: updated };
+    });
   };
 
   const removeEmployment = (index) => {
-    setFormData({
-      ...formData,
-      employment_history: formData.employment_history.filter((_, i) => i !== index)
-    });
+    setFormData(prev => ({
+      ...prev,
+      employment_history: prev.employment_history.filter((_, i) => i !== index)
+    }));
   };
 
   const handleSubmit = (e) => {
@@ -872,7 +1000,7 @@ export default function ProfileSetup() {
           </Card>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 pb-24">
           {/* ✅ MOBILE-OPTIMIZED: Profile Photo Section */}
           <Card className="border-2 border-purple-300">
             <CardHeader className="bg-purple-50">
@@ -920,7 +1048,6 @@ export default function ProfileSetup() {
                         accept="image/*"
                         onChange={handlePhotoUpload}
                         className="hidden"
-                        capture="user"
                       />
                     </span>
                   </Button>
@@ -1414,7 +1541,7 @@ export default function ProfileSetup() {
           )}
 
           {/* ✅ MOBILE-OPTIMIZED: Large save button */}
-          <div className="sticky bottom-0 bg-white border-t-4 border-cyan-500 p-4 -mx-4 shadow-2xl">
+          <div className="sticky bottom-0 bg-white border-t-4 border-cyan-500 p-4 -mx-4 shadow-2xl pb-safe">
             <Button
               type="submit"
               className="w-full h-14 text-lg bg-gradient-to-r from-cyan-500 to-blue-600"

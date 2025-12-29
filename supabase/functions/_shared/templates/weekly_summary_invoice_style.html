@@ -16,7 +16,7 @@
                 <span style="font-size: 32px;">📅</span>
                 <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">Weekly Schedule Summary</h1>
             </div>
-            <p style="color: #e0f2fe; margin: 10px 0 0 0; font-size: 14px;">Week of December 22-28, 2025</p>
+            <p style="color: #e0f2fe; margin: 10px 0 0 0; font-size: 14px;">{{report_period}}</p>
         </div>
 
         <!-- CONTENT -->
@@ -36,11 +36,11 @@
                     📥 Download Full Schedule
                 </div>
                 <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
-                    <a href="#"
+                    <a href="{{pdf_url}}"
                         style="display: inline-block; background: #0284c7; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px;">
                         📄 Download PDF
                     </a>
-                    <a href="#"
+                    <a href="{{csv_url}}"
                         style="display: inline-block; background: #059669; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px;">
                         📊 Download CSV
                     </a>
@@ -53,7 +53,7 @@
             <!-- ========== LAST WEEK (WORKED) ========== -->
             <h2
                 style="color: #1f2937; font-size: 20px; margin: 30px 0 15px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">
-                ✅ Last Week: Dec 15-21 (Completed)
+                ✅ Last Week: {{last_week_range}}
             </h2>
 
             <div
@@ -61,15 +61,15 @@
                 <div
                     style="display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 15px;">
                     <div style="text-align: center; flex: 1; min-width: 100px;">
-                        <div style="font-size: 28px; font-weight: bold; color: #059669;">32</div>
+                        <div style="font-size: 28px; font-weight: bold; color: #059669;">{{last_week_shifts}}</div>
                         <div style="font-size: 12px; color: #047857;">Shifts Worked</div>
                     </div>
                     <div style="text-align: center; flex: 1; min-width: 100px;">
-                        <div style="font-size: 28px; font-weight: bold; color: #059669;">384h</div>
+                        <div style="font-size: 28px; font-weight: bold; color: #059669;">{{last_week_hours}}h</div>
                         <div style="font-size: 12px; color: #047857;">Total Hours</div>
                     </div>
                     <div style="text-align: center; flex: 1; min-width: 100px;">
-                        <div style="font-size: 28px; font-weight: bold; color: #059669;">100%</div>
+                        <div style="font-size: 28px; font-weight: bold; color: #059669;">{{last_week_completion}}%</div>
                         <div style="font-size: 12px; color: #047857;">Completion</div>
                     </div>
                 </div>
@@ -82,82 +82,19 @@
                         <th style="padding: 12px; text-align: left; border: 1px solid #334155;">Date</th>
                         <th style="padding: 12px; text-align: left; border: 1px solid #334155;">Role</th>
                         <th style="padding: 12px; text-align: center; border: 1px solid #334155;">Shift Type</th>
-                        <th style="padding: 12px; text-align: center; border: 1px solid #334155;">Staff</th>
+                        <th style="padding: 12px; text-align: center; border: 1px solid #334155;">Status</th>
                         <th style="padding: 12px; text-align: right; border: 1px solid #334155;">Hours</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Monday 15 Dec -->
-                    <tr style="background: #f9fafb;">
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;"><strong>Mon 15 Dec</strong></td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;">Healthcare Assistant</td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center;">
-                            <span
-                                style="background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Day</span>
-                        </td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center; font-weight: bold;">3
-                        </td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">36h</td>
-                    </tr>
-                    <tr style="background: #ffffff;">
-                        <td style="padding:10px; border: 1px solid #e5e7eb;"></td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;">Healthcare Assistant</td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center;">
-                            <span
-                                style="background: #1e293b; color: #e0f2fe; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Night</span>
-                        </td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center; font-weight: bold;">2
-                        </td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">24h</td>
-                    </tr>
-                    <tr style="background: #fef3ff;">
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;"></td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;">Registered Nurse</td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center;">
-                            <span
-                                style="background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Day</span>
-                        </td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center; font-weight: bold;">2
-                        </td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">24h</td>
-                    </tr>
-                    <tr style="background: #ffffff;">
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;"></td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;">Registered Nurse</td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center;">
-                            <span
-                                style="background: #1e293b; color: #e0f2fe; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Night</span>
-                        </td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center; font-weight: bold;">1
-                        </td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">12h</td>
-                    </tr>
-
-                    <!-- Continue for rest of week -->
-                    <tr style="background: #f3f4f6;">
-                        <td colspan="4"
-                            style="padding: 8px; border: 1px solid #e5e7eb; text-align: right; font-size: 12px; color: #6b7280;">
-                            <em>Tue 16 Dec - Fri 19 Dec (similar pattern)</em>
-                        </td>
-                        <td
-                            style="padding: 8px; border: 1px solid #e5e7eb; text-align: right; font-style: italic; color: #6b7280;">
-                            288h</td>
-                    </tr>
-
-                    <!-- TOTAL -->
-                    <tr style="background: #059669; color: #ffffff; font-weight: bold;">
-                        <td colspan="4" style="padding: 12px; border: 1px solid #047857; text-align: right;">Total Hours
-                            Worked (Dec 15-21):</td>
-                        <td style="padding: 12px; border: 1px solid #047857; text-align: right; font-size: 16px;">384h
-                        </td>
-                    </tr>
+                    {{last_week_rows}}
                 </tbody>
             </table>
 
             <!-- ========== THIS WEEK (TO BE WORKED) ========== -->
             <h2
                 style="color: #1f2937; font-size: 20px; margin: 30px 0 15px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">
-                📅 This Week: Dec 22-28 (Confirmed)
+                📅 This Week: {{this_week_range}}
             </h2>
 
             <div
@@ -165,15 +102,15 @@
                 <div
                     style="display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 15px;">
                     <div style="text-align: center; flex: 1; min-width: 100px;">
-                        <div style="font-size: 28px; font-weight: bold; color: #0284c7;">32</div>
+                        <div style="font-size: 28px; font-weight: bold; color: #0284c7;">{{this_week_shifts}}</div>
                         <div style="font-size: 12px; color: #0369a1;">Shifts Scheduled</div>
                     </div>
                     <div style="text-align: center; flex: 1; min-width: 100px;">
-                        <div style="font-size: 28px; font-weight: bold; color: #0284c7;">360h</div>
+                        <div style="font-size: 28px; font-weight: bold; color: #0284c7;">{{this_week_hours}}h</div>
                         <div style="font-size: 12px; color: #0369a1;">Estimated Hours</div>
                     </div>
                     <div style="text-align: center; flex: 1; min-width: 100px;">
-                        <div style="font-size: 28px; font-weight: bold; color: #0284c7;">100%</div>
+                        <div style="font-size: 28px; font-weight: bold; color: #0284c7;">{{this_week_coverage}}%</div>
                         <div style="font-size: 12px; color: #0369a1;">Coverage</div>
                     </div>
                 </div>
@@ -186,92 +123,12 @@
                         <th style="padding: 12px; text-align: left; border: 1px solid #334155;">Date</th>
                         <th style="padding: 12px; text-align: left; border: 1px solid #334155;">Role</th>
                         <th style="padding: 12px; text-align: center; border: 1px solid #334155;">Shift Type</th>
-                        <th style="padding: 12px; text-align: center; border: 1px solid #334155;">Staff</th>
+                        <th style="padding: 12px; text-align: center; border: 1px solid #334155;">Status</th>
                         <th style="padding: 12px; text-align: right; border: 1px solid #334155;">Hours</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Monday 22 Dec -->
-                    <tr style="background: #f9fafb;">
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;"><strong>Mon 22 Dec</strong></td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;">Healthcare Assistant</td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center;">
-                            <span
-                                style="background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Day</span>
-                        </td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center; font-weight: bold;">3
-                        </td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">36h</td>
-                    </tr>
-                    <tr style="background: #ffffff;">
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;"></td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;">Healthcare Assistant</td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center;">
-                            <span
-                                style="background: #1e293b; color: #e0f2fe; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Night</span>
-                        </td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center; font-weight: bold;">2
-                        </td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">24h</td>
-                    </tr>
-                    <tr style="background: #fef3ff;">
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;"></td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;">Registered Nurse</td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center;">
-                            <span
-                                style="background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Day</span>
-                        </td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center; font-weight: bold;">2
-                        </td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">24h</td>
-                    </tr>
-                    <tr style="background: #ffffff;">
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;"></td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;">Registered Nurse</td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center;">
-                            <span
-                                style="background: #1e293b; color: #e0f2fe; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Night</span>
-                        </td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center; font-weight: bold;">1
-                        </td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">12h</td>
-                    </tr>
-
-                    <!-- Rest of week condensed -->
-                    <tr style="background: #f3f4f6;">
-                        <td colspan="4"
-                            style="padding: 8px; border: 1px solid #e5e7eb; text-align: right; font-size: 12px; color: #6b7280;">
-                            <em>Tue 23 Dec - Wed 24 Dec (similar pattern)</em>
-                        </td>
-                        <td
-                            style="padding: 8px; border: 1px solid #e5e7eb; text-align: right; font-style: italic; color: #6b7280;">
-                            192h</td>
-                    </tr>
-                    <tr style="background: #fef3c7;">
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;"><strong>Thu 25 Dec 🎄</strong></td>
-                        <td colspan="3"
-                            style="padding: 10px; border: 1px solid #e5e7eb; font-style: italic; color: #92400e;">
-                            Reduced staffing (Christmas)</td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right; font-weight: bold;">36h
-                        </td>
-                    </tr>
-                    <tr style="background: #f3f4f6;">
-                        <td colspan="4"
-                            style="padding: 8px; border: 1px solid #e5e7eb; text-align: right; font-size: 12px; color: #6b7280;">
-                            <em>Fri 26 Dec - Sun 28 Dec (partial staffing)</em>
-                        </td>
-                        <td
-                            style="padding: 8px; border: 1px solid #e5e7eb; text-align: right; font-style: italic; color: #6b7280;">
-                            36h</td>
-                    </tr>
-
-                    <!-- TOTAL -->
-                    <tr style="background: #0284c7; color: #ffffff; font-weight: bold;">
-                        <td colspan="4" style="padding: 12px; border: 1px solid #0369a1; text-align: right;">Total Hours
-                            Scheduled (Dec 22-28):</td>
-                        <td style="padding: 12px; border: 1px solid #0369a1; text-align: right; font-size: 16px;">360h
-                        </td>
-                    </tr>
+                    {{this_week_rows}}
                 </tbody>
             </table>
 
@@ -281,9 +138,9 @@
                     ℹ️ Important Notes
                 </div>
                 <ul style="margin: 0; padding-left: 20px; color: #1e40af; font-size: 14px; line-height: 1.6;">
-                    <li>Christmas Day coverage reduced as per your request</li>
-                    <li>All staff have confirmed attendance for their shifts</li>
-                    <li>Any discrepancies? Contact us before Friday to resolve before monthly invoicing</li>
+                    <li>Last week's shifts are finalized and ready for reconciliation</li>
+                    <li>All staff for this week have confirmed attendance</li>
+                    <li>Any discrepancies? Contact us to resolve before monthly invoicing</li>
                 </ul>
             </div>
 
@@ -293,18 +150,9 @@
             </p>
         </div>
 
-        <!-- Unsubscribe Link -->
-        <div style="background: #f9fafb; padding: 15px; text-align: center;">
-            <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                <a href="#" style="color: #64748b; text-decoration: underline;">
-                    Manage email preferences
-                </a>
-            </p>
-        </div>
-
         <!-- FOOTER -->
         <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
-            <p style="margin: 0; font-size: 13px;">© 2025 {{agency_name}}. All rights reserved.</p>
+            <p style="margin: 0; font-size: 13px;">© {{current_year}} {{agency_name}}. All rights reserved.</p>
             <p style="margin: 10px 0 0 0; font-size: 12px;">
                 Need help? Contact us at <a href="mailto:{{agency_email}}"
                     style="color: #06b6d4; text-decoration: none;">{{agency_email}}</a>

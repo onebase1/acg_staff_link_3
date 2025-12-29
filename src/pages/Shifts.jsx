@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Plus, Calendar, Clock, MapPin, AlertCircle, UserPlus, LayoutGrid, List, Zap, RefreshCw, AlertTriangle, Building2,
-  Edit2, Save, X as XIcon, Loader2, Download, CalendarIcon, CheckCircle, Mail, MessageSquare
+  Edit2, Save, X as XIcon, Loader2, Download, CalendarIcon, CheckCircle, Mail, MessageSquare,
+  ChevronDown, ChevronRight, CalendarDays, RefreshCw, Zap, AlertTriangle, AlertCircle, Clock,
+  Building2, UserPlus, MapPin, Calendar, Plus, List, LayoutGrid
 } from "lucide-react";
 import { format, subDays, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { toast } from "sonner";
@@ -99,6 +100,13 @@ export default function Shifts() {
 
   const [selectedShiftIds, setSelectedShiftIds] = useState(new Set());
   const [isBroadcastingSelected, setIsBroadcastingSelected] = useState(false);
+
+  // 🆕 Grouping state
+  const [groupByDate, setGroupByDate] = useState(() => {
+    const saved = localStorage.getItem('shifts_groupByDate');
+    return saved === null ? true : saved === 'true'; // Default to true as per user request
+  });
+  const [expandedDates, setExpandedDates] = useState(new Set());
 
   const queryClient = useQueryClient();
 
@@ -546,8 +554,8 @@ export default function Shifts() {
 
       // 4. ✅ NEW: Handle staff unassignment (CONFIRMED/ASSIGNED → OPEN)
       if (originalShift.assigned_staff_id &&
-          !updated.assigned_staff_id &&
-          ['assigned', 'confirmed'].includes(originalShift.status)) {
+        !updated.assigned_staff_id &&
+        ['assigned', 'confirmed'].includes(originalShift.status)) {
 
         const unassignedStaff = staff.find(s => s.id === originalShift.assigned_staff_id);
 
@@ -1612,6 +1620,81 @@ export default function Shifts() {
     return filtered;
   }, [shifts, statusFilter, clientFilter, highlightedShiftIds]);
 
+  // 🆕 Memoized grouped shifts for Admin Persona
+  const groupedShifts = useMemo(() => {
+    if (!groupByDate) return [];
+
+    const groups = {};
+    filteredShifts.forEach(shift => {
+      const dateKey = shift.date;
+      if (!groups[dateKey]) {
+        groups[dateKey] = {
+          date: dateKey,
+          shifts: [],
+          stats: { total: 0, open: 0, confirmed: 0, assigned: 0 }
+        };
+      }
+      groups[dateKey].shifts.push(shift);
+      groups[dateKey].stats.total++;
+      if (shift.status === 'open') groups[dateKey].stats.open++;
+      if (shift.status === 'confirmed') groups[dateKey].stats.confirmed++;
+      if (shift.status === 'assigned') groups[dateKey].stats.assigned++;
+    });
+
+    // Sort dates (we already sorted filteredShifts, so they should be mostly in order)
+    return Object.values(groups).sort((a, b) => {
+      // Use the same sorting logic as the default: newest first or oldest first
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      // Default: sort by shift date descending (newest shift date first)
+      if (statusFilter === 'open' || statusFilter === 'marketplace') {
+        // We might want different sorting here, but let's stick to the main sort for now
+        return dateB.getTime() - dateA.getTime();
+      }
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [filteredShifts, groupByDate, statusFilter]);
+
+  // 🆕 Effect to persist grouping preference
+  useEffect(() => {
+    localStorage.setItem('shifts_groupByDate', groupByDate);
+  }, [groupByDate]);
+
+  // 🆕 Effect to auto-expand dates ONLY for highlighted shifts (e.g. newly created)
+  // Everything else defaults to collapsed per user request.
+  useEffect(() => {
+    if (groupByDate && highlightedShiftIds.size > 0 && groupedShifts.length > 0) {
+      const newExpanded = new Set();
+
+      filteredShifts.forEach(shift => {
+        if (highlightedShiftIds.has(shift.id)) {
+          newExpanded.add(shift.date);
+        }
+      });
+
+      if (newExpanded.size > 0) {
+        setExpandedDates(newExpanded);
+      }
+    }
+  }, [groupedShifts, highlightedShiftIds, groupByDate]);
+
+  const toggleDateExpansion = (date) => {
+    setExpandedDates(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date);
+      else next.add(date);
+      return next;
+    });
+  };
+
+  const expandAllDates = () => {
+    setExpandedDates(new Set(groupedShifts.map(g => g.date)));
+  };
+
+  const collapseAllDates = () => {
+    setExpandedDates(new Set());
+  };
+
   // 🆕 Auto-scroll to first highlighted shift (must be after filteredShifts definition)
   useEffect(() => {
     if (highlightedShiftIds.size > 0 && filteredShifts.length > 0 && !shiftsLoading) {
@@ -1692,6 +1775,227 @@ export default function Shifts() {
     return hasEnded &&
       (shift.status === 'awaiting_admin_closure' || shift.status === 'in_progress' || shift.status === 'confirmed') &&
       !shift.timesheet_received;
+  };
+
+  const renderShiftCard = (shift) => {
+    const isBroadcasting = broadcastingShiftIds.has(shift.id);
+    const alreadyBroadcast = !!shift.broadcast_sent_at;
+    const clientName = getClientName(shift.client_id);
+    const isOrphaned = clientName.includes('Client Deleted');
+    const statusBadge = getStatusBadge(shift.status);
+    const urgencyBadge = getUrgencyBadge(shift.urgency);
+    const client = clients.find(c => c.id === shift.client_id);
+    const canRequest = canRequestTimesheet(shift);
+    const isSendingRequest = sendingTimesheetRequest.has(shift.id);
+
+    let formattedDate = 'Invalid Date';
+    try {
+      if (shift.date) {
+        const shiftDate = new Date(shift.date);
+        if (!isNaN(shiftDate.getTime())) {
+          formattedDate = format(shiftDate, 'EEE, MMM d, yyyy');
+        }
+      }
+    } catch (error) {
+      console.error('Date formatting error:', shift.date, error);
+    }
+
+    const isHighlighted = highlightedShiftIds.has(shift.id);
+
+    return (
+      <Card
+        key={shift.id}
+        ref={isHighlighted ? (el) => {
+          if (el && !highlightedShiftRefs.current.has(shift.id)) {
+            highlightedShiftRefs.current.set(shift.id, el);
+          }
+        } : null}
+        className={`hover:shadow-lg transition-shadow ${isOrphaned ? 'border-red-300 border-2' : ''
+          } ${isHighlighted ? 'border-2 border-cyan-500 bg-cyan-50 shadow-lg' : ''
+          }`}
+      >
+        <CardContent className="p-6">
+          {isOrphaned && (
+            <Alert className="mb-4 border-red-300 bg-red-50">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <AlertDescription className="text-red-900">
+                <strong>⚠️ ORPHANED SHIFT:</strong> Client was deleted. Click "Edit Shift" to reassign.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <Badge {...statusBadge}>
+                {shift.status?.replace('_', ' ')}
+              </Badge>
+              {shift.urgency !== 'normal' && (
+                <Badge {...urgencyBadge} className="ml-2">
+                  {(shift.urgency === 'urgent' || shift.urgency === 'critical') && <AlertCircle className="w-3 h-3 mr-1" />}
+                  {shift.urgency?.toUpperCase()}
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-3 flex-wrap">
+                <Badge variant="outline" className="capitalize">
+                  {shift.role_required?.replace('_', ' ')}
+                </Badge>
+                {shift.marketplace_visible && (
+                  <Badge className="bg-purple-100 text-purple-800">
+                    📢 In Marketplace
+                  </Badge>
+                )}
+                {shift.pay_rate_override && (
+                  <Badge className="bg-amber-100 text-amber-800">
+                    💰 Rate Override
+                  </Badge>
+                )}
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-center gap-2 text-gray-700">
+                  <MapPin className="w-4 h-4 text-gray-400" />
+                  <div>
+                    <span className="font-medium">{getClientName(shift.client_id)}</span>
+                    {shift.work_location_within_site && (
+                      <span className="ml-2 text-cyan-600 font-semibold">
+                        → {shift.work_location_within_site}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-gray-700">
+                  <Calendar className="w-4 h-4 text-gray-400" />
+                  <span>{formattedDate}</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-700">
+                  <Clock className="w-4 h-4 text-gray-400" />
+                  <span>{formatTime(shift.start_time)} - {formatTime(shift.end_time)} ({shift.duration_hours}h)</span>
+                </div>
+              </div>
+
+              {shift.assigned_staff_id && (
+                <div className="mt-2 text-sm text-cyan-600 font-medium">
+                  ✓ Assigned to {getStaffName(shift.assigned_staff_id)}
+                </div>
+              )}
+
+              {client && currentUser?.role === 'agency_owner' && (
+                <div className="mt-3">
+                  <ShiftRateDisplay shift={shift} client={client} compact={false} />
+                </div>
+              )}
+
+              {shift.notes && (
+                <p className="text-sm text-gray-600 mt-3 bg-gray-50 p-3 rounded">
+                  {shift.notes}
+                </p>
+              )}
+
+              {shift.status === 'open' && (
+                <div className="flex items-center gap-2 mt-3 p-3 bg-purple-50 rounded border border-purple-200">
+                  <Switch
+                    checked={shift.marketplace_visible || false}
+                    onCheckedChange={(checked) =>
+                      toggleMarketplaceMutation.mutate({ shiftId: shift.id, visible: checked })
+                    }
+                  />
+                  <Label className="text-sm text-purple-900 font-medium cursor-pointer">
+                    {shift.marketplace_visible ? '📢 Visible in Marketplace' : 'Show in Marketplace'}
+                  </Label>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2 min-w-[150px]">
+              {shift.status === 'open' && (
+                <>
+                  <Button
+                    size="sm"
+                    onClick={() => setAssigningShift(shift)}
+                    className="bg-gradient-to-r from-cyan-500 to-blue-600"
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Confirm Staff
+                  </Button>
+                  {(shift.urgency === 'urgent' || shift.urgency === 'critical') && (
+                    <Button
+                      size="sm"
+                      onClick={() => initiateUrgentBroadcast(shift)}
+                      disabled={isBroadcasting}
+                      className={
+                        isBroadcasting ? "bg-green-600" :
+                          alreadyBroadcast ? "bg-orange-600 hover:bg-orange-700" :
+                            "bg-red-600 hover:bg-red-700"
+                      }
+                    >
+                      {isBroadcasting ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Sending...
+                        </>
+                      ) : alreadyBroadcast ? (
+                        <>
+                          <Zap className="w-4 h-4 mr-2" />
+                          Broadcast Again
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-4 h-4 mr-2" />
+                          Broadcast Alert
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </>
+              )}
+              {shift.status === 'assigned' && new Date(shift.date) >= new Date(new Date().toISOString().split('T')[0]) && (
+                <div className="text-center py-2 bg-blue-50 rounded text-blue-700 text-sm font-medium">
+                  ⏳ Awaiting Confirmation
+                </div>
+              )}
+              {shift.status === 'awaiting_admin_closure' && (
+                <Button
+                  size="sm"
+                  onClick={() => handleCompleteShift(shift)}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Complete Shift
+                </Button>
+              )}
+              {canRequest && (
+                <Button
+                  size="sm"
+                  onClick={() => handleRequestTimesheet(shift)}
+                  disabled={isSendingRequest}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isSendingRequest ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4 mr-2" />
+                      Request Timesheet
+                    </>
+                  )}
+                </Button>
+              )}
+              <Button size="sm" variant="outline" onClick={() => handleEditShift(shift)}>
+                Edit Shift
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
   if (userLoading || shiftsLoading || clientsLoading || staffLoading) {
@@ -2006,843 +2310,734 @@ export default function Shifts() {
                 Table
               </Button>
             </div>
+
+            {/* 🆕 Grouping Controls (Admin Persona) */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-4 border-t">
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="group-by-date"
+                  checked={groupByDate}
+                  onCheckedChange={setGroupByDate}
+                />
+                <Label htmlFor="group-by-date" className="font-semibold text-gray-700 cursor-pointer">
+                  Group by Date
+                </Label>
+              </div>
+
+              {groupByDate && viewMode === 'cards' && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={expandAllDates}
+                    className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  >
+                    Expand All
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={collapseAllDates}
+                    className="text-xs text-gray-600 hover:text-gray-700 hover:bg-gray-50"
+                  >
+                    Collapse All
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {filteredShifts.length === 0 && !shiftsLoading ? (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Shifts Found</h3>
-            <p className="text-gray-600 mb-6">
-              No shifts match your current filters. Try adjusting the date range or filters.
-            </p>
-            <Link to={createPageUrl('PostShiftV2')}>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Shift
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      ) : viewMode === 'table' ? (
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b sticky top-0 z-10">
-                  <tr>
-                    <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 uppercase w-12">
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 rounded border-gray-300"
-                        checked={selectedShiftIds.size > 0 && selectedShiftIds.size === filteredShifts.filter(s => s.status === 'open' && (s.urgency === 'urgent' || s.urgency === 'critical')).length}
-                        onChange={toggleSelectAll}
-                        title="Select all urgent/critical open shifts"
-                      />
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Date</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Client</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Location</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Role</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Time</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Staff</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Status</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Urgency</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {filteredShifts.map(shift => {
-                    const client = clients.find(c => c.id === shift.client_id);
-                    const assignedStaff = staff.find(s => s.id === shift.assigned_staff_id);
-                    const statusBadge = getStatusBadge(shift.status);
-                    const urgencyBadge = getUrgencyBadge(shift.urgency);
+      {
+        filteredShifts.length === 0 && !shiftsLoading ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Shifts Found</h3>
+              <p className="text-gray-600 mb-6">
+                No shifts match your current filters. Try adjusting the date range or filters.
+              </p>
+              <Link to={createPageUrl('PostShiftV2')}>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Shift
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : viewMode === 'table' ? (
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b sticky top-0 z-10">
+                    <tr>
+                      <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 uppercase w-12">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 rounded border-gray-300"
+                          checked={selectedShiftIds.size > 0 && selectedShiftIds.size === filteredShifts.filter(s => s.status === 'open' && (s.urgency === 'urgent' || s.urgency === 'critical')).length}
+                          onChange={toggleSelectAll}
+                          title="Select all urgent/critical open shifts"
+                        />
+                      </th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Date</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Client</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Location</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Role</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Time</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Staff</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Status</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Urgency</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {filteredShifts.map(shift => {
+                      const client = clients.find(c => c.id === shift.client_id);
+                      const assignedStaff = staff.find(s => s.id === shift.assigned_staff_id);
+                      const statusBadge = getStatusBadge(shift.status);
+                      const urgencyBadge = getUrgencyBadge(shift.urgency);
 
-                    let formattedDate = 'Invalid Date';
-                    try {
-                      if (shift.date) {
-                        const shiftDate = new Date(shift.date);
-                        if (!isNaN(shiftDate.getTime())) {
-                          formattedDate = format(shiftDate, 'EEE, MMM d');
-                        }
-                      }
-                    } catch (error) {
-                      console.error('Date formatting error in table:', shift.date, error);
-                    }
-
-                    const isBroadcasting = broadcastingShiftIds.has(shift.id);
-                    const isEditingLocation = editingCell?.shiftId === shift.id && editingCell?.field === 'work_location_within_site';
-                    const canRequest = canRequestTimesheet(shift);
-                    const isSendingRequest = sendingTimesheetRequest.has(shift.id);
-                    const isHighlighted = highlightedShiftIds.has(shift.id);
-
-                    return (
-                      <tr
-                        key={shift.id}
-                        ref={isHighlighted ? (el) => {
-                          if (el && !highlightedShiftRefs.current.has(shift.id)) {
-                            highlightedShiftRefs.current.set(shift.id, el);
+                      let formattedDate = 'Invalid Date';
+                      try {
+                        if (shift.date) {
+                          const shiftDate = new Date(shift.date);
+                          if (!isNaN(shiftDate.getTime())) {
+                            formattedDate = format(shiftDate, 'EEE, MMM d');
                           }
-                        } : null}
-                        className={`hover:bg-gray-50 ${isHighlighted ? 'bg-cyan-50 border-l-4 border-l-cyan-500' : ''
-                          }`}
-                      >
-                        <td className="px-2 py-3 text-center">
-                          {shift.status === 'open' && (shift.urgency === 'urgent' || shift.urgency === 'critical') && (
-                            <input
-                              type="checkbox"
-                              className="w-4 h-4 rounded border-gray-300 cursor-pointer"
-                              checked={selectedShiftIds.has(shift.id)}
-                              onChange={() => toggleShiftSelection(shift.id)}
-                              onClick={(e) => e.stopPropagation()}
-                              title="Select for broadcast"
-                            />
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="text-sm font-medium text-gray-900">
-                            {formattedDate}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <Building2 className="w-4 h-4 text-gray-400" />
-                            <span className="text-sm font-medium text-gray-900">
-                              {client?.name || 'Unknown'}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          {isEditingLocation ? (
-                            <div className="flex items-center gap-2">
-                              <Input
-                                value={cellEditValue}
-                                onChange={(e) => setCellEditValue(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleCellSave();
-                                  if (e.key === 'Escape') handleCellCancel();
-                                }}
-                                className="h-8 text-xs"
-                                placeholder="e.g., Room 14"
-                                autoFocus
+                        }
+                      } catch (error) {
+                        console.error('Date formatting error in table:', shift.date, error);
+                      }
+
+                      const isBroadcasting = broadcastingShiftIds.has(shift.id);
+                      const isEditingLocation = editingCell?.shiftId === shift.id && editingCell?.field === 'work_location_within_site';
+                      const canRequest = canRequestTimesheet(shift);
+                      const isSendingRequest = sendingTimesheetRequest.has(shift.id);
+                      const isHighlighted = highlightedShiftIds.has(shift.id);
+
+                      return (
+                        <tr
+                          key={shift.id}
+                          ref={isHighlighted ? (el) => {
+                            if (el && !highlightedShiftRefs.current.has(shift.id)) {
+                              highlightedShiftRefs.current.set(shift.id, el);
+                            }
+                          } : null}
+                          className={`hover:bg-gray-50 ${isHighlighted ? 'bg-cyan-50 border-l-4 border-l-cyan-500' : ''
+                            }`}
+                        >
+                          <td className="px-2 py-3 text-center">
+                            {shift.status === 'open' && (shift.urgency === 'urgent' || shift.urgency === 'critical') && (
+                              <input
+                                type="checkbox"
+                                className="w-4 h-4 rounded border-gray-300 cursor-pointer"
+                                checked={selectedShiftIds.has(shift.id)}
+                                onChange={() => toggleShiftSelection(shift.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                title="Select for broadcast"
                               />
-                              <Button
-                                size="sm"
-                                onClick={handleCellSave}
-                                className="h-8 px-2 bg-green-600"
-                                disabled={updateShiftMutation.isPending}
-                              >
-                                <Save className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleCellCancel}
-                                className="h-8 px-2"
-                              >
-                                <XIcon className="w-3 h-3" />
-                              </Button>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="text-sm font-medium text-gray-900">
+                              {formattedDate}
                             </div>
-                          ) : (
-                            <div
-                              onClick={() => handleCellClick(shift.id, 'work_location_within_site', shift.work_location_within_site)}
-                              className="cursor-pointer hover:bg-blue-50 px-2 py-1 rounded transition-colors"
-                            >
-                              {shift.work_location_within_site ? (
-                                <Badge className="bg-cyan-100 text-cyan-800 text-xs">
-                                  📍 {shift.work_location_within_site}
-                                </Badge>
-                              ) : (
-                                <span className="text-xs text-gray-400 italic">-</span>
-                              )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="w-4 h-4 text-gray-400" />
+                              <span className="text-sm font-medium text-gray-900">
+                                {client?.name || 'Unknown'}
+                              </span>
                             </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-800 capitalize">
-                          {shift.role_required?.replace('_', ' ')}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-800">
-                          {shift.start_time} - {shift.end_time} ({shift.duration_hours}h)
-                        </td>
-                        <td className="px-4 py-3">
-                          {assignedStaff ? (
-                            <Badge className="bg-blue-100 text-blue-800 text-xs">
-                              {assignedStaff.first_name} {assignedStaff.last_name}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-gray-500 text-xs">
-                              Unassigned
-                            </Badge>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge {...statusBadge}>
-                            {shift.status?.replace('_', ' ')}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">
-                          {shift.urgency && shift.urgency !== 'normal' ? (
-                            <Badge {...urgencyBadge}>
-                              {shift.urgency?.toUpperCase()}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-gray-500 text-xs">
-                              Normal
-                            </Badge>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0"
-                              onClick={() => handleEditShift(shift)}
-                              title="Edit Shift"
-                            >
-                              <Edit2 className="w-4 h-4 text-blue-600" />
-                            </Button>
-                            {shift.status === 'open' && (
-                              <>
+                          </td>
+                          <td className="px-4 py-3">
+                            {isEditingLocation ? (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  value={cellEditValue}
+                                  onChange={(e) => setCellEditValue(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleCellSave();
+                                    if (e.key === 'Escape') handleCellCancel();
+                                  }}
+                                  className="h-8 text-xs"
+                                  placeholder="e.g., Room 14"
+                                  autoFocus
+                                />
                                 <Button
                                   size="sm"
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => setAssigningShift(shift)}
-                                  title="Confirm Staff"
+                                  onClick={handleCellSave}
+                                  className="h-8 px-2 bg-green-600"
+                                  disabled={updateShiftMutation.isPending}
                                 >
-                                  <UserPlus className="w-4 h-4 text-green-600" />
+                                  <Save className="w-3 h-3" />
                                 </Button>
-                                {(shift.urgency === 'urgent' || shift.urgency === 'critical') && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={handleCellCancel}
+                                  className="h-8 px-2"
+                                >
+                                  <XIcon className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() => handleCellClick(shift.id, 'work_location_within_site', shift.work_location_within_site)}
+                                className="cursor-pointer hover:bg-blue-50 px-2 py-1 rounded transition-colors"
+                              >
+                                {shift.work_location_within_site ? (
+                                  <Badge className="bg-cyan-100 text-cyan-800 text-xs">
+                                    📍 {shift.work_location_within_site}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-xs text-gray-400 italic">-</span>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-800 capitalize">
+                            {shift.role_required?.replace('_', ' ')}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-800">
+                            {shift.start_time} - {shift.end_time} ({shift.duration_hours}h)
+                          </td>
+                          <td className="px-4 py-3">
+                            {assignedStaff ? (
+                              <Badge className="bg-blue-100 text-blue-800 text-xs">
+                                {assignedStaff.first_name} {assignedStaff.last_name}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-gray-500 text-xs">
+                                Unassigned
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge {...statusBadge}>
+                              {shift.status?.replace('_', ' ')}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3">
+                            {shift.urgency && shift.urgency !== 'normal' ? (
+                              <Badge {...urgencyBadge}>
+                                {shift.urgency?.toUpperCase()}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-gray-500 text-xs">
+                                Normal
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={() => handleEditShift(shift)}
+                                title="Edit Shift"
+                              >
+                                <Edit2 className="w-4 h-4 text-blue-600" />
+                              </Button>
+                              {shift.status === 'open' && (
+                                <>
                                   <Button
                                     size="sm"
                                     variant="ghost"
                                     className="h-8 w-8 p-0"
-                                    onClick={() => initiateUrgentBroadcast(shift)}
-                                    disabled={isBroadcasting}
-                                    title="Broadcast Urgent Shift"
+                                    onClick={() => setAssigningShift(shift)}
+                                    title="Confirm Staff"
                                   >
-                                    {isBroadcasting ? (
-                                      <RefreshCw className="w-4 h-4 text-green-600 animate-spin" />
-                                    ) : (
-                                      <Zap className="w-4 h-4 text-red-600" />
-                                    )}
+                                    <UserPlus className="w-4 h-4 text-green-600" />
                                   </Button>
-                                )}
-                              </>
-                            )}
-                            {shift.status === 'awaiting_admin_closure' && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 px-2"
-                                onClick={() => handleCompleteShift(shift)}
-                                title="Mark as Completed"
-                              >
-                                <CheckCircle className="w-4 h-4 text-green-600 mr-1" />
-                                <span className="text-xs">Complete</span>
-                              </Button>
-                            )}
-                            {/* ✅ NEW: Request Timesheet button */}
-                            {canRequest && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 px-2"
-                                onClick={() => handleRequestTimesheet(shift)}
-                                disabled={isSendingRequest}
-                                title="Request Timesheet Upload"
-                              >
-                                {isSendingRequest ? (
-                                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                                ) : (
-                                  <>
-                                    <Mail className="w-4 h-4 text-blue-600 mr-1" />
-                                    <span className="text-xs">Request</span>
-                                  </>
-                                )}
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {filteredShifts.map(shift => {
-            const isBroadcasting = broadcastingShiftIds.has(shift.id);
-            const alreadyBroadcast = !!shift.broadcast_sent_at;
-            const clientName = getClientName(shift.client_id);
-            const isOrphaned = clientName.includes('Client Deleted');
-            const statusBadge = getStatusBadge(shift.status);
-            const urgencyBadge = getUrgencyBadge(shift.urgency);
-            const client = clients.find(c => c.id === shift.client_id);
-            const canRequest = canRequestTimesheet(shift);
-            const isSendingRequest = sendingTimesheetRequest.has(shift.id);
-
-            let formattedDate = 'Invalid Date';
-            try {
-              if (shift.date) {
-                const shiftDate = new Date(shift.date);
-                if (!isNaN(shiftDate.getTime())) {
-                  formattedDate = format(shiftDate, 'EEE, MMM d, yyyy');
-                }
-              }
-            } catch (error) {
-              console.error('Date formatting error:', shift.date, error);
-            }
-
-            const isHighlighted = highlightedShiftIds.has(shift.id);
-
-            return (
-              <Card
-                key={shift.id}
-                ref={isHighlighted ? (el) => {
-                  if (el && !highlightedShiftRefs.current.has(shift.id)) {
-                    highlightedShiftRefs.current.set(shift.id, el);
-                  }
-                } : null}
-                className={`hover:shadow-lg transition-shadow ${isOrphaned ? 'border-red-300 border-2' : ''
-                  } ${isHighlighted ? 'border-2 border-cyan-500 bg-cyan-50 shadow-lg' : ''
-                  }`}
-              >
-                <CardContent className="p-6">
-                  {isOrphaned && (
-                    <Alert className="mb-4 border-red-300 bg-red-50">
-                      <AlertTriangle className="h-5 w-5 text-red-600" />
-                      <AlertDescription className="text-red-900">
-                        <strong>⚠️ ORPHANED SHIFT:</strong> Client was deleted. Click "Edit Shift" to reassign.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <Badge {...statusBadge}>
-                        {shift.status?.replace('_', ' ')}
-                      </Badge>
-                      {shift.urgency !== 'normal' && (
-                        <Badge {...urgencyBadge} className="ml-2">
-                          {(shift.urgency === 'urgent' || shift.urgency === 'critical') && <AlertCircle className="w-3 h-3 mr-1" />}
-                          {shift.urgency?.toUpperCase()}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3 flex-wrap">
-                        <Badge variant="outline" className="capitalize">
-                          {shift.role_required?.replace('_', ' ')}
-                        </Badge>
-                        {shift.marketplace_visible && (
-                          <Badge className="bg-purple-100 text-purple-800">
-                            📢 In Marketplace
-                          </Badge>
-                        )}
-                        {shift.pay_rate_override && (
-                          <Badge className="bg-amber-100 text-amber-800">
-                            💰 Rate Override
-                          </Badge>
-                        )}
-                      </div>
-
-                      <div className="grid md:grid-cols-3 gap-4 text-sm">
-                        <div className="flex items-center gap-2 text-gray-700">
-                          <MapPin className="w-4 h-4 text-gray-400" />
-                          <div>
-                            <span className="font-medium">{getClientName(shift.client_id)}</span>
-                            {shift.work_location_within_site && (
-                              <span className="ml-2 text-cyan-600 font-semibold">
-                                → {shift.work_location_within_site}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-700">
-                          <Calendar className="w-4 h-4 text-gray-400" />
-                          <span>{formattedDate}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-700">
-                          <Clock className="w-4 h-4 text-gray-400" />
-                          <span>{formatTime(shift.start_time)} - {formatTime(shift.end_time)} ({shift.duration_hours}h)</span>
-                        </div>
-                      </div>
-
-                      {shift.assigned_staff_id && (
-                        <div className="mt-2 text-sm text-cyan-600 font-medium">
-                          ✓ Assigned to {getStaffName(shift.assigned_staff_id)}
-                        </div>
-                      )}
-
-                      {client && currentUser?.role === 'agency_owner' && (
-                        <div className="mt-3">
-                          <ShiftRateDisplay shift={shift} client={client} compact={false} />
-                        </div>
-                      )}
-
-                      {shift.notes && (
-                        <p className="text-sm text-gray-600 mt-3 bg-gray-50 p-3 rounded">
-                          {shift.notes}
-                        </p>
-                      )}
-
-                      {shift.status === 'open' && (
-                        <div className="flex items-center gap-2 mt-3 p-3 bg-purple-50 rounded border border-purple-200">
-                          <Switch
-                            checked={shift.marketplace_visible || false}
-                            onCheckedChange={(checked) =>
-                              toggleMarketplaceMutation.mutate({ shiftId: shift.id, visible: checked })
-                            }
-                          />
-                          <Label className="text-sm text-purple-900 font-medium cursor-pointer">
-                            {shift.marketplace_visible ? '📢 Visible in Marketplace' : 'Show in Marketplace'}
-                          </Label>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col gap-2 min-w-[150px]">
-                      {shift.status === 'open' && (
-                        <>
-                          <Button
-                            size="sm"
-                            onClick={() => setAssigningShift(shift)}
-                            className="bg-gradient-to-r from-cyan-500 to-blue-600"
-                          >
-                            <UserPlus className="w-4 h-4 mr-2" />
-                            Confirm Staff
-                          </Button>
-                          {(shift.urgency === 'urgent' || shift.urgency === 'critical') && (
-                            <Button
-                              size="sm"
-                              onClick={() => initiateUrgentBroadcast(shift)}
-                              disabled={isBroadcasting}
-                              className={
-                                isBroadcasting ? "bg-green-600" :
-                                  alreadyBroadcast ? "bg-orange-600 hover:bg-orange-700" :
-                                    "bg-red-600 hover:bg-red-700"
-                              }
-                            >
-                              {isBroadcasting ? (
-                                <>
-                                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                                  Sending...
-                                </>
-                              ) : alreadyBroadcast ? (
-                                <>
-                                  <Zap className="w-4 h-4 mr-2" />
-                                  Broadcast Again
-                                </>
-                              ) : (
-                                <>
-                                  <Zap className="w-4 h-4 mr-2" />
-                                  Broadcast Alert
+                                  {(shift.urgency === 'urgent' || shift.urgency === 'critical') && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => initiateUrgentBroadcast(shift)}
+                                      disabled={isBroadcasting}
+                                      title="Broadcast Urgent Shift"
+                                    >
+                                      {isBroadcasting ? (
+                                        <RefreshCw className="w-4 h-4 text-green-600 animate-spin" />
+                                      ) : (
+                                        <Zap className="w-4 h-4 text-red-600" />
+                                      )}
+                                    </Button>
+                                  )}
                                 </>
                               )}
-                            </Button>
-                          )}
-                        </>
-                      )}
-                      {shift.status === 'assigned' && new Date(shift.date) >= new Date(new Date().toISOString().split('T')[0]) && (
-                        <div className="text-center py-2 bg-blue-50 rounded text-blue-700 text-sm font-medium">
-                          ⏳ Awaiting Confirmation
-                        </div>
-                      )}
-                      {shift.status === 'awaiting_admin_closure' && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleCompleteShift(shift)}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Complete Shift
-                        </Button>
-                      )}
-                      {/* ✅ NEW: Request Timesheet button */}
-                      {canRequest && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleRequestTimesheet(shift)}
-                          disabled={isSendingRequest}
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          {isSendingRequest ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Sending...
-                            </>
-                          ) : (
-                            <>
-                              <Mail className="w-4 h-4 mr-2" />
-                              Request Timesheet
-                            </>
-                          )}
-                        </Button>
-                      )}
-                      <Button size="sm" variant="outline" onClick={() => handleEditShift(shift)}>
-                        Edit Shift
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {assigningShift && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <CardHeader className="border-b sticky top-0 bg-white z-10">
-              <CardTitle>Confirm Staff for Shift</CardTitle>
-              <p className="text-sm text-gray-600 mt-1">
-                {format(new Date(assigningShift.date), 'EEEE, MMMM d, yyyy')} • {assigningShift.start_time} - {assigningShift.end_time}
-              </p>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    id="admin-bypass"
-                    checked={!adminBypassMode}
-                    onChange={(e) => setAdminBypassMode(!e.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                  />
-                  <div className="flex-1">
-                    <label htmlFor="admin-bypass" className="font-semibold text-amber-900 cursor-pointer">
-                      📋 Assign Only (staff must confirm)
-                    </label>
-                    <p className="text-sm text-amber-700 mt-1">
-                      {!adminBypassMode ? (
-                        <>
-                          <strong>Checked:</strong> Shift will be marked as "assigned" - staff must confirm via portal/SMS.
-                          Recommended for accountability and formal confirmation.
-                        </>
-                      ) : (
-                        <>
-                          <strong>Unchecked (default):</strong> Shift will be marked as "confirmed" immediately (no staff confirmation needed).
-                          Use when you've spoken to staff by phone and they've verbally agreed.
-                        </>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {staff
-                  .filter(s => s.status === 'active' && s.role === assigningShift.role_required)
-                  .map(staffMember => (
-                    <div
-                      key={staffMember.id}
-                      onClick={() => handleAssignStaff(staffMember.id)}
-                      className="p-4 border-2 border-gray-200 rounded-lg hover:border-cyan-500 hover:bg-cyan-50 cursor-pointer transition-all"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            {staffMember.first_name} {staffMember.last_name}
-                          </p>
-                          <p className="text-sm text-gray-600 capitalize">
-                            {staffMember.role?.replace('_', ' ')}
-                          </p>
-                        </div>
-                        <Badge className="bg-green-100 text-green-800">
-                          Available
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-
-              <div className="flex gap-3 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setAssigningShift(null);
-                    setAdminBypassMode(false);
-                  }}
-                  className="flex-1"
-                  disabled={assignStaffMutation.isPending}
-                >
-                  Cancel
-                </Button>
+                              {shift.status === 'awaiting_admin_closure' && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 px-2"
+                                  onClick={() => handleCompleteShift(shift)}
+                                  title="Mark as Completed"
+                                >
+                                  <CheckCircle className="w-4 h-4 text-green-600 mr-1" />
+                                  <span className="text-xs">Complete</span>
+                                </Button>
+                              )}
+                              {/* ✅ NEW: Request Timesheet button */}
+                              {canRequest && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 px-2"
+                                  onClick={() => handleRequestTimesheet(shift)}
+                                  disabled={isSendingRequest}
+                                  title="Request Timesheet Upload"
+                                >
+                                  {isSendingRequest ? (
+                                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                                  ) : (
+                                    <>
+                                      <Mail className="w-4 h-4 text-blue-600 mr-1" />
+                                      <span className="text-xs">Request</span>
+                                    </>
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>
-        </div>
-      )}
-
-      {editingShift && (
-        <Dialog open={!!editingShift} onOpenChange={() => setEditingShift(null)}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Edit Shift</DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4 py-4">
-              {/* READ-ONLY SHIFT DETAILS */}
-              {editingShift && (() => {
-                let formattedDate = 'Invalid Date';
-                let isPastShift = false;
-                try {
-                  if (editingShift.date) {
-                    const shiftDate = new Date(editingShift.date);
-                    if (!isNaN(shiftDate.getTime())) {
-                      formattedDate = format(shiftDate, 'EEE, MMM d, yyyy');
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      isPastShift = shiftDate < today;
-                    }
+        ) : (
+          <div className="space-y-4">
+            {groupByDate ? (
+              <div className="space-y-4">
+                {groupedShifts.map(group => {
+                  const isExpanded = expandedDates.has(group.date);
+                  let formattedGroupDate = 'Invalid Date';
+                  try {
+                    formattedGroupDate = format(new Date(group.date), 'EEEE, MMMM d, yyyy');
+                  } catch (e) {
+                    // Fallback to raw date if formatting fails
+                    formattedGroupDate = group.date;
                   }
-                } catch (error) {
-                  console.error('Date formatting error in modal:', editingShift.date, error);
-                }
 
-                const clientName = clients.find(c => c.id === editingShift.client_id)?.name || 'Unknown';
-
-                return (
-                  <>
-                    <div className="p-4 bg-gray-50 rounded space-y-2 text-sm">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <span className="text-gray-600">Date:</span>
-                          <p className="font-semibold">{formattedDate}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Care Home:</span>
-                          <p className="font-semibold">{clientName}</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <span className="text-gray-600">Scheduled Time:</span>
-                          <p className="font-semibold">{formatTime(editingShift.start_time)} - {formatTime(editingShift.end_time)} ({editingShift.duration_hours}h)</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Role Required:</span>
-                          <p className="font-semibold">{editingShift.role_required?.replace('_', ' ')}</p>
-                        </div>
-                      </div>
-                      {editingShift.assigned_staff_id && (
-                        <div className="flex items-center justify-between">
+                  return (
+                    <div key={group.date} className="border rounded-lg bg-white overflow-hidden shadow-sm">
+                      <button
+                        onClick={() => toggleDateExpansion(group.date)}
+                        className={`w-full flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 transition-colors text-left ${isExpanded ? 'bg-gray-50 border-b' : 'hover:bg-gray-50'
+                          }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {isExpanded ? (
+                            <ChevronDown className="w-5 h-5 text-gray-500 shrink-0" />
+                          ) : (
+                            <ChevronRight className="w-5 h-5 text-gray-500 shrink-0" />
+                          )}
+                          <CalendarDays className="w-5 h-5 text-cyan-600 shrink-0" />
                           <div>
-                            <span className="text-gray-600">Currently Assigned:</span>
-                            <p className="font-semibold">
-                              {(() => {
-                                const assignedStaff = staff.find(s => s.id === editingShift.assigned_staff_id);
-                                return assignedStaff ? `${assignedStaff.first_name} ${assignedStaff.last_name} - ${assignedStaff.role}` : 'Unknown';
-                              })()}
+                            <h3 className="font-bold text-gray-900">{formattedGroupDate}</h3>
+                            <p className="text-xs text-gray-500 sm:hidden mt-1">
+                              {group.shifts.length} {group.shifts.length === 1 ? 'Shift' : 'Shifts'}
                             </p>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setEditingShift(null);
-                              setAssigningShift(editingShift.id);
-                            }}
-                            className="ml-2"
-                          >
-                            <UserPlus className="w-4 h-4 mr-1" />
-                            Reassign
-                          </Button>
+                          <Badge variant="outline" className="hidden sm:inline-flex bg-white shrink-0">
+                            {group.shifts.length} {group.shifts.length === 1 ? 'Shift' : 'Shifts'}
+                          </Badge>
+                        </div>
+                        <div className="flex gap-2 mt-3 sm:mt-0 ml-8 sm:ml-0">
+                          {group.stats.open > 0 && (
+                            <Badge className="bg-red-100 text-red-800 border-red-200">
+                              {group.stats.open} Open
+                            </Badge>
+                          )}
+                          {group.stats.confirmed > 0 && (
+                            <Badge className="bg-green-100 text-green-800 border-green-200">
+                              {group.stats.confirmed} Confirmed
+                            </Badge>
+                          )}
+                          {group.stats.assigned > 0 && (
+                            <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                              {group.stats.assigned} Assigned
+                            </Badge>
+                          )}
+                        </div>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="p-4 space-y-4 bg-gray-50/30 border-t border-gray-100">
+                          {group.shifts.map(shift => renderShiftCard(shift))}
                         </div>
                       )}
                     </div>
+                  );
+                })}
+              </div>
+            ) : (
+              filteredShifts.map(shift => renderShiftCard(shift))
+            )}
+          </div>
+        )
+      }
 
-                    {/* EDITABLE: SHIFT STATUS */}
-                    <div>
-                      <Label htmlFor="edit-status">Shift Status</Label>
-                      <Select
-                        value={editFormData.status}
-                        onValueChange={(value) => setEditFormData({ ...editFormData, status: value })}
-                      >
-                        <SelectTrigger id="edit-status">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="open">Open</SelectItem>
-                          <SelectItem value="assigned">Assigned</SelectItem>
-                          <SelectItem value="confirmed">Confirmed</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="awaiting_admin_closure">Awaiting Admin Closure</SelectItem>
-                          <SelectItem value="completed">✅ Completed</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
-                          <SelectItem value="no_show">No Show</SelectItem>
-                          <SelectItem value="disputed">Disputed</SelectItem>
-                        </SelectContent>
-                      </Select>
+      {
+        assigningShift && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <CardHeader className="border-b sticky top-0 bg-white z-10">
+                <CardTitle>Confirm Staff for Shift</CardTitle>
+                <p className="text-sm text-gray-600 mt-1">
+                  {format(new Date(assigningShift.date), 'EEEE, MMMM d, yyyy')} • {assigningShift.start_time} - {assigningShift.end_time}
+                </p>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id="admin-bypass"
+                      checked={!adminBypassMode}
+                      onChange={(e) => setAdminBypassMode(!e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                    />
+                    <div className="flex-1">
+                      <label htmlFor="admin-bypass" className="font-semibold text-amber-900 cursor-pointer">
+                        📋 Assign Only (staff must confirm)
+                      </label>
+                      <p className="text-sm text-amber-700 mt-1">
+                        {!adminBypassMode ? (
+                          <>
+                            <strong>Checked:</strong> Shift will be marked as "assigned" - staff must confirm via portal/SMS.
+                            Recommended for accountability and formal confirmation.
+                          </>
+                        ) : (
+                          <>
+                            <strong>Unchecked (default):</strong> Shift will be marked as "confirmed" immediately (no staff confirmation needed).
+                            Use when you've spoken to staff by phone and they've verbally agreed.
+                          </>
+                        )}
+                      </p>
                     </div>
+                  </div>
+                </div>
 
-                    {/* EDITABLE: ACTUAL TIMES (Post-Shift Only) */}
-                    {isPastShift && (
-                      <div className="space-y-3 p-4 bg-blue-50 border border-blue-200 rounded">
-                        <div className="flex items-center gap-2 text-blue-900 font-semibold">
-                          <Clock className="w-4 h-4" />
-                          <span>Actual Times (Post-Shift)</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  {staff
+                    .filter(s => s.status === 'active' && s.role === assigningShift.role_required)
+                    .map(staffMember => (
+                      <div
+                        key={staffMember.id}
+                        onClick={() => handleAssignStaff(staffMember.id)}
+                        className="p-4 border-2 border-gray-200 rounded-lg hover:border-cyan-500 hover:bg-cyan-50 cursor-pointer transition-all"
+                      >
+                        <div className="flex items-center justify-between">
                           <div>
-                            <Label htmlFor="actual-start" className="text-xs">Actual Start Time</Label>
-                            <Input
-                              id="actual-start"
-                              type="time"
-                              value={editFormData.actual_start_time || ''}
-                              onChange={(e) => setEditFormData({ ...editFormData, actual_start_time: e.target.value })}
-                              className="text-sm"
-                            />
+                            <p className="font-semibold text-gray-900">
+                              {staffMember.first_name} {staffMember.last_name}
+                            </p>
+                            <p className="text-sm text-gray-600 capitalize">
+                              {staffMember.role?.replace('_', ' ')}
+                            </p>
                           </div>
-                          <div>
-                            <Label htmlFor="actual-end" className="text-xs">Actual End Time</Label>
-                            <Input
-                              id="actual-end"
-                              type="time"
-                              value={editFormData.actual_end_time || ''}
-                              onChange={(e) => setEditFormData({ ...editFormData, actual_end_time: e.target.value })}
-                              className="text-sm"
-                            />
-                          </div>
+                          <Badge className="bg-green-100 text-green-800">
+                            Available
+                          </Badge>
                         </div>
-                        <p className="text-xs text-blue-700">
-                          💡 Enter actual times worked for accurate payroll and billing
-                        </p>
                       </div>
-                    )}
+                    ))}
+                </div>
 
-                    {/* EDITABLE: WHO ACTUALLY DID THE SHIFT (Post-Shift Only) */}
-                    {isPastShift && (
-                      <div className="space-y-2">
-                        <Label htmlFor="actual-staff">Who Actually Worked This Shift?</Label>
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setAssigningShift(null);
+                      setAdminBypassMode(false);
+                    }}
+                    className="flex-1"
+                    disabled={assignStaffMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )
+      }
+
+      {
+        editingShift && (
+          <Dialog open={!!editingShift} onOpenChange={() => setEditingShift(null)}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Edit Shift</DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4 py-4">
+                {/* READ-ONLY SHIFT DETAILS */}
+                {editingShift && (() => {
+                  let formattedDate = 'Invalid Date';
+                  let isPastShift = false;
+                  try {
+                    if (editingShift.date) {
+                      const shiftDate = new Date(editingShift.date);
+                      if (!isNaN(shiftDate.getTime())) {
+                        formattedDate = format(shiftDate, 'EEE, MMM d, yyyy');
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        isPastShift = shiftDate < today;
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Date formatting error in modal:', editingShift.date, error);
+                  }
+
+                  const clientName = clients.find(c => c.id === editingShift.client_id)?.name || 'Unknown';
+
+                  return (
+                    <>
+                      <div className="p-4 bg-gray-50 rounded space-y-2 text-sm">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <span className="text-gray-600">Date:</span>
+                            <p className="font-semibold">{formattedDate}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Care Home:</span>
+                            <p className="font-semibold">{clientName}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <span className="text-gray-600">Scheduled Time:</span>
+                            <p className="font-semibold">{formatTime(editingShift.start_time)} - {formatTime(editingShift.end_time)} ({editingShift.duration_hours}h)</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Role Required:</span>
+                            <p className="font-semibold">{editingShift.role_required?.replace('_', ' ')}</p>
+                          </div>
+                        </div>
+                        {editingShift.assigned_staff_id && (
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-gray-600">Currently Assigned:</span>
+                              <p className="font-semibold">
+                                {(() => {
+                                  const assignedStaff = staff.find(s => s.id === editingShift.assigned_staff_id);
+                                  return assignedStaff ? `${assignedStaff.first_name} ${assignedStaff.last_name} - ${assignedStaff.role}` : 'Unknown';
+                                })()}
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingShift(null);
+                                setAssigningShift(editingShift.id);
+                              }}
+                              className="ml-2"
+                            >
+                              <UserPlus className="w-4 h-4 mr-1" />
+                              Reassign
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* EDITABLE: SHIFT STATUS */}
+                      <div>
+                        <Label htmlFor="edit-status">Shift Status</Label>
                         <Select
-                          value={editFormData.actual_staff_id || editFormData.assigned_staff_id || 'none'}
-                          onValueChange={(value) => setEditFormData({
-                            ...editFormData,
-                            actual_staff_id: value === 'none' ? null : value
-                          })}
+                          value={editFormData.status}
+                          onValueChange={(value) => setEditFormData({ ...editFormData, status: value })}
                         >
-                          <SelectTrigger id="actual-staff">
-                            <SelectValue placeholder="Select staff who worked..." />
+                          <SelectTrigger id="edit-status">
+                            <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">No one worked (No Show)</SelectItem>
-                            {staff.filter(s => s.role === editingShift.role_required).map(staffMember => (
-                              <SelectItem key={staffMember.id} value={staffMember.id}>
-                                {staffMember.first_name} {staffMember.last_name} - {staffMember.role}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="open">Open</SelectItem>
+                            <SelectItem value="assigned">Assigned</SelectItem>
+                            <SelectItem value="confirmed">Confirmed</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="awaiting_admin_closure">Awaiting Admin Closure</SelectItem>
+                            <SelectItem value="completed">✅ Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                            <SelectItem value="no_show">No Show</SelectItem>
+                            <SelectItem value="disputed">Disputed</SelectItem>
                           </SelectContent>
                         </Select>
-                        <p className="text-xs text-gray-600">
-                          ⚠️ Only showing staff with matching role: {editingShift.role_required?.replace('_', ' ')}
-                        </p>
                       </div>
-                    )}
 
-                    {/* EDITABLE: NOTES */}
-                    <div>
-                      <Label htmlFor="edit-notes">Admin Notes (Optional)</Label>
-                      <Textarea
-                        id="edit-notes"
-                        value={editFormData.notes || ''}
-                        onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
-                        placeholder="Add any notes about this shift..."
-                        rows={3}
-                      />
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
+                      {/* EDITABLE: ACTUAL TIMES (Post-Shift Only) */}
+                      {isPastShift && (
+                        <div className="space-y-3 p-4 bg-blue-50 border border-blue-200 rounded">
+                          <div className="flex items-center gap-2 text-blue-900 font-semibold">
+                            <Clock className="w-4 h-4" />
+                            <span>Actual Times (Post-Shift)</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label htmlFor="actual-start" className="text-xs">Actual Start Time</Label>
+                              <Input
+                                id="actual-start"
+                                type="time"
+                                value={editFormData.actual_start_time || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, actual_start_time: e.target.value })}
+                                className="text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="actual-end" className="text-xs">Actual End Time</Label>
+                              <Input
+                                id="actual-end"
+                                type="time"
+                                value={editFormData.actual_end_time || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, actual_end_time: e.target.value })}
+                                className="text-sm"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-blue-700">
+                            💡 Enter actual times worked for accurate payroll and billing
+                          </p>
+                        </div>
+                      )}
 
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setEditingShift(null)}
-                disabled={updateShiftMutation.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSaveShiftEdit}
-                disabled={updateShiftMutation.isPending}
-              >
-                {updateShiftMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  'Save Changes'
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+                      {/* EDITABLE: WHO ACTUALLY DID THE SHIFT (Post-Shift Only) */}
+                      {isPastShift && (
+                        <div className="space-y-2">
+                          <Label htmlFor="actual-staff">Who Actually Worked This Shift?</Label>
+                          <Select
+                            value={editFormData.actual_staff_id || editFormData.assigned_staff_id || 'none'}
+                            onValueChange={(value) => setEditFormData({
+                              ...editFormData,
+                              actual_staff_id: value === 'none' ? null : value
+                            })}
+                          >
+                            <SelectTrigger id="actual-staff">
+                              <SelectValue placeholder="Select staff who worked..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No one worked (No Show)</SelectItem>
+                              {staff.filter(s => s.role === editingShift.role_required).map(staffMember => (
+                                <SelectItem key={staffMember.id} value={staffMember.id}>
+                                  {staffMember.first_name} {staffMember.last_name} - {staffMember.role}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-gray-600">
+                            ⚠️ Only showing staff with matching role: {editingShift.role_required?.replace('_', ' ')}
+                          </p>
+                        </div>
+                      )}
 
-      {completingShift && (
-        <ShiftCompletionModal
-          isOpen={!!completingShift}
-          onClose={() => setCompletingShift(null)}
-          shift={completingShift}
-          staffName={getStaffName(completingShift.assigned_staff_id)}
-          clientName={getClientName(completingShift.client_id)}
-          onConfirm={handleConfirmCompletion}
-          isLoading={completeShiftMutation.isPending}
-        />
-      )}
+                      {/* EDITABLE: NOTES */}
+                      <div>
+                        <Label htmlFor="edit-notes">Admin Notes (Optional)</Label>
+                        <Textarea
+                          id="edit-notes"
+                          value={editFormData.notes || ''}
+                          onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                          placeholder="Add any notes about this shift..."
+                          rows={3}
+                        />
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setEditingShift(null)}
+                  disabled={updateShiftMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveShiftEdit}
+                  disabled={updateShiftMutation.isPending}
+                >
+                  {updateShiftMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )
+      }
+
+      {
+        completingShift && (
+          <ShiftCompletionModal
+            isOpen={!!completingShift}
+            onClose={() => setCompletingShift(null)}
+            shift={completingShift}
+            staffName={getStaffName(completingShift.assigned_staff_id)}
+            clientName={getClientName(completingShift.client_id)}
+            onConfirm={handleConfirmCompletion}
+            isLoading={completeShiftMutation.isPending}
+          />
+        )
+      }
 
       {/* 🆕 CHANNEL SELECTOR MODAL */}
-      {showChannelSelector && pendingBroadcastShift && (
-        <ChannelSelectorModal
-          isOpen={showChannelSelector}
-          onClose={() => {
-            setShowChannelSelector(false);
-            setPendingBroadcastShift(null);
-          }}
-          enabledChannels={(() => {
-            const agency = agencies.find(a => a.id === pendingBroadcastShift.agency_id);
-            const urgentSettings = agency?.settings?.urgent_shift_notifications || {};
-            const channels = [];
-            if (urgentSettings.sms_enabled !== false) channels.push('sms');
-            if (urgentSettings.email_enabled === true) channels.push('email');
-            if (urgentSettings.whatsapp_enabled === true) channels.push('whatsapp');
-            return channels;
-          })()}
-          defaultChannels={(() => {
-            const agency = agencies.find(a => a.id === pendingBroadcastShift.agency_id);
-            const urgentSettings = agency?.settings?.urgent_shift_notifications || {};
-            const channels = [];
-            if (urgentSettings.sms_enabled !== false) channels.push('sms');
-            if (urgentSettings.email_enabled === true) channels.push('email');
-            if (urgentSettings.whatsapp_enabled === true) channels.push('whatsapp');
-            return channels;
-          })()}
-          staffCount={staff.filter(s =>
-            s.status === 'active' &&
-            s.role === pendingBroadcastShift.role_required &&
-            s.agency_id === pendingBroadcastShift.agency_id
-          ).length}
-          onConfirm={(selectedChannels) => {
-            setShowChannelSelector(false);
-            executeBroadcast(pendingBroadcastShift, selectedChannels);
-            setPendingBroadcastShift(null);
-          }}
-        />
-      )}
-    </div>
+      {
+        showChannelSelector && pendingBroadcastShift && (
+          <ChannelSelectorModal
+            isOpen={showChannelSelector}
+            onClose={() => {
+              setShowChannelSelector(false);
+              setPendingBroadcastShift(null);
+            }}
+            enabledChannels={(() => {
+              const agency = agencies.find(a => a.id === pendingBroadcastShift.agency_id);
+              const urgentSettings = agency?.settings?.urgent_shift_notifications || {};
+              const channels = [];
+              if (urgentSettings.sms_enabled !== false) channels.push('sms');
+              if (urgentSettings.email_enabled === true) channels.push('email');
+              if (urgentSettings.whatsapp_enabled === true) channels.push('whatsapp');
+              return channels;
+            })()}
+            defaultChannels={(() => {
+              const agency = agencies.find(a => a.id === pendingBroadcastShift.agency_id);
+              const urgentSettings = agency?.settings?.urgent_shift_notifications || {};
+              const channels = [];
+              if (urgentSettings.sms_enabled !== false) channels.push('sms');
+              if (urgentSettings.email_enabled === true) channels.push('email');
+              if (urgentSettings.whatsapp_enabled === true) channels.push('whatsapp');
+              return channels;
+            })()}
+            staffCount={staff.filter(s =>
+              s.status === 'active' &&
+              s.role === pendingBroadcastShift.role_required &&
+              s.agency_id === pendingBroadcastShift.agency_id
+            ).length}
+            onConfirm={(selectedChannels) => {
+              setShowChannelSelector(false);
+              executeBroadcast(pendingBroadcastShift, selectedChannels);
+              setPendingBroadcastShift(null);
+            }}
+          />
+        )
+      }
+    </div >
   );
 }

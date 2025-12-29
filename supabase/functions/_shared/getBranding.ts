@@ -29,7 +29,10 @@ export interface Branding {
   // URLs
   siteUrl: string;
   appUrl: string;
-  portalUrl: string;
+  staffPortalUrl: string;      // For staff members
+  clientPortalUrl: string;     // For client contacts
+  adminDashboardUrl: string;   // For admins
+  portalUrl: string;           // DEPRECATED - use role-specific URLs above
   fromDomain: string;
 
   // Visual Branding (Future)
@@ -69,15 +72,20 @@ export async function getBranding(
 
       if (!error && config) {
         // Return agency-specific branding with environment variable fallbacks
+        const baseUrl = config.custom_domain || config.site_url || Deno.env.get("SITE_URL") || "https://agilecaremanagement.co.uk";
+
         return {
           saasName: config.saas_name || Deno.env.get("SAAS_NAME") || "ACG StaffLink",
           companyName: config.saas_company_name || Deno.env.get("SAAS_COMPANY_NAME") || "Agile Care Management",
           supportEmail: config.support_email || Deno.env.get("SAAS_SUPPORT_EMAIL") || "support@agilecaremanagement.co.uk",
           supportPhone: config.support_phone || Deno.env.get("SAAS_SUPPORT_PHONE") || "+44 20 1234 5678",
           noreplyEmail: config.noreply_email || Deno.env.get("SAAS_NOREPLY_EMAIL") || `noreply@${Deno.env.get("RESEND_FROM_DOMAIN") || "agilecaremanagement.co.uk"}`,
-          siteUrl: config.custom_domain || config.site_url || Deno.env.get("SITE_URL") || "https://agilecaremanagement.co.uk",
-          appUrl: config.app_url || Deno.env.get("APP_URL") || "https://agilecaremanagement.co.uk",
-          portalUrl: config.portal_url || Deno.env.get("PORTAL_URL") || "https://agilecaremanagement.co.uk/portal",
+          siteUrl: baseUrl,
+          appUrl: config.app_url || Deno.env.get("APP_URL") || baseUrl,
+          staffPortalUrl: config.staff_portal_url || Deno.env.get("STAFF_PORTAL_URL") || `${baseUrl}/staffportal`,
+          clientPortalUrl: config.client_portal_url || Deno.env.get("CLIENT_PORTAL_URL") || `${baseUrl}/ClientPortal`,
+          adminDashboardUrl: config.admin_dashboard_url || Deno.env.get("ADMIN_DASHBOARD_URL") || `${baseUrl}/Dashboard`,
+          portalUrl: config.portal_url || Deno.env.get("PORTAL_URL") || `${baseUrl}/portal`, // DEPRECATED
           fromDomain: config.from_domain || Deno.env.get("RESEND_FROM_DOMAIN") || "agilecaremanagement.co.uk",
           logoUrl: config.logo_url,
           primaryColor: config.primary_color || "#667eea",
@@ -101,6 +109,7 @@ export async function getBranding(
  */
 export function getSaaSDefaults(): Branding {
   const fromDomain = Deno.env.get("RESEND_FROM_DOMAIN") || "agilecaremanagement.co.uk";
+  const baseUrl = Deno.env.get("SITE_URL") || "https://agilecaremanagement.co.uk";
 
   return {
     saasName: Deno.env.get("SAAS_NAME") || "ACG StaffLink",
@@ -108,9 +117,12 @@ export function getSaaSDefaults(): Branding {
     supportEmail: Deno.env.get("SAAS_SUPPORT_EMAIL") || "support@agilecaremanagement.co.uk",
     supportPhone: Deno.env.get("SAAS_SUPPORT_PHONE") || "+44 20 1234 5678",
     noreplyEmail: Deno.env.get("SAAS_NOREPLY_EMAIL") || `noreply@${fromDomain}`,
-    siteUrl: Deno.env.get("SITE_URL") || "https://agilecaremanagement.co.uk",
-    appUrl: Deno.env.get("APP_URL") || "https://agilecaremanagement.co.uk",
-    portalUrl: Deno.env.get("PORTAL_URL") || "https://agilecaremanagement.co.uk/portal",
+    siteUrl: baseUrl,
+    appUrl: Deno.env.get("APP_URL") || baseUrl,
+    staffPortalUrl: Deno.env.get("STAFF_PORTAL_URL") || `${baseUrl}/staffportal`,
+    clientPortalUrl: Deno.env.get("CLIENT_PORTAL_URL") || `${baseUrl}/ClientPortal`,
+    adminDashboardUrl: Deno.env.get("ADMIN_DASHBOARD_URL") || `${baseUrl}/Dashboard`,
+    portalUrl: Deno.env.get("PORTAL_URL") || `${baseUrl}/portal`, // DEPRECATED
     fromDomain: fromDomain,
     primaryColor: "#667eea",
     secondaryColor: "#764ba2",

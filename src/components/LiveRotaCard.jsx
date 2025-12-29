@@ -34,6 +34,7 @@ const StatusBadge = ({ status }) => {
     );
 };
 
+
 export default function LiveRotaCard({ date, shifts, onAssign, onStatusChange }) {
     // Group shifts by time slot (Day/Night)
     const groupedShifts = shifts.reduce((acc, shift) => {
@@ -48,19 +49,28 @@ export default function LiveRotaCard({ date, shifts, onAssign, onStatusChange })
         window.open(`https://wa.me/${phone.replace(/\s/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
     };
 
+    const parsedDate = new Date(date);
+    const isValidDate = !isNaN(parsedDate.getTime());
+
     return (
         <div className="space-y-4 mb-8">
             {/* Dynamic Date Header */}
             <div className="flex items-center gap-3 px-2">
                 <div className="w-12 h-12 bg-blue-600 rounded-xl flex flex-col items-center justify-center text-white shadow-lg">
-                    <span className="text-[10px] uppercase font-black leading-none">{new Date(date).toLocaleDateString('en-GB', { month: 'short' })}</span>
-                    <span className="text-xl font-black leading-none">{new Date(date).getDate()}</span>
+                    {isValidDate ? (
+                        <>
+                            <span className="text-[10px] font-bold leading-none">{parsedDate.toLocaleDateString('en-GB', { month: 'short' })}</span>
+                            <span className="text-xl font-bold leading-none">{parsedDate.getDate()}</span>
+                        </>
+                    ) : (
+                        <Calendar className="w-6 h-6" />
+                    )}
                 </div>
                 <div>
-                    <h3 className="font-black text-slate-800 text-lg leading-tight">
-                        {new Date(date).toLocaleDateString('en-GB', { weekday: 'long' })}
+                    <h3 className="font-bold text-slate-800 text-lg leading-tight">
+                        {isValidDate ? parsedDate.toLocaleDateString('en-GB', { weekday: 'long' }) : 'Shift Date'}
                     </h3>
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">
+                    <p className="text-slate-500 text-xs font-bold tracking-widest">
                         {shifts.length} {shifts.length === 1 ? 'Shift' : 'Shifts'} Total
                     </p>
                 </div>
@@ -73,11 +83,11 @@ export default function LiveRotaCard({ date, shifts, onAssign, onStatusChange })
                         <div className="bg-slate-50/50 px-4 py-2 border-b flex justify-between items-center">
                             <div className="flex items-center gap-2">
                                 {type.toLowerCase().includes('night') ? <Moon className="w-4 h-4 text-indigo-400" /> : <Sun className="w-4 h-4 text-orange-400" />}
-                                <span className="text-xs font-black uppercase text-slate-600 tracking-wider">
+                                <span className="text-xs font-bold text-slate-600 tracking-wider">
                                     {type} Shift Slots
                                 </span>
                             </div>
-                            <Badge className="bg-blue-100 text-blue-700 text-[10px] font-black">{typeShifts.length} REQ</Badge>
+                            <Badge className="bg-blue-100 text-blue-700 text-[10px] font-bold">{typeShifts.length} REQ</Badge>
                         </div>
 
                         <CardContent className="p-0 divide-y divide-slate-100">
@@ -86,7 +96,7 @@ export default function LiveRotaCard({ date, shifts, onAssign, onStatusChange })
                                     <div className="flex justify-between items-start">
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-2">
-                                                <span className="font-black text-slate-800 tracking-tight">{shift.role_display || shift.role?.replace(/_/g, ' ') || shift.role_required?.replace(/_/g, ' ')}</span>
+                                                <span className="font-bold text-slate-800 tracking-tight">{shift.role_display || shift.role?.replace(/_/g, ' ') || shift.role_required?.replace(/_/g, ' ')}</span>
                                                 <div className="cursor-pointer active:scale-95 transition-transform" onClick={() => onStatusChange(shift.id, shift.status)}>
                                                     <StatusBadge status={shift.status} />
                                                 </div>
@@ -105,15 +115,15 @@ export default function LiveRotaCard({ date, shifts, onAssign, onStatusChange })
                                     </div>
 
                                     {/* Staff Section */}
-                                    {shift.staff_id ? (
+                                    {shift.assigned_staff_id ? (
                                         <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-9 h-9 rounded-full bg-emerald-200 flex items-center justify-center text-emerald-700 font-black text-sm">
+                                                <div className="w-9 h-9 rounded-full bg-emerald-200 flex items-center justify-center text-emerald-700 font-bold text-sm">
                                                     {shift.staff_name?.split(' ').map(n => n[0]).join('')}
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-black text-slate-800 leading-none mb-1">{shift.staff_name}</p>
-                                                    <p className="text-[10px] text-emerald-700 font-bold uppercase tracking-tighter cursor-pointer flex items-center gap-1" onClick={() => shift.staff_phone && openWhatsApp(shift.staff_phone, shift.staff_name, date, shift.start_time)}>
+                                                    <p className="text-sm font-bold text-slate-800 leading-none mb-1">{shift.staff_name}</p>
+                                                    <p className="text-[10px] text-emerald-700 font-bold tracking-tighter cursor-pointer flex items-center gap-1" onClick={() => shift.staff_phone && openWhatsApp(shift.staff_phone, shift.staff_name, date, shift.start_time)}>
                                                         <MessageSquare className="w-3 h-3" />
                                                         Tap to WhatsApp
                                                     </p>

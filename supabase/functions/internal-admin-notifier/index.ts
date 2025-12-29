@@ -19,7 +19,19 @@ import { scheduleRetry } from "../_shared/retryHandler.ts";
  * - Sends emails ONLY to the hardcoded ADMIN_EMAIL_GROUP from env vars.
  */
 
+// CORS headers for browser requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   try {
     // 1. Initialize Supabase client with SERVICE_ROLE_KEY
     const supabase = createClient(
@@ -44,7 +56,7 @@ serve(async (req) => {
     if (!subject || !body_html) {
       return new Response(
         JSON.stringify({ error: 'Subject and body_html are required.' }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -55,7 +67,7 @@ serve(async (req) => {
       // Don't throw an error, just log it. The primary action (e.g., confirming a shift) should still succeed.
       return new Response(
         JSON.stringify({ success: false, message: "Admin email not configured." }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -161,14 +173,14 @@ serve(async (req) => {
     // 7. Return a success response
     return new Response(
       JSON.stringify({ success: true, message: `Notification sent to admin group.` }),
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error) {
     console.error("Internal Admin Notifier Error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

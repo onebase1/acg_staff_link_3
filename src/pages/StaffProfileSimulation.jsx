@@ -17,31 +17,87 @@ import { format, differenceInYears, differenceInDays } from "date-fns";
 export default function StaffProfileSimulation() {
   const navigate = useNavigate();
   const [staffId, setStaffId] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setStaffId(params.get('id'));
+
+    // Get current user profile to determine access level
+    const fetchCurrentUser = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, user_type, agency_id')
+          .eq('id', authUser.id)
+          .single();
+        if (profile) {
+          setCurrentUser(profile);
+        }
+      }
+    };
+    fetchCurrentUser();
   }, []);
 
-  const { data: staff } = useQuery({
+  const { data: staff, isLoading: loadingStaff, error: staffError } = useQuery({
     queryKey: ['staff-profile', staffId],
     queryFn: async () => {
       if (!staffId) return null;
       console.log('📊 Querying single staff member:', staffId);
-      const { data, error } = await supabase
+
+      // Try direct staff ID lookup first
+      const { data: directData, error: directError } = await supabase
         .from('staff')
         .select('*')
         .eq('id', staffId)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        console.error('❌ Error fetching staff:', error);
-        return null;
+      if (directData) {
+        console.log('✅ Found staff record by direct ID');
+        return directData;
       }
 
-      return data;
+      // If direct lookup fails, try to find staff by user_id (in case staffId is actually a profile ID)
+      console.log('⚠️ Direct staff ID lookup failed, trying user_id lookup...');
+      const { data: profileData, error: profileError } = await supabase
+        .from('staff')
+        .select('*')
+        .eq('user_id', staffId)
+        .maybeSingle();
+
+      if (profileData) {
+        console.log('✅ Found staff record by user_id (profile ID was passed instead of staff ID)');
+        return profileData;
+      }
+
+      // Last resort: check if this ID exists in profiles table and find linked staff
+      console.log('⚠️ User ID lookup failed, checking profiles table...');
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', staffId)
+        .maybeSingle();
+
+      if (profile?.email) {
+        console.log('📧 Found profile, looking up staff by email:', profile.email);
+        const { data: emailData } = await supabase
+          .from('staff')
+          .select('*')
+          .eq('email', profile.email)
+          .maybeSingle();
+
+        if (emailData) {
+          console.log('✅ Found staff record by email');
+          return emailData;
+        }
+      }
+
+      console.error('❌ No staff record found for ID:', staffId);
+      return null;
     },
-    enabled: !!staffId
+    enabled: !!staffId,
+    retry: false
   });
 
   const { data: agency } = useQuery({
@@ -66,15 +122,24 @@ export default function StaffProfileSimulation() {
   });
 
   const { data: complianceDocs = [] } = useQuery({
-    queryKey: ['simulation-compliance', staffId],
+    queryKey: ['simulation-compliance', staff?.id, staff?.agency_id],
     queryFn: async () => {
-      if (!staffId) return [];
-      console.log('📊 Querying compliance docs for staff:', staffId);
-      const { data, error } = await supabase
+      if (!staff?.id) return [];
+
+      // Always filter by both agency_id AND staff_id for maximum RLS compatibility
+      // This works for both agency admins and staff members
+      let query = supabase
         .from('compliance')
         .select('*')
-        .eq('staff_id', staffId)
+        .eq('staff_id', staff.id)
         .order('created_date', { ascending: false });
+
+      // If we have agency_id, add it to the filter (helps with RLS)
+      if (staff.agency_id) {
+        query = query.eq('agency_id', staff.agency_id);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('❌ Error fetching compliance docs:', error);
@@ -83,7 +148,7 @@ export default function StaffProfileSimulation() {
 
       return data || [];
     },
-    enabled: !!staffId,
+    enabled: !!staff?.id,
     initialData: []
   });
 
@@ -94,6 +159,50 @@ export default function StaffProfileSimulation() {
   const handleDownload = () => {
     window.print(); // In production, this would generate a proper PDF
   };
+
+  if (loadingStaff) {
+    return (
+      <div className="p-8 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading staff profile...</p>
+      </div>
+    );
+  }
+
+  if (!staff && staffId) {
+    return (
+      <div className="p-8">
+        <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertDescription>
+            <strong>❌ Staff Record Not Found</strong>
+            <br />
+            <span className="text-sm mt-2 block">
+              No staff record was found for ID: <code className="bg-red-100 px-2 py-1 rounded">{staffId}</code>
+            </span>
+            <div className="mt-3 text-sm">
+              <p className="font-semibold mb-1">Possible reasons:</p>
+              <ul className="list-disc ml-4 space-y-1">
+                <li>The staff member has a user profile but no staff record in the system</li>
+                <li>The ID in the URL is incorrect</li>
+                <li>The staff record was deleted</li>
+              </ul>
+            </div>
+            <div className="mt-4">
+              <p className="font-semibold mb-1">What to do:</p>
+              <ul className="list-disc ml-4 space-y-1">
+                <li>If you're a staff member, contact your agency admin to ensure your profile is set up correctly</li>
+                <li>If you're an admin, check the Staff Management page to verify this person exists in the system</li>
+              </ul>
+            </div>
+          </AlertDescription>
+        </Alert>
+        <Button onClick={() => window.history.back()} className="mt-4">
+          Go Back
+        </Button>
+      </div>
+    );
+  }
 
   if (!staff) {
     return (

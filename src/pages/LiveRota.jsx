@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -11,17 +11,26 @@ import {
     ChevronRight,
     Filter,
     RefreshCw,
-    Calendar as CalendarIcon,
+    Calendar,
     LayoutGrid,
     Activity,
     PlusCircle,
     ListFilter,
     X,
     User,
-    Clock
+    Clock,
+    UserPlus,
+    CheckCircle2,
+    Users,
+    Plus,
+    List,
+    ChevronDown,
+    Phone,
+    MessageSquare,
+    Building2
 } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import LiveRotaCard from '@/components/LiveRotaCard';
 import { toast } from 'sonner';
 import {
@@ -30,13 +39,16 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 as LucideLoader } from 'lucide-react';
 import { NotificationService } from '@/components/notifications/NotificationService';
+import { Badge } from '@/components/ui/badge';
 
 export default function LiveRota() {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [assigningShift, setAssigningShift] = useState(null);
     const [selectedStaff, setSelectedStaff] = useState('');
-    const [viewType, setViewType] = useState('cards'); // 'cards' or 'table'
+    const [viewType, setViewType] = useState('table'); // 'table' by default as per owner request
+    const [groupBy, setGroupBy] = useState(() => localStorage.getItem('liverota_groupBy') || 'client'); // 'client' or 'date'
+    const [expandedGroups, setExpandedGroups] = useState(new Set());
     const [showOnlyOpen, setShowOnlyOpen] = useState(false);
     const queryClient = useQueryClient();
     const navigate = useNavigate();
@@ -79,7 +91,7 @@ export default function LiveRota() {
             // Transform for the UI - ensure staff data is flattened and standardized
             return data.map(s => ({
                 ...s,
-                staff_id: s.assigned_staff_id || s.staff_id, // Normalize column name
+                assigned_staff_id: s.assigned_staff_id,
                 client_name: s.client?.name || 'Unknown Client',
                 staff_name: s.staff ? `${s.staff.first_name} ${s.staff.last_name || ''}` : null,
                 staff_phone: s.staff?.phone
@@ -155,15 +167,15 @@ export default function LiveRota() {
             const { error: updateError } = await supabase
                 .from('shifts')
                 .update({
-                    staff_id: staffId,
                     assigned_staff_id: staffId,
                     status: 'assigned',
+                    updated_date: new Date().toISOString(),
                     shift_journey_log: [
                         ...(shift.shift_journey_log || []),
                         {
                             state: 'assigned',
                             timestamp: new Date().toISOString(),
-                            staff_id: staffId,
+                            assigned_staff_id: staffId,
                             method: 'live_rota_quick_assign',
                             notes: 'Quick assigned via Live Rota'
                         }
@@ -233,31 +245,66 @@ export default function LiveRota() {
 
     // Memoized filtered shifts for both stats and grouping
     const filteredShifts = useMemo(() => {
-        let filtered = shifts.filter(s =>
+        let filtered = shifts.map(s => ({
+            ...s,
+            client_name: s.client?.name || 'Unknown Client',
+            staff_name: s.staff ? `${s.staff.first_name} ${s.staff.last_name}` : null
+        })).filter(s =>
             s.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (s.staff_name && s.staff_name.toLowerCase().includes(searchTerm.toLowerCase()))
         );
 
         if (showOnlyOpen) {
-            filtered = filtered.filter(s => !s.staff_id);
+            filtered = filtered.filter(s => !s.assigned_staff_id);
         }
 
         return filtered;
     }, [shifts, searchTerm, showOnlyOpen]);
 
-    // Group shifts: Client -> Date -> Shifts
+    // 🆕 Grouping Logic
     const groupedData = useMemo(() => {
-        return filteredShifts.reduce((acc, shift) => {
-            const clientName = shift.client_name;
-            if (!acc[clientName]) acc[clientName] = {};
-
-            const dateKey = shift.date;
-            if (!acc[clientName][dateKey]) acc[clientName][dateKey] = [];
-            acc[clientName][dateKey].push(shift);
-
+        const groups = filteredShifts.reduce((acc, shift) => {
+            const groupKey = groupBy === 'client' ? shift.client_name : shift.date;
+            if (!acc[groupKey]) acc[groupKey] = [];
+            acc[groupKey].push(shift);
             return acc;
         }, {});
-    }, [filteredShifts]);
+
+        // Return sorted entries
+        return Object.entries(groups).sort(([a], [b]) => {
+            if (groupBy === 'date') return new Date(b).getTime() - new Date(a).getTime();
+            return a.localeCompare(b);
+        });
+    }, [filteredShifts, groupBy]);
+
+    // 🆕 Persist grouping preference
+    useEffect(() => {
+        localStorage.setItem('liverota_groupBy', groupBy);
+    }, [groupBy]);
+
+    // 🆕 Auto-expand groups with open shifts
+    useEffect(() => {
+        const newExpanded = new Set();
+        groupedData.forEach(([key, shifts]) => {
+            if (shifts.some(s => !s.assigned_staff_id)) {
+                newExpanded.add(key);
+            }
+        });
+        // If no open shifts, expand the first group
+        if (newExpanded.size === 0 && groupedData.length > 0) {
+            newExpanded.add(groupedData[0][0]);
+        }
+        setExpandedGroups(newExpanded);
+    }, [groupedData]);
+
+    const toggleGroup = (key) => {
+        setExpandedGroups(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
+    };
 
     const navigateWeek = (direction) => {
         const next = new Date(currentDate);
@@ -279,7 +326,11 @@ export default function LiveRota() {
         // If cycling to confirmed, trigger notification (logic from Shifts.jsx confirmation)
         if (nextStatus === 'confirmed') {
             try {
-                const { data: shift } = await supabase.from('shifts').select('*, staff:staff(*), client:clients(*), agency:agencies(*)').eq('id', shiftId).single();
+                const { data: shift } = await supabase
+                    .from('shifts')
+                    .select('*, staff:assigned_staff_id(*), client:client_id(*), agency:agency_id(*)')
+                    .eq('id', shiftId)
+                    .single();
                 if (shift && shift.staff) {
                     await NotificationService.notifyShiftConfirmedToStaff({
                         staff: shift.staff,
@@ -299,20 +350,52 @@ export default function LiveRota() {
             {/* Sticky Header */}
             <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b">
                 <div className="p-4 space-y-4 max-w-lg mx-auto">
-                    <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pt-4">
+                        <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-4 bg-white/50 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
+                                <button
+                                    onClick={() => setViewType('cards')}
+                                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 ${viewType === 'cards' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-slate-400 hover:text-slate-600'
+                                        }`}
+                                >
+                                    <LayoutGrid className="w-4 h-4" />
+                                    Mobile Cards
+                                </button>
+                                <button
+                                    onClick={() => setViewType('table')}
+                                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 ${viewType === 'table' ? 'bg-slate-800 text-white shadow-lg shadow-slate-300' : 'text-slate-400 hover:text-slate-600'
+                                        }`}
+                                >
+                                    <List className="w-4 h-4" />
+                                    Tabular List
+                                </button>
+                            </div>
+
+                            {viewType === 'table' && (
+                                <div className="flex items-center gap-2 px-2">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Group By:</span>
+                                    <button onClick={() => setGroupBy('client')} className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded transition-all ${groupBy === 'client' ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-50'}`}>Company</button>
+                                    <button onClick={() => setGroupBy('date')} className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded transition-all ${groupBy === 'date' ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-50'}`}>Date</button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-3">
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-9 rounded-xl border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 font-bold"
-                                onClick={() => navigate(`/PostShiftV2?date=${weekRange.start.toISOString().split('T')[0]}`)}
+                                onClick={() => refetch()}
+                                className="h-10 rounded-xl border-slate-200 text-slate-600 font-bold hover:bg-slate-50 active:scale-95 transition-all"
                             >
-                                <PlusCircle className="w-4 h-4 mr-1.5" />
-                                Add Staff Requirement
+                                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                                Refresh
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => refetch()} disabled={isLoading}>
-                                <RefreshCw className={`w-5 h-5 text-slate-500 ${isLoading ? 'animate-spin' : ''}`} />
-                            </Button>
+                            <Link to={`/PostShiftV2?date=${weekRange.start.toISOString().split('T')[0]}`}>
+                                <Button className="h-10 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 font-bold text-xs active:scale-95 transition-all outline-none">
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Add Requirement
+                                </Button>
+                            </Link>
                         </div>
                     </div>
 
@@ -322,32 +405,12 @@ export default function LiveRota() {
                                 <ChevronLeft className="w-5 h-5 text-slate-600" />
                             </Button>
                             <div className="flex-1 text-center py-1">
-                                <span className="text-sm font-black text-slate-700 whitespace-nowrap">
+                                <span className="text-sm font-bold text-slate-700 whitespace-nowrap">
                                     {weekRange.start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - {weekRange.end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                                 </span>
                             </div>
                             <Button variant="ghost" size="sm" className="h-9 w-9" onClick={() => navigateWeek(1)}>
                                 <ChevronRight className="w-5 h-5 text-slate-600" />
-                            </Button>
-                        </div>
-                        <div className="flex bg-slate-100 p-1 rounded-xl">
-                            <Button
-                                variant={viewType === 'cards' ? 'white' : 'ghost'}
-                                size="sm"
-                                className={`h-8 px-3 rounded-lg text-xs font-black shadow-none transition-all ${viewType === 'cards' ? 'bg-white shadow-sm ring-1 ring-slate-200' : 'text-slate-500'}`}
-                                onClick={() => setViewType('cards')}
-                            >
-                                <LayoutGrid className="w-3.5 h-3.5 mr-1.5" />
-                                Mobile
-                            </Button>
-                            <Button
-                                variant={viewType === 'table' ? 'white' : 'ghost'}
-                                size="sm"
-                                className={`h-8 px-3 rounded-lg text-xs font-black shadow-none transition-all ${viewType === 'table' ? 'bg-white shadow-sm ring-1 ring-slate-200' : 'text-slate-500'}`}
-                                onClick={() => setViewType('table')}
-                            >
-                                <ListFilter className="w-3.5 h-3.5 mr-1.5" />
-                                Table
                             </Button>
                         </div>
                     </div>
@@ -364,8 +427,8 @@ export default function LiveRota() {
                 </div>
             </div>
 
-            {/* Main Rota Content */}
-            <div className="max-w-lg mx-auto p-4 space-y-8">
+            {/* Main Rota Content - Dynamic Width for Professional View */}
+            <div className={`mx-auto p-4 space-y-8 transition-all duration-500 ${viewType === 'table' ? 'max-w-4xl' : 'max-w-lg'}`}>
                 {isLoading ? (
                     <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-4">
                         <RotaLoader className="w-8 h-8 animate-spin" />
@@ -374,80 +437,152 @@ export default function LiveRota() {
                 ) : Object.keys(groupedData).length === 0 ? (
                     <div className="text-center py-20 space-y-4">
                         <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
-                            <CalendarIcon className="w-10 h-10 text-slate-300" />
+                            <Calendar className="w-10 h-10 text-slate-300" />
                         </div>
                         <p className="text-slate-500 font-bold">No shifts found for this week.</p>
                         <Button variant="outline" onClick={() => setSearchTerm('')}>Clear Filters</Button>
                     </div>
                 ) : viewType === 'cards' ? (
-                    Object.entries(groupedData).map(([clientName, dates]) => (
-                        <div key={clientName} className="space-y-6">
-                            <div className="flex items-center gap-4 bg-white p-3 rounded-2xl shadow-sm border">
-                                <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-700">
-                                    <LayoutGrid className="w-5 h-5" />
-                                </div>
-                                <h2 className="font-black text-slate-800 text-xl tracking-tight uppercase underline decoration-indigo-200 decoration-4 underline-offset-4">
-                                    {clientName}
-                                </h2>
-                            </div>
+                    groupedData.map(([groupKey, groupShifts]) => {
+                        // Group shifts by date for each group (client/date)
+                        const shiftsByDate = groupShifts.reduce((acc, shift) => {
+                            const dateKey = shift.date;
+                            if (!acc[dateKey]) acc[dateKey] = [];
+                            acc[dateKey].push(shift);
+                            return acc;
+                        }, {});
 
-                            {Object.entries(dates).sort().map(([date, shifts]) => (
-                                <LiveRotaCard
-                                    key={date}
-                                    date={date}
-                                    shifts={shifts}
-                                    onAssign={handleAssign}
-                                    onStatusChange={handleStatusCycle}
-                                />
-                            ))}
-                        </div>
-                    ))
+                        return (
+                            <div key={groupKey} className="space-y-6">
+                                {groupBy === 'client' && (
+                                    <div className="flex items-center gap-4 bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
+                                        <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 border border-indigo-100">
+                                            <Building2 className="w-5 h-5" />
+                                        </div>
+                                        <h2 className="font-bold text-slate-800 text-lg tracking-tight">
+                                            {groupKey}
+                                        </h2>
+                                    </div>
+                                )}
+
+                                {Object.entries(shiftsByDate).sort().map(([date, shifts]) => (
+                                    <LiveRotaCard
+                                        key={date}
+                                        date={date}
+                                        shifts={shifts}
+                                        onAssign={handleAssign}
+                                        onStatusChange={handleStatusCycle}
+                                    />
+                                ))}
+                            </div>
+                        );
+                    })
                 ) : (
                     /* Tabular View */
                     <Card className="rounded-2xl shadow-sm overflow-hidden border">
                         <Table>
                             <TableHeader className="bg-slate-50">
                                 <TableRow>
-                                    <TableHead className="font-black text-[10px] uppercase text-slate-500">Client / Time</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase text-slate-500">Role / Staff</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase text-slate-500 text-center">Coverage</TableHead>
+                                    <TableHead className="font-bold text-[10px] uppercase text-slate-400 w-[120px] tracking-wider">Time Slot</TableHead>
+                                    <TableHead className="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Service Role / Personnel</TableHead>
+                                    <TableHead className="font-bold text-[10px] uppercase text-slate-400 text-center w-[100px] tracking-wider">Fulfillment</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {Object.entries(groupedData).map(([clientName, dates]) => (
-                                    Object.entries(dates).sort().map(([date, dayShifts]) => (
-                                        dayShifts.map((s, idx) => (
-                                            <TableRow key={s.id || `${clientName}-${date}-${idx}`}>
-                                                <TableCell className="py-3">
-                                                    <p className="font-black text-slate-800 text-xs leading-none mb-1">{clientName}</p>
-                                                    <p className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                                                        <Clock className="w-2.5 h-2.5" />
-                                                        {new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} • {s.start_time}
-                                                    </p>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <p className="font-bold text-slate-700 text-xs leading-none mb-1 capitalize">
-                                                        {s.role_display || s.role_required?.replace(/_/g, ' ')}
-                                                    </p>
-                                                    {s.staff_name ? (
-                                                        <p className="text-[10px] font-medium text-emerald-600 flex items-center gap-1">
-                                                            <User className="w-2.5 h-2.5" />
-                                                            {s.staff_name}
-                                                        </p>
-                                                    ) : (
-                                                        <p className="text-[10px] font-medium text-red-400 italic">Unassigned</p>
+                                {groupedData.map(([groupKey, groupShifts]) => (
+                                    <React.Fragment key={groupKey}>
+                                        {/* Premium Collapsible Group Header */}
+                                        <TableRow
+                                            className="bg-slate-50 hover:bg-slate-100 border-y border-slate-200 cursor-pointer group/header"
+                                            onClick={() => toggleGroup(groupKey)}
+                                        >
+                                            <TableCell colSpan={3} className="py-3 px-4">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-1 rounded bg-white border border-slate-200 shadow-sm text-slate-400 group-hover/header:text-blue-600 transition-colors">
+                                                            {expandedGroups.has(groupKey) ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[11px] font-bold text-slate-700 tracking-wide">
+                                                                {groupBy === 'date' ? new Date(groupKey).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', weekday: 'short' }) : groupKey}
+                                                            </span>
+                                                            <div className="px-1.5 py-0.5 bg-blue-600/10 text-blue-600 rounded-md text-[9px] font-bold">
+                                                                {groupShifts.length} {groupShifts.length === 1 ? 'Entry' : 'Entries'}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    {groupShifts.some(s => !s.assigned_staff_id) && (
+                                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-50 text-red-600 rounded-full text-[9px] font-bold uppercase tracking-tight border border-red-100 animate-pulse">
+                                                            <UserPlus className="w-3 h-3" />
+                                                            Action Required
+                                                        </div>
                                                     )}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+
+                                        {/* Data Rows (Conditional Rendering) */}
+                                        {expandedGroups.has(groupKey) && groupShifts.map((s) => (
+                                            <TableRow key={s.id} className="group hover:bg-blue-50/30 transition-all border-b border-slate-100">
+                                                <TableCell className="w-[120px] py-4">
+                                                    <div className="bg-slate-100 px-2 py-1.5 rounded-lg border border-slate-200 group-hover:bg-white group-hover:border-blue-200 transition-all">
+                                                        <div className="text-[11px] font-bold text-slate-700 tabular-nums">
+                                                            {s.start_time} - {s.end_time}
+                                                        </div>
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell>
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold text-slate-900 text-sm tracking-tight">
+                                                                {groupBy === 'date' ? s.client_name : s.role_display}
+                                                            </span>
+                                                            <Badge
+                                                                variant="outline"
+                                                                className={`text-[9px] font-bold uppercase px-2 shadow-sm ${s.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                                                    s.status === 'assigned' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                                                        'bg-red-50 text-red-700 border-red-100'
+                                                                    }`}
+                                                            >
+                                                                {s.status}
+                                                            </Badge>
+                                                        </div>
+                                                        <div className="flex items-center gap-1 mt-1">
+                                                            {groupBy === 'date' && <span className="text-[10px] font-bold text-blue-600 uppercase mr-1">{s.role_display}</span>}
+                                                            {s.assigned_staff_id ? (
+                                                                <span className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+                                                                    <Users className="w-3 h-3" />
+                                                                    {s.staff_name}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-xs font-bold text-red-500/80 italic animate-pulse px-2 py-0.5 bg-red-50 rounded">Awaiting Personnel</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-center pr-4">
                                                     <div
-                                                        className={`w-4 h-4 rounded-full mx-auto shadow-sm ring-2 ring-offset-1 transition-transform hover:scale-125 cursor-pointer ${s.staff_id ? 'bg-emerald-400 ring-emerald-100' : 'bg-red-400 ring-red-100 animate-pulse'}`}
-                                                        title={`${s.status}`}
-                                                        onClick={() => s.staff_id ? null : handleAssign(s.id)}
-                                                    />
+                                                        className={`group/btn relative w-10 h-10 mx-auto rounded-2xl flex items-center justify-center cursor-pointer border-2 transition-all duration-300 shadow-sm ${s.assigned_staff_id
+                                                            ? 'bg-emerald-500 border-emerald-400 text-white hover:bg-emerald-600 hover:rotate-6 active:scale-95'
+                                                            : 'bg-white border-red-200 text-red-500 hover:border-red-400 hover:bg-red-50 hover:-rotate-6 active:scale-95 shadow-lg shadow-red-100'
+                                                            }`}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (!s.assigned_staff_id) handleAssign(s.id);
+                                                            else handleStatusCycle(s.id, s.status);
+                                                        }}
+                                                    >
+                                                        {s.assigned_staff_id ? (
+                                                            <CheckCircle2 className="w-5 h-5 drop-shadow-sm" />
+                                                        ) : (
+                                                            <UserPlus className="w-5 h-5 drop-shadow-sm" />
+                                                        )}
+                                                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-white border-2 border-inherit rounded-full" />
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
-                                        ))
-                                    ))
+                                        ))}
+                                    </React.Fragment>
                                 ))}
                             </TableBody>
                         </Table>
@@ -459,8 +594,8 @@ export default function LiveRota() {
             <Dialog open={!!assigningShift} onOpenChange={() => setAssigningShift(null)}>
                 <DialogContent className="max-w-xs rounded-3xl">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-black">Quick Assign</DialogTitle>
-                        <DialogDescription className="font-bold text-slate-500">
+                        <DialogTitle className="text-xl font-bold">Quick Assign</DialogTitle>
+                        <DialogDescription className="font-semibold text-slate-500">
                             Select available staff for this shift.
                         </DialogDescription>
                     </DialogHeader>
@@ -480,7 +615,7 @@ export default function LiveRota() {
                     </div>
                     <DialogFooter>
                         <Button
-                            className="w-full h-12 rounded-xl font-black bg-blue-600 hover:bg-blue-700"
+                            className="w-full h-12 rounded-xl font-bold bg-blue-600 hover:bg-blue-700"
                             disabled={!selectedStaff || assignStaffMutation.isPending}
                             onClick={() => assignStaffMutation.mutate({ shiftId: assigningShift, staffId: selectedStaff })}
                         >
@@ -494,23 +629,23 @@ export default function LiveRota() {
             {/* Stats Summary Tooltip */}
             <div className="fixed bottom-6 right-6 z-50">
                 <div className={`
-                    bg-slate-900 text-white p-1 rounded-3xl shadow-2xl flex items-center transition-all duration-300
-                    ${showOnlyOpen ? 'ring-4 ring-red-500/30' : ''}
-                `}>
+                bg-slate-900 text-white p-1 rounded-3xl shadow-2xl flex items-center transition-all duration-300
+                ${showOnlyOpen ? 'ring-4 ring-red-500/30' : ''}
+            `}>
                     <div
                         className={`px-5 py-3 text-center cursor-pointer hover:bg-white/10 rounded-2xl transition-colors ${!showOnlyOpen ? 'bg-white/5' : ''}`}
                         onClick={() => setShowOnlyOpen(false)}
                     >
-                        <div className="text-blue-400 text-[10px] font-black uppercase tracking-widest leading-none mb-1">Filled</div>
-                        <div className="text-xl font-black leading-none">{filteredShifts.filter(s => s.staff_id).length}</div>
+                        <div className="text-blue-400 text-[10px] font-bold uppercase tracking-widest leading-none mb-1">Filled</div>
+                        <div className="text-xl font-bold leading-none">{filteredShifts.filter(s => s.assigned_staff_id).length}</div>
                     </div>
                     <div className="w-[1px] h-8 bg-slate-700 mx-1"></div>
                     <div
                         className={`px-5 py-3 text-center cursor-pointer hover:bg-white/10 rounded-2xl transition-colors ${showOnlyOpen ? 'bg-red-500/20' : ''}`}
                         onClick={() => setShowOnlyOpen(!showOnlyOpen)}
                     >
-                        <div className="text-red-400 text-[10px] font-black uppercase tracking-widest leading-none mb-1">Open</div>
-                        <div className="text-xl font-black leading-none">{filteredShifts.filter(s => !s.staff_id).length}</div>
+                        <div className="text-red-400 text-[10px] font-bold uppercase tracking-widest leading-none mb-1">Open</div>
+                        <div className="text-xl font-bold leading-none">{filteredShifts.filter(s => !s.assigned_staff_id).length}</div>
                     </div>
                     {(showOnlyOpen || searchTerm) && (
                         <div
@@ -525,10 +660,10 @@ export default function LiveRota() {
                     )}
                 </div>
             </div>
-        </div >
+        </div>
     );
 }
 
 function RotaLoader(props) {
-    return <RefreshCw {...props} className={props.className + " animate-spin"} />
+    return <RefreshCw {...props} className={props.className} />
 }

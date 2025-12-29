@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getBranding } from "../_shared/getBranding.ts";
 
 /**
  * 🎯 SMART MARKETPLACE DIGEST
@@ -374,10 +375,10 @@ serve(async (req) => {
 
         console.log(`📡 Channels enabled: SMS=${channelSettings.sms_enabled}, WhatsApp=${channelSettings.whatsapp_enabled}, Email=${channelSettings.email_enabled}`);
 
-        // ✅ Get portal URL from environment (dynamic for production/dev)
-        const SITE_URL = Deno.env.get("SITE_URL") || "https://agilecaremanagement.co.uk";
-        const portalUrl = `${SITE_URL}/portal`;
-        console.log(`🔗 Portal URL: ${portalUrl}`);
+        // ✅ Get portal URL from branding (role-specific URLs)
+        const branding = await getBranding(supabase, agency_id);
+        const portalUrl = branding.staffPortalUrl;
+        console.log(`🔗 Staff Portal URL: ${portalUrl}`);
 
         // ✅ Fetch all shifts
         const { data: shifts, error: shiftsError } = await supabase

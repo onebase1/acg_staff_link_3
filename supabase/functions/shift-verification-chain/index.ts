@@ -9,7 +9,19 @@ import { getBranding } from "../_shared/getBranding.ts";
  * ✅ FIXED: Robust error handling, graceful degradation if data missing
  */
 
+// CORS headers for browser requests
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 serve(async (req) => {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders });
+    }
+
     try {
         const supabase = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",
@@ -25,7 +37,7 @@ serve(async (req) => {
                 error: 'shift_id and trigger_point required'
             }), {
                 status: 400,
-                headers: { "Content-Type": "application/json" }
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
         }
 
@@ -46,7 +58,7 @@ serve(async (req) => {
                     error: 'Shift not found'
                 }), {
                     status: 404,
-                    headers: { "Content-Type": "application/json" }
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
                 });
             }
             shift = shifts[0];
@@ -57,7 +69,7 @@ serve(async (req) => {
                 error: 'Failed to fetch shift data'
             }), {
                 status: 500,
-                headers: { "Content-Type": "application/json" }
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
         }
 
@@ -79,7 +91,7 @@ serve(async (req) => {
                     error: 'Client not found'
                 }), {
                     status: 404,
-                    headers: { "Content-Type": "application/json" }
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
                 });
             }
             client = clients[0];
@@ -90,7 +102,7 @@ serve(async (req) => {
                 error: 'Failed to fetch client data'
             }), {
                 status: 500,
-                headers: { "Content-Type": "application/json" }
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
         }
 
@@ -104,7 +116,7 @@ serve(async (req) => {
                 reason: 'missing_email'
             }), {
                 status: 400,
-                headers: { "Content-Type": "application/json" }
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
         }
 
@@ -148,7 +160,10 @@ serve(async (req) => {
         switch (trigger_point) {
             case 'staff_confirmed_shift':
                 if (!staffMember) {
-                    return new Response(JSON.stringify({ success: false, error: 'Staff member not found' }), { status: 400 });
+                    return new Response(JSON.stringify({ success: false, error: 'Staff member not found' }), { 
+                        status: 400,
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
                 }
 
                 // QUEUE for batched professional email
@@ -178,13 +193,19 @@ serve(async (req) => {
                     changeLogDescription = `Shift confirmation queued for batching (${staffMember.first_name})`;
                 } catch (err) {
                     console.error('❌ [Verification Chain] Failed to queue confirmation:', err);
-                    return new Response(JSON.stringify({ success: false, error: 'Queue failed' }), { status: 500 });
+                    return new Response(JSON.stringify({ success: false, error: 'Queue failed' }), { 
+                        status: 500,
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
                 }
                 break;
 
             case 'staff_assigned':
                 if (!staffMember) {
-                    return new Response(JSON.stringify({ success: false, error: 'Staff member not found' }), { status: 400 });
+                    return new Response(JSON.stringify({ success: false, error: 'Staff member not found' }), { 
+                        status: 400,
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
                 }
 
                 // QUEUE for batched professional email (same as confirmation but maybe different bucket? 
@@ -218,13 +239,19 @@ serve(async (req) => {
                     changeLogDescription = `Shift assignment queued for batching (${staffMember.first_name})`;
                 } catch (err) {
                     console.error('❌ [Verification Chain] Failed to queue assignment:', err);
-                    return new Response(JSON.stringify({ success: false, error: 'Queue failed' }), { status: 500 });
+                    return new Response(JSON.stringify({ success: false, error: 'Queue failed' }), { 
+                        status: 500,
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
                 }
                 break;
 
             case 'staff_clocked_in':
                 if (!staffMember) {
-                    return new Response(JSON.stringify({ success: false, error: 'Staff member not found' }), { status: 400 });
+                    return new Response(JSON.stringify({ success: false, error: 'Staff member not found' }), { 
+                        status: 400,
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
                 }
 
                 // IMMEDIATE SEND (Clock-in is real-time awareness)
@@ -273,7 +300,10 @@ serve(async (req) => {
 
             default:
                 console.warn(`⚠️ [Verification Chain] Unknown trigger: ${trigger_point}`);
-                return new Response(JSON.stringify({ success: false, error: `Unknown trigger: ${trigger_point}` }), { status: 400 });
+                return new Response(JSON.stringify({ success: false, error: `Unknown trigger: ${trigger_point}` }), { 
+                    status: 400,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
         }
 
         // Log in ChangeLog
@@ -297,11 +327,14 @@ serve(async (req) => {
             success: true,
             message: changeLogDescription || 'Action completed successfully'
         }), {
-            headers: { "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
 
     } catch (error) {
         console.error('❌ [Verification Chain] Fatal error:', error);
-        return new Response(JSON.stringify({ success: false, error: error.message }), { status: 500 });
+        return new Response(JSON.stringify({ success: false, error: error.message }), { 
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
     }
 });

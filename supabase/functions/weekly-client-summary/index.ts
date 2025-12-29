@@ -1,13 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getBranding } from "../_shared/getBranding.ts";
-import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
-import {
+import { 
+    loadTemplate,
+    getBranding,
+    shouldSendNotification,
     logNotificationSent,
     logNotificationFailed,
-    logNotificationSkipped
-} from "../_shared/notificationLogger.ts";
-import { generateDownloadUrls } from "../_shared/magic-tokens.ts";
+    logNotificationSkipped,
+    generateDownloadUrls,
+    generateStaffProfileLink
+} from "../_shared/all.ts";
 
 /**
  * 📧 WEEKLY CLIENT SUMMARY
@@ -22,7 +24,19 @@ import { generateDownloadUrls } from "../_shared/magic-tokens.ts";
  * ✅ White-labeled: Dynamic agency branding
  */
 
+// CORS headers for browser requests
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 serve(async (req) => {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders });
+    }
+
     try {
         const supabase = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",
@@ -101,17 +115,24 @@ serve(async (req) => {
 
         for (const client of clients || []) {
             try {
-                // Fetch ALL shifts for the period (Open, Assigned, Confirmed, etc.)
-                const { data: shiftData, error: shiftError } = await supabase.rpc('get_weekly_summary_data', {
+                // 3. Fetch MTD data for stats
+                const mtdStartDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+                const { data: mtdData, error: mtdError } = await supabase.rpc('get_weekly_summary_data', {
                     p_client_id: client.id,
-                    p_start_date: startDate.toISOString().split('T')[0],
+                    p_start_date: mtdStartDate.toISOString().split('T')[0],
                     p_end_date: endDate.toISOString().split('T')[0],
                     p_include_all_statuses: true
                 });
 
-                if (shiftError) throw shiftError;
+                if (mtdError) throw mtdError;
 
-                if (!shiftData || shiftData.length === 0) {
+                // 4. Filter for Weekly Range (for the table)
+                const shiftData = mtdData ? mtdData.filter((s: any) => {
+                    const shiftDate = new Date(s.date);
+                    return shiftDate >= startDate && shiftDate <= endDate;
+                }) : [];
+
+                if (shiftData.length === 0 && !isManualTrigger) {
                     results.skipped++;
                     continue;
                 }
@@ -128,10 +149,11 @@ serve(async (req) => {
                 }
 
                 // Build HTML
-                const emailHtml = await buildMonthlyAlignmentEmail({
+                const emailHtml = await buildWeeklySummaryEmail({
                     supabase,
                     client,
-                    shiftData,
+                    shiftData, // Last Week / Selected Range
+                    mtdData: mtdData || [], // Month to Date
                     range: { start: startDate, end: endDate },
                     branding,
                     reportTitle
@@ -172,9 +194,9 @@ serve(async (req) => {
             }
         }
 
-        return new Response(JSON.stringify({ success: true, results }), { headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ success: true, results }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch (error) {
-        return new Response(JSON.stringify({ success: false, error: error.message }), { status: 500, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ success: false, error: error.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 });
 
@@ -182,110 +204,85 @@ function formatMonthYear(date: Date): string {
     return date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 }
 
-async function buildMonthlyAlignmentEmail(params: {
+async function buildWeeklySummaryEmail(params: {
     supabase: SupabaseClient;
     client: any;
     shiftData: any[];
+    mtdData: any[];
     range: { start: Date; end: Date };
-    branding: any;
+    branding: Branding;
     reportTitle: string;
 }): Promise<string> {
-    const { supabase, client, shiftData, range, branding, reportTitle } = params;
+    const { client, shiftData, mtdData, range, branding } = params;
 
-    // Totals
+    // 1. Calculate Weekly Stats
     const totalShifts = shiftData.length;
-    const confirmedShifts = shiftData.filter(s => ['confirmed', 'completed', 'awaiting_admin_closure'].includes(s.shift_status)).length;
     const totalHours = shiftData.reduce((acc, s) => acc + (Number(s.actual_hours) || Number(s.duration_hours) || 0), 0);
-    const fulfillment = totalShifts > 0 ? Math.round((confirmedShifts / totalShifts) * 100) : 0;
+    const uniqueStaff = new Set(shiftData.map(s => s.staff_id || s.assigned_staff_id).filter(Boolean)).size;
 
-    // Table rows with requested DATE column
-    let tableRows = '';
-    shiftData.forEach((s, idx) => {
-        const rowColor = idx % 2 === 0 ? '#ffffff' : '#f9fafb';
-        const statusColor = ['confirmed', 'completed'].includes(s.shift_status) ? '#059669' : '#dc2626';
-        const displayDate = new Date(s.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-        
-        tableRows += `
-            <tr style="background: ${rowColor};">
-                <td style="padding: 14px 16px; border-bottom: 1px solid #f3f4f6; font-weight: 600; font-size: 13px;">${displayDate}</td>
-                <td style="padding: 14px 16px; border-bottom: 1px solid #f3f4f6; font-size: 13px;">${s.role}</td>
-                <td style="padding: 14px 16px; border-bottom: 1px solid #f3f4f6; text-align: center;">
-                    <span style="background: ${s.shift_type === 'Day' ? '#fef3c7' : '#1e293b'}; color: ${s.shift_type === 'Day' ? '#92400e' : '#e0f2fe'}; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase;">${s.shift_type}</span>
-                </td>
-                <td style="padding: 14px 16px; border-bottom: 1px solid #f3f4f6; text-align: center; font-weight: 700; color: ${statusColor}; font-size: 12px; text-transform: capitalize;">${s.shift_status.replace(/_/g, ' ')}</td>
-                <td style="padding: 14px 16px; border-bottom: 1px solid #f3f4f6; text-align: right; font-weight: 600; font-size: 13px;">${Number(s.actual_hours || s.duration_hours).toFixed(1)}h</td>
-            </tr>
-        `;
-    });
+    // 2. Calculate MTD Stats
+    const totalShiftsMtd = mtdData.length;
+    const totalHoursMtd = mtdData.reduce((acc, s) => acc + (Number(s.actual_hours) || Number(s.duration_hours) || 0), 0);
+    const uniqueStaffMtd = new Set(mtdData.map(s => s.staff_id || s.assigned_staff_id).filter(Boolean)).size;
 
-    // Magic buttons
-    let downloadSection = '';
-    try {
-        const downloadUrls = await generateDownloadUrls(supabase, {
-            agency_id: client.agency_id,
-            client_id: client.id,
-            metadata: { 
-                date_from: range.start.toISOString().split('T')[0], 
-                date_to: range.end.toISOString().split('T')[0],
-                type: 'monthly_alignment'
+    const formatWeekRange = (s: Date, e: Date) => 
+        `${s.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${e.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+
+    // 3. Build rows (Chronological Mon-Sun)
+    const sortedShifts = [...shiftData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    const buildRows = async (shifts: any[]) => {
+        const rows = await Promise.all(shifts.map(async (s, idx) => {
+            const rowColor = idx % 2 === 0 ? '#ffffff' : '#f9fafb';
+            const displayDate = new Date(s.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+            const roleName = s.role_name || s.role || 'Staff'; // Fallback
+            
+            let profileLinkHtml = '';
+            const staffId = s.staff_id || s.assigned_staff_id;
+            if (staffId) {
+                try {
+                    const profileLink = await generateStaffProfileLink(
+                        supabase,
+                        staffId,
+                        client.id,
+                        client.agency_id
+                    );
+                    profileLinkHtml = `<br><a href="${profileLink}" style="color: #0284c7; text-decoration: none; font-size: 11px; font-weight: bold;">[📋 View Profile]</a>`;
+                } catch (err) {
+                    console.warn(`⚠️ [Weekly Summary] Failed to generate profile link for staff ${staffId}:`, err);
+                }
             }
-        });
-        downloadSection = `
-            <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 16px; padding: 24px; margin-bottom: 32px; text-align: center;">
-                <div style="font-size: 14px; color: #0c4a6e; font-weight: 700; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.05em;">📥 Export Reconciliation Data</div>
-                <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
-                    <a href="${downloadUrls.pdf}" style="display: inline-block; background: #0284c7; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px;">📄 PDF Report</a>
-                    <a href="${downloadUrls.csv}" style="display: inline-block; background: #059669; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px;">📊 Excel/CSV</a>
-                </div>
-            </div>
-        `;
-    } catch (info) { console.warn("Buttons failed:", info); }
 
-    return `
-    <!DOCTYPE html>
-    <html>
-    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6;">
-        <div style="max-width: 700px; margin: 0 auto; background-color: #ffffff;">
-            <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); padding: 40px 20px; text-align: center;">
-                <h1 style="margin: 0; color: #ffffff; font-size: 26px; font-weight: 800;">${reportTitle}</h1>
-                <p style="color: #e0f2fe; margin: 8px 0 0 0; font-size: 15px;">Period: ${range.start.toLocaleDateString('en-GB')} - ${range.end.toLocaleDateString('en-GB')}</p>
-            </div>
-            <div style="padding: 30px;">
-                <p style="font-size: 16px; color: #374151;">Dear <strong>${client.name}</strong>,</p>
-                <p style="font-size: 15px; color: #4b5563; line-height: 1.6;">Please find your automated alignment summary below. This side-by-side view helps ensure accurate reconciliation for the billing cycle.</p>
-                
-                ${downloadSection}
+            const staffName = s.staff_first_name ? (`${s.staff_first_name} ${s.staff_last_name || ''}`).trim() : 'Scheduled';
 
-                <div style="display: flex; justify-content: space-around; background: #ffffff; border: 2px solid #e5e7eb; border-radius: 16px; padding: 20px; margin-bottom: 30px;">
-                    <div style="text-align: center;"><div style="font-size: 24px; font-weight: 800; color: #0284c7;">${totalShifts}</div><div style="font-size: 11px; font-weight: 600; color: #64748b;">TOTAL SHIFTS</div></div>
-                    <div style="text-align: center; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; padding: 0 20px;"><div style="font-size: 24px; font-weight: 800; color: #059669;">${totalHours.toFixed(0)}h</div><div style="font-size: 11px; font-weight: 600; color: #64748b;">TOTAL HOURS</div></div>
-                    <div style="text-align: center;"><div style="font-size: 24px; font-weight: 800; color: #d97706;">${fulfillment}%</div><div style="font-size: 11px; font-weight: 600; color: #64748b;">FULFILLMENT</div></div>
-                </div>
+            return `
+                <tr style="background: ${rowColor};">
+                    <td style="padding: 14px 16px; border-bottom: 1px solid #f3f4f6; font-weight: 600; font-size: 13px;">${displayDate}</td>
+                    <td style="padding: 14px 16px; border-bottom: 1px solid #f3f4f6; font-size: 13px;">${s.start_time} - ${s.end_time}</td>
+                    <td style="padding: 14px 16px; border-bottom: 1px solid #f3f4f6; font-size: 13px;">${roleName}</td>
+                    <td style="padding: 14px 16px; border-bottom: 1px solid #f3f4f6; text-align: center; font-weight: 700; font-size: 13px;">${staffName}${profileLinkHtml}</td>
+                    <td style="padding: 14px 16px; border-bottom: 1px solid #f3f4f6; text-align: right; font-weight: 600; font-size: 13px;">${Number(s.actual_hours || s.duration_hours).toFixed(1)}h</td>
+                </tr>
+            `;
+        }));
+        return rows.join('');
+    };
 
-                <h3 style="color: #1f2937; font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 15px;">Detailed Performance Log</h3>
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
-                    <thead>
-                        <tr style="background: #1f2937; color: #ffffff;">
-                            <th style="padding: 12px 16px; text-align: left; font-size: 12px; border-radius: 8px 0 0 0;">Date</th>
-                            <th style="padding: 12px 16px; text-align: left; font-size: 12px;">Role</th>
-                            <th style="padding: 12px 16px; text-align: center; font-size: 12px;">Type</th>
-                            <th style="padding: 12px 16px; text-align: center; font-size: 12px;">Status</th>
-                            <th style="padding: 12px 16px; text-align: right; font-size: 12px; border-radius: 0 8px 0 0;">Hours</th>
-                        </tr>
-                    </thead>
-                    <tbody>${tableRows}</tbody>
-                </table>
-
-                <div style="background: #fefce8; border-left: 4px solid #eab308; padding: 15px; border-radius: 8px; font-size: 13px; color: #854d0e;">
-                    <strong>ℹ️ Note:</strong> This summary includes all shifts (Filled & Open). Please report any discrepancies by the 5th of the month.
-                </div>
-                
-                <p style="margin-top: 30px; font-size: 14px; color: #6b7280; text-align: center;">Questions? Contact us at <a href="mailto:${branding.supportEmail}" style="color: #0284c7; text-decoration: none;">${branding.supportEmail}</a></p>
-            </div>
-            <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center; font-size: 12px;">
-                © ${new Date().getFullYear()} ${branding.companyName}. Powered by ACG StaffLink
-            </div>
-        </div>
-    </body>
-    </html>`;
+    // 4. Template
+    return await loadTemplate('weekly_summary', {
+        client_name: client.name,
+        week_range: formatWeekRange(range.start, range.end),
+        total_shifts: totalShifts,
+        total_hours: totalHours.toFixed(1),
+        total_staff: uniqueStaff,
+        total_shifts_mtd: totalShiftsMtd,
+        total_hours_mtd: totalHoursMtd.toFixed(1),
+        total_staff_mtd: uniqueStaffMtd,
+        shift_rows: await buildRows(sortedShifts),
+        agency_name: branding.companyName,
+        agency_email: branding.supportEmail,
+        agency_phone: branding.supportPhone,
+        preferences_url: `${branding.siteUrl}/preferences?email=${encodeURIComponent(client.email)}`,
+        current_year: new Date().getFullYear().toString()
+    });
 }

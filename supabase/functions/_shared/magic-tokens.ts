@@ -35,7 +35,7 @@ export interface DatabaseTokenInput {
     metadata?: Record<string, unknown>;
 }
 
-const EXPIRY_DAYS = 30;
+const EXPIRY_DAYS = 7; // Increased to 7 days minimum per user request to reduce expiry friction
 
 // ============================================================================
 // DATABASE-BACKED TOKENS (Trackable, Revocable)

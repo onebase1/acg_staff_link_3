@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { loadTemplate } from "../_shared/templateLoader.ts";
 
 /**
  * 🚫 STAFF SELF-DECLINE SHIFT
@@ -406,29 +407,30 @@ serve(async (req) => {
       console.log('📧 [Staff Decline] Notifying agency admin...');
 
       try {
+        // ✅ Use template system for branded email
+        const actionDescription =
+          actionTaken === 'urgent_broadcast' ? 'Shift marked as URGENT and broadcast sent to all staff' :
+          actionTaken === 'auto_assignment' ? 'Auto-assignment engine triggered to find replacement staff' :
+          actionTaken === 'marketplace' ? 'Shift added to marketplace for staff to claim' :
+          'Shift returned to open status';
+
+        const emailHtml = await loadTemplate('staff_decline_admin', {
+          agency_name: agency.name || 'Your Agency',
+          agency_email: agency.email,
+          staff_name: `${staff.first_name} ${staff.last_name}`,
+          client_name: client?.name || 'Unknown Client',
+          shift_date: shift.date,
+          shift_time: `${shift.start_time} - ${shift.end_time}`,
+          decline_reason: decline_reason || 'No reason provided',
+          hours_until_shift: hours_until_shift ? Math.round(hours_until_shift).toString() : 'Unknown',
+          action_description: actionDescription
+        });
+
         supabase.functions.invoke('send-email', {
           body: {
             to: agency.email,
-            subject: `Staff Declined Shift - ${shift.date}`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px;">
-                <h2 style="color: #dc2626;">Staff Member Declined Shift</h2>
-                <p>Staff member <strong>${staff.first_name} ${staff.last_name}</strong> has declined a shift:</p>
-                <ul style="background: #f3f4f6; padding: 20px; border-radius: 8px;">
-                  <li><strong>Client:</strong> ${client?.name || 'Unknown'}</li>
-                  <li><strong>Date:</strong> ${shift.date}</li>
-                  <li><strong>Time:</strong> ${shift.start_time} - ${shift.end_time}</li>
-                  <li><strong>Reason:</strong> ${decline_reason || 'No reason provided'}</li>
-                  <li><strong>Time until shift:</strong> ${hours_until_shift ? `${Math.round(hours_until_shift)} hours` : 'Unknown'}</li>
-                </ul>
-                <p><strong>Action Taken:</strong> ${
-                  actionTaken === 'urgent_broadcast' ? 'Shift marked as URGENT and broadcast sent to all staff' :
-                  actionTaken === 'auto_assignment' ? 'Auto-assignment engine triggered' :
-                  actionTaken === 'marketplace' ? 'Shift added to marketplace' :
-                  'Shift returned to open status'
-                }</p>
-              </div>
-            `
+            subject: `⚠️ Staff Declined Shift - ${shift.date}`,
+            html: emailHtml
           }
         }).catch(err => console.error('⚠️ Admin email failed:', err));
 

@@ -13,7 +13,19 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * Created: 2025-01-08
  */
 
+// CORS headers for browser requests
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 serve(async (req) => {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders });
+    }
+
     try {
         const supabase = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",
@@ -56,7 +68,7 @@ serve(async (req) => {
                 approved: 0,
                 flagged: 0
             }), {
-                headers: { "Content-Type": "application/json" }
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
         }
 
@@ -131,7 +143,7 @@ serve(async (req) => {
             ...results,
             timestamp: new Date().toISOString()
         }), {
-            headers: { "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
 
     } catch (error) {
@@ -141,7 +153,7 @@ serve(async (req) => {
             error: error.message
         }), {
             status: 500,
-            headers: { "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
     }
 });

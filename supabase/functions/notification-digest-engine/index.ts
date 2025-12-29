@@ -1,13 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { shouldSendNotification } from "../_shared/preferenceChecker.ts";
-import {
+import { 
+    shouldSendNotification,
     logNotificationSent,
     logNotificationFailed,
-    logNotificationSkipped
-} from "../_shared/notificationLogger.ts";
-import { getBranding } from "../_shared/getBranding.ts";
-import { generateDownloadUrls, generateStaffProfileLink } from "../_shared/magic-tokens.ts";
+    logNotificationSkipped,
+    getBranding,
+    loadTemplate,
+    generateStaffProfileLink
+} from "../_shared/all.ts";
 
 /**
  * 📧 NOTIFICATION DIGEST ENGINE - ENHANCED
@@ -22,29 +23,63 @@ import { generateDownloadUrls, generateStaffProfileLink } from "../_shared/magic
  * ✅ COMPREHENSIVE LOGGING: Audit trail for all sends (NEW)
  */
 
+// CORS headers for browser requests
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 serve(async (req) => {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders });
+    }
+
     try {
         const supabase = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
         );
 
-        console.log('📧 [Digest Engine] Starting batch processing...');
+        // Check for trigger type
+        let body: { manual_trigger?: boolean; client_id?: string; agency_id?: string; force_send?: boolean } = {};
+        try {
+            const json = await req.json();
+            body = json;
+        } catch {
+            // No body
+        }
+
+        const isManualTrigger = body.manual_trigger === true;
+        const targetClientId = body.client_id;
+        const forceSend = body.force_send === true;
+
+        console.log(`📧 [Digest Engine] Starting batch processing... Manual: ${isManualTrigger}`);
 
         const now = new Date();
 
         // ✅ FIX: Changed from notification_queues to notification_queue (singular)
-        const { data: pendingQueues, error: queuesError } = await supabase
+        let query = supabase
             .from("notification_queue")
             .select("*")
             .eq("status", "pending");
+
+        if (isManualTrigger && targetClientId) {
+            query = query.eq("recipient_id", targetClientId); // Queue record has recipient_id
+        }
+
+        const { data: pendingQueues, error: queuesError } = await query;
 
         if (queuesError) {
             console.error('❌ [Digest Engine] Error fetching queues:', queuesError);
             throw queuesError;
         }
 
-        const readyQueues = pendingQueues?.filter(q => new Date(q.scheduled_send_at) <= now) || [];
+        let readyQueues = pendingQueues?.filter(q => {
+            if (isManualTrigger && forceSend) return true;
+            return new Date(q.scheduled_send_at) <= now;
+        }) || [];
 
         console.log(`📊 [Digest Engine] Found ${readyQueues.length} queues ready to send`);
 
@@ -183,14 +218,14 @@ serve(async (req) => {
                                             Please confirm your availability in the staff portal before the deadlines to secure these bookings.
                                         </p>
                                         <div style="text-align: center;">
-                                            <a href="${branding.appUrl}/shifts" style="display: inline-block; background-color: #0284c7; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                                            <a href="${branding.staffPortalUrl}" style="display: inline-block; background-color: #0284c7; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
                                                 Confirm Shifts in Staff Portal
                                             </a>
                                         </div>
                                     </div>
                                     ` : `
                                     <div style="text-align: center; margin: 30px 0;">
-                                        <a href="${branding.appUrl}/shifts" style="display: inline-block; background-color: #10b981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                                        <a href="${branding.staffPortalUrl}" style="display: inline-block; background-color: #10b981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
                                             View Shifts in Staff Portal
                                         </a>
                                     </div>
@@ -275,7 +310,7 @@ serve(async (req) => {
                                     ${shiftCardsHtml}
 
                                     <div style="text-align: center; margin: 30px 0;">
-                                        <a href="${branding.appUrl}/shifts" style="background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Shifts</a>
+                                        <a href="${branding.adminDashboardUrl}" style="background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Shifts</a>
                                     </div>
                                 </div>
 
@@ -324,130 +359,20 @@ serve(async (req) => {
                     // Build grouped HTML
                     const groupedHtml = buildGroupedShiftHtml(groupedShifts);
 
-                    // Generate magic link download URLs
-                    let downloadUrls = { pdf: '', csv: '', ics: '' };
-                    try {
-                        // Extract date range from pending items
-                        const dates = queue.pending_items.map((i: ShiftItem) => i.date).sort();
-                        downloadUrls = await generateDownloadUrls(supabase, {
-                            agency_id: queue.agency_id,
-                            metadata: {
-                                date_from: dates[0],
-                                date_to: dates[dates.length - 1],
-                                notification_queue_id: queue.id
-                            }
-                        });
-                        console.log(`✅ [Digest Engine] Generated download URLs for queue ${queue.id}`);
-                    } catch (err) {
-                        console.warn(`⚠️ [Digest Engine] Failed to generate download URLs:`, err);
-                    }
-
-                    // Build download buttons HTML
-                    const downloadButtonsHtml = downloadUrls.pdf ? `
-                        <div style="background: #f0f9ff; border: 1px solid #0284c7; border-radius: 12px; padding: 20px; margin: 25px 0;">
-                            <div style="font-size: 16px; color: #0369a1; font-weight: bold; margin-bottom: 12px; text-align: center;">
-                                📥 Download Schedule
-                            </div>
-                            <div style="text-align: center;">
-                                <a href="${downloadUrls.pdf}" style="display: inline-block; background: #0284c7; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 5px;">
-                                    📄 View/Print PDF
-                                </a>
-                                <a href="${downloadUrls.csv}" style="display: inline-block; background: #059669; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 5px;">
-                                    📊 Excel/CSV
-                                </a>
-                                <a href="${downloadUrls.ics}" style="display: inline-block; background: #7c3aed; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 5px;">
-                                    📅 Add to Calendar
-                                </a>
-                            </div>
-                            <p style="font-size: 11px; color: #6b7280; text-align: center; margin: 10px 0 0 0;">
-                                Links expire in 30 days. No login required.
-                            </p>
-                        </div>
-                    ` : '';
-
-                    emailHtml = `
-                        <!DOCTYPE html>
-                        <html>
-                        <head>
-                            <meta charset="UTF-8">
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                            <meta name="color-scheme" content="light dark">
-                        </head>
-                        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
-                            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-
-                                <!-- HEADER -->
-                                <div style="background-color: #10b981; padding: 30px 20px; text-align: center;" bgcolor="#10b981">
-                                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">✅ Shifts Confirmed</h1>
-                                </div>
-
-                                <!-- CONTENT -->
-                                <div style="padding: 30px 20px;">
-                                    <p style="font-size: 16px; color: #374151; margin: 0 0 10px 0;">
-                                        Dear ${queue.recipient_first_name || 'Team'},
-                                    </p>
-
-                                    <p style="font-size: 16px; color: #374151; margin: 0 0 25px 0;">
-                                        We're pleased to confirm that <strong>${shiftCount} shift${shiftCount > 1 ? 's have' : ' has'}</strong> been successfully filled for your facility${dateRange ? ` across <strong>${dateRange}</strong>` : ''}.
-                                    </p>
-
-                                    <!-- SUMMARY BOX -->
-                                    <div style="background-color: #d1fae5; border: 2px solid #059669; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 25px;">
-                                        <div style="font-size: 18px; color: #065f46; font-weight: bold; margin-bottom: 8px;">
-                                            📊 Coverage Summary
-                                        </div>
-                                        <div style="display: flex; justify-content: center; gap: 30px; margin-top: 12px; flex-wrap: wrap;">
-                                            ${Object.entries(roleCounts).map(([role, count]) => `
-                                                <div style="text-align: center;">
-                                                    <div style="font-size: 24px; font-weight: bold; color: #059669;">${count}</div>
-                                                    <div style="font-size: 12px; color: #047857;">${role} Shifts</div>
-                                                </div>
-                                            `).join('')}
-                                            <div style="text-align: center;">
-                                                <div style="font-size: 24px; font-weight: bold; color: #059669;">${totalHours}</div>
-                                                <div style="font-size: 12px; color: #047857;">Total Hours</div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- GROUPED SHIFTS -->
-                                    <h2 style="color: #1f2937; font-size: 18px; margin: 30px 0 15px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">
-                                        📅 Detailed Schedule
-                                    </h2>
-
-                                    ${groupedHtml}
-
-                                    ${downloadButtonsHtml}
-
-                                    <p style="font-size: 14px; color: #6b7280; margin: 20px 0 0 0;">
-                                        Questions? Contact ${agency?.name || branding.companyName} at <a href="mailto:${agency?.contact_email || branding.supportEmail}" style="color: #0284c7; text-decoration: none;">${agency?.contact_email || branding.supportEmail}</a>
-                                    </p>
-                                </div>
-
-                                <!-- Unsubscribe Link -->
-                                <div style="background: #f9fafb; padding: 15px; text-align: center;">
-                                    <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                                        <a href="${branding.siteUrl}/preferences?email=${encodeURIComponent(queue.recipient_email)}" style="color: #64748b; text-decoration: underline;">
-                                            Manage email preferences
-                                        </a>
-                                    </p>
-                                </div>
-
-                                <!-- FOOTER -->
-                                <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
-                                    <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} ${branding.companyName}. All rights reserved.</p>
-                                    <p style="margin: 10px 0 0 0; font-size: 12px;">
-                                        Need help? Contact us at <a href="mailto:${branding.supportEmail}" style="color: #06b6d4; text-decoration: none;">${branding.supportEmail}</a>
-                                    </p>
-                                    <p style="margin: 10px 0 0 0; font-size: 10px; color: #64748b;">
-                                        Sent on behalf of ${agency?.name || branding.companyName} • Powered by ACG StaffLink
-                                    </p>
-                                </div>
-
-                            </div>
-                        </body>
-                        </html>
-                    `; }
+                    emailHtml = await loadTemplate('batch_confirmation', {
+                        client_name: queue.recipient_first_name || 'Team',
+                        shift_count: shiftCount,
+                        shift_count_plural: shiftCount > 1 ? 's' : '',
+                        date_range: dateRange ? ` across ${dateRange}` : '',
+                        role_summary_boxes: buildRoleSummaryBoxes(roleCounts),
+                        total_hours: totalHours,
+                        grouped_shifts_html: groupedHtml,
+                        agency_name: agency?.name || branding.companyName,
+                        agency_email: agency?.contact_email || branding.supportEmail,
+                        preferences_url: `${branding.siteUrl}/preferences?email=${encodeURIComponent(queue.recipient_email)}`,
+                        current_year: new Date().getFullYear().toString()
+                    });
+; }
 
                 // ✅ NEW: Check if user has opted out of this notification type
                 const recipientType = queue.recipient_type || 'client'; // Default to client
@@ -596,7 +521,7 @@ serve(async (req) => {
             timestamp: now.toISOString(),
             results: results
         }), {
-            headers: { "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
 
     } catch (error) {
@@ -606,7 +531,7 @@ serve(async (req) => {
             error: error.message
         }), {
             status: 500,
-            headers: { "Content-Type": "application/json" }
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
     }
 });
@@ -734,6 +659,16 @@ function getRoleCounts(items: ShiftItem[]): Record<string, number> {
     return counts;
 }
 
+/** Build role summary boxes HTML */
+function buildRoleSummaryBoxes(roleCounts: Record<string, number>): string {
+    return Object.entries(roleCounts).map(([role, count]) => `
+        <div style="text-align: center;">
+            <div style="font-size: 24px; font-weight: bold; color: #059669;">${count}</div>
+            <div style="font-size: 12px; color: #047857;">${role} Shifts</div>
+        </div>
+    `).join('');
+}
+
 /** Format role name for display */
 function formatRoleName(role: string): string {
     const roleMap: Record<string, string> = {
@@ -792,11 +727,10 @@ function buildGroupedShiftHtml(grouped: Map<string, GroupedShift>): string {
                             <div style="font-size: 13px; color: #047857; line-height: 1.6;">
                                 ${roleGroup.staff.map(s => `
                                     <div style="margin-bottom: 8px;">
-                                        • <strong>${s.name}</strong> (${s.phone})
+                                        • <strong>${s.name}</strong>
                                         ${s.profile_link ? `
-                                            <br>
-                                            <a href="${s.profile_link}" style="display: inline-block; color: #0284c7; text-decoration: none; font-size: 11px; font-weight: bold; background: #e0f2fe; padding: 2px 8px; border-radius: 4px; margin-top: 4px;">
-                                                🔍 View Digital Profile & Compliance
+                                            <a href="${s.profile_link}" style="color: #0284c7; text-decoration: none; font-weight: 600; margin-left: 4px;">
+                                                [📋 View Profile]
                                             </a>
                                         ` : ''}
                                     </div>

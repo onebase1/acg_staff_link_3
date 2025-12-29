@@ -72,7 +72,9 @@
       "Bash(git rm:*)",
       "Bash(git reset:*)",
       "Bash(git show:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(sed:*)",
+      "Bash(npx supabase db execute:*)"
     ],
     "deny": [],
     "ask": []
