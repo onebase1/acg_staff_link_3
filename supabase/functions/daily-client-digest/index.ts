@@ -7,6 +7,7 @@ import {
     logNotificationFailed,
     logNotificationSkipped,
     getBranding,
+    getEmailFrom,
     loadTemplate,
     generateStaffProfileLink
 } from "../_shared/all.ts";
@@ -156,15 +157,14 @@ serve(async (req) => {
 
       // Populate template
       const body_html = await loadTemplate('daily_client_digest', {
-        contact_name: client.contact_person.name || 'Team',
-        tomorrow_date: tomorrowDisplay,
-        shift_rows: shiftsHtmlString,
+        contact_name: client.contact_person?.name || 'Team',
+        date_range: tomorrowDisplay,
+        shifts_html: shiftsHtmlString,
         portal_url: branding.clientPortalUrl,
         client_name: client.name,
         agency_name: agency?.name || branding.saasName,
         agency_email: agency?.email || branding.supportEmail,
         agency_phone: agency?.phone || branding.supportPhone,
-        agency_address: agency?.address || '',
         current_year: new Date().getFullYear().toString()
       });
 

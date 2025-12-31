@@ -93,10 +93,10 @@ serve(async (req) => {
 
         console.log(`📅 Report Period: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
 
-        // Get active clients
+        // Get active clients with primary contact
         let clientsQuery = supabase
             .from('clients')
-            .select(`id, name, email, agency_id`)
+            .select(`id, name, email, agency_id, contact_person`)
             .eq('status', 'active');
 
         if (isManualTrigger && targetClientId) {
@@ -270,15 +270,17 @@ async function buildWeeklySummaryEmail(params: {
 
     // 4. Template
     return await loadTemplate('weekly_summary', {
+        report_title: reportTitle,
+        contact_name: client.contact_person?.name || 'Team',
         client_name: client.name,
-        week_range: formatWeekRange(range.start, range.end),
+        date_range: formatWeekRange(range.start, range.end),
         total_shifts: totalShifts,
         total_hours: totalHours.toFixed(1),
         total_staff: uniqueStaff,
         total_shifts_mtd: totalShiftsMtd,
         total_hours_mtd: totalHoursMtd.toFixed(1),
         total_staff_mtd: uniqueStaffMtd,
-        shift_rows: await buildRows(sortedShifts),
+        shifts_html: await buildRows(sortedShifts),
         agency_name: branding.companyName,
         agency_email: branding.supportEmail,
         agency_phone: branding.supportPhone,

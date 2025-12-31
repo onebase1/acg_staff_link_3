@@ -5,9 +5,109 @@ import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 // ============================================================================
 
 const TEMPLATES: Record<string, string> = {
-    batch_confirmation: `<!DOCTYPE html><html><body style="margin: 0; padding: 0; font-family: sans-serif; background-color: #f3f4f6;"><div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;"><div style="background-color: #10b981; padding: 30px 20px; text-align: center; color: white;"><h1>✅ Shifts Confirmed</h1></div><div style="padding: 30px 20px;"><p>Dear {{client_name}},</p><p>We're pleased to confirm that <strong>{{shift_count}} shift{{shift_count_plural}}</strong> have been filled{{date_range}}.</p><div style="background-color: #d1fae5; border: 2px solid #059669; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 25px;">📊 Summary<br>{{role_summary_boxes}}<br>Total Hours: {{total_hours}}h</div><h2>📅 Schedule</h2>{{grouped_shifts_html}}</div><div style="background: #f9fafb; padding: 15px; text-align: center;"><a href="{{preferences_url}}">Manage email preferences</a></div><div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;"><p>© {{current_year}} {{agency_name}}</p></div></div></body></html>`,
-    weekly_summary: `<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:sans-serif;background-color:#f9fafb;"><div style="max-width:600px;margin:20px auto;background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;"><div style="background:#0284c7;color:#fff;padding:30px 20px;text-align:center;"><h1>{{report_title}}</h1><p>{{date_range}}</p></div><div style="padding:20px;"><p>Hi {{contact_name}},</p><p>Here is your summary for {{client_name}}.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin:20px 0;"><div style="background:#f0f9ff;padding:15px;border-radius:8px;text-align:center;"><strong>This Week</strong><br>{{total_shifts}} Shifts<br>{{total_hours}} Hours</div><div style="background:#f0f9ff;padding:15px;border-radius:8px;text-align:center;"><strong>Month to Date</strong><br>{{total_shifts_mtd}} Shifts<br>{{total_hours_mtd}} Hours</div></div><h3>📅 Shift Details</h3>{{shifts_html}}</div><div style="background:#f3f4f6;padding:20px;text-align:center;font-size:12px;color:#6b7280;"><p>© {{current_year}} {{agency_name}}</p></div></div></body></html>`,
-    daily_client_digest: `<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:sans-serif;background-color:#f9fafb;"><div style="max-width:600px;margin:20px auto;background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;"><div style="background:#0284c7;color:#fff;padding:30px 20px;text-align:center;"><h1>☀️ Daily Digest</h1><p>{{date}}</p></div><div style="padding:20px;"><p>Hi {{contact_name}},</p><p>Here are the staff scheduled for tomorrow:</p><div style="margin:20px 0;">{{shifts_html}}</div></div><div style="background:#f3f4f6;padding:20px;text-align:center;font-size:12px;color:#6b7280;"><p>© {{current_year}} {{agency_name}}</p></div></div></body></html>`
+    batch_confirmation: `<!DOCTYPE html><html><body style="margin: 0; padding: 0; font-family: sans-serif; background-color: #f3f4f6;"><div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;"><div style="background-color: #10b981; padding: 30px 20px; text-align: center; color: white;"><h1>✅ Shifts Confirmed</h1></div><div style="padding: 30px 20px;"><p>Dear {{client_name}},</p><p>We're pleased to confirm that <strong>{{shift_count}} shift{{shift_count_plural}}</strong> have been filled{{date_range}}.</p><div style="background-color: #d1fae5; border: 2px solid #059669; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 25px;">📊 Summary<br>{{role_summary_boxes}}<br>Total Hours: {{total_hours}}h</div><h2>📅 Schedule</h2>{{shifts_html}}</div><div style="background: #f9fafb; padding: 15px; text-align: center;"><a href="{{preferences_url}}">Manage email preferences</a></div><div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;"><p>© {{current_year}} {{agency_name}}</p></div></div></body></html>`,
+    weekly_summary: `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
+    <div style="max-width: 700px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+        <div style="background-color: #0284c7; padding: 40px 20px; text-align: center;" bgcolor="#0284c7">
+            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold; letter-spacing: -0.025em;">{{report_title}}</h1>
+            <p style="color: #e0f2fe; margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">{{date_range}}</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <p style="font-size: 16px; color: #374151; margin-bottom: 24px;">Hi {{contact_name}},</p>
+            <p style="font-size: 16px; color: #4b5563; line-height: 1.5; margin-bottom: 30px;">Here is the performance and alignment summary for <strong>{{client_name}}</strong>. This report includes a review of last week's completed shifts and an overview of the schedule for the coming days.</p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px;">
+                <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 20px; text-align: center;">
+                    <p style="margin: 0; font-size: 12px; color: #0369a1; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">This Week</p>
+                    <p style="margin: 10px 0 0 0; font-size: 24px; color: #0c4a6e; font-weight: 800;">{{total_shifts}} <span style="font-size: 14px; font-weight: normal; color: #075985;">Shifts</span></p>
+                    <p style="margin: 5px 0 0 0; font-size: 18px; color: #075985; font-weight: 600;">{{total_hours}} <span style="font-size: 12px; font-weight: normal;">Hours</span></p>
+                </div>
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; text-align: center;">
+                    <p style="margin: 0; font-size: 12px; color: #64748b; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">Month to Date</p>
+                    <p style="margin: 10px 0 0 0; font-size: 24px; color: #1e293b; font-weight: 800;">{{total_shifts_mtd}} <span style="font-size: 14px; font-weight: normal; color: #334155;">Shifts</span></p>
+                    <p style="margin: 5px 0 0 0; font-size: 18px; color: #334155; font-weight: 600;">{{total_hours_mtd}} <span style="font-size: 12px; font-weight: normal;">Hours</span></p>
+                </div>
+            </div>
+
+            <h3 style="font-size: 18px; color: #111827; margin: 0 0 16px 0; border-bottom: 2px solid #f3f4f6; padding-bottom: 8px;">🗓️ Shift Details</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                <thead>
+                    <tr style="background-color: #f9fafb;">
+                        <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: bold; color: #6b7280; text-transform: uppercase; border-bottom: 2px solid #edf2f7;">Date</th>
+                        <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: bold; color: #6b7280; text-transform: uppercase; border-bottom: 2px solid #edf2f7;">Time</th>
+                        <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: bold; color: #6b7280; text-transform: uppercase; border-bottom: 2px solid #edf2f7;">Role</th>
+                        <th style="padding: 12px 16px; text-align: center; font-size: 12px; font-weight: bold; color: #6b7280; text-transform: uppercase; border-bottom: 2px solid #edf2f7;">Staff</th>
+                        <th style="padding: 12px 16px; text-align: right; font-size: 12px; font-weight: bold; color: #6b7280; text-transform: uppercase; border-bottom: 2px solid #edf2f7;">Hours</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{shifts_html}}
+                </tbody>
+            </table>
+
+            <div style="background-color: #fdf2f8; border: 1px solid #fce7f3; border-radius: 8px; padding: 15px; margin-top: 20px; text-align: center;">
+                <p style="margin: 0; color: #9d174d; font-size: 14px;">If you have any questions regarding this summary or need to adjust your future bookings, please contact our support team at <strong>{{agency_email}}</strong> or call <strong>{{agency_phone}}</strong>.</p>
+            </div>
+        </div>
+        <div style="background-color: #f8fafc; padding: 30px; border-top: 1px solid #e2e8f0; text-align: center;">
+            <p style="margin: 0; font-size: 14px; color: #64748b;">© {{current_year}} {{agency_name}}. All rights reserved.</p>
+            <p style="margin: 10px 0 0 0; font-size: 12px; color: #94a3b8;">You are receiving this automated report because you are an authorized contact for {{client_name}}.</p>
+            <p style="margin: 15px 0 0 0; font-size: 12px;"><a href="{{preferences_url}}" style="color: #0284c7; text-decoration: none;">Manage Email Preferences</a></p>
+        </div>
+    </div>
+</body>
+</html>`,
+    daily_client_digest: `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f7fa;">
+    <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); padding: 40px 20px; text-align: center;">
+            <div style="background: rgba(255, 255, 255, 0.2); width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                <span style="font-size: 30px;">🌟</span>
+            </div>
+            <h1 style="margin: 0; color: #ffffff; font-size: 26px; font-weight: bold;">Tomorrow's Schedule</h1>
+            <p style="color: #e0f2fe; margin: 10px 0 0 0; font-size: 15px; font-weight: 500;">{{date_range}}</p>
+        </div>
+        <div style="padding: 30px;">
+            <p style="font-size: 16px; color: #1f2937; margin-bottom: 20px;">Hi {{contact_name}},</p>
+            <p style="font-size: 16px; color: #4b5563; line-height: 1.6; margin-bottom: 30px;">We're all set for tomorrow! Here are the staff members scheduled to support <strong>{{client_name}}</strong> on <strong>{{date_range}}</strong>.</p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                <thead>
+                    <tr style="background-color: #f8fafc;">
+                        <th style="padding: 12px 15px; text-align: left; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase;">Time</th>
+                        <th style="padding: 12px 15px; text-align: left; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase;">Role</th>
+                        <th style="padding: 12px 15px; text-align: left; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase;">Staff Name</th>
+                        <th style="padding: 12px 15px; text-align: right; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{shifts_html}}
+                </tbody>
+            </table>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <a href="{{portal_url}}" style="display: inline-block; background-color: #0284c7; color: #ffffff; padding: 14px 28px; border-radius: 8px; font-weight: bold; text-decoration: none; font-size: 14px; box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.4);">View Live Schedule</a>
+            </div>
+        </div>
+        <div style="background-color: #f9fafb; padding: 25px; border-top: 1px solid #f1f5f9; text-align: center;">
+            <p style="margin: 0; font-size: 14px; color: #64748b; font-weight: 600;">{{agency_name}}</p>
+            <p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">{{agency_email}} | {{agency_phone}}</p>
+            <p style="margin: 20px 0 0 0; font-size: 11px; color: #cbd5e1;">© {{current_year}} {{agency_name}}. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>`
 };
 
 export async function loadTemplate(name: string, variables: Record<string, any>): Promise<string> {
@@ -58,6 +158,12 @@ export async function getBranding(supabase: any, agencyId?: string) {
         clientPortalUrl: `${baseUrl}/ClientPortal`,
         adminDashboardUrl: `${baseUrl}/Dashboard`
     };
+}
+
+export function getEmailFrom(branding: any, agencyName?: string) {
+    const fromName = agencyName || branding.saasName;
+    const fromEmail = branding.noreplyEmail;
+    return { from_name: fromName, from_email: fromEmail, combined: `${fromName} <${fromEmail}>` };
 }
 
 // ============================================================================
