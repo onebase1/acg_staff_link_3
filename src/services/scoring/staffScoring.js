@@ -161,6 +161,7 @@ export const calculateStaffScore = async (staffId, reason = 'Manual Update') => 
                 .from('score_history')
                 .insert({
                     staff_id: staffId,
+                    agency_id: staff.agency_id, // 🛡️ Added for RLS
                     old_score: oldScore,
                     new_score: score,
                     change_reason: reason,

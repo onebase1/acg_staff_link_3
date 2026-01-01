@@ -16,6 +16,8 @@ import GPSIndicator, { GPSDetails } from "./GPSIndicator";
 import PayDisplay from "./PayDisplay";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import TimesheetUploader from "./TimesheetUploader";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function TimesheetCard({
   timesheet,
@@ -27,63 +29,76 @@ export default function TimesheetCard({
   onReject,
   isAdmin = false,
   isApproving = false,
-  isRejecting = false
+  isRejecting = false,
+  user: currentUser, // Logged in user
+  clientObj // Optional full client object
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: staff } = useQuery({
     queryKey: ['staff-for-timesheet', timesheet.staff_id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('staff')
-        .select('*')
-        .eq('id', timesheet.staff_id)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from('staff')
+          .select('*')
+          .eq('id', timesheet.staff_id)
+          .maybeSingle(); // Use maybeSingle to avoid PGRST116 (0 rows) error
 
-      if (error) {
-        console.error('❌ Error fetching staff for TimesheetCard:', error);
+        if (error) {
+          // If 406 (Not Acceptable), it's likely an RLS violation
+          if (error.code === 'PGRST106' || error.status === 406) {
+            console.warn('⚠️ [TimesheetCard] Access restricted to staff profile via RLS:', timesheet.staff_id);
+          } else {
+            console.error('❌ Error fetching staff for TimesheetCard:', error);
+          }
+          return null;
+        }
+
+        return data;
+      } catch (err) {
+        console.error('❌ Unexpected error fetching staff:', err);
         return null;
       }
-
-      return data;
     },
     enabled: !!timesheet.staff_id
   });
 
   const getStatusConfig = (status) => {
     const configs = {
-      draft: { 
-        bg: 'bg-gray-50 border-gray-200', 
+      draft: {
+        bg: 'bg-gray-50 border-gray-200',
         badge: 'bg-gray-100 text-gray-700 border-gray-300',
-        label: 'Draft' 
+        label: 'Draft'
       },
-      submitted: { 
-        bg: 'bg-yellow-50 border-yellow-200', 
+      submitted: {
+        bg: 'bg-yellow-50 border-yellow-200',
         badge: 'bg-yellow-100 text-yellow-700 border-gray-300',
-        label: 'Pending' 
+        label: 'Pending'
       },
-      approved: { 
-        bg: 'bg-green-50 border-green-200', 
+      approved: {
+        bg: 'bg-green-50 border-green-200',
         badge: 'bg-green-100 text-green-700 border-green-300',
-        label: 'Approved' 
+        label: 'Approved'
       },
-      rejected: { 
-        bg: 'bg-red-50 border-red-200', 
+      rejected: {
+        bg: 'bg-red-50 border-red-200',
         badge: 'bg-red-100 text-red-700 border-red-300',
-        label: 'Rejected' 
+        label: 'Rejected'
       },
-      paid: { 
-        bg: 'bg-emerald-50 border-emerald-200', 
+      paid: {
+        bg: 'bg-emerald-50 border-emerald-200',
         badge: 'bg-emerald-100 text-emerald-700 border-emerald-300',
-        label: 'Paid' 
+        label: 'Paid'
       }
     };
     return configs[status] || configs.draft;
   };
 
   const statusConfig = getStatusConfig(timesheet.status);
-  
+
   // ✅ FIX 1: Only show validation issues if shift has ended
   const shiftHasEnded = timesheet.shift_date ? new Date(timesheet.shift_date) < new Date() : false;
   const hasIssues = shiftHasEnded && issues.length > 0;
@@ -158,7 +173,7 @@ export default function TimesheetCard({
               <div className="flex items-center gap-2 text-sm text-gray-700">
                 <Clock className="w-4 h-4 text-gray-500" />
                 <span>
-                  {formatDate(timesheet.clock_in_time, 'HH:mm')} 
+                  {formatDate(timesheet.clock_in_time, 'HH:mm')}
                   {timesheet.clock_out_time && ` - ${formatDate(timesheet.clock_out_time, 'HH:mm')}`}
                 </span>
               </div>
@@ -168,7 +183,7 @@ export default function TimesheetCard({
                 <span className="italic">Not clocked in yet</span>
               </div>
             )}
-            
+
             {timesheet.total_hours && (
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-gray-500" />
@@ -239,6 +254,30 @@ export default function TimesheetCard({
           </div>
         )}
 
+        {/* ✅ INTEGRATED UPLOADER: Move Doc Upload inside the card for a unified feel */}
+        {shiftHasEnded && (timesheet.status === 'draft' || timesheet.status === 'rejected' || hasIssues) && (
+          <div className="mt-4 pt-4 border-t border-dashed">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Manual Document Upload</p>
+              {timesheet.uploaded_documents?.length > 0 && (
+                <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
+                  {timesheet.uploaded_documents.length} Doc(s) Attached
+                </Badge>
+              )}
+            </div>
+            <TimesheetUploader
+              timesheetId={timesheet.id}
+              timesheet={timesheet}
+              shift={shift}
+              staff={staff}
+              client={clientObj}
+              user={currentUser}
+              mode="inline"
+              onSuccess={() => queryClient.invalidateQueries(['timesheets'])}
+            />
+          </div>
+        )}
+
         {/* ✅ FIX 3: Show Approve/Reject buttons for BOTH draft AND submitted */}
         {isAdmin && (timesheet.status === 'submitted' || timesheet.status === 'draft') && shiftHasEnded && (
           <div className="space-y-2 mt-4 pt-4 border-t">
@@ -248,7 +287,7 @@ export default function TimesheetCard({
                 <span>✅ Eligible for auto-approval (all checks passed)</span>
               </div>
             )}
-            
+
             <div className="flex gap-2">
               <Button
                 size="sm"

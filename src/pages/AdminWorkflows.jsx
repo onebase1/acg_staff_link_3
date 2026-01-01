@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +25,9 @@ export default function AdminWorkflows() {
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [shiftResolutionAction, setShiftResolutionAction] = useState('completed');
+  const [actualStaffId, setActualStaffId] = useState('none');
+  const [actualStartTime, setActualStartTime] = useState('');
+  const [actualEndTime, setActualEndTime] = useState('');
   const [viewMode, setViewMode] = useState('table'); // ✅ NEW: Default to table view
   const [approveUserWorkflow, setApproveUserWorkflow] = useState(null); // ✅ NEW: For user approval modal
   const navigate = useNavigate();
@@ -126,9 +129,33 @@ export default function AdminWorkflows() {
     refetchOnMount: 'always'
   });
 
+  const { data: clients = [] } = useQuery({
+    queryKey: ['clients'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('clients').select('id, name');
+      return data || [];
+    }
+  });
+
+  const { data: profiles = [] } = useQuery({
+    queryKey: ['profiles'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('profiles').select('id, first_name, last_name');
+      return data || [];
+    }
+  });
+
+  const clientMap = React.useMemo(() => {
+    return clients.reduce((acc, c) => ({ ...acc, [c.id]: c.name }), {});
+  }, [clients]);
+
+  const staffMap = React.useMemo(() => {
+    return profiles.reduce((acc, p) => ({ ...acc, [p.id]: `${p.first_name || ''} ${p.last_name || ''}`.trim() }), {});
+  }, [profiles]);
+
   // ✅ FIX 3: Enhanced workflow mutation with proper shift update
   const updateWorkflowMutation = useMutation({
-    mutationFn: async ({ id, data, shiftId, shiftAction }) => {
+    mutationFn: async ({ id, data, shiftId, shiftAction, actualStaffId, actualStartTime, actualEndTime }) => {
       console.log('🔄 [Admin Workflow] Updating workflow:', id);
       console.log('🔄 [Admin Workflow] Shift action:', shiftAction, 'Shift ID:', shiftId);
 
@@ -167,16 +194,21 @@ export default function AdminWorkflows() {
           ...(shiftAction === 'completed' && {
             shift_ended_at: new Date().toISOString(),
             admin_closed_at: new Date().toISOString(),
-            admin_closure_outcome: 'completed_as_planned'
+            admin_closure_outcome: 'completed_as_planned',
+            actual_staff_id: actualStaffId === 'none' ? null : actualStaffId,
+            actual_start_time: actualStartTime || null,
+            actual_end_time: actualEndTime || null
           }),
           ...(shiftAction === 'cancelled' && {
             cancelled_at: new Date().toISOString(),
+            status: 'cancelled',
             cancelled_by: 'agency',
             cancellation_reason: data.resolution_notes,
             admin_closure_outcome: 'cancelled'
           }),
           ...(shiftAction === 'no_show' && {
             admin_closure_outcome: 'no_show',
+            status: 'completed',
             admin_closed_at: new Date().toISOString()
           }),
           ...(shiftAction === 'disputed' && {
@@ -215,6 +247,9 @@ export default function AdminWorkflows() {
       setSelectedWorkflow(null);
       setResolutionNotes('');
       setShiftResolutionAction('completed');
+      setActualStaffId('none');
+      setActualStartTime('');
+      setActualEndTime('');
       toast.success('✅ Workflow resolved & shift status updated');
     },
     onError: (error) => {
@@ -250,7 +285,10 @@ export default function AdminWorkflows() {
       id: workflowId,
       data: updates,
       shiftId: shiftId,
-      shiftAction: shiftResolutionAction
+      shiftAction: shiftResolutionAction,
+      actualStaffId,
+      actualStartTime,
+      actualEndTime
     });
   };
 
@@ -309,8 +347,22 @@ export default function AdminWorkflows() {
     if (!workflow.related_entity) return null;
 
     const { entity_type, entity_id } = workflow.related_entity;
+
+    // ✅ SMART ROUTING: If it's a shift in the past, route to Timesheets for intervention
+    if (entity_type === 'shift') {
+      const shift = shifts.find(s => s.id === entity_id);
+      if (shift) {
+        // Use a simple date comparison for "past" shift
+        const isPastShift = new Date(shift.date) < new Date();
+        if (isPastShift) {
+          console.log(`🔀 [Routing] Past shift detected (${shift.date}), redirecting to Timesheets for intervention.`);
+          return `${createPageUrl('Timesheets')}?shiftId=${entity_id}`;
+        }
+      }
+    }
+
     const links = {
-      shift: createPageUrl('Shifts', entity_id), // Assuming entity_id can be passed to createPageUrl for specific pages
+      shift: createPageUrl('Shifts', entity_id),
       staff: createPageUrl('Staff', entity_id),
       client: createPageUrl('Clients', entity_id),
       timesheet: createPageUrl('Timesheets', entity_id),
@@ -516,9 +568,29 @@ export default function AdminWorkflows() {
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           {workflow.related_entity && (
-                            <Badge variant="outline" className="text-xs">
-                              {workflow.related_entity.entity_type}
-                            </Badge>
+                            <div className="flex flex-col gap-1">
+                              <Badge variant="outline" className="text-xs w-fit">
+                                {workflow.related_entity.entity_type}
+                              </Badge>
+                              {workflow.related_entity.entity_type === 'shift' && (
+                                <div className="text-[11px] text-gray-500">
+                                  {(() => {
+                                    const shift = shifts.find(s => s.id === workflow.related_entity.entity_id);
+                                    if (shift) {
+                                      const clientName = clientMap[shift.client_id] || 'Unknown Client';
+                                      const staffName = staffMap[shift.assigned_staff_id || shift.actual_staff_id] || 'Unassigned';
+                                      return (
+                                        <>
+                                          <p className="font-medium text-gray-700 truncate max-w-[120px]">{clientName}</p>
+                                          <p className="truncate max-w-[120px]">{staffName}</p>
+                                        </>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                </div>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
@@ -632,6 +704,29 @@ export default function AdminWorkflows() {
                           <Clock className="w-3 h-3 inline mr-1" />
                           Deadline: {format(new Date(workflow.deadline), 'MMM d, yyyy HH:mm')}
                         </p>
+                      )}
+
+                      {workflow.related_entity?.entity_type === 'shift' && (
+                        <div className="mt-3 grid grid-cols-2 gap-4 p-3 bg-gray-50 rounded-lg border border-gray-100 italic">
+                          {(() => {
+                            const shift = shifts.find(s => s.id === workflow.related_entity.entity_id);
+                            if (shift) {
+                              return (
+                                <>
+                                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                                    <Building2 className="w-3.5 h-3.5" />
+                                    <span>{clientMap[shift.client_id] || 'Unknown Client'}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                                    <User className="w-3.5 h-3.5" />
+                                    <span>{staffMap[shift.assigned_staff_id || shift.actual_staff_id] || 'Unassigned'}</span>
+                                  </div>
+                                </>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
                       )}
 
                       {workflow.resolved_at && (
@@ -771,6 +866,50 @@ export default function AdminWorkflows() {
                   <p className="text-xs text-gray-500 mt-1">
                     ⚠️ "Completed" requires a timesheet to exist
                   </p>
+
+                  {shiftResolutionAction === 'completed' && (
+                    <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100 space-y-4">
+                      <p className="text-xs font-bold text-blue-900 uppercase">Input Actual Shift Data</p>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Who Actually Worked?
+                        </label>
+                        <Select value={actualStaffId} onValueChange={setActualStaffId}>
+                          <SelectTrigger className="bg-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No one worked (No Show)</SelectItem>
+                            {profiles.map(p => (
+                              <SelectItem key={p.id} value={p.id}>{p.first_name} {p.last_name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Actual Start</label>
+                          <Input
+                            type="time"
+                            className="bg-white"
+                            value={actualStartTime}
+                            onChange={(e) => setActualStartTime(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Actual End</label>
+                          <Input
+                            type="time"
+                            className="bg-white"
+                            value={actualEndTime}
+                            onChange={(e) => setActualEndTime(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

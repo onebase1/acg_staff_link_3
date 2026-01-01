@@ -476,6 +476,16 @@ export default function Shifts() {
       const staffMember = staff.find(s => s.id === originalShift.assigned_staff_id);
       const client = clients.find(c => c.id === originalShift.client_id);
 
+      // Check if this is a retrospective change (shift ended > 24h ago)
+      const shiftEndDateTime = new Date(`${originalShift.date}T${originalShift.end_time}`);
+      const isRetrospective = shiftEndDateTime < new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      if (isRetrospective) {
+        console.log('🔇 [Notifications] Suppressing notifications for retrospective shift change (>24h old)');
+        setEditingShift(null);
+        return;
+      }
+
       // 1. Handle staff reassignment
       if (staffReassigned && oldStaffId && newStaffId) {
         const oldStaff = staff.find(s => s.id === oldStaffId);
@@ -498,6 +508,34 @@ export default function Shifts() {
           NotificationService.notifyShiftConfirmedToStaff({ staff: newStaff, shift: updated, client, agency: agencies.find(a => a.id === updated.agency_id) }).catch(console.error);
         }
         toast.info('Reassignment emails sent to staff.');
+      }
+
+      // ✅ ADDED: Ensure timesheet exists for retrospective assignment
+      // If we just assigned an "actual_staff_id" (who actually worked) to a past shift 
+      // that didn't have a timesheet, we must create one now.
+      if (updated.actual_staff_id && !updated.timesheet_id) {
+        console.log('📝 [Retrospective] No timesheet found for this assignment. Creating now...');
+        try {
+          const { data: tsData, error: tsError } = await supabase.functions.invoke('auto-timesheet-creator', {
+            body: {
+              booking_id: updated.booking_id,
+              shift_id: updated.id,
+              staff_id: updated.actual_staff_id,
+              client_id: updated.client_id,
+              agency_id: updated.agency_id
+            }
+          });
+
+          if (tsError) {
+            console.error('[Retrospective Timesheet] Failed:', tsError);
+          } else if (tsData?.success) {
+            console.log('✅ [Retrospective Timesheet] Created:', tsData.timesheet_id);
+            // Invalidate to show the new timesheet link
+            queryClient.invalidateQueries({ queryKey: ['shifts'], exact: false });
+          }
+        } catch (err) {
+          console.error('[Retrospective Timesheet] Exception:', err);
+        }
       }
 
       // 2. Handle modification of a confirmed shift
@@ -1228,10 +1266,11 @@ export default function Shifts() {
       }
 
       // 🆕 UPDATE STAFF RELIABILITY SCORE
-      if (shift.assigned_staff_id) {
+      const scoringStaffId = shift.actual_staff_id || shift.assigned_staff_id;
+      if (scoringStaffId) {
         try {
           const { calculateStaffScore } = await import('@/services/scoring/staffScoring');
-          await calculateStaffScore(shift.assigned_staff_id, 'Shift Completed');
+          await calculateStaffScore(scoringStaffId, 'Shift Completed');
           console.log('✅ [Scoring] Staff score updated for completed shift');
         } catch (scoreError) {
           console.error('⚠️ [Scoring] Failed to update staff score:', scoreError);
@@ -1239,7 +1278,7 @@ export default function Shifts() {
         }
       }
 
-      return { shiftId, staffName: getStaffName(shift.assigned_staff_id) };
+      return { shiftId, staffName: getStaffName(scoringStaffId) };
     },
     onSuccess: ({ staffName }) => {
       queryClient.invalidateQueries(['shifts']);
@@ -1329,9 +1368,15 @@ export default function Shifts() {
   };
 
   const handleCompleteShift = (shift) => {
-    if (!shift.assigned_staff_id) {
-      toast.error('Cannot complete shift - no staff assigned');
+    // Check if either assigned_staff_id or actual_staff_id is set
+    if (!shift.assigned_staff_id && !shift.actual_staff_id) {
+      toast.error('Cannot complete shift - no staff assigned or worked');
       return;
+    }
+
+    // Guard: Warn if no timesheet is uploaded (as requested by user)
+    if (!shift.timesheet_id) {
+      toast.warning('⚠️ No timesheet uploaded for this shift. Proceeding with Admin Override.');
     }
 
     const shiftEndDateTime = new Date(`${shift.date}T${shift.end_time}`);
@@ -1715,20 +1760,24 @@ export default function Shifts() {
   }, [highlightedShiftIds, filteredShifts, shiftsLoading]);
 
   const filterCounts = useMemo(() => {
+    const clientFilteredShifts = clientFilter === 'all'
+      ? shifts
+      : shifts.filter(s => s.client_id === clientFilter);
+
     return {
-      all: shifts.length,
-      open: shifts.filter(s => s.status === 'open' && !s.marketplace_visible).length,
-      marketplace: shifts.filter(s => s.status === 'open' && s.marketplace_visible).length,
-      assigned: shifts.filter(s => s.status === 'assigned').length,
-      confirmed: shifts.filter(s => s.status === 'confirmed').length,
-      in_progress: shifts.filter(s => s.status === 'in_progress').length,
-      awaiting_admin_closure: shifts.filter(s => s.status === 'awaiting_admin_closure').length,
-      completed: shifts.filter(s => s.status === 'completed').length,
-      cancelled: shifts.filter(s => s.status === 'cancelled').length,
-      no_show: shifts.filter(s => s.status === 'no_show').length,
-      disputed: shifts.filter(s => s.status === 'disputed').length
+      all: clientFilteredShifts.length,
+      open: clientFilteredShifts.filter(s => s.status === 'open' && !s.marketplace_visible).length,
+      marketplace: clientFilteredShifts.filter(s => s.status === 'open' && s.marketplace_visible).length,
+      assigned: clientFilteredShifts.filter(s => s.status === 'assigned').length,
+      confirmed: clientFilteredShifts.filter(s => s.status === 'confirmed').length,
+      in_progress: clientFilteredShifts.filter(s => s.status === 'in_progress').length,
+      awaiting_admin_closure: clientFilteredShifts.filter(s => s.status === 'awaiting_admin_closure').length,
+      completed: clientFilteredShifts.filter(s => s.status === 'completed').length,
+      cancelled: clientFilteredShifts.filter(s => s.status === 'cancelled').length,
+      no_show: clientFilteredShifts.filter(s => s.status === 'no_show').length,
+      disputed: clientFilteredShifts.filter(s => s.status === 'disputed').length
     };
-  }, [shifts]);
+  }, [shifts, clientFilter]);
 
   const getClientName = (clientId) => {
     if (!clientId) return 'No Client Assigned';
@@ -1878,9 +1927,20 @@ export default function Shifts() {
                 </div>
               </div>
 
-              {shift.assigned_staff_id && (
+              {(shift.actual_staff_id || shift.assigned_staff_id) && (
                 <div className="mt-2 text-sm text-cyan-600 font-medium">
-                  ✓ Assigned to {getStaffName(shift.assigned_staff_id)}
+                  {shift.actual_staff_id ? (
+                    <>✓ Actually worked by {getStaffName(shift.actual_staff_id)}</>
+                  ) : (
+                    <>✓ Assigned to {getStaffName(shift.assigned_staff_id)}</>
+                  )}
+                </div>
+              )}
+
+              {!shift.actual_staff_id && !shift.assigned_staff_id && shift.status === 'completed' && (
+                <div className="mt-2 text-sm text-red-600 font-bold flex items-center gap-1">
+                  <AlertTriangle className="w-4 h-4" />
+                  Unknown Staff (Completed without assignment)
                 </div>
               )}
 

@@ -202,7 +202,25 @@ export default function TimesheetUploader({
     };
 
     return (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 relative">
+            {/* ✅ NEW: Premium AI Processing Overlay */}
+            {uploading && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-lg animate-in fade-in duration-300">
+                    <div className="flex flex-col items-center gap-3 p-4 text-center">
+                        <div className="relative">
+                            <Loader2 className="w-10 h-10 text-cyan-600 animate-spin" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                            </div>
+                        </div>
+                        <div>
+                            <p className="text-sm font-bold text-gray-900">AI is Reading...</p>
+                            <p className="text-[10px] text-gray-500 mt-0.5">Please wait, extracting data</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <label className="cursor-pointer">
                 <input
                     type="file"
@@ -215,13 +233,13 @@ export default function TimesheetUploader({
                 <Button
                     variant="outline"
                     size="sm"
-                    className="gap-2 w-full"
+                    className={`gap-2 w-full transition-all duration-300 ${uploading ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
                     asChild
                     disabled={uploading}
                 >
                     <span>
-                        {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                        {mode === 'button' ? 'Upload Timesheet Paper' : 'Upload Doc'}
+                        <Upload className="w-4 h-4" />
+                        {mode === 'button' ? 'Upload Timesheet Paper' : 'Upload Document'}
                     </span>
                 </Button>
             </label>
@@ -232,10 +250,11 @@ export default function TimesheetUploader({
                     onClose={() => setShowConfirmModal(false)}
                     extractedData={pendingOcrData}
                     expectedData={{
-                        staff_name: initialStaff ? `${initialStaff.first_name} ${initialStaff.last_name}` : null,
-                        client_name: initialClient?.name || null,
-                        shift_date: initialTimesheet?.shift_date || null,
-                        scheduled_hours: initialTimesheet?.total_hours || null,
+                        staff_name: staffMember ? `${staffMember.first_name} ${staffMember.last_name}` :
+                            initialStaff ? `${initialStaff.first_name} ${initialStaff.last_name}` : null,
+                        client_name: clientObj?.name || initialClient?.name || null,
+                        shift_date: initialTimesheet?.shift_date || ts?.shift_date || null,
+                        scheduled_hours: initialTimesheet?.total_hours || initialShift?.duration_hours || ts?.total_hours || null,
                     }}
                     onConfirm={handleConfirm}
                     onReject={handleReject}

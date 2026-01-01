@@ -31,7 +31,7 @@ const corsHeaders = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-serve(async (req) => {
+serve(async (req: any) => {
     // Handle CORS preflight requests
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
@@ -44,7 +44,7 @@ serve(async (req) => {
         );
 
         // Check for trigger type
-        let body: { manual_trigger?: boolean; client_id?: string; agency_id?: string; trigger_source?: string } = {};
+        let body: any = {};
         try {
             body = await req.json();
         } catch {
@@ -64,13 +64,17 @@ serve(async (req) => {
         const now = new Date();
         let startDate: Date;
         let endDate: Date;
-        let reportTitle = "Monthly Alignment Summary";
+        let reportTitle = "Monthly Service Summary";
 
         if (triggerSource === 'cron_monthly') {
-            // Full Previous Month
-            startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-            reportTitle = "Monthly Alignment Summary";
+            // Logic: If run on 1st-5th, assume previous month. If late in month (manual 31st), assume CURRENT month.
+            const isFirstFewDays = now.getDate() <= 5;
+            const targetMonth = isFirstFewDays ? now.getMonth() - 1 : now.getMonth();
+            const targetYear = now.getFullYear(); 
+            
+            startDate = new Date(targetYear, targetMonth, 1);
+            endDate = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
+            reportTitle = isFirstFewDays ? "Monthly Service Summary" : "Monthly Progress Summary";
         } else if (triggerSource === 'cron_weekly') {
             // Full Previous Week (Monday to Sunday)
             startDate = new Date(now);
@@ -81,22 +85,24 @@ serve(async (req) => {
             endDate.setDate(startDate.getDate() + 6); // Up to Sunday
             endDate.setHours(23, 59, 59, 999);
             
-            reportTitle = "Weekly Alignment Summary";
+            reportTitle = "Weekly Service Summary";
         } else {
-            // Default to current week (or as requested for alignment)
-            // Month-to-Date
+            // Default to current month-to-date
             startDate = new Date(now.getFullYear(), now.getMonth(), 1);
             endDate = new Date(now);
             endDate.setHours(23, 59, 59, 999);
-            reportTitle = "Month-to-Date Performance";
+            reportTitle = "Service Summary (MTD)";
         }
 
         console.log(`📅 Report Period: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
 
-        // Get active clients with primary contact
+        // Get active clients with primary contact and their agency info for white-labeling
         let clientsQuery = supabase
             .from('clients')
-            .select(`id, name, email, agency_id, contact_person`)
+            .select(`
+                id, name, email, agency_id, contact_person,
+                agencies:agency_id (name, email, phone, contact_email, contact_phone)
+            `)
             .eq('status', 'active');
 
         if (isManualTrigger && targetClientId) {
@@ -112,25 +118,28 @@ serve(async (req) => {
         console.log(`👥 Processing ${clients?.length || 0} clients`);
 
         const results = { sent: 0, skipped: 0, failed: 0 };
+        const errors: any[] = [];
 
         for (const client of clients || []) {
             try {
-                // 3. Fetch MTD data for stats
-                const mtdStartDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+                // Determine Agency Identity (White-labeling)
+                const agencyInfo = client.agencies;
+                const agencyName = agencyInfo?.name || "Agile Care Management";
+                const agencyEmail = agencyInfo?.contact_email || agencyInfo?.email || "support@agilecaremanagement.co.uk";
+                const agencyPhone = agencyInfo?.contact_phone || agencyInfo?.phone || "+44 20 1234 5678";
+
+                // 3. Fetch data for stats and aggregation
                 const { data: mtdData, error: mtdError } = await supabase.rpc('get_weekly_summary_data', {
                     p_client_id: client.id,
-                    p_start_date: mtdStartDate.toISOString().split('T')[0],
+                    p_start_date: startDate.toISOString().split('T')[0],
                     p_end_date: endDate.toISOString().split('T')[0],
                     p_include_all_statuses: true
                 });
 
                 if (mtdError) throw mtdError;
 
-                // 4. Filter for Weekly Range (for the table)
-                const shiftData = mtdData ? mtdData.filter((s: any) => {
-                    const shiftDate = new Date(s.date);
-                    return shiftDate >= startDate && shiftDate <= endDate;
-                }) : [];
+                // 4. In this new design, the 'shiftData' for the table IS the mtdData (or restricted range if needed)
+                const shiftData = mtdData || [];
 
                 if (shiftData.length === 0 && !isManualTrigger) {
                     results.skipped++;
@@ -152,22 +161,24 @@ serve(async (req) => {
                 const emailHtml = await buildWeeklySummaryEmail({
                     supabase,
                     client,
-                    shiftData, // Last Week / Selected Range
-                    mtdData: mtdData || [], // Month to Date
+                    shiftData,
                     range: { start: startDate, end: endDate },
                     branding,
-                    reportTitle
+                    reportTitle,
+                    agency: {
+                        name: agencyName,
+                        email: agencyEmail,
+                        phone: agencyPhone
+                    }
                 });
 
                 // Send email
                 const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-email', {
                     body: {
                         to: client.email,
-                        subject: triggerSource === 'cron_weekly' 
-                            ? `${reportTitle}: Week Ending ${endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
-                            : `${reportTitle}: ${formatMonthYear(startDate)}`,
+                        subject: `${reportTitle}: ${startDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`,
                         html: emailHtml,
-                        from_name: branding.companyName
+                        from_name: agencyName
                     }
                 });
 
@@ -181,109 +192,100 @@ serve(async (req) => {
                     notificationType: 'weekly_summary',
                     channel: 'email',
                     subject: `${reportTitle} - ${client.name}`,
-                    templateName: 'monthly_alignment_summary',
+                    templateName: 'weekly_summary',
                     provider: 'resend',
                     providerMessageId: emailResult.messageId,
                     metadata: { client_id: client.id, shift_count: shiftData.length }
                 });
 
                 results.sent++;
-            } catch (err) {
-                console.error(`❌ Client ${client.name} failed:`, err.message);
+            } catch (err: any) {
+                console.error(`❌ [Weekly Summary] Error processing client ${client.name} (ID: ${client.id}):`, err);
+                errors.push({ client_id: client.id, error: err.message || String(err) });
                 results.failed++;
             }
         }
 
-        return new Response(JSON.stringify({ success: true, results }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    } catch (error) {
-        return new Response(JSON.stringify({ success: false, error: error.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ success: true, results, errors }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    } catch (error: any) {
+        return new Response(JSON.stringify({ success: false, error: error.message || String(error) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 });
-
-function formatMonthYear(date: Date): string {
-    return date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-}
 
 async function buildWeeklySummaryEmail(params: {
     supabase: SupabaseClient;
     client: any;
     shiftData: any[];
-    mtdData: any[];
     range: { start: Date; end: Date };
-    branding: Branding;
+    branding: any;
     reportTitle: string;
+    agency: { name: string; email: string; phone: string };
 }): Promise<string> {
-    const { client, shiftData, mtdData, range, branding } = params;
+    const { supabase, client, shiftData, range, branding, reportTitle, agency } = params;
 
-    // 1. Calculate Weekly Stats
+    // 1. Calculate Stats
     const totalShifts = shiftData.length;
     const totalHours = shiftData.reduce((acc, s) => acc + (Number(s.actual_hours) || Number(s.duration_hours) || 0), 0);
     const uniqueStaff = new Set(shiftData.map(s => s.staff_id || s.assigned_staff_id).filter(Boolean)).size;
 
-    // 2. Calculate MTD Stats
-    const totalShiftsMtd = mtdData.length;
-    const totalHoursMtd = mtdData.reduce((acc, s) => acc + (Number(s.actual_hours) || Number(s.duration_hours) || 0), 0);
-    const uniqueStaffMtd = new Set(mtdData.map(s => s.staff_id || s.assigned_staff_id).filter(Boolean)).size;
-
-    const formatWeekRange = (s: Date, e: Date) => 
+    const formatRange = (s: Date, e: Date) => 
         `${s.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${e.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
-    // 3. Build rows (Chronological Mon-Sun)
-    const sortedShifts = [...shiftData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    
-    const buildRows = async (shifts: any[]) => {
-        const rows = await Promise.all(shifts.map(async (s, idx) => {
-            const rowColor = idx % 2 === 0 ? '#ffffff' : '#f9fafb';
-            const displayDate = new Date(s.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-            const roleName = s.role_name || s.role || 'Staff'; // Fallback
-            
-            let profileLinkHtml = '';
-            const staffId = s.staff_id || s.assigned_staff_id;
-            if (staffId) {
-                try {
-                    const profileLink = await generateStaffProfileLink(
-                        supabase,
-                        staffId,
-                        client.id,
-                        client.agency_id
-                    );
-                    profileLinkHtml = `<br><a href="${profileLink}" style="color: #0284c7; text-decoration: none; font-size: 11px; font-weight: bold;">[📋 View Profile]</a>`;
-                } catch (err) {
-                    console.warn(`⚠️ [Weekly Summary] Failed to generate profile link for staff ${staffId}:`, err);
-                }
+    // 2. Aggregate Shifts for Invoice-Style Table
+    const buildAggregatedRows = (shifts: any[]) => {
+        const groups: Record<string, any> = {};
+        
+        // Sort first to ensure consistency
+        const sorted = [...shifts].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        for (const s of sorted) {
+            const rawDate = new Date(s.date);
+            const dateStr = rawDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+            const timeStr = `${s.start_time || ''} - ${s.end_time || ''}`;
+            const roleStr = s.role_name || s.role || 'Staff';
+            const key = `${s.date}_${timeStr}_${roleStr}`;
+
+            if (!groups[key]) {
+                groups[key] = {
+                    date: dateStr,
+                    time: timeStr,
+                    role: roleStr,
+                    qty: 0,
+                    hours: 0,
+                    rawDate: rawDate.getTime()
+                };
             }
+            groups[key].qty += 1;
+            groups[key].hours += (Number(s.actual_hours) || Number(s.duration_hours) || 0);
+        }
 
-            const staffName = s.staff_first_name ? (`${s.staff_first_name} ${s.staff_last_name || ''}`).trim() : 'Scheduled';
-
+        return Object.values(groups).map((g: any, idx: number) => {
+            const rowColor = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
             return `
                 <tr style="background: ${rowColor};">
-                    <td style="padding: 14px 16px; border-bottom: 1px solid #f3f4f6; font-weight: 600; font-size: 13px;">${displayDate}</td>
-                    <td style="padding: 14px 16px; border-bottom: 1px solid #f3f4f6; font-size: 13px;">${s.start_time} - ${s.end_time}</td>
-                    <td style="padding: 14px 16px; border-bottom: 1px solid #f3f4f6; font-size: 13px;">${roleName}</td>
-                    <td style="padding: 14px 16px; border-bottom: 1px solid #f3f4f6; text-align: center; font-weight: 700; font-size: 13px;">${staffName}${profileLinkHtml}</td>
-                    <td style="padding: 14px 16px; border-bottom: 1px solid #f3f4f6; text-align: right; font-weight: 600; font-size: 13px;">${Number(s.actual_hours || s.duration_hours).toFixed(1)}h</td>
+                    <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 13px; color: #1e293b;">${g.date}</td>
+                    <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #475569;">${g.time}</td>
+                    <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #475569;">${g.role}</td>
+                    <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: 800; font-size: 13px; color: #0284c7;">${g.qty}</td>
+                    <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; font-size: 13px; color: #1e293b;">${g.hours.toFixed(1)}h</td>
                 </tr>
             `;
-        }));
-        return rows.join('');
+        }).join('');
     };
 
-    // 4. Template
+    // 3. Template
     return await loadTemplate('weekly_summary', {
         report_title: reportTitle,
         contact_name: client.contact_person?.name || 'Team',
         client_name: client.name,
-        date_range: formatWeekRange(range.start, range.end),
+        date_range: formatRange(range.start, range.end),
         total_shifts: totalShifts,
         total_hours: totalHours.toFixed(1),
         total_staff: uniqueStaff,
-        total_shifts_mtd: totalShiftsMtd,
-        total_hours_mtd: totalHoursMtd.toFixed(1),
-        total_staff_mtd: uniqueStaffMtd,
-        shifts_html: await buildRows(sortedShifts),
-        agency_name: branding.companyName,
-        agency_email: branding.supportEmail,
-        agency_phone: branding.supportPhone,
+        shifts_html: buildAggregatedRows(shiftData),
+        agency_name: agency.name,
+        agency_email: agency.email,
+        agency_phone: agency.phone,
         preferences_url: `${branding.siteUrl}/preferences?email=${encodeURIComponent(client.email)}`,
         current_year: new Date().getFullYear().toString()
     });

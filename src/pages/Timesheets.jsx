@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import TimesheetCard from "../components/timesheets/TimesheetCard";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { format } from "date-fns";
 import AutoApprovalIndicator from "../components/timesheets/AutoApprovalIndicator";
@@ -20,8 +20,12 @@ import TimesheetUploader from "../components/timesheets/TimesheetUploader";
 
 export default function Timesheets() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const shiftIdParam = queryParams.get('shiftId');
+
   const [statusFilter, setStatusFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(shiftIdParam || '');
   const [user, setUser] = useState(null);
   const [viewMode, setViewMode] = useState('cards'); // NEW: Card or Table view
 
@@ -378,6 +382,15 @@ export default function Timesheets() {
   };
 
   const filteredTimesheets = timesheets.filter(t => {
+    // ✅ CLUTTER REDUCTION: Hide "Draft" timesheets for shifts in the future unless explicitly filtered
+    const shift = shifts.find(s => s.id === t.booking_id || s.id === t.shift_id);
+    const isFutureShift = shift && new Date(shift.date) > new Date();
+
+    // If it's a future draft and we are in "All" view, skip it
+    if (t.status === 'draft' && isFutureShift && statusFilter === 'all' && !searchTerm) {
+      return false;
+    }
+
     const matchesStatus = statusFilter === 'all' ||
       (statusFilter === 'pending' && (t.status === 'submitted' || t.status === 'draft')) ||
       (statusFilter === 'approved' && t.status === 'approved') ||
@@ -386,8 +399,14 @@ export default function Timesheets() {
 
     const staffName = getStaffName(t.staff_id).toLowerCase();
     const clientName = getClientName(t.client_id).toLowerCase();
+
+    // ✅ ENHANCED: Match ID or names
     const matchesSearch = staffName.includes(searchTerm.toLowerCase()) ||
-      clientName.includes(searchTerm.toLowerCase());
+      clientName.includes(searchTerm.toLowerCase()) ||
+      t.id?.includes(searchTerm) ||
+      t.booking_id?.includes(searchTerm) ||
+      t.shift_id?.includes(searchTerm);
+
     return matchesStatus && matchesSearch;
   });
 
@@ -871,9 +890,11 @@ export default function Timesheets() {
                   isAdmin={isAdmin}
                   isApproving={processingTimesheets.approving.has(timesheet.id)}
                   isRejecting={processingTimesheets.rejecting.has(timesheet.id)}
+                  user={user}
+                  clientObj={clientObj}
                 />
 
-                {/* ✅ NEW: Auto-Approval Indicator in Cards */}
+                {/* ✅ NEW: Auto-Approval Indicator in Cards - Integrated below card if needed */}
                 {isAdmin && timesheet.status === 'submitted' && (
                   <div className="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
                     <AutoApprovalIndicator
@@ -892,37 +913,6 @@ export default function Timesheets() {
                     </Button>
                   </div>
                 )}
-
-                {/* Shared Timesheet Uploader */}
-                <div className="mt-2 flex gap-2">
-                  <TimesheetUploader
-                    timesheetId={timesheet.id}
-                    timesheet={timesheet}
-                    shift={shift}
-                    staff={staffMember}
-                    client={clientObj}
-                    user={user}
-                    mode="inline"
-                    onSuccess={() => queryClient.invalidateQueries(['timesheets'])}
-                  />
-
-                  {/* View Uploaded Documents */}
-                  {timesheet.uploaded_documents && timesheet.uploaded_documents.length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1 bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
-                      onClick={() => {
-                        const latestDoc = timesheet.uploaded_documents[timesheet.uploaded_documents.length - 1];
-                        window.open(latestDoc.file_url, '_blank');
-                      }}
-                    >
-                      <Eye className="w-3 h-3" />
-                      View ({timesheet.uploaded_documents.length})
-                      <CheckCircle className="w-3 h-3 text-green-600" />
-                    </Button>
-                  )}
-                </div>
               </div>
             );
           })}

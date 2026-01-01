@@ -167,7 +167,15 @@ export const NotificationService = {
    * 📅 STAFF: Shift assignment notification
    * ✅ MULTI-CHANNEL: Email (batched) + SMS + WhatsApp (instant)
    */
-  async notifyShiftAssignment({ staff, shift, client, agency, useBatching = false }) {
+  async notifyShiftAssignment({ staff, shift, client, agency, useBatching = false, forceNotify = false }) {
+    // 🛡️ Safety check: Suppress notifications for past shifts (>24h old)
+    const shiftEndDateTime = new Date(`${shift.date}T${shift.end_time}`);
+    const isRetrospective = shiftEndDateTime < new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    if (isRetrospective && !forceNotify) {
+      console.log(`🔇 [NotificationService] Suppressing notification for retrospective shift: ${shift.id} (ended ${shift.date} ${shift.end_time})`);
+      return { success: true, suppressed: true, reason: 'retrospective' };
+    }
     console.log(`📧 [NotificationService] Shift assignment to ${staff.email} - Multi-channel`);
     console.log(`📧 [NotificationService] Staff phone: ${staff.phone}`);
     console.log(`📧 [NotificationService] useBatching: ${useBatching}`);
@@ -258,26 +266,26 @@ export const NotificationService = {
         agencyLogo: agency?.logo_url,
         children: `
           ${EmailTemplates.header({
-            title: isConfirmed ? '✅ Shift Confirmed' : '📅 New Shift Assignment',
-            subtitle: isConfirmed ? 'You have been assigned and confirmed' : 'You have been assigned to a new shift',
-            bgColor: isConfirmed ? '#10b981' : '#0284c7',
-            agencyLogo: agency?.logo_url
-          })}
+          title: isConfirmed ? '✅ Shift Confirmed' : '📅 New Shift Assignment',
+          subtitle: isConfirmed ? 'You have been assigned and confirmed' : 'You have been assigned to a new shift',
+          bgColor: isConfirmed ? '#10b981' : '#0284c7',
+          agencyLogo: agency?.logo_url
+        })}
           ${EmailTemplates.content({
-            greeting: `Dear ${staff.first_name},`,
-            body: `
+          greeting: `Dear ${staff.first_name},`,
+          body: `
               <p style="font-size: 16px; color: #374151; line-height: 1.6; margin: 0 0 20px 0;">
                 ${isConfirmed
-                  ? `You have been assigned and confirmed for the following shift. Please ensure you arrive on time and are ready to work.`
-                  : `We're pleased to inform you that you have been assigned to a new shift. Please review the details below and confirm your availability through your Staff Portal.`
-                }
+              ? `You have been assigned and confirmed for the following shift. Please ensure you arrive on time and are ready to work.`
+              : `We're pleased to inform you that you have been assigned to a new shift. Please review the details below and confirm your availability through your Staff Portal.`
+            }
               </p>
 
               ${EmailTemplates.infoCard({
-                title: 'Shift Details',
-                items,
-                borderColor: isConfirmed ? '#10b981' : '#06b6d4'
-              })}
+              title: 'Shift Details',
+              items,
+              borderColor: isConfirmed ? '#10b981' : '#06b6d4'
+            })}
 
               ${shift.notes ? `
                 <p style="font-size: 14px; color: #6b7280; margin: 20px 0 0 0; font-style: italic;">
@@ -286,22 +294,22 @@ export const NotificationService = {
               ` : ''}
 
               ${!isConfirmed ? EmailTemplates.alertBox({
-                type: 'info',
-                title: '📋 Action Required',
-                message: 'Please confirm your availability as soon as possible by visiting your Staff Portal. You can view full shift details and confirm or decline the assignment there.'
-              }) : ''}
+              type: 'info',
+              title: '📋 Action Required',
+              message: 'Please confirm your availability as soon as possible by visiting your Staff Portal. You can view full shift details and confirm or decline the assignment there.'
+            }) : ''}
 
               ${EmailTemplates.button({
-                text: isConfirmed ? 'View Shift in Staff Portal' : 'View & Confirm in Staff Portal',
-                url: portalUrl,
-                bgColor: isConfirmed ? '#10b981' : '#06b6d4'
-              })}
+              text: isConfirmed ? 'View Shift in Staff Portal' : 'View & Confirm in Staff Portal',
+              url: portalUrl,
+              bgColor: isConfirmed ? '#10b981' : '#06b6d4'
+            })}
 
               <p style="font-size: 14px; color: #6b7280; line-height: 1.6; margin: 25px 0 0 0;">
                 If you have any questions or need assistance, please contact our office directly.
               </p>
             `
-          })}
+        })}
         `
       });
 
@@ -550,7 +558,15 @@ export const NotificationService = {
    * ✅ STAFF: Shift confirmed - with reminders
    * ✅ MULTI-CHANNEL: Email + SMS + WhatsApp
    */
-  async notifyShiftConfirmedToStaff({ staff, shift, client, agency }) {
+  async notifyShiftConfirmedToStaff({ staff, shift, client, agency, forceNotify = false }) {
+    // 🛡️ Safety check: Suppress notifications for past shifts (>24h old)
+    const shiftEndDateTime = new Date(`${shift.date}T${shift.end_time}`);
+    const isRetrospective = shiftEndDateTime < new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    if (isRetrospective && !forceNotify) {
+      console.log(`🔇 [NotificationService] Suppressing confirmation for retrospective shift: ${shift.id}`);
+      return { success: true, suppressed: true, reason: 'retrospective' };
+    }
     const agencyName = agency?.name || 'Your Agency';
     const locationText = shift.work_location_within_site ? ` at ${shift.work_location_within_site}` : '';
 

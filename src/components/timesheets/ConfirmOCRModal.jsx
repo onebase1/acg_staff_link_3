@@ -177,30 +177,30 @@ export default function ConfirmOCRModal({
           <DialogTitle className="flex items-center gap-2 text-xl">
             🔍 Review Extracted Data
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm sm:text-base">
             Please verify the information extracted from your timesheet.
             {hasMultipleRows && " Select the correct shift if multiple are detected."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Confidence Score */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">OCR Confidence</span>
-              <Badge className={getConfidenceBadge(confidence)}>
-                {getConfidenceLabel(confidence)}
+          <div className="flex flex-wrap items-center gap-2">
+            {hasHighConfidence ? (
+              <Badge className="bg-green-100 text-green-700 border-green-200 px-3 py-1 text-xs">
+                <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                Verified by AI
               </Badge>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 bg-gray-200 rounded-full h-3 overflow-hidden">
-                <div
-                  className={`h-full ${getConfidenceColor(confidence)} transition-all`}
-                  style={{ width: `${confidence}%` }}
-                />
-              </div>
-              <span className="text-lg font-bold text-gray-900">{confidence}%</span>
-            </div>
+            ) : (
+              <Badge className="bg-orange-100 text-orange-700 border-orange-200 px-3 py-1 text-xs">
+                <AlertTriangle className="w-4 h-4 mr-1.5" />
+                Manual Review Suggested
+              </Badge>
+            )}
+            {canAutoApprove && (
+              <Badge className="bg-blue-100 text-blue-700 border-blue-200 px-3 py-1 text-xs">
+                Auto-Approval Ready
+              </Badge>
+            )}
           </div>
 
           {/* Low Confidence Warning */}
@@ -217,19 +217,6 @@ export default function ConfirmOCRModal({
             </Alert>
           )}
 
-          {/* Auto-Approval Notice */}
-          {canAutoApprove && (
-            <Alert className="bg-green-50 border-green-300">
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
-              <AlertDescription className="text-green-900">
-                <p className="font-bold">✅ Ready for Auto-Approval</p>
-                <p className="text-sm">
-                  High confidence and no critical issues detected.
-                  If you confirm, this timesheet will be automatically approved!
-                </p>
-              </AlertDescription>
-            </Alert>
-          )}
 
           {/* Multi-Row Timesheet Display - MOVED UP for better visibility */}
           {hasMultipleRows && (
@@ -237,10 +224,10 @@ export default function ConfirmOCRModal({
               <div className="flex items-start gap-2 mb-3">
                 <MousePointerClick className="w-5 h-5 text-blue-600 mt-0.5" />
                 <div>
-                  <p className="font-bold text-blue-900">📋 Multi-Day Timesheet Detected</p>
-                  <p className="text-sm text-blue-700">
+                  <p className="font-bold text-blue-900 text-base">📋 Multi-Day Timesheet Detected</p>
+                  <p className="text-sm text-blue-700 leading-relaxed">
                     We found {extractedData.rows.length} shifts.
-                    <strong> Click the correct row</strong> to use its data.
+                    <strong> Tap the correct row</strong> to use its data.
                   </p>
                 </div>
               </div>
@@ -252,31 +239,28 @@ export default function ConfirmOCRModal({
                     <div
                       key={idx}
                       onClick={() => handleRowSelect(row)}
-                      className={`p-3 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md ${isSelected
-                          ? 'bg-green-50 border-green-500 ring-1 ring-green-500'
-                          : 'bg-white border-gray-200 hover:border-blue-300'
+                      className={`p-4 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md active:scale-[0.98] ${isSelected
+                        ? 'bg-green-50 border-green-500 ring-1 ring-green-500'
+                        : 'bg-white border-gray-200 hover:border-blue-300'
                         }`}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           {isSelected ? (
-                            <CheckCircle2 className="w-5 h-5 text-green-600" />
+                            <CheckCircle2 className="w-6 h-6 text-green-600" />
                           ) : (
-                            <div className="w-5 h-5 rounded-full border-2 border-gray-300" />
+                            <div className="w-6 h-6 rounded-full border-2 border-gray-300" />
                           )}
-                          <span className={`font-medium ${isSelected ? 'text-green-900' : 'text-gray-700'}`}>
+                          <span className={`font-bold text-sm sm:text-base ${isSelected ? 'text-green-900' : 'text-gray-700'}`}>
                             {row.date}
                           </span>
-                          {isSelected && (
-                            <Badge className="bg-green-600 text-white hover:bg-green-700">SELECTED</Badge>
-                          )}
                         </div>
-                        <span className={`font-bold ${isSelected ? 'text-green-900' : 'text-gray-600'}`}>
+                        <span className={`font-bold text-base ${isSelected ? 'text-green-900' : 'text-gray-600'}`}>
                           {row.hours}h
                         </span>
                       </div>
                       {row.start_time && row.end_time && (
-                        <p className={`text-sm mt-1 ml-7 ${isSelected ? 'text-green-700' : 'text-gray-500'}`}>
+                        <p className={`text-sm mt-2 ml-9 leading-relaxed ${isSelected ? 'text-green-700' : 'text-gray-500'}`}>
                           {row.start_time} - {row.end_time}
                           {row.break_minutes > 0 && ` (${row.break_minutes}min break)`}
                         </p>
@@ -288,54 +272,19 @@ export default function ConfirmOCRModal({
             </div>
           )}
 
-          {/* Extracted Data Fields */}
-          <div className="space-y-3 border rounded-lg p-4 bg-white">
-            <h3 className="font-semibold text-gray-900 mb-3">Extracted Information</h3>
-
-            {/* Employee Name */}
-            <DataField
-              icon={<User className="w-5 h-5" />}
-              label="Employee"
-              value={extractedData.employee_name}
-              expected={expectedData?.staff_name}
-              mismatch={extractedData.mismatches?.find(m => m.field === 'staff_name')}
-            />
-
-            {/* Client Name */}
-            <DataField
-              icon={<Building2 className="w-5 h-5" />}
-              label="Client"
-              value={extractedData.client_name}
-              expected={expectedData?.client_name}
-              mismatch={extractedData.mismatches?.find(m => m.field === 'client_name')}
-            />
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {/* Date */}
             <DataField
-              icon={<Calendar className="w-5 h-5" />}
+              icon={<Calendar className="w-4 h-4" />}
               label="Date"
               value={getDisplayValue('date')}
               expected={expectedData?.shift_date}
               mismatch={extractedData.mismatches?.find(m => m.field === 'date')}
             />
 
-            {/* Time */}
-            <DataField
-              icon={<Clock className="w-5 h-5" />}
-              label="Time"
-              value={getDisplayValue('time')}
-            />
-
-            {/* Break */}
-            <DataField
-              icon={<Coffee className="w-5 h-5" />}
-              label="Break"
-              value={getDisplayValue('break')}
-            />
-
             {/* Hours Worked */}
             <DataField
-              icon={<Clock className="w-5 h-5" />}
+              icon={<Clock className="w-4 h-4" />}
               label="Hours Worked"
               value={getDisplayValue('hours')}
               expected={expectedData?.scheduled_hours ? `${expectedData.scheduled_hours}h` : null}
@@ -343,42 +292,48 @@ export default function ConfirmOCRModal({
             />
           </div>
 
-          {/* Mismatches Alert */}
-          {extractedData.mismatches && extractedData.mismatches.length > 0 && (
-            <Alert className="bg-red-50 border-red-300">
-              <XCircle className="w-5 h-5 text-red-600" />
-              <AlertDescription>
-                <p className="font-bold text-red-900 mb-2">⚠️ Data Mismatches Detected</p>
-                <div className="space-y-2">
-                  {extractedData.mismatches.map((m, idx) => (
-                    <div key={idx} className="text-sm">
-                      <p className="font-medium text-red-800">{m.field}:</p>
-                      <p className="text-red-700">
-                        Expected: <strong>{m.expected}</strong> |
-                        Found: <strong>{m.actual}</strong>
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-sm mt-2 text-red-700">
-                  This timesheet will require admin review even if you confirm.
-                </p>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Warnings */}
-          {extractedData.warnings && extractedData.warnings.length > 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="font-medium text-yellow-900 mb-2">⚠️ Warnings</p>
-              <ul className="text-sm text-yellow-800 space-y-1 list-disc list-inside">
-                {extractedData.warnings.map((warning, idx) => (
-                  <li key={idx}>{typeof warning === 'string' ? warning : warning.message}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {/* Employee Name (Subtle) */}
+          <div className="px-3 py-1 flex justify-between items-center text-[11px] text-gray-500 border-t pt-2">
+            <span>Staff: {extractedData.employee_name || 'N/A'}</span>
+            <span>Client: {extractedData.client_name || 'N/A'}</span>
+          </div>
         </div>
+
+        {/* Mismatches Alert */}
+        {extractedData.mismatches && extractedData.mismatches.length > 0 && (
+          <Alert className="bg-red-50 border-red-300">
+            <XCircle className="w-5 h-5 text-red-600" />
+            <AlertDescription>
+              <p className="font-bold text-red-900 mb-2">⚠️ Data Mismatches Detected</p>
+              <div className="space-y-2">
+                {extractedData.mismatches.map((m, idx) => (
+                  <div key={idx} className="text-sm">
+                    <p className="font-medium text-red-800">{m.field}:</p>
+                    <p className="text-red-700">
+                      Expected: <strong>{m.expected}</strong> |
+                      Found: <strong>{m.actual}</strong>
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-sm mt-2 text-red-700">
+                This timesheet will require admin review even if you confirm.
+              </p>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Warnings */}
+        {extractedData.warnings && extractedData.warnings.length > 0 && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <p className="font-medium text-yellow-900 mb-2">⚠️ Warnings</p>
+            <ul className="text-sm text-yellow-800 space-y-1 list-disc list-inside">
+              {extractedData.warnings.map((warning, idx) => (
+                <li key={idx}>{typeof warning === 'string' ? warning : warning.message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Optional staff note to help admins on review */}
         <div className="mt-4">
@@ -396,53 +351,51 @@ export default function ConfirmOCRModal({
           </p>
         </div>
 
-        <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-6">
-          {/* Re-Upload Button (Mobile: Full Width) */}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onReUpload}
-            disabled={confirming || rejecting}
-            className="w-full sm:w-auto order-3 sm:order-1"
-          >
-            <Camera className="w-4 h-4 mr-2" />
-            Re-Upload Better Photo
-          </Button>
-
-          {/* Reject Button */}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onReject(staffNote)}
-            disabled={confirming || rejecting}
-            className="w-full sm:w-auto order-2 sm:order-2"
-          >
-            {rejecting ? (
-              <>⏳ Processing...</>
-            ) : (
-              <>
-                <XCircle className="w-4 h-4 mr-2" />
-                No, Review Needed
-              </>
-            )}
-          </Button>
-
-          {/* Confirm Button */}
+        <DialogFooter className="sticky bottom-0 bg-white border-t pt-4 mt-6 flex flex-col gap-2">
+          {/* Confirm Button - PRIMARY CTA */}
           <Button
             type="button"
             onClick={handleConfirmWrapper}
             disabled={confirming || rejecting}
-            className="w-full sm:w-auto bg-green-600 hover:bg-green-700 order-1 sm:order-3"
+            className="w-full h-12 text-base bg-green-600 hover:bg-green-700 shadow-lg shadow-green-100"
           >
             {confirming ? (
-              <>⏳ Processing...</>
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
             ) : (
-              <>
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                Yes, Confirm
-              </>
+              <CheckCircle2 className="w-5 h-5 mr-2" />
             )}
+            {confirming ? 'Saving Timesheet...' : 'Yes, Information is Correct'}
           </Button>
+
+          <div className="grid grid-cols-2 gap-2">
+            {/* Re-Upload Button */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onReUpload}
+              disabled={confirming || rejecting}
+              className="w-full text-gray-600"
+            >
+              <Camera className="w-4 h-4 mr-2" />
+              Re-Upload
+            </Button>
+
+            {/* Reject Button */}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onReject(staffNote)}
+              disabled={confirming || rejecting}
+              className="w-full text-red-600 hover:bg-red-50"
+            >
+              {rejecting ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <XCircle className="w-4 h-4 mr-2" />
+              )}
+              Problem with AI
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -469,18 +422,18 @@ function DataField({ icon, label, value, expected, mismatch }) {
       <div className={isRealMismatch ? 'text-red-600' : 'text-gray-600'}>
         {icon}
       </div>
-      <div className="flex-1">
-        <p className="text-xs font-medium text-gray-600 mb-1">{label}</p>
-        <p className={`font-semibold ${isRealMismatch ? 'text-red-900' : 'text-gray-900'}`}>
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-medium text-gray-500 mb-1 uppercase tracking-wider">{label}</p>
+        <p className={`text-lg font-bold leading-none ${isRealMismatch ? 'text-red-900' : 'text-gray-900'}`}>
           {value || 'Not found'}
         </p>
         {expected && !isRealMismatch && matchesExpected && (
-          <p className="text-xs text-green-600 mt-1">
-            ✅ Matches expected: {expected}
+          <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" /> Matches scheduled
           </p>
         )}
         {isRealMismatch && (
-          <p className="text-xs text-red-700 mt-1">
+          <p className="text-xs text-red-700 mt-1.5 bg-red-100/50 px-2 py-0.5 rounded w-fit">
             ⚠️ Expected: {mismatch.expected}
           </p>
         )}

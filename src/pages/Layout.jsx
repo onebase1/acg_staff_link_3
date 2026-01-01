@@ -316,7 +316,7 @@ export default function Layout({ children, currentPageName }) {
           setIsAuthenticated(false);
           authCheckInProgress.current = false;
           const path = location.pathname.toLowerCase();
-          if (!authPaths.some((authPath) => path.startsWith(authPath))) {
+          if (!bypassPaths.some((authPath) => path.startsWith(authPath))) {
             window.location.replace(`/login?next=${encodeURIComponent(location.pathname)}`);
           }
           return;
@@ -371,7 +371,7 @@ export default function Layout({ children, currentPageName }) {
         authCheckInProgress.current = false;
         authChecked.current = false; // Reset authChecked on error to allow retry if component re-mounts
         const path = location.pathname.toLowerCase();
-        if (!authPaths.some((authPath) => path.startsWith(authPath))) {
+        if (!bypassPaths.some((authPath) => path.startsWith(authPath))) {
           window.location.replace(`/login?next=${encodeURIComponent(location.pathname)}`);
         }
       }

@@ -30,6 +30,7 @@ export default function TimesheetDetail() {
   const [timesheetId, setTimesheetId] = useState(null);
   const [user, setUser] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [ocrExpanded, setOcrExpanded] = useState(true);
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -643,7 +644,8 @@ export default function TimesheetDetail() {
                     {/* ✅ ENHANCED: OCR Validation Results Canvas */}
                     {doc.extracted_data && (
                       <Collapsible
-                        open={true}
+                        open={ocrExpanded}
+                        onOpenChange={setOcrExpanded}
                         className="p-4 bg-white"
                       >
                         {/* Collapsible Trigger - Summary Header */}
@@ -665,7 +667,7 @@ export default function TimesheetDetail() {
                                 </p>
                               </div>
                             </div>
-                            <ChevronDown className={`w-5 h-5 text-purple-600 transition-transform rotate-180`} />
+                            <ChevronDown className={`w-5 h-5 text-purple-600 transition-transform ${ocrExpanded ? 'rotate-180' : ''}`} />
                           </div>
                         </CollapsibleTrigger>
 

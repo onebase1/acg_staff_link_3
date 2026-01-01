@@ -51,12 +51,12 @@ const formatTime = (isoString) => {
  */
 
 export default function ShiftCompletionModal({
-  isOpen, 
-  onClose, 
+  isOpen,
+  onClose,
   shift,
   staffName,
   clientName,
-  onConfirm 
+  onConfirm
 }) {
   const [actualTimes, setActualTimes] = useState({
     actual_start_time: shift?.start_time || '',
@@ -75,18 +75,18 @@ export default function ShiftCompletionModal({
   // Calculate actual hours worked
   const calculateActualHours = () => {
     if (!actualTimes.actual_start_time || !actualTimes.actual_end_time) return shift.duration_hours;
-    
+
     const [startH, startM] = actualTimes.actual_start_time.split(':').map(Number);
     const [endH, endM] = actualTimes.actual_end_time.split(':').map(Number);
-    
+
     let startMinutes = startH * 60 + startM;
     let endMinutes = endH * 60 + endM;
-    
+
     // Handle overnight shifts
     if (endMinutes <= startMinutes) {
       endMinutes += 24 * 60;
     }
-    
+
     const totalMinutes = endMinutes - startMinutes;
     return (totalMinutes / 60).toFixed(2);
   };
@@ -136,17 +136,41 @@ export default function ShiftCompletionModal({
             </div>
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="w-4 h-4 text-gray-500" />
-              <span>{new Date(shift.date).toLocaleDateString('en-GB', { 
-                weekday: 'long', 
-                day: 'numeric', 
-                month: 'long', 
-                year: 'numeric' 
+              <span>{new Date(shift.date).toLocaleDateString('en-GB', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
               })}</span>
             </div>
             <div className="text-sm text-gray-700">
-              <strong>Staff:</strong> {staffName}
+              <strong>Staff:</strong> {staffName || 'Unassigned'}
+            </div>
+
+            {/* 📋 Timesheet status warning */}
+            <div className="mt-1 flex items-center gap-2">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-tight">Timesheet:</span>
+              {shift.timesheet_id ? (
+                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-1.5 py-0 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" /> Linked
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-1.5 py-0 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" /> Missing (Override)
+                </Badge>
+              )}
             </div>
           </div>
+
+          {!shift.assigned_staff_id && !shift.actual_staff_id && (
+            <Alert variant="destructive" className="border-red-300 bg-red-50">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <AlertDescription className="text-red-900 font-semibold">
+                ⚠️ UNASSIGNED SHIFT: You cannot complete a shift without an assigned staff member.
+                Please close this modal and assign a staff member first, or mark the shift as "Cancelled" or "No Show".
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Scheduled vs Actual Times */}
           <div className="grid md:grid-cols-2 gap-6">
@@ -162,7 +186,7 @@ export default function ShiftCompletionModal({
               <Input
                 type="time"
                 value={actualTimes.actual_start_time}
-                onChange={(e) => setActualTimes({...actualTimes, actual_start_time: e.target.value})}
+                onChange={(e) => setActualTimes({ ...actualTimes, actual_start_time: e.target.value })}
                 className="text-lg font-semibold"
               />
               {startAdjusted && (
@@ -184,7 +208,7 @@ export default function ShiftCompletionModal({
               <Input
                 type="time"
                 value={actualTimes.actual_end_time}
-                onChange={(e) => setActualTimes({...actualTimes, actual_end_time: e.target.value})}
+                onChange={(e) => setActualTimes({ ...actualTimes, actual_end_time: e.target.value })}
                 className="text-lg font-semibold"
               />
               {endAdjusted && (
@@ -208,10 +232,9 @@ export default function ShiftCompletionModal({
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Difference:</span>
-                <span className={`font-semibold ${
-                  parseFloat(hoursDifference) === 0 ? 'text-gray-700' :
+                <span className={`font-semibold ${parseFloat(hoursDifference) === 0 ? 'text-gray-700' :
                   parseFloat(hoursDifference) > 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
+                  }`}>
                   {parseFloat(hoursDifference) > 0 ? '+' : ''}{hoursDifference}h
                 </span>
               </div>
@@ -237,7 +260,7 @@ export default function ShiftCompletionModal({
               <AlertDescription className="text-orange-900">
                 <strong>⚠️ Significant Time Adjustment:</strong>
                 <p className="text-sm mt-2">
-                  You've adjusted the times by {Math.abs(parseFloat(hoursDifference))} hours. 
+                  You've adjusted the times by {Math.abs(parseFloat(hoursDifference))} hours.
                   This will affect payroll and invoicing. Please add a note explaining the reason.
                 </p>
               </AlertDescription>
@@ -253,7 +276,7 @@ export default function ShiftCompletionModal({
             </Label>
             <Textarea
               value={actualTimes.notes}
-              onChange={(e) => setActualTimes({...actualTimes, notes: e.target.value})}
+              onChange={(e) => setActualTimes({ ...actualTimes, notes: e.target.value })}
               placeholder={anyAdjustment ? "Required: Explain why times were adjusted (e.g., 'Staff arrived 15 mins late due to traffic')" : "Optional notes about this shift..."}
               rows={3}
               className={anyAdjustment && Math.abs(parseFloat(hoursDifference)) > 0.25 && !actualTimes.notes ? 'border-red-300' : ''}
@@ -272,9 +295,10 @@ export default function ShiftCompletionModal({
           <Button
             onClick={handleConfirm}
             disabled={
-              confirming || 
-              !actualTimes.actual_start_time || 
+              confirming ||
+              !actualTimes.actual_start_time ||
               !actualTimes.actual_end_time ||
+              (!staffName || staffName === 'Unknown Staff') ||
               (anyAdjustment && Math.abs(parseFloat(hoursDifference)) > 0.25 && !actualTimes.notes)
             }
             className="bg-green-600 hover:bg-green-700 min-w-[180px]"
