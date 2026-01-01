@@ -57,6 +57,9 @@ CREATE TABLE documentation_registry (
 
 - [ ] Create docs-lifecycle-monitor Edge Function
 - [ ] Implement: Check docs older than 30 days
+- [x] Verify email batching and delivery mechanics (Fixed cron, added rate limiting)
+- [x] Implement SQL-level notification aggregation in `auto_assign_shift`
+- [ ] Verify Smart Re-assignment (Decline logic)
 - [ ] Implement: Mark as requires_review
 - [ ] Implement: Check code_reference for git changes
 - [ ] Deploy function

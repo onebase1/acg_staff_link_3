@@ -461,15 +461,21 @@ serve(async (req) => {
                     }
                 });
 
+                console.log(`✅ [Queue ${queue.id}] Successfully sent to ${queue.recipient_email}`);
+
                 // ✅ FIX: Changed from notification_queues to notification_queue (singular)
                 await supabase
                     .from("notification_queue")
                     .update({
                         status: 'sent',
-                        sent_at: now.toISOString(),
-                        email_message_id: emailResult.messageId
+                        sent_at: new Date().toISOString(),
+                        provider_message_id: emailResult?.messageId
                     })
                     .eq("id", queue.id);
+
+                // ✅ FIX: Add a small delay between sends to avoid 429 Rate Limiting from Resend
+                // Especially important for bulk assignments or manual triggers
+                await new Promise(resolve => setTimeout(resolve, 1000));
 
                 console.log(`✅ [Queue ${queue.id}] Sent to ${queue.recipient_email}`);
                 results.sent++;
@@ -723,6 +729,7 @@ function buildGroupedShiftHtml(grouped: Map<string, GroupedShift>): string {
                             </div>
                         </div>
                         <div style="margin-top: 12px; padding: 12px; background: #f0fdf4; border-radius: 6px; border-left: 3px solid #10b981;">
+                            <div style="font-size: 14px; color: #6b7280; margin-bottom: 4px;">👤 ${formatRoleName(roleGroup.role)}</div>
                             <div style="font-size: 13px; color: #065f46; font-weight: 600; margin-bottom: 6px;">👥 Assigned Staff:</div>
                             <div style="font-size: 13px; color: #047857; line-height: 1.6;">
                                 ${roleGroup.staff.map(s => `
