@@ -11,8 +11,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
   Plus, Search, Filter, User, Mail, Phone, Star,
-  Edit, Trash2, CheckCircle, XCircle, FileText, UserPlus, Shield, AlertTriangle, Upload, Download, MessageCircle, RefreshCw
+  Edit, Trash2, CheckCircle, XCircle, FileText, UserPlus, Shield, AlertTriangle, Upload, Download, MessageCircle, RefreshCw,
+  Zap, ZapOff
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import StaffForm from "../components/staff/StaffForm";
 import InviteStaffModal from "../components/staff/InviteStaffModal";
 import NotificationService from "../components/notifications/NotificationService";
@@ -153,7 +156,7 @@ export default function Staff() {
     'last_incident_date', 'suspension_reason', 'invite_token', 'invite_expires',
     'last_invited_at', 'whatsapp_number', 'whatsapp_number_verified', 'whatsapp_pin',
     'whatsapp_linked_at', 'gps_consent', 'gps_consent_status', 'gps_consent_date',
-    'last_known_location', 'opt_out_shift_reminders',
+    'last_known_location', 'opt_out_shift_reminders', 'auto_assign_allowed',
     'profile_last_updated_at', 'profile_last_updated_by', 'profile_update_source'
   ];
 
@@ -984,32 +987,54 @@ export default function Staff() {
                   </div>
                 )}
 
-                <div className="flex gap-2 pt-4 border-t">
-                  <Link to={`${createPageUrl('StaffProfileSimulation')}?id=${staffMember.id}`} className="flex-1">
+                <div className="pt-4 border-t space-y-3">
+                  {/* ⚡ Auto-Assignment Toggle */}
+                  <div className="flex items-center justify-between p-2 bg-amber-50/50 border border-amber-100 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      {staffMember.auto_assign_allowed !== false ?
+                        <Zap className="w-4 h-4 text-amber-500 fill-amber-500" /> :
+                        <ZapOff className="w-4 h-4 text-gray-400" />
+                      }
+                      <span className="text-xs font-semibold text-amber-900">Auto-Assign Matching</span>
+                    </div>
+                    <Switch
+                      checked={staffMember.auto_assign_allowed !== false}
+                      onCheckedChange={(checked) => {
+                        updateMutation.mutate({
+                          id: staffMember.id,
+                          updates: { auto_assign_allowed: checked }
+                        });
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Link to={`${createPageUrl('StaffProfileSimulation')}?id=${staffMember.id}`} className="flex-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        CQC Profile
+                      </Button>
+                    </Link>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full"
+                      onClick={() => handleEdit(staffMember)}
                     >
-                      <FileText className="w-4 h-4 mr-2" />
-                      CQC Profile
+                      <Edit className="w-4 h-4" />
                     </Button>
-                  </Link>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(staffMember)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(staffMember.id)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(staffMember.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

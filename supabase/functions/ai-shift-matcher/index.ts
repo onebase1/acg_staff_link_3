@@ -31,7 +31,7 @@ serve(async (req) => {
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
         );
 
-        const { shift_id, limit = 5 } = await req.json();
+        const { shift_id, exclude_staff_ids = [], limit = 5 } = await req.json();
 
         if (!shift_id) {
             return new Response(
@@ -102,12 +102,19 @@ serve(async (req) => {
         const client = clients[0];
 
         // Get all active staff with matching role
-        const { data: allStaff, error: staffError } = await supabase
+        let staffQuery = supabase
             .from("staff")
             .select("*")
             .eq("agency_id", shift.agency_id)
             .eq("status", "active")
             .eq("role", shift.role_required);
+
+        // Filter out excluded staff
+        if (exclude_staff_ids && exclude_staff_ids.length > 0) {
+            staffQuery = staffQuery.not("id", "in", `(${exclude_staff_ids.join(',')})`);
+        }
+
+        const { data: allStaff, error: staffError } = await staffQuery;
 
         if (staffError) {
             throw staffError;

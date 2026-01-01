@@ -364,7 +364,11 @@ serve(async (req) => {
 
         try {
           supabase.functions.invoke('auto-shift-assignment-engine', {
-            body: { shift_id }
+            body: { 
+              shift_ids: [shift_id], 
+              agency_id: shift.agency_id,
+              exclude_staff_ids: [staff_id] 
+            }
           }).catch(err => console.error('⚠️ Auto-assignment failed:', err));
 
           console.log('✅ [Staff Decline] Auto-assignment triggered');

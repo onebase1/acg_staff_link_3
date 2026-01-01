@@ -45,7 +45,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { shift_ids, agency_id } = await req.json();
+    const { shift_ids, agency_id, exclude_staff_ids = [] } = await req.json();
 
     if (!shift_ids || !Array.isArray(shift_ids) || shift_ids.length === 0) {
       return new Response(
@@ -159,12 +159,13 @@ serve(async (req) => {
 
         console.log(`   📅 ${dayOfWeek} ${shiftType} shift, role: ${shift.role_required}`);
 
-        // 2. Filter staff by availability
+        // 2. Filter staff by availability AND exclusion list
         const availableStaff = (allStaff || []).filter(staff => {
           const dayAvailability = staff.availability?.[dayOfWeek] || [];
           const hasAvailability = dayAvailability.includes(shiftType) || dayAvailability.includes('both');
           const hasRole = staff.role === shift.role_required;
-          return hasAvailability && hasRole;
+          const isExcluded = exclude_staff_ids.includes(staff.id);
+          return hasAvailability && hasRole && !isExcluded;
         });
 
         console.log(`   👥 ${availableStaff.length} staff available on ${dayOfWeek} for ${shiftType}`);
@@ -182,8 +183,8 @@ serve(async (req) => {
           continue;
         }
 
-        // 3. Call AI Shift Matcher for scoring
-        const matchResult = await callAIShiftMatcher(supabase, shift.id);
+        // 3. Call AI Shift Matcher for scoring (pass exclusions)
+        const matchResult = await callAIShiftMatcher(supabase, shift.id, exclude_staff_ids);
 
         if (!matchResult.success || !matchResult.matches || matchResult.matches.length === 0) {
           console.log(`   ⚠️ AI Matcher returned no matches, moving to marketplace`);
@@ -282,10 +283,10 @@ serve(async (req) => {
 /**
  * Call the AI Shift Matcher edge function
  */
-async function callAIShiftMatcher(supabase: any, shiftId: string) {
+async function callAIShiftMatcher(supabase: any, shiftId: string, exclude_staff_ids: string[] = []) {
   try {
     const { data, error } = await supabase.functions.invoke('ai-shift-matcher', {
-      body: { shift_id: shiftId, limit: 10 }
+      body: { shift_id: shiftId, exclude_staff_ids, limit: 10 }
     });
 
     if (error) {
