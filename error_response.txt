@@ -1,0 +1,1 @@
+{"error":"supabase.auth.admin.getUserByEmail is not a function"}

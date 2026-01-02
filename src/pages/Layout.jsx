@@ -23,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import PublicLayout from "./PublicLayout";
 import ViewSwitcher from "@/components/admin/ViewSwitcher";
 
 const navigationStructure = [
@@ -464,9 +465,24 @@ export default function Layout({ children, currentPageName }) {
     return `${Math.floor(diffMins / 1440)}d ago`;
   };
 
+
+
+  // ... (existing code)
+
+  // ✅ NEW: Public Routes List
+  // These routes will be wrapped in PublicLayout instead of the main authenticated Layout
+  const publicPaths = ['/landing', '/privacy', '/terms'];
+  const isPublicRoute = publicPaths.some(path => location.pathname.toLowerCase().startsWith(path));
+
   if (isAuthRoute) {
     return <>{children}</>;
   }
+
+  // ✅ NEW: Render PublicLayout for public pages
+  if (isPublicRoute) {
+    return <PublicLayout>{children}</PublicLayout>;
+  }
+
 
   // ✅ NEW: Show loading while checking auth - don't expose page structure
   if (isCheckingAuth) {

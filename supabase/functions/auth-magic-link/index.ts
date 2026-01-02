@@ -1,7 +1,32 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { validateDatabaseToken } from "../_shared/magic-tokens.ts";
+// import { validateDatabaseToken } from "../_shared/magic-tokens.ts";
+
+/**
+ * Validate a database-backed token
+ */
+export async function validateDatabaseToken(
+    supabase: any,
+    token: string
+): Promise<{ valid: boolean; data?: any; error?: string }> {
+    const { data, error } = await supabase
+        .from('magic_link_tokens')
+        .select('*')
+        .eq('token', token)
+        .single();
+
+    if (error || !data) {
+        return { valid: false, error: 'Invalid token' };
+    }
+
+    if (new Date(data.expires_at) < new Date()) {
+        return { valid: false, error: 'Token expired' };
+    }
+
+    return { valid: true, data };
+}
+
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -44,23 +69,43 @@ serve(async (req) => {
 
     console.log(`🔑 [Auth Magic Link] Authenticating ${recipientEmail} for client ${clientId}`);
 
-    // 3. Find or Create the user in auth.users
-    // We search for an existing user with this email
-    const { data: userData, error: userError } = await supabase.auth.admin.getUserByEmail(recipientEmail);
-    
-    let user = userData?.user;
-
-    if (!user) {
-      console.log(`👤 Creating new user for ${recipientEmail}`);
-      const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+    // 3. Ensure User Exists
+    // We attempt to create. If they exist, we just proceed.
+    let user;
+    const { data: createData, error: createError } = await supabase.auth.admin.createUser({
         email: recipientEmail,
         email_confirm: true,
         user_metadata: { role: 'OPERATIONS_MANAGER', agency_id: agencyId, client_id: clientId }
-      });
+    });
 
-      if (createError) throw createError;
-      user = newUser.user;
+    if (createData?.user) {
+        user = createData.user;
+    } else if (createError && !createError.message?.includes("already registered")) {
+        // If error is ANYTHING other than "already registered", throw it
+        throw createError;
     }
+    // If "already registered", user is null here, but we will get it from generateLink below
+    
+    // 4. Generate Link (This also returns the User object)
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+        type: 'magiclink',
+        email: recipientEmail,
+        options: { redirectTo: `${Deno.env.get('SITE_URL') ?? 'https://agilecaremanagement.co.uk'}/ClientPortal` }
+    });
+
+    if (linkError) throw linkError;
+
+    // Ensure we have the user object
+    if (!user && linkData.user) {
+        user = linkData.user;
+    }
+
+    if (!user) {
+        throw new Error("Failed to retrieve User ID for linking");
+    }
+
+    // Now we have 'user', we can link the contact
+    console.log(`🔗 Linking auth user ${user.id} to client contact...`);
 
     // 4. Ensure client_contacts link exists
     const { data: contact, error: contactError } = await supabase
@@ -78,25 +123,40 @@ serve(async (req) => {
         client_id: clientId,
         agency_id: agencyId,
         role: 'OPERATIONS_MANAGER',
-        auth_user_id: user.id
+        profile_id: user.id
       });
     } else {
-        // Update user ID if missing
-        await supabase.from('client_contacts').update({ auth_user_id: user.id }).eq('id', contact.id);
+        // Update profile ID if missing
+        if (!contact.profile_id) {
+            await supabase.from('client_contacts').update({ profile_id: user.id }).eq('id', contact.id);
+        }
     }
 
-    // 5. Generate a magic link session (or just sign them in)
-    // We use admin.generateLink to get a recovery/login link that Supabase Auth handles
-    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-        type: 'magiclink',
-        email: recipientEmail,
-        options: { redirectTo: `${Deno.env.get('VITE_APP_URL')}/ClientPortal` }
-    });
-
-    if (linkError) throw linkError;
+    // 5. Generate a magic link session (Duplicate removed, use linkData from above)
+    // We already have linkData from step 4.
 
     // 6. Mark token as used
     await supabase.from('magic_link_tokens').update({ used_at: new Date().toISOString() }).eq('id', data.id);
+
+    // 7. Audit Log
+    const userAgent = req.headers.get('user-agent') || 'unknown';
+    const ipAddress = req.headers.get('x-forwarded-for') || 'unknown';
+
+    const { error: logError } = await supabase.from('magic_link_audit_logs').insert({
+        token_id: data.id,
+        action: 'authenticated_success',
+        email: recipientEmail,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        metadata: {
+            client_id: clientId,
+            agency_id: agencyId,
+            auth_user_id: user.id
+        }
+    });
+    
+    if (logError) console.error("⚠️ Failed to write audit log:", logError);
+
 
     return new Response(JSON.stringify({ 
         success: true, 

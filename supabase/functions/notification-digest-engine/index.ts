@@ -369,6 +369,7 @@ serve(async (req) => {
                         grouped_shifts_html: groupedHtml,
                         agency_name: agency?.name || branding.companyName,
                         agency_email: agency?.contact_email || branding.supportEmail,
+                        portal_url: branding.clientPortalUrl,
                         preferences_url: `${branding.siteUrl}/preferences?email=${encodeURIComponent(queue.recipient_email)}`,
                         current_year: new Date().getFullYear().toString()
                     });

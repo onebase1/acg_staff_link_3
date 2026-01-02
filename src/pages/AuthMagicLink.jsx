@@ -28,15 +28,15 @@ const AuthMagicLink = () => {
                     throw new Error(error?.message || data?.error || 'Authentication failed');
                 }
 
-                // If successful, the edge function might return some session info or user details
-                // But the primary auth session is set via cookies/headers handled by Supabase Auth
-                setStatus('success');
-                setMessage('Authentication successful! Redirecting you to your portal...');
-
-                // Short delay to show success state before redirecting
-                setTimeout(() => {
+                // If successful, we get a Supabase Magic Link URL to properly set the session
+                if (data.redirect_url) {
+                    setMessage('Authentication successful! Logging you in...');
+                    // Redirect to the actual magic link which sets cookies and then redirects to /ClientPortal
+                    window.location.href = data.redirect_url;
+                } else {
+                    // Fallback (shouldn't happen if backend is correct)
                     navigate('/ClientPortal');
-                }, 2000);
+                }
 
             } catch (err) {
                 console.error('Magic link verification error:', err);

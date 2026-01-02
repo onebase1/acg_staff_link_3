@@ -144,6 +144,9 @@ import LiveRota from "./LiveRota";
 import Login from "./Login";
 import ResetPassword from "./ResetPassword";
 import AuthMagicLink from "./AuthMagicLink";
+import Landing from "./Landing";
+import Privacy from "./Privacy";
+import Terms from "./Terms";
 
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
@@ -292,7 +295,9 @@ const PAGES = {
     CronCommandCenter: CronCommandCenter,
 
     PitchCommandCenter: PitchCommandCenter,
-
+    Landing: Landing,
+    Privacy: Privacy,
+    Terms: Terms,
 }
 
 function _getCurrentPage(url) {
@@ -322,6 +327,9 @@ function PagesContent() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/Login" element={<Login />} />
                 <Route path="/auth/magic" element={<AuthMagicLink />} />
+                <Route path="/landing" element={<Landing />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/terms" element={<Terms />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
 
                 <Route path="/Home" element={<Home />} />

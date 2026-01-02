@@ -47,6 +47,31 @@ serve(async (req) => {
 
     console.log(`✉️ [Generate Magic Link] Created link for ${client_email}: ${magicLink}`);
 
+    // 3. Send Email
+    const { error: emailError } = await supabase.functions.invoke('send-email', {
+      body: {
+        to: client_email,
+        subject: '🔐 Your Secure Login Link',
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #4f46e5;">Secure Login Request</h2>
+            <p>You requested a secure login link for the Client Portal.</p>
+            <p>Click the button below to sign in instantly:</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${magicLink}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Login to Portal</a>
+            </div>
+            <p style="color: #666; font-size: 12px;">This link expires in 7 days.</p>
+          </div>
+        `,
+        from_name: 'Agile Care Management' // ideally dynamic from agency
+      }
+    });
+
+    if (emailError) {
+        console.error("⚠️ Failed to send email:", emailError);
+        // We still return success but maybe warn?
+    }
+
     return new Response(JSON.stringify({ success: true, magicLink, token }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
