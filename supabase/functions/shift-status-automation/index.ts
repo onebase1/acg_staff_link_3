@@ -545,7 +545,8 @@ serve(async (req) => {
                                     console.log(`🔄 [Shift Automation] Attempting recursive re-assignment for ${shift.id.substring(0, 8)}...`);
                                     const { data: reassignResult, error: reassignError } = await supabase
                                         .rpc('auto_assign_shift', { 
-                                            target_shift_id: shift.id,
+                                            p_shift_id: shift.id,
+                                            p_agency_id: shift.agency_id,
                                             exclude_staff_ids: uniqueExcluded
                                         });
 

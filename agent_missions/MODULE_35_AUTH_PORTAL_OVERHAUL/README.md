@@ -1,33 +1,26 @@
-# MODULE 35: Authentication & Portal Routing Overhaul
+# MODULE 35: Authentication & Portal Routing Overhaul (Client Focus)
 
 ## Mission
-Fix critical authentication flows, implement magic link authentication for clients, resolve email portal links, and create public pages architecture.
+Implement magic link authentication for **clients** and resolve email portal links for client workflows. Staff authentication flows remain unchanged (standard password/invite flow).
 
 ## Status
 - **Started:** 2025-12-28
-- **Current Phase:** Phase 1 - Email Portal Links Fix
+- **Current Phase:** Phase 2 - Magic Link Authentication for Clients
 - **Priority:** P0 - Critical
-- **Est. Duration:** 19-27 hours (~3-5 days)
+- **Est. Duration:** 10-14 hours
 
 ## Context
 
 ### Problems Being Solved
-1. **Email Portal Links Are Broken**
-   - Staff emails link to `/shifts` (doesn't exist for staff users)
-   - Client emails link to `/portal` (generic, should be `/ClientPortal`)
-   - Marketplace digest uses wrong portal URL
-
-2. **Client Onboarding Friction**
+1. **Client Onboarding Friction**
    - Existing care home managers won't create password accounts
    - Current flow: Admin invites → Client must sign up → Creates password
-   - Need: Passwordless authentication via magic links
+   - **Need:** Passwordless authentication via magic links for Clients.
 
-3. **Public Pages Show Logged-In UI**
-   - Landing page shows "blank User" during auth check
-   - Layout.jsx wraps ALL routes (even public ones)
-   - Blocks OAuth application readiness
+2. **Email Portal Links**
+   - Client emails link to generic `/portal` (should be `/ClientPortal`)
 
-4. **Orphaned User Risk**
+3. **Orphaned User Risk (Clients)**
    - Magic links could create auth.users without proper profile linking
    - Need atomic flow: create user → link to client_contact → create session
 
@@ -40,29 +33,24 @@ Based on discussions with user:
    - Users can set password later from settings (not required)
 
 2. **Q2: Staff Authentication**
-   - ✅ Keep password-only (security for payroll/compliance)
-   - ❌ Magic links for staff - PARKED (password flow works fine)
+   - 🚫 **OUT OF SCOPE for this module.**
+   - Staff will continue to use the standard password + invite flow.
+   - Staff linking fixes are handled separately (see `20260102000000_fix_orphan_linking_and_casing.sql`).
 
 3. **Q3: Orphaned Users**
-   - 🚧 Deferred to future module
-   - Goal: Invite-only system with contact form for uninvited users
+   - 🚧 Deferred to future module for general cases, but MUST be handled for Client Magic Links.
 
 4. **Q4: Public Pages**
    - ✅ Minimal landing + legal pages
-   - Reuse design/content from `marketing/website` Next.js app
-   - Convert to React pages in main app
 
 5. **Q5: Client RBAC**
    - ✅ MVP: All clients get OPERATIONS_MANAGER access
-   - 🚧 Future: Support multiple contacts per client with role-based access
 
 ## Implementation Phases
 
-### Phase 1: Email Portal Links Fix (1-2 hours) ✅ IN PROGRESS
-- Update `getBranding.ts` with dynamic URLs
-- Fix `notification-digest-engine` (staff assignments)
-- Fix `smart-marketplace-digest` (staff marketplace)
-- Fix `daily-client-digest` (client schedules)
+### Phase 1: Client Email Links Fix (1 hour)
+- Update `getBranding.ts` with dynamic URLs for Client emails
+- Fix `daily-client-digest` links
 
 ### Phase 2: Magic Link Authentication for Clients (10-14 hours) 🔜 NEXT
 **Client-only passwordless authentication**
@@ -73,36 +61,27 @@ Based on discussions with user:
 - Add `/auth/magic` React route
 - Update `daily-client-digest` to include magic links
 - Security review & testing
-- **Note:** Staff continue using password authentication
 
 ### Phase 3: Public Pages Architecture (6-8 hours) 🔜 PENDING
 - Create `PublicLayout.jsx` (no auth)
 - Restructure route hierarchy
-- Convert Next.js landing page to React
 - Add Privacy, Terms, Contact pages
-- Fix "blank User" issue
 
-### Phase 4: Database Trigger Enhancements (2-3 hours) 🔜 PENDING
+### Phase 4: Database Trigger Enhancements (Clients) (2-3 hours) 🔜 PENDING
 - Add client_contacts check to trigger
-- Implement audit logging
-- Prevent orphaned users
+- Implement audit logging for client magic links
 
 ## Success Criteria
 
-- ✅ All email portal links route to correct pages
 - ✅ Clients can access ClientPortal via magic link (no password needed)
-- ✅ Zero orphaned users created
+- ✅ Zero orphaned users created for Clients
 - ✅ Public pages work without auth issues
-- ✅ All existing functionality preserved
-- ✅ Security review passed
-- ✅ Staging tested before production deployment
+- ✅ Staff flows remain UNAFFECTED
 
 ## Files Being Modified
 
 ### Phase 1
 - `supabase/functions/_shared/getBranding.ts`
-- `supabase/functions/notification-digest-engine/index.ts`
-- `supabase/functions/smart-marketplace-digest/index.ts`
 - `supabase/functions/daily-client-digest/index.ts`
 
 ### Phase 2
@@ -115,18 +94,14 @@ Based on discussions with user:
 ### Phase 3
 - `src/pages/PublicLayout.jsx` (NEW)
 - `src/pages/index.jsx` (route restructure)
-- `src/pages/Landing.jsx` (NEW - converted from Next.js)
-- `src/pages/Privacy.jsx` (NEW)
-- `src/pages/Terms.jsx` (NEW)
-- `src/pages/Contact.jsx` (NEW)
+- `src/pages/Landing.jsx` (NEW)
 
 ### Phase 4
-- `supabase/migrations/[EXISTING]_fix_staff_signup_linking.sql` (update)
 - `supabase/migrations/[NEW]_create_auth_audit_log.sql`
 
 ## Architecture Diagrams
 
-### Magic Link Authentication Flow
+### Magic Link Authentication Flow (Clients Only)
 
 ```mermaid
 sequenceDiagram
@@ -216,9 +191,7 @@ graph LR
 ## Testing Strategy
 
 ### Phase 1 Testing
-- [ ] Staff receives shift assignment → link goes to /staffportal
 - [ ] Client receives daily digest → link goes to /ClientPortal
-- [ ] Marketplace digest → link goes to /staffportal
 - [ ] Test across email clients (Gmail, Outlook, Apple Mail)
 
 ### Phase 2 Testing
@@ -228,7 +201,7 @@ graph LR
 - [ ] Used tokens rejected
 - [ ] RBAC maintained (OPERATIONS_MANAGER access)
 - [ ] Optional password creation works
-- [ ] No orphaned users created
+- [ ] No orphaned users created (Client)
 
 ### Phase 3 Testing
 - [ ] Landing page loads without auth check
@@ -238,11 +211,8 @@ graph LR
 - [ ] Mobile responsive
 
 ### Phase 4 Testing
-- [ ] Staff invites auto-link correctly
 - [ ] Client contacts auto-link correctly
-- [ ] Agency admins auto-link correctly
 - [ ] Audit log captures all events
-- [ ] No orphaned users created
 
 ## Documentation
 
