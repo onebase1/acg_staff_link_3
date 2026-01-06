@@ -288,7 +288,37 @@ export default function AgencySettings() {
       return;
     }
 
-    updateAgencyMutation.mutate(pendingChanges);
+    // 🛡️ JSONB PROTECTION: Deep merge settings to prevent overwriting
+    // Because 'settings' is a JSONB column, sending a partial object will overwrite the whole column.
+    // We must merge pending changes into the existing settings object.
+    const payload = { ...pendingChanges };
+
+    if (payload.settings) {
+      // Create a deep copy of existing settings to serve as the base
+      const mergedSettings = JSON.parse(JSON.stringify(agency.settings || {}));
+
+      // Recursive merge helper
+      const mergeDeep = (target, source) => {
+        for (const key in source) {
+          if (
+            source[key] &&
+            typeof source[key] === 'object' &&
+            !Array.isArray(source[key])
+          ) {
+            if (!target[key]) target[key] = {};
+            mergeDeep(target[key], source[key]);
+          } else {
+            target[key] = source[key];
+          }
+        }
+      };
+
+      // Merge pending settings into the base
+      mergeDeep(mergedSettings, payload.settings);
+      payload.settings = mergedSettings;
+    }
+
+    updateAgencyMutation.mutate(payload);
   };
 
   const hasUnsavedChanges = Object.keys(pendingChanges).length > 0;
