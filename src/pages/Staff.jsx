@@ -12,10 +12,17 @@ import { createPageUrl } from "@/utils";
 import {
   Plus, Search, Filter, User, Mail, Phone, Star,
   Edit, Trash2, CheckCircle, XCircle, FileText, UserPlus, Shield, AlertTriangle, Upload, Download, MessageCircle, RefreshCw,
-  Zap, ZapOff
+  Zap, ZapOff, LayoutGrid, Table as TableIcon, ListFilter, Smartphone, MapPin
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import StaffForm from "../components/staff/StaffForm";
 import InviteStaffModal from "../components/staff/InviteStaffModal";
 import NotificationService from "../components/notifications/NotificationService";
@@ -30,6 +37,11 @@ export default function Staff() {
   const [editingStaff, setEditingStaff] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
+  const [autoAssignFilter, setAutoAssignFilter] = useState('all'); // 'all' | 'enabled' | 'disabled'
+  const [connectivityFilter, setConnectivityFilter] = useState('all'); // 'all' | 'whatsapp_missing' | 'gps_missing'
+  const [complianceFilter, setComplianceFilter] = useState('all'); // 'all' | 'photo_missing' | 'docs_missing'
   const [currentAgency, setCurrentAgency] = useState(null);
 
   const queryClient = useQueryClient();
@@ -560,13 +572,31 @@ export default function Staff() {
         throw new Error('Failed to send invitation email');
       }
 
-      return staffMember;
+      // ✅ Update DB to track sent timestamp
+      const { error: updateError } = await supabase
+        .from('staff')
+        .update({
+          welcome_email_sent_at: new Date().toISOString(),
+          invite_status: 'sent',
+          last_invited_at: new Date().toISOString() // Keep legacy field updated too
+        })
+        .eq('id', staffMember.id);
+
+      if (updateError) console.error('⚠️ Failed to update timestamp', updateError);
+
+      return { ...staffMember, welcome_email_sent_at: new Date().toISOString() };
     },
-    onSuccess: (staffMember) => {
+    onSuccess: (updatedStaff) => {
+      // Optimistic update or refetch can happen here, but we return the updated object
+      queryClient.setQueryData(['staff', currentAgency?.id], (oldData) => {
+        if (!oldData) return oldData;
+        return oldData.map(s => s.id === updatedStaff.id ? { ...s, ...updatedStaff } : s);
+      });
+
       toast.success(
         <div>
-          <p className="font-bold">✅ Invitation Resent!</p>
-          <p className="text-sm">Email sent to {staffMember.email}</p>
+          <p className="font-bold">✅ Invitation Sent!</p>
+          <p className="text-sm">Marked as sent to {updatedStaff.email}</p>
         </div>,
         { duration: 5000 }
       );
@@ -604,11 +634,34 @@ export default function Staff() {
   };
 
   const filteredStaff = staff.filter(s => {
+    // 1. Text Search
     const matchesSearch = s.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.email?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // 2. Status Filter
     const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
-    return matchesSearch && matchesStatus;
+
+    // 3. Role Filter
+    const matchesRole = roleFilter === 'all' || s.role === roleFilter;
+
+    // 4. Auto-Assign Filter (Check both allow flag and matching enabled)
+    // Note: 'auto_assign_allowed' is the master switch
+    const matchesAutoAssign = autoAssignFilter === 'all' ||
+      (autoAssignFilter === 'enabled' && s.auto_assign_allowed) ||
+      (autoAssignFilter === 'disabled' && !s.auto_assign_allowed);
+
+    // 5. Connectivity Filter
+    const matchesConnectivity = connectivityFilter === 'all' ||
+      (connectivityFilter === 'whatsapp_missing' && !s.whatsapp_number_verified) ||
+      (connectivityFilter === 'gps_missing' && (!s.gps_consent || s.gps_consent_status !== 'granted'));
+
+    // 6. Compliance Filter
+    const matchesCompliance = complianceFilter === 'all' ||
+      (complianceFilter === 'photo_missing' && !s.profile_photo_url) ||
+      (complianceFilter === 'docs_missing' && false); // Placeholder for doc logic if needed
+
+    return matchesSearch && matchesStatus && matchesRole && matchesAutoAssign && matchesConnectivity && matchesCompliance;
   });
 
   const getStatusBadge = (status) => {
@@ -795,7 +848,26 @@ export default function Staff() {
             </Badge>
           )}
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
+          {/* View Toggle */}
+          <div className="bg-gray-100 p-1 rounded-lg flex items-center border border-gray-200">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow text-cyan-600' : 'text-gray-500 hover:text-gray-700'}`}
+              title="Grid View"
+            >
+              <LayoutGrid size={18} />
+            </button>
+            <div className="w-px h-5 bg-gray-300 mx-1"></div>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow text-cyan-600' : 'text-gray-500 hover:text-gray-700'}`}
+              title="Table View"
+            >
+              <TableIcon size={18} />
+            </button>
+          </div>
+
           <Button
             variant="outline"
             onClick={exportToCSV}
@@ -823,46 +895,91 @@ export default function Staff() {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search by name or email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant={statusFilter === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setStatusFilter('all')}
-              >
-                All
-              </Button>
-              <Button
-                variant={statusFilter === 'active' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setStatusFilter('active')}
-              >
-                Active
-              </Button>
-              <Button
-                variant={statusFilter === 'onboarding' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setStatusFilter('onboarding')}
-              >
-                Onboarding
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Advanced Filters Toolbar */}
+      <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search by name, email, or role..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
 
-      {/* Staff Grid */}
+        <div className="flex flex-wrap gap-2 items-center">
+          {/* Status Filter */}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[130px] h-10">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="onboarding">Onboarding</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="suspended">Suspended</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Role Filter */}
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="w-[140px] h-10">
+              <div className="flex items-center gap-2">
+                <User size={14} className="text-gray-500" />
+                <SelectValue placeholder="All Roles" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Roles</SelectItem>
+              <SelectItem value="healthcare_assistant">HCA</SelectItem>
+              <SelectItem value="registered_nurse">Nurse</SelectItem>
+              <SelectItem value="senior_carer">Senior Carer</SelectItem>
+              <SelectItem value="support_worker">Support Worker</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Auto-Assign Filter */}
+          <Select value={autoAssignFilter} onValueChange={setAutoAssignFilter}>
+            <SelectTrigger className="w-[150px] h-10">
+              <div className="flex items-center gap-2">
+                <Zap size={14} className="text-amber-500" />
+                <SelectValue placeholder="Auto-Assign" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Any Setting</SelectItem>
+              <SelectItem value="enabled">Auto-Assign ON</SelectItem>
+              <SelectItem value="disabled">Auto-Assign OFF</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Connectivity Filter */}
+          <Select value={connectivityFilter} onValueChange={setConnectivityFilter}>
+            <SelectTrigger className="w-[50px] h-10 px-0 justify-center text-gray-500 hover:text-cyan-600" title="Connectivity Issues">
+              <Smartphone size={18} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="whatsapp_missing">Missing WhatsApp</SelectItem>
+              <SelectItem value="gps_missing">GPS Disabled</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Compliance Filter */}
+          <Select value={complianceFilter} onValueChange={setComplianceFilter}>
+            <SelectTrigger className="w-[50px] h-10 px-0 justify-center text-gray-500 hover:text-red-600" title="Compliance Issues">
+              <Shield size={18} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="photo_missing">Missing Photo</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Staff List - View Mode Logic */}
       {isLoadingStaff ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map(i => (
@@ -872,6 +989,108 @@ export default function Staff() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      ) : viewMode === 'table' ? (
+        // ✅ TABLE VIEW IMPLEMENTATION
+        <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm bg-white">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-3 font-semibold text-gray-700">Staff Member</th>
+                <th className="px-4 py-3 font-semibold text-gray-700">Role & Status</th>
+                <th className="px-4 py-3 font-semibold text-gray-700">Connectivity</th>
+                <th className="px-4 py-3 font-semibold text-gray-700 text-center">Auto-Assign</th>
+                <th className="px-4 py-3 font-semibold text-gray-700">Performance</th>
+                <th className="px-4 py-3 font-semibold text-gray-700 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredStaff.map((staffMember) => (
+                <tr key={staffMember.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      {staffMember.profile_photo_url ? (
+                        <img src={staffMember.profile_photo_url} alt="" className="w-10 h-10 rounded-full object-cover border border-gray-200" />
+                      ) : (
+                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
+                          <User size={20} />
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-semibold text-gray-900">{staffMember.first_name} {staffMember.last_name}</div>
+                        <div className="text-xs text-gray-500">{staffMember.email}</div>
+                        <div className="text-xs text-gray-400">{staffMember.phone}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="space-y-1">
+                      <Badge variant="outline" className="font-normal text-gray-600 bg-gray-50">
+                        {staffMember.role?.replace('_', ' ')}
+                      </Badge>
+                      <div><Badge {...getStatusBadge(staffMember.status)} className="text-xs px-2 py-0.5" /></div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <div title={staffMember.whatsapp_number_verified ? "WhatsApp Linked" : "WhatsApp Missing"}
+                        className={`p-1.5 rounded-md ${staffMember.whatsapp_number_verified ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-400'}`}>
+                        <MessageCircle size={16} />
+                      </div>
+                      <div title={staffMember.gps_consent_status === 'granted' ? "GPS Active" : "GPS Missing"}
+                        className={`p-1.5 rounded-md ${staffMember.gps_consent_status === 'granted' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400'}`}>
+                        <MapPin size={16} />
+                      </div>
+                      {!staffMember.profile_photo_url && (
+                        <div title="Photo Missing" className="p-1.5 rounded-md bg-red-100 text-red-600 animate-pulse">
+                          <AlertTriangle size={16} />
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {staffMember.auto_assign_allowed ? (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        <Zap size={12} className="mr-1 fill-amber-500" /> ON
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                        OFF
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-sm">
+                      <div className="flex items-center gap-1 text-yellow-600 font-medium">
+                        <Star size={12} fill="currentColor" /> {staffMember.rating || 'N/A'}
+                      </div>
+                      <div className="text-xs text-gray-500">{staffMember.total_shifts_completed || 0} shifts</div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={() => handleEdit(staffMember)} title="Edit">
+                        <Edit size={16} />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={() => handleGeneratePIN(staffMember)} title="Send PIN">
+                        <Smartphone size={16} />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => handleDelete(staffMember.id)} title="Delete">
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredStaff.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                    No staff members found matching your filters.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -972,12 +1191,20 @@ export default function Staff() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                      className={`w-full border-blue-200 hover:bg-blue-100 ${staffMember.welcome_email_sent_at
+                          ? 'bg-gray-100 text-gray-500 border-gray-200'
+                          : 'bg-blue-50 text-blue-700'
+                        }`}
                       onClick={() => handleResendInvite(staffMember)}
                       disabled={resendInviteMutation.isPending}
                     >
                       <RefreshCw className={`w-4 h-4 mr-2 ${resendInviteMutation.isPending ? 'animate-spin' : ''}`} />
-                      {resendInviteMutation.isPending ? 'Sending...' : (agency?.id === 'c8e84c94-8233-4084-b4c3-63ad9dc81c16' ? 'Send Welcome Email' : 'Resend Invitation')}
+                      {resendInviteMutation.isPending
+                        ? 'Sending...'
+                        : staffMember.welcome_email_sent_at
+                          ? `Resent ${new Date(staffMember.welcome_email_sent_at).toLocaleDateString()}`
+                          : (agency?.id === 'c8e84c94-8233-4084-b4c3-63ad9dc81c16' ? 'Send Welcome Email' : 'Resend Invitation')
+                      }
                     </Button>
                     {staffMember.last_invited_at && (
                       <p className="text-xs text-center text-gray-500">
