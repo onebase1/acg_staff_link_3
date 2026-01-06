@@ -19,7 +19,7 @@ import {
 import {
   Calendar, Clock, MapPin, DollarSign, AlertTriangle,
   FileText, TrendingUp, Star, Award, Filter, ChevronDown, Building2,
-  CheckCircle, ChevronRight, Zap, AlertCircle, Loader2, X as XIcon, Briefcase, MessageCircle
+  CheckCircle, ChevronRight, Zap, AlertCircle, Loader2, X as XIcon, Briefcase, MessageCircle, Ban, XCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, isWithinInterval, isFuture, isPast, isToday, parseISO, addDays } from "date-fns";
@@ -41,7 +41,7 @@ export default function StaffPortal() {
   const [dateRange, setDateRange] = useState('all');
   const [selectedShift, setSelectedShift] = useState(null);
   const [showShiftDetail, setShowShiftDetail] = useState(false);
-  
+
   // ✅ NEW: Advanced shift filtering state with localStorage persistence
   const [showFilters, setShowFilters] = useState(false);
   const [shiftFilters, setShiftFilters] = useState(() => {
@@ -64,7 +64,7 @@ export default function StaffPortal() {
   useEffect(() => {
     localStorage.setItem('staff_portal_shift_filters', JSON.stringify(shiftFilters));
   }, [shiftFilters]);
-  
+
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -133,13 +133,13 @@ export default function StaffPortal() {
     queryKey: ['agency', user?.agency_id],
     queryFn: async () => {
       if (!user?.agency_id) return null;
-      
+
       const { data, error } = await supabase
         .from('agencies')
         .select('*')
         .eq('id', user.agency_id)
         .single();
-      
+
       if (error) {
         console.error('❌ Error fetching agency:', error);
         return null;
@@ -155,12 +155,12 @@ export default function StaffPortal() {
     queryKey: ['clients', user?.agency_id],
     queryFn: async () => {
       if (!user?.agency_id) return [];
-      
+
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .eq('agency_id', user.agency_id);
-      
+
       if (error) {
         console.error('❌ Error fetching clients:', error);
         return [];
@@ -187,13 +187,13 @@ export default function StaffPortal() {
     queryKey: ['my-shifts', staffRecord?.id],
     queryFn: async () => {
       if (!staffRecord) return [];
-      
+
       const { data, error } = await supabase
         .from('shifts')
         .select('*')
         .eq('assigned_staff_id', staffRecord.id)
         .order('date', { ascending: false });
-      
+
       if (error) {
         console.error('❌ Error fetching shifts:', error);
         return [];
@@ -208,14 +208,14 @@ export default function StaffPortal() {
     queryKey: ['my-timesheets', staffRecord?.id],
     queryFn: async () => {
       if (!user || !staffRecord) return [];
-      
+
       const { data, error } = await supabase
         .from('timesheets')
         .select('*')
         .eq('staff_id', staffRecord.id)
         .eq('agency_id', user.agency_id)
         .order('created_date', { ascending: false });
-      
+
       if (error) {
         console.error('❌ Error fetching timesheets:', error);
         return [];
@@ -231,14 +231,14 @@ export default function StaffPortal() {
     queryKey: ['my-payslips', staffRecord?.id],
     queryFn: async () => {
       if (!user || !staffRecord) return [];
-      
+
       const { data, error } = await supabase
         .from('payslips')
         .select('*')
         .eq('staff_id', staffRecord.id)
         .eq('agency_id', user.agency_id)
         .order('payment_date', { ascending: false });
-      
+
       if (error) {
         console.error('❌ Error fetching payslips:', error);
         return [];
@@ -254,12 +254,12 @@ export default function StaffPortal() {
     queryKey: ['my-bookings', staffRecord?.id],
     queryFn: async () => {
       if (!staffRecord) return [];
-      
+
       const { data, error } = await supabase
         .from('bookings')
         .select('*')
         .eq('staff_id', staffRecord.id);
-      
+
       if (error) {
         console.error('❌ Error fetching bookings:', error);
         return [];
@@ -327,7 +327,7 @@ export default function StaffPortal() {
       queryClient.invalidateQueries(['shifts']);
       queryClient.invalidateQueries(['bookings']);
       queryClient.invalidateQueries(['workflows']);
-      
+
       toast.success('🎉 Shift accepted! Check your bookings.');
     }
   });
@@ -336,7 +336,7 @@ export default function StaffPortal() {
   const confirmShiftMutation = useMutation({
     mutationFn: async (shiftId) => {
       console.log('✅ [Staff Confirmation] Confirming shift:', shiftId);
-      
+
       const shift = myShifts.find(s => s.id === shiftId);
       if (!shift) {
         throw new Error('Shift not found in local cache.');
@@ -365,7 +365,7 @@ export default function StaffPortal() {
 
       // Create or update booking
       const existingBooking = myBookings.find(b => b.shift_id === shiftId && b.staff_id === staffRecord?.id); // Use myBookings and staffRecord
-      
+
       let bookingId = null;
 
       if (existingBooking) {
@@ -484,7 +484,7 @@ export default function StaffPortal() {
           </ul>
           <p>No action is required. This is an automated confirmation.</p>
         `;
-        
+
         supabase.functions.invoke('internal-admin-notifier', {
           body: { subject, body_html, change_type: 'staff_shift_confirmation' }
         }).catch(error => console.error("Failed to send admin notification:", error));
@@ -513,12 +513,100 @@ export default function StaffPortal() {
     }
   });
 
+  // ✅ NEW: Staff self-decline mutation (Copied from MyShifts.jsx for consistency)
+  const declineShiftMutation = useMutation({
+    mutationFn: async (shift) => {
+      console.log('🚫 [Staff Decline] Declining shift:', shift.id);
+
+      // Calculate time until shift
+      const shiftDateTime = new Date(`${shift.date}T${shift.start_time}`);
+      const now = new Date();
+      const hoursUntilShift = (shiftDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      // Prevent declining past shifts
+      if (hoursUntilShift < 0) {
+        throw new Error('Cannot decline a shift that has already started or ended.');
+      }
+
+      // Show warning based on urgency
+      const warningMessage = hoursUntilShift < 24
+        ? `⚠️ URGENT: This shift starts in ${Math.round(hoursUntilShift)} hours!\n\n` +
+        `Declining this shift may:\n` +
+        `• Affect your reliability rating\n` +
+        `• Reduce future shift offers\n` +
+        `• Impact your relationship with the agency\n\n` +
+        `This shift will be broadcast as URGENT to all available staff.\n\n` +
+        `Are you absolutely sure?`
+        : `You are declining this shift.\n\n` +
+        `The shift will be offered to other available staff.\n\n` +
+        `Continue?`;
+
+      if (!window.confirm(warningMessage)) {
+        throw new Error('Decline cancelled by user');
+      }
+
+      // Optional: Ask for reason
+      const decline_reason = window.prompt('Please provide a brief reason for declining (optional):');
+
+      // Call edge function
+      const { data, error } = await supabase.functions.invoke('staff-decline-shift', {
+        body: {
+          shift_id: shift.id,
+          staff_id: staffRecord.id,
+          hours_until_shift: hoursUntilShift,
+          decline_reason: decline_reason || 'No reason provided'
+        }
+      });
+
+      if (error) {
+        console.error('❌ [Staff Decline] Error:', error);
+        throw error;
+      }
+
+      return { shift, data };
+    },
+    onSuccess: ({ shift, data }) => {
+      queryClient.invalidateQueries(['my-shifts']);
+      queryClient.invalidateQueries(['my-bookings']);
+      queryClient.invalidateQueries(['marketplace-shifts']);
+      queryClient.invalidateQueries(['shifts']);
+      queryClient.invalidateQueries(['bookings']);
+      queryClient.invalidateQueries(['workflows']);
+
+      const shiftDateFormatted = format(new Date(shift.date), 'EEE, MMM d');
+
+      let description = 'You will receive confirmation via email.';
+      if (data?.action_taken === 'urgent_broadcast') {
+        description = 'Shift marked as URGENT and broadcast to all staff.';
+      }
+
+      toast.success(`✅ Shift Declined - ${shiftDateFormatted}`, {
+        description,
+        duration: 5000
+      });
+
+      // Close modal if open
+      setShowShiftDetail(false);
+    },
+    onError: (error) => {
+      // Don't show error if user cancelled
+      if (error.message === 'Decline cancelled by user') {
+        return;
+      }
+
+      console.error('❌ [Staff Decline] Error:', error);
+      toast.error('Failed to decline shift', {
+        description: error.message || 'An unexpected error occurred'
+      });
+    }
+  });
+
   const filterByDateRange = (items, dateField) => {
     if (dateRange === 'all') return items;
-    
+
     const today = new Date();
     let start, end;
-    
+
     if (dateRange === 'today') {
       start = today;
       end = today;
@@ -535,9 +623,9 @@ export default function StaffPortal() {
       start = subDays(today, 30);
       end = today;
     }
-    
+
     if (!start || !end) return items;
-    
+
     return items.filter(item => {
       const itemDate = new Date(item[dateField]);
       if (dateRange === 'today') {
@@ -557,14 +645,14 @@ export default function StaffPortal() {
     // Date range filter
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Normalize today for comparison
-    
+
     if (shiftFilters.dateRangeType !== 'all') {
       filtered = filtered.filter(shift => {
         const shiftDate = parseISO(shift.date);
-        
+
         const shiftDateNormalized = new Date(shiftDate);
         shiftDateNormalized.setHours(0, 0, 0, 0);
-        
+
         let rangeStart, rangeEnd;
 
         switch (shiftFilters.dateRangeType) {
@@ -587,8 +675,8 @@ export default function StaffPortal() {
             if (shiftFilters.customStartDate && shiftFilters.customEndDate) {
               rangeStart = parseISO(shiftFilters.customStartDate);
               rangeEnd = parseISO(shiftFilters.customEndDate);
-              rangeStart.setHours(0,0,0,0);
-              rangeEnd.setHours(23,59,59,999);
+              rangeStart.setHours(0, 0, 0, 0);
+              rangeEnd.setHours(23, 59, 59, 999);
             } else {
               return true; // No custom range set, don't filter by date if 'custom' selected but dates are empty
             }
@@ -596,7 +684,7 @@ export default function StaffPortal() {
           default:
             return true;
         }
-        
+
         return isWithinInterval(shiftDateNormalized, { start: rangeStart, end: rangeEnd });
       });
     }
@@ -628,10 +716,10 @@ export default function StaffPortal() {
 
   // ✅ NEW: Check if any filters are active
   const hasActiveFilters = () => {
-    return shiftFilters.dateRangeType !== 'all' || 
-           shiftFilters.clientId !== 'all' || 
-           shiftFilters.roleFilter !== 'all' ||
-           (shiftFilters.dateRangeType === 'custom' && (shiftFilters.customStartDate || shiftFilters.customEndDate));
+    return shiftFilters.dateRangeType !== 'all' ||
+      shiftFilters.clientId !== 'all' ||
+      shiftFilters.roleFilter !== 'all' ||
+      (shiftFilters.dateRangeType === 'custom' && (shiftFilters.customStartDate || shiftFilters.customEndDate));
   };
 
   // ✅ MODIFIED: Apply filters to shift arrays
@@ -689,12 +777,12 @@ export default function StaffPortal() {
     queryKey: ['my-compliance', staffRecord?.id],
     queryFn: async () => {
       if (!staffRecord?.id) return [];
-      
+
       const { data, error } = await supabase
         .from('compliance')
         .select('*')
         .eq('staff_id', staffRecord.id);
-      
+
       if (error) {
         console.error('❌ Error fetching compliance:', error);
         return [];
@@ -707,62 +795,62 @@ export default function StaffPortal() {
 
   const calculateOnboardingProgress = () => {
     if (!staffRecord) return { percentage: 0, missing: [] };
-    
+
     let completed = 0;
     let total = 10;
     const missing = [];
-    
+
     // Critical items
     if (staffRecord.profile_photo_url) {
       completed++;
     } else {
       missing.push({ item: '📸 Profile Photo', priority: 'critical', action: 'Upload in Profile Settings' });
     }
-    
+
     if (staffRecord.date_of_birth) {
       completed++;
     } else {
       missing.push({ item: '🎂 Date of Birth', priority: 'critical', action: 'Add in Profile Settings' });
     }
-    
+
     if (staffRecord.address?.postcode) {
       completed++;
     } else {
       missing.push({ item: '🏠 Full Address', priority: 'important', action: 'Complete in Profile Settings' });
     }
-    
+
     if (staffRecord.emergency_contact?.phone) {
       completed++;
     } else {
       missing.push({ item: '🚨 Emergency Contact', priority: 'important', action: 'Add in Profile Settings' });
     }
-    
+
     const dbsCheck = compliance.find(c => c.document_type === 'dbs_check' && c.status === 'verified');
     if (dbsCheck) {
       completed++;
     } else {
       missing.push({ item: '🛡️ DBS Certificate', priority: 'critical', action: 'Upload in My Docs' });
     }
-    
+
     const rightToWork = compliance.find(c => c.document_type === 'right_to_work' && c.status === 'verified');
     if (rightToWork) {
       completed++;
     } else {
       missing.push({ item: '📋 Right to Work', priority: 'critical', action: 'Upload in My Docs' });
     }
-    
+
     if (staffRecord.references && staffRecord.references.length >= 2) {
       completed++;
     } else {
       missing.push({ item: '✍️ References (min 2)', priority: 'critical', action: 'Add in Profile Settings' });
     }
-    
+
     if (staffRecord.employment_history && staffRecord.employment_history.length > 0) {
       completed++;
     } else {
       missing.push({ item: '💼 Employment History', priority: 'important', action: 'Add in Profile Settings' });
     }
-    
+
     const mandatoryTraining = staffRecord.mandatory_training || {};
     const mandatoryTrainingValues = Object.values(mandatoryTraining);
     const validMandatoryTrainingCount = mandatoryTrainingValues.filter((t) => {
@@ -791,7 +879,7 @@ export default function StaffPortal() {
     } else {
       missing.push({ item: '🏥 Occupational Health', priority: 'important', action: 'Add in Profile Settings' });
     }
-    
+
     const percentage = Math.round((completed / total) * 100);
     return { percentage, missing: missing.slice(0, 5) }; // Show top 5 most critical
   };
@@ -1132,7 +1220,7 @@ export default function StaffPortal() {
                 <label className="text-xs sm:text-sm font-medium text-gray-700 mb-2 block">Date Range</label>
                 <Select
                   value={shiftFilters.dateRangeType}
-                  onValueChange={(value) => setShiftFilters({...shiftFilters, dateRangeType: value, customStartDate: '', customEndDate: ''})}
+                  onValueChange={(value) => setShiftFilters({ ...shiftFilters, dateRangeType: value, customStartDate: '', customEndDate: '' })}
                 >
                   <SelectTrigger className="min-h-[44px]">
                     <SelectValue />
@@ -1152,7 +1240,7 @@ export default function StaffPortal() {
                 <label className="text-xs sm:text-sm font-medium text-gray-700 mb-2 block">Care Home</label>
                 <Select
                   value={shiftFilters.clientId}
-                  onValueChange={(value) => setShiftFilters({...shiftFilters, clientId: value})}
+                  onValueChange={(value) => setShiftFilters({ ...shiftFilters, clientId: value })}
                 >
                   <SelectTrigger className="min-h-[44px]">
                     <SelectValue />
@@ -1173,7 +1261,7 @@ export default function StaffPortal() {
                 <label className="text-xs sm:text-sm font-medium text-gray-700 mb-2 block">Role</label>
                 <Select
                   value={shiftFilters.roleFilter}
-                  onValueChange={(value) => setShiftFilters({...shiftFilters, roleFilter: value})}
+                  onValueChange={(value) => setShiftFilters({ ...shiftFilters, roleFilter: value })}
                 >
                   <SelectTrigger className="min-h-[44px]">
                     <SelectValue />
@@ -1198,7 +1286,7 @@ export default function StaffPortal() {
                   <Input
                     type="date"
                     value={shiftFilters.customStartDate}
-                    onChange={(e) => setShiftFilters({...shiftFilters, customStartDate: e.target.value})}
+                    onChange={(e) => setShiftFilters({ ...shiftFilters, customStartDate: e.target.value })}
                     className="min-h-[44px]"
                   />
                 </div>
@@ -1207,7 +1295,7 @@ export default function StaffPortal() {
                   <Input
                     type="date"
                     value={shiftFilters.customEndDate}
-                    onChange={(e) => setShiftFilters({...shiftFilters, customEndDate: e.target.value})}
+                    onChange={(e) => setShiftFilters({ ...shiftFilters, customEndDate: e.target.value })}
                     className="min-h-[44px]"
                   />
                 </div>
@@ -1252,65 +1340,80 @@ export default function StaffPortal() {
               const isThisShiftConfirming = confirmingShifts.has(shift.id);
 
               return (
-              <div key={shift.id} className="p-3 sm:p-4 bg-white rounded-lg border-2 border-blue-200">
-                <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
-                  <div className="flex-1 w-full">
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <Badge className="bg-blue-100 text-blue-800 text-sm sm:text-base px-2 sm:px-3 py-1">
-                        {format(new Date(shift.date), 'EEE, MMM d')}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs sm:text-sm">
-                        {formatTodayShiftTime(shift)}
-                      </Badge>
-                    </div>
-
-                    <p className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">
-                      {getClientName(shift.client_id)}
-                      {shift.work_location_within_site && (
-                        <span className="block sm:inline sm:ml-2 text-cyan-600 text-xs sm:text-sm">→ {shift.work_location_within_site}</span>
-                      )}
-                    </p>
-
-                    <div className="flex items-center gap-3 text-xs sm:text-sm text-gray-600">
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
-                        <span>{shift.duration_hours}h</span>
+                <div key={shift.id} className="p-3 sm:p-4 bg-white rounded-lg border-2 border-blue-200">
+                  <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
+                    <div className="flex-1 w-full">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <Badge className="bg-blue-100 text-blue-800 text-sm sm:text-base px-2 sm:px-3 py-1">
+                          {format(new Date(shift.date), 'EEE, MMM d')}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs sm:text-sm">
+                          {formatTodayShiftTime(shift)}
+                        </Badge>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <DollarSign className="w-3 h-3 sm:w-4 sm:h-4" />
-                        <span className="font-semibold text-green-600">
-                          £{calculateStaffEarnings({ ...shift, pay_rate: shift.pay_rate || staffRecord.hourly_rate || 15 }).toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
 
-                    {shift.notes && (
-                      <p className="text-xs sm:text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded">
-                        {shift.notes}
+                      <p className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">
+                        {getClientName(shift.client_id)}
+                        {shift.work_location_within_site && (
+                          <span className="block sm:inline sm:ml-2 text-cyan-600 text-xs sm:text-sm">→ {shift.work_location_within_site}</span>
+                        )}
                       </p>
-                    )}
-                  </div>
 
-                  <Button
-                    onClick={() => confirmShiftMutation.mutate(shift.id)}
-                    disabled={isThisShiftConfirming}
-                    className="bg-cyan-600 hover:bg-cyan-700 text-white w-full sm:w-auto sm:min-w-[140px] min-h-[48px] sm:min-h-0"
-                  >
-                    {isThisShiftConfirming ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Confirming...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Confirm
-                      </>
-                    )}
-                  </Button>
+                      <div className="flex items-center gap-3 text-xs sm:text-sm text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+                          <span>{shift.duration_hours}h</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="w-3 h-3 sm:w-4 sm:h-4" />
+                          <span className="font-semibold text-green-600">
+                            £{calculateStaffEarnings({ ...shift, pay_rate: shift.pay_rate || staffRecord.hourly_rate || 15 }).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {shift.notes && (
+                        <p className="text-xs sm:text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded">
+                          {shift.notes}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Button Group */}
+                    <div className="flex flex-row gap-2 w-full sm:w-auto">
+                      {/* Decline Button */}
+                      <Button
+                        variant="outline"
+                        onClick={() => declineShiftMutation.mutate(shift)}
+                        disabled={isThisShiftConfirming || declineShiftMutation.isPending}
+                        className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 flex-1 sm:flex-none min-h-[48px] sm:min-h-0"
+                      >
+                        <Ban className="w-4 h-4 mr-2" />
+                        Decline
+                      </Button>
+
+                      <Button
+                        onClick={() => confirmShiftMutation.mutate(shift.id)}
+                        disabled={isThisShiftConfirming || declineShiftMutation.isPending}
+                        className="bg-cyan-600 hover:bg-cyan-700 text-white flex-1 sm:flex-none sm:min-w-[140px] min-h-[48px] sm:min-h-0"
+                      >
+                        {isThisShiftConfirming ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Confirming...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Confirm
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            );})}
+              );
+            })}
           </CardContent>
         </Card>
       )}
@@ -1331,8 +1434,8 @@ export default function StaffPortal() {
 
               return (
                 <div key={shift.id} id={`clock-in-${shift.id}`}>
-                  <MobileClockIn 
-                    shift={shift} 
+                  <MobileClockIn
+                    shift={shift}
                     staffId={staffRecord.id}
                     existingTimesheet={timesheet}
                     onClockInComplete={() => {
@@ -1456,8 +1559,8 @@ export default function StaffPortal() {
               {/* Status Badge */}
               <div>
                 <Badge className={
-                  selectedShift.status === 'confirmed' 
-                    ? 'bg-green-100 text-green-800 text-lg px-4 py-2' 
+                  selectedShift.status === 'confirmed'
+                    ? 'bg-green-100 text-green-800 text-lg px-4 py-2'
                     : 'bg-blue-100 text-blue-800 text-lg px-4 py-2'
                 }>
                   {selectedShift.status === 'confirmed' ? '✅ Confirmed' : '⏳ Awaiting Confirmation'}
@@ -1562,26 +1665,38 @@ export default function StaffPortal() {
               </div>
 
               {selectedShift.status === 'assigned' && (
-                <Button
-                  onClick={() => {
-                    confirmShiftMutation.mutate(selectedShift.id);
-                    setShowShiftDetail(false);
-                  }}
-                  disabled={confirmingShifts.has(selectedShift.id)} // Use individual shift confirming state
-                  className="w-full bg-cyan-600 hover:bg-cyan-700 text-white h-12 text-lg"
-                >
-                  {confirmingShifts.has(selectedShift.id) ? ( // Use individual shift confirming state
-                    <>
-                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      Confirming...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-5 h-5 mr-2" />
-                      Confirm Shift
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => declineShiftMutation.mutate(selectedShift)}
+                    disabled={confirmingShifts.has(selectedShift.id) || declineShiftMutation.isPending}
+                    className="flex-1 border-red-200 text-red-700 hover:bg-red-50 h-12 text-lg"
+                  >
+                    <Ban className="w-5 h-5 mr-2" />
+                    Decline Shift
+                  </Button>
+
+                  <Button
+                    onClick={() => {
+                      confirmShiftMutation.mutate(selectedShift.id);
+                      // Don't close immediately, let mutation success handle it or show loading
+                    }}
+                    disabled={confirmingShifts.has(selectedShift.id) || declineShiftMutation.isPending}
+                    className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white h-12 text-lg"
+                  >
+                    {confirmingShifts.has(selectedShift.id) ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Confirming...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-5 h-5 mr-2" />
+                        Confirm Shift
+                      </>
+                    )}
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -1599,8 +1714,8 @@ export default function StaffPortal() {
           <Calendar className="w-6 h-6 text-purple-600" />
           <span className="font-semibold">Shift Marketplace</span>
         </Button>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="h-24 flex flex-col gap-2 border-2"
           onClick={() => navigate(createPageUrl('Timesheets'))}
         >
@@ -1610,8 +1725,8 @@ export default function StaffPortal() {
             <Badge className="bg-orange-500 text-white text-xs">{pendingTimesheets}</Badge>
           )}
         </Button>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="h-24 flex flex-col gap-2 border-2"
           onClick={() => navigate(createPageUrl('ComplianceTracker'))}
         >
@@ -1636,8 +1751,8 @@ export default function StaffPortal() {
             <p className="text-xs text-gray-600 mb-2">Working with</p>
             <div className="flex items-center justify-center gap-3 mb-2">
               {agency.logo_url && (
-                <img 
-                  src={agency.logo_url} 
+                <img
+                  src={agency.logo_url}
                   alt={agency.name}
                   className="h-12 w-auto rounded object-contain"
                 />
