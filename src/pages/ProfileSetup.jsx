@@ -162,14 +162,14 @@ export default function ProfileSetup() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       const savedTimestamp = localStorage.getItem(STORAGE_TIMESTAMP_KEY);
-      
+
       if (saved && savedTimestamp) {
         const ageInMinutes = (Date.now() - parseInt(savedTimestamp)) / 1000 / 60;
-        
+
         // Only restore if draft is less than 24 hours old
         if (ageInMinutes < 1440) {
           const parsedData = JSON.parse(saved);
-          
+
           // Only restore if we don't have data loaded from server yet
           if (!formData.full_name || formData.full_name === '') {
             setFormData(parsedData);
@@ -191,7 +191,7 @@ export default function ProfileSetup() {
   useEffect(() => {
     const STORAGE_KEY = 'profileSetup_draft';
     const STORAGE_TIMESTAMP_KEY = 'profileSetup_draft_timestamp';
-    
+
     // Debounce to avoid excessive writes
     const timeoutId = setTimeout(() => {
       try {
@@ -238,18 +238,7 @@ export default function ProfileSetup() {
     };
   }, [formData]);
 
-  // Clear localStorage draft when save is successful
-  useEffect(() => {
-    if (updateMutation.isSuccess) {
-      try {
-        localStorage.removeItem('profileSetup_draft');
-        localStorage.removeItem('profileSetup_draft_timestamp');
-        console.log('✅ Cleared localStorage draft after successful save');
-      } catch (error) {
-        console.error('Failed to clear localStorage:', error);
-      }
-    }
-  }, [updateMutation.isSuccess]);
+
 
   useEffect(() => {
     const initSetup = async () => {
@@ -650,6 +639,20 @@ export default function ProfileSetup() {
       toast.error(`❌ Failed to update profile: ${error.message}`);
     }
   });
+
+
+  // Clear localStorage draft when save is successful
+  useEffect(() => {
+    if (updateMutation.isSuccess) {
+      try {
+        localStorage.removeItem('profileSetup_draft');
+        localStorage.removeItem('profileSetup_draft_timestamp');
+        console.log('✅ Cleared localStorage draft after successful save');
+      } catch (error) {
+        console.error('Failed to clear localStorage:', error);
+      }
+    }
+  }, [updateMutation.isSuccess]);
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];

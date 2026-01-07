@@ -19,19 +19,14 @@ import {
 import {
   Calendar, Clock, MapPin, DollarSign, AlertTriangle,
   FileText, TrendingUp, Star, Award, Filter, ChevronDown, Building2,
-  CheckCircle, ChevronRight, Zap, AlertCircle, Loader2, X as XIcon, Briefcase, MessageCircle, Ban, XCircle
+  CheckCircle, ChevronRight, Zap, AlertCircle, Loader2, X as XIcon, Briefcase, MessageCircle, XCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, isWithinInterval, isFuture, isPast, isToday, parseISO, addDays } from "date-fns";
 import MobileClockIn from "../components/staff/MobileClockIn";
 import { formatShiftTimeRange, formatTodayShiftTime, getShiftType, formatTime12Hour } from "../utils/shiftTimeFormatter";
 import { calculateStaffEarnings } from "../utils/shiftCalculations";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import { Progress } from "@/components/ui/progress"; // NEW: Import Progress component
 
 export default function StaffPortal() {
@@ -1388,7 +1383,7 @@ export default function StaffPortal() {
                         disabled={isThisShiftConfirming || declineShiftMutation.isPending}
                         className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 flex-1 sm:flex-none min-h-[48px] sm:min-h-0"
                       >
-                        <Ban className="w-4 h-4 mr-2" />
+                        <XCircle className="w-4 h-4 mr-2" />
                         Decline
                       </Button>
 
@@ -1672,7 +1667,7 @@ export default function StaffPortal() {
                     disabled={confirmingShifts.has(selectedShift.id) || declineShiftMutation.isPending}
                     className="flex-1 border-red-200 text-red-700 hover:bg-red-50 h-12 text-lg"
                   >
-                    <Ban className="w-5 h-5 mr-2" />
+                    <XCircle className="w-5 h-5 mr-2" />
                     Decline Shift
                   </Button>
 
