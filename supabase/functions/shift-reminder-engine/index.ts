@@ -277,19 +277,6 @@ serve(async (req) => {
 
                     console.log(`🔔 [2h Reminder] Shift ${shift.id} - ${hoursUntilShift.toFixed(1)}h until start`);
 
-                    // ✅ FIX 2: Mark as sent FIRST
-                    const { error: updateError } = await supabase
-                        .from("shifts")
-                        .update({
-                            reminder_2h_sent: true,
-                            reminder_2h_sent_at: now.toISOString()
-                        })
-                        .eq("id", shift.id);
-
-                    if (updateError) {
-                        throw updateError;
-                    }
-
                     // Get staff and client
                     const [staffResult, clientResult, agencyResult] = await Promise.all([
                         supabase.from("staff").select("*").eq("id", shift.assigned_staff_id),
@@ -309,6 +296,28 @@ serve(async (req) => {
                     if (!staff.phone) {
                         console.log(`⚠️ Shift ${shift.id}: Staff has no phone number, skipping`);
                         continue;
+                    }
+
+                    // ✅ CHECK AGENCY SMS SETTINGS (Kill Switch)
+                    // Default to TRUE if settings missing, unless explicitly set to false
+                    const agencySettings = agency?.settings || {};
+                    const smsEnabled = agencySettings.urgent_shift_notifications?.sms_enabled !== false; 
+
+                    if (!smsEnabled) {
+                        console.log(`Checking Kill Switch: Agency SMS Enabled? ${smsEnabled}`);
+                    }
+
+                    // ✅ FIX 2: Mark as sent FIRST
+                    const { error: updateError } = await supabase
+                        .from("shifts")
+                        .update({
+                            reminder_2h_sent: true,
+                            reminder_2h_sent_at: now.toISOString()
+                        })
+                        .eq("id", shift.id);
+
+                    if (updateError) {
+                        throw updateError;
                     }
 
                     // ✅ NEW: Check if staff opted out of shift reminders
@@ -355,26 +364,56 @@ serve(async (req) => {
                         message = `🏥 SHIFT STARTING SOON [${agencyName}]: ${client.name}${locationText} in 2 HOURS (${shift.start_time}). Arrive 10 min early. Good luck! 👍`;
                     }
 
-                    // SMS + WhatsApp (instant)
-                    const [smsResult, whatsappResult] = await Promise.allSettled([
-                        supabase.functions.invoke('send-sms', {
-                            body: {
-                                to: staff.phone,
-                                message
-                            }
-                        }),
-                        supabase.functions.invoke('send-whatsapp', {
-                            body: {
-                                to: staff.phone,
-                                message
-                            }
-                        })
-                    ]);
+                    // SMS + WhatsApp (instant) - RESPECTING SMS KILL SWITCH
+                    const promises = [];
+                    
+                    if (smsEnabled) {
+                        promises.push(supabase.functions.invoke('send-sms', {
+                            body: { to: staff.phone, message }
+                        }));
+                    } else {
+                         console.log(`🚫 [2h Reminder] SMS skipped by Agency Kill Switch for ${staff.email}`);
+                         // Log the skip
+                         await logNotificationSkipped(supabase, {
+                            recipientEmail: staff.email,
+                            recipientPhone: staff.phone,
+                            recipientType: 'staff',
+                            staffId: staff.id,
+                            agencyId: shift.agency_id,
+                            notificationType: 'shift_2h_reminder',
+                            channel: 'sms',
+                            preferenceChecked: false,
+                            preferenceStatus: 'not_set',
+                            skippedReason: 'agency_settings_sms_disabled',
+                            relatedEntityId: shift.id,
+                            relatedEntityType: 'shift',
+                            metadata: { shift_date: shift.date, client_name: client.name }
+                        });
+                    }
 
-                    const smsSuccess = smsResult.status === 'fulfilled' && smsResult.value?.data?.success;
-                    const whatsappSuccess = whatsappResult.status === 'fulfilled' && whatsappResult.value?.data?.success;
+                    promises.push(supabase.functions.invoke('send-whatsapp', {
+                        body: { to: staff.phone, message }
+                    }));
 
-                    if (smsSuccess || whatsappSuccess) {
+                    const results_arr = await Promise.allSettled(promises);
+                    
+                    // Logic to parse results depends on whether we sent 1 or 2 requests
+                    // Index 0 is SMS (if enabled), Index 1 is WhatsApp (or Index 0 if SMS disabled)
+                    
+                    let smsResult = null;
+                    let whatsappResult = null;
+
+                    if (smsEnabled) {
+                        smsResult = results_arr[0];
+                        whatsappResult = results_arr[1];
+                    } else {
+                        whatsappResult = results_arr[0];
+                    }
+
+                    const smsSuccess = smsResult && smsResult.status === 'fulfilled' && smsResult.value?.data?.success;
+                    const whatsappSuccess = whatsappResult && whatsappResult.status === 'fulfilled' && whatsappResult.value?.data?.success;
+
+                    if (smsSuccess || whatsappSuccess || (!smsEnabled && whatsappSuccess)) {
                         // ✅ NEW: Log successful sends
                         if (smsSuccess) {
                             const smsId = (smsResult as PromiseFulfilledResult<any>).value?.data?.sid;
@@ -416,9 +455,12 @@ serve(async (req) => {
                         }
                         
                         results.reminders_2h_sent++;
-                        console.log(`✅ [2h Reminder] Sent to ${staff.first_name} ${staff.last_name} (SMS: ${smsSuccess}, WhatsApp: ${whatsappSuccess})`);
+                        console.log(`✅ [2h Reminder] Sent to ${staff.first_name} ${staff.last_name} (SMS: ${smsSuccess ? 'Sent' : 'Disabled/Failed'}, WhatsApp: ${whatsappSuccess})`);
                     } else {
                         // ✅ NEW: Log failure
+                        // Only log as "error" if we *attempted* to send but failed.
+                        // If SMS disabled and WhatsApp failed, that's an error. 
+                        
                         await logNotificationFailed(supabase, {
                             recipientEmail: staff.email,
                             recipientPhone: staff.phone,
@@ -427,14 +469,14 @@ serve(async (req) => {
                             agencyId: shift.agency_id,
                             notificationType: 'shift_2h_reminder',
                             channel: 'sms',
-                            errorMessage: 'Both SMS and WhatsApp failed',
+                            errorMessage: smsEnabled ? 'Both SMS and WhatsApp failed' : 'WhatsApp failed (SMS Disabled)',
                             relatedEntityId: shift.id,
                             relatedEntityType: 'shift'
                         });
-                        console.error(`❌ [2h Reminder] Both channels failed for shift ${shift.id}`);
+                        console.error(`❌ [2h Reminder] Delivery failed for shift ${shift.id}`);
                         results.errors.push({
                             shift_id: shift.id,
-                            error: 'Both SMS and WhatsApp failed'
+                            error: 'Delivery failed'
                         });
                     }
                 }

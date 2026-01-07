@@ -465,7 +465,7 @@ serve(async (req) => {
                 console.log(`✅ [Queue ${queue.id}] Successfully sent to ${queue.recipient_email}`);
 
                 // ✅ FIX: Changed from notification_queues to notification_queue (singular)
-                await supabase
+                const { error: updateError } = await supabase
                     .from("notification_queue")
                     .update({
                         status: 'sent',
@@ -473,6 +473,14 @@ serve(async (req) => {
                         provider_message_id: emailResult?.messageId
                     })
                     .eq("id", queue.id);
+
+                if (updateError) {
+                    console.error(`❌ [Queue ${queue.id}] CRITICAL: Email sent but failed to update queue status:`, updateError);
+                    results.errors.push({
+                        queue_id: queue.id,
+                        error: `Email sent but DB update failed: ${updateError.message}`
+                    });
+                }
 
                 // ✅ FIX: Add a small delay between sends to avoid 429 Rate Limiting from Resend
                 // Especially important for bulk assignments or manual triggers
