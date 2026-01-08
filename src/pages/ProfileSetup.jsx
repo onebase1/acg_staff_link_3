@@ -294,7 +294,7 @@ export default function ProfileSetup() {
           // ✅ Pre-fill ALL staff data
           const photoUrl = matchingStaff.profile_photo_url || currentUser.profile_photo_url || '';
 
-          setFormData({
+          const serverData = {
             full_name: `${matchingStaff.first_name} ${matchingStaff.last_name}`,
             email: currentUser.email || '',
             phone: matchingStaff.phone || currentUser.phone || '',
@@ -324,12 +324,43 @@ export default function ProfileSetup() {
             employment_history: matchingStaff.employment_history || [],
             occupational_health: matchingStaff.occupational_health || { cleared_to_work: false, restrictions: '' },
             mandatory_training: matchingStaff.mandatory_training || {}
-          });
+          };
+
+          // 🔄 FIX: Check for local draft before overwriting with server data
+          // This prevents "spooky" data loss when a user returns to the form
+          const STORAGE_KEY = 'profileSetup_draft';
+          const STORAGE_TIMESTAMP_KEY = 'profileSetup_draft_timestamp';
+          const saved = localStorage.getItem(STORAGE_KEY);
+          const savedTimestamp = localStorage.getItem(STORAGE_TIMESTAMP_KEY);
+
+          if (saved && savedTimestamp) {
+            const ageInMinutes = (Date.now() - parseInt(savedTimestamp)) / 1000 / 60;
+            if (ageInMinutes < 1440) { // 24 hours
+              const draftData = JSON.parse(saved);
+
+              // Only merge if the draft is substantially better or if we want to prioritize it
+              // For staff members, we almost always want to prioritize the local draft if it exists
+              console.log('📋 [ProfileSetup] Draft found - merging server data with draft to prevent data loss');
+
+              setFormData({
+                ...serverData, // Start with server state
+                ...draftData,  // Overwrite with draft (the user's work)
+                // Keep critical server identifiers but trust user's inputs
+                email: currentUser.email || draftData.email,
+                agency_id: matchingStaff.agency_id || draftData.agency_id
+              });
+              toast.info('📋 Draft restored from previous session');
+            } else {
+              setFormData(serverData);
+            }
+          } else {
+            setFormData(serverData);
+          }
         } else if (matchingClient) {
           console.log('✅ [ProfileSetup] Auto-linked to client contact:', matchingClient.id);
           setLinkedClient(matchingClient);
 
-          setFormData({
+          const serverData = {
             full_name: `${matchingClient.first_name} ${matchingClient.last_name}`,
             email: currentUser.email || '',
             phone: matchingClient.phone_number || currentUser.phone || '',
@@ -345,7 +376,31 @@ export default function ProfileSetup() {
             ni_number: '',
             bank_details: { account_name: '', sort_code: '', account_number: '', bank_name: '' },
             mandatory_training: {}
-          });
+          };
+
+          // 🔄 FIX: Check for local draft for client users too
+          const STORAGE_KEY = 'profileSetup_draft';
+          const STORAGE_TIMESTAMP_KEY = 'profileSetup_draft_timestamp';
+          const saved = localStorage.getItem(STORAGE_KEY);
+          const savedTimestamp = localStorage.getItem(STORAGE_TIMESTAMP_KEY);
+
+          if (saved && savedTimestamp) {
+            const ageInMinutes = (Date.now() - parseInt(savedTimestamp)) / 1000 / 60;
+            if (ageInMinutes < 1440) {
+              const draftData = JSON.parse(saved);
+              console.log('📋 [ProfileSetup] Client draft found - restoring');
+              setFormData({
+                ...serverData,
+                ...draftData,
+                email: currentUser.email || draftData.email
+              });
+              toast.info('📋 Draft restored');
+            } else {
+              setFormData(serverData);
+            }
+          } else {
+            setFormData(serverData);
+          }
         } else {
           console.warn('⚠️ [ProfileSetup] No staff/client record found for email:', currentUser.email);
 
