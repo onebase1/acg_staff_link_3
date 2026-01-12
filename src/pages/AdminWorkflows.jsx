@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertCircle, CheckCircle, Clock, User, FileText,
-  XCircle, TrendingUp, Filter, Plus, Eye, Loader2, LayoutGrid, List, UserPlus
+  XCircle, TrendingUp, Filter, Plus, Eye, Loader2, LayoutGrid, List, UserPlus, Building2
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
