@@ -510,15 +510,50 @@ export default function Shifts() {
         toast.info('Reassignment emails sent to staff.');
       }
 
-      // ✅ ADDED: Ensure timesheet exists for retrospective assignment
-      // If we just assigned an "actual_staff_id" (who actually worked) to a past shift 
-      // that didn't have a timesheet, we must create one now.
+      // ✅ ENHANCED: Ensure booking AND timesheet exists for retrospective assignment
       if (updated.actual_staff_id && !updated.timesheet_id) {
-        console.log('📝 [Retrospective] No timesheet found for this assignment. Creating now...');
+        console.log('📝 [Retrospective] No timesheet found for this assignment. Creating booking + timesheet now...');
         try {
+          let bookingId = updated.booking_id;
+
+          // 1. Ensure booking exists (Retrospective shifts often lack an official booking record)
+          if (!bookingId) {
+            const { data: existingBooking } = await supabase
+              .from('bookings')
+              .select('id')
+              .eq('shift_id', updated.id)
+              .eq('staff_id', updated.actual_staff_id)
+              .maybeSingle();
+
+            if (existingBooking) {
+              bookingId = existingBooking.id;
+            } else {
+              const { data: newBooking, error: bookingError } = await supabase
+                .from('bookings')
+                .insert({
+                  agency_id: updated.agency_id,
+                  shift_id: updated.id,
+                  staff_id: updated.actual_staff_id,
+                  client_id: updated.client_id,
+                  status: 'confirmed',
+                  booking_date: new Date().toISOString(),
+                  shift_date: updated.date,
+                  start_time: updated.start_time,
+                  end_time: updated.end_time,
+                  confirmation_method: 'admin_retrospective'
+                })
+                .select()
+                .single();
+
+              if (bookingError) throw bookingError;
+              bookingId = newBooking.id;
+            }
+          }
+
+          // 2. Invoke auto-timesheet-creator
           const { data: tsData, error: tsError } = await supabase.functions.invoke('auto-timesheet-creator', {
             body: {
-              booking_id: updated.booking_id,
+              booking_id: bookingId,
               shift_id: updated.id,
               staff_id: updated.actual_staff_id,
               client_id: updated.client_id,
@@ -528,13 +563,15 @@ export default function Shifts() {
 
           if (tsError) {
             console.error('[Retrospective Timesheet] Failed:', tsError);
+            toast.error("Retrospective assignment saved, but timesheet creation failed. Please check Timesheets page.");
           } else if (tsData?.success) {
             console.log('✅ [Retrospective Timesheet] Created:', tsData.timesheet_id);
-            // Invalidate to show the new timesheet link
+            toast.success("Retrospective assignment saved and timesheet generated.");
             queryClient.invalidateQueries({ queryKey: ['shifts'], exact: false });
           }
         } catch (err) {
           console.error('[Retrospective Timesheet] Exception:', err);
+          toast.error("Retrospective assignment saved, but automated record creation encountered errors.");
         }
       }
 
@@ -3050,7 +3087,7 @@ export default function Shifts() {
             isOpen={!!completingShift}
             onClose={() => setCompletingShift(null)}
             shift={completingShift}
-            staffName={getStaffName(completingShift.assigned_staff_id)}
+            staffName={getStaffName(completingShift.actual_staff_id || completingShift.assigned_staff_id)}
             clientName={getClientName(completingShift.client_id)}
             onConfirm={handleConfirmCompletion}
             isLoading={completeShiftMutation.isPending}

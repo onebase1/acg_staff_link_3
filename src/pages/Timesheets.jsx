@@ -8,9 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Clock, Download, Filter, Search, TrendingUp, Calendar, DollarSign,
-  Upload, Eye, FileText, AlertTriangle, CheckCircle, LayoutGrid, List, Zap
+  Upload, Eye, FileText, AlertTriangle, CheckCircle, LayoutGrid, List, Zap,
+  AlertCircle, ShieldCheck, ShieldX, Loader2
 } from "lucide-react";
 import { toast } from "sonner";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { validateShiftEligibility } from "../api/functions";
 import TimesheetCard from "../components/timesheets/TimesheetCard";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -42,6 +45,15 @@ export default function Timesheets() {
     approving: new Set(),
     rejecting: new Set()
   });
+
+  // Retrospective Creation State
+  const [retrospectiveState, setRetrospectiveState] = useState({
+    isValidating: false,
+    isCreating: false,
+    validationResult: null, // { success, issues: [] }
+    showBanner: true
+  });
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(50); // 50 timesheets per page
@@ -298,6 +310,98 @@ export default function Timesheets() {
     }
   });
 
+  const handleCreateRetrospectiveTimesheet = async () => {
+    if (!targetedShift || !user) return;
+
+    setRetrospectiveState(prev => ({ ...prev, isValidating: true, validationResult: null }));
+
+    try {
+      // 1. Fetch the actual staff assigned (retrospectively)
+      const staffId = targetedShift.actual_staff_id;
+      if (!staffId) {
+        toast.error("No staff member has been assigned to this shift yet.");
+        setRetrospectiveState(prev => ({ ...prev, isValidating: false }));
+        return;
+      }
+
+      // 2. Validate Shift Eligibility
+      const { data: validation, error: validationError } = await validateShiftEligibility({
+        shift_id: targetedShift.id,
+        staff_id: staffId
+      });
+
+      if (validationError) throw validationError;
+
+      if (!validation.success) {
+        setRetrospectiveState(prev => ({
+          ...prev,
+          isValidating: false,
+          validationResult: { success: false, issues: validation.issues || [validation.message] }
+        }));
+        return;
+      }
+
+      // 3. Validation Success - Proceed to creation
+      setRetrospectiveState(prev => ({ ...prev, isValidating: false, isCreating: true }));
+
+      // 4. Ensure Booking Exists
+      const { data: existingBooking } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('shift_id', targetedShift.id)
+        .eq('staff_id', staffId)
+        .maybeSingle();
+
+      let bookingId = existingBooking?.id;
+
+      if (!bookingId) {
+        const { data: newBooking, error: bookingCreateError } = await supabase
+          .from('bookings')
+          .insert({
+            agency_id: user.agency_id,
+            shift_id: targetedShift.id,
+            staff_id: staffId,
+            client_id: targetedShift.client_id,
+            status: 'confirmed',
+            booking_date: new Date().toISOString(),
+            shift_date: targetedShift.date,
+            start_time: targetedShift.start_time,
+            end_time: targetedShift.end_time,
+            confirmation_method: 'admin_retrospective'
+          })
+          .select()
+          .single();
+
+        if (bookingCreateError) throw bookingCreateError;
+        bookingId = newBooking.id;
+      }
+
+      // 5. Invoke auto-timesheet-creator
+      const { data: tsResult, error: tsError } = await supabase.functions.invoke('auto-timesheet-creator', {
+        body: {
+          booking_id: bookingId,
+          shift_id: targetedShift.id,
+          staff_id: staffId,
+          client_id: targetedShift.client_id,
+          agency_id: user.agency_id
+        }
+      });
+
+      if (tsError) throw tsError;
+
+      toast.success("Draft timesheet created successfully.");
+      queryClient.invalidateQueries(['timesheets']);
+      queryClient.invalidateQueries(['shifts']);
+
+      setRetrospectiveState(prev => ({ ...prev, isCreating: false, showBanner: false }));
+
+    } catch (error) {
+      console.error("Retrospective creation failed:", error);
+      toast.error(`Failed to create timesheet: ${error.message}`);
+      setRetrospectiveState(prev => ({ ...prev, isValidating: false, isCreating: false }));
+    }
+  };
+
 
   const getStaffName = (staffId) => {
     const staffMember = staff.find(s => s.id === staffId);
@@ -416,6 +520,10 @@ export default function Timesheets() {
   const totalHours = timesheets
     .filter(t => t.total_hours && t.total_hours > 0) // ✅ Count all timesheets with hours
     .reduce((sum, t) => sum + (t.total_hours || 0), 0);
+
+  // Derived State for Retrospective Workflow
+  const targetedShift = shiftIdParam ? shifts.find(s => s.id === shiftIdParam) : null;
+  const hasTimesheetForTargetedShift = targetedShift ? timesheets.some(t => t.shift_id === shiftIdParam || t.booking_id === shiftIdParam) : true;
 
   const totalValue = timesheets
     .filter(t => t.status === 'approved' || t.status === 'paid')
@@ -592,6 +700,70 @@ export default function Timesheets() {
           </div>
         </div>
       </div>
+
+      {/* Retrospective Context Banner */}
+      {isAdmin && shiftIdParam && targetedShift && !hasTimesheetForTargetedShift && retrospectiveState.showBanner && (
+        <Alert className="border-blue-300 bg-blue-50 mb-6">
+          <AlertCircle className="h-5 w-5 text-blue-600" />
+          <AlertTitle className="text-blue-900 font-bold flex items-center gap-2">
+            Retrospective Management: Missing Timesheet
+          </AlertTitle>
+          <AlertDescription className="text-blue-800 mt-2">
+            <div className="flex flex-col md:flex-row justify-between gap-4 items-start md:items-center">
+              <div>
+                <p>
+                  No timesheet exists for <strong>{getClientName(targetedShift.client_id)}</strong> on <strong>{format(new Date(targetedShift.date), 'EEE, MMM d')}</strong>.
+                  {targetedShift.actual_staff_id ? (
+                    <> Staff <strong>{getStaffName(targetedShift.actual_staff_id)}</strong> is currently assigned.</>
+                  ) : (
+                    <> No staff has been assigned to this past shift yet.</>
+                  )}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleCreateRetrospectiveTimesheet}
+                  disabled={retrospectiveState.isValidating || retrospectiveState.isCreating || !targetedShift.actual_staff_id}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {retrospectiveState.isValidating ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Validating...</>
+                  ) : retrospectiveState.isCreating ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...</>
+                  ) : (
+                    <><FileText className="w-4 h-4 mr-2" /> Create Draft Timesheet</>
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setRetrospectiveState(prev => ({ ...prev, showBanner: false }))}
+                  className="text-blue-600"
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </div>
+
+            {/* Validation Errors UI */}
+            {retrospectiveState.validationResult && !retrospectiveState.validationResult.success && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-center gap-2 text-red-800 font-bold mb-2">
+                  <ShieldX className="w-5 h-5" />
+                  Compliance Block: Staff Ineligible
+                </div>
+                <ul className="list-disc list-inside space-y-1 text-red-700">
+                  {retrospectiveState.validationResult.issues.map((issue, idx) => (
+                    <li key={idx}>{typeof issue === 'string' ? issue : (issue.message || JSON.stringify(issue))}</li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-xs text-red-600 italic">
+                  * All staff must meet compliance standards before retrospective timesheets can be generated.
+                </p>
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* KPI Cards */}
       {isAdmin && (

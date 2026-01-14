@@ -1,13 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { 
+import {
     shouldSendNotification,
     logNotificationSent,
     logNotificationFailed,
     logNotificationSkipped,
     getBranding,
     loadTemplate,
-    generateStaffProfileLink
+    generateStaffProfileLink,
+    createSystemAlert,
+    SystemAlertParams
 } from "../_shared/all.ts";
 
 /**
@@ -70,7 +72,7 @@ serve(async (req) => {
         }
 
         const { data: pendingQueues, error: queuesError } = await query;
-
+ 
         if (queuesError) {
             console.error('❌ [Digest Engine] Error fetching queues:', queuesError);
             throw queuesError;
@@ -80,10 +82,17 @@ serve(async (req) => {
             if (isManualTrigger && forceSend) return true;
             return new Date(q.scheduled_send_at) <= now;
         }) || [];
-
+ 
         console.log(`📊 [Digest Engine] Found ${readyQueues.length} queues ready to send`);
 
-        const results = {
+        interface ProcessResult {
+            processed: number;
+            sent: number;
+            failed: number;
+            errors: { queue_id: string; error: string }[];
+        }
+
+        const results: ProcessResult = {
             processed: 0,
             sent: 0,
             failed: 0,
@@ -93,6 +102,39 @@ serve(async (req) => {
         for (const queue of readyQueues) {
             try {
                 console.log(`📤 [Queue ${queue.id}] Processing ${queue.item_count} items for ${queue.recipient_email}`);
+
+                // 🛑 CIRCUIT BREAKER: Check retry count
+                const processingAttempts = queue.processing_attempts || 0;
+                if (processingAttempts >= 3) {
+                    console.error(`🛑 [Queue ${queue.id}] Circuit Breaker Triggered: ${processingAttempts} attempts`);
+                    
+                    await supabase.from("notification_queue").update({
+                        status: 'failed',
+                        error_message: `CIRCUIT_BREAKER: Max retries exceeded (${processingAttempts} attempts)`
+                    }).eq("id", queue.id);
+
+                    await createSystemAlert(supabase, {
+                        type: 'CIRCUIT_BREAKER_TRIGGERED',
+                        severity: 'critical',
+                        message: `Notification loop detected for ${queue.recipient_email}. Record quarantined.`,
+                        metadata: { 
+                            queue_id: queue.id, 
+                            recipient: queue.recipient_email, 
+                            notification_type: queue.notification_type,
+                            attempts: processingAttempts 
+                        },
+                        agencyId: queue.agency_id
+                    });
+
+                    results.failed++;
+                    continue;
+                }
+
+                // 📈 INCREMENT ATTEMPTS: Record that we are trying to process this now
+                // This prevents silent failures (like the provider_message_id issue) from looping infinitely
+                await supabase.from("notification_queue").update({
+                    processing_attempts: processingAttempts + 1
+                }).eq("id", queue.id);
 
                 // Get agency for branding
                 const { data: agencies } = await supabase
@@ -123,9 +165,9 @@ serve(async (req) => {
                         ? `Shift${shiftCount > 1 ? 's' : ''} Confirmed - ${agency?.name || 'Your Agency'}`
                         : `${shiftCount} New Shift${shiftCount > 1 ? 's' : ''} Assigned - ${agency?.name || 'Your Agency'}`;
 
-                    const totalHours = queue.pending_items.reduce((sum, item) => sum + (item.duration_hours || 0), 0);
-                    const totalEarnings = queue.pending_items.reduce((sum, item) =>
-                        sum + ((item.pay_rate || 0) * (item.duration_hours || 0)), 0
+                    const totalBillableHours = queue.pending_items.reduce((sum: number, item: any) => sum + (item.billable_hours || item.duration_hours || 0), 0);
+                    const totalEarnings = queue.pending_items.reduce((sum: number, item: any) =>
+                        sum + ((item.pay_rate || 0) * (item.billable_hours || item.duration_hours || 0)), 0
                     );
 
                     // Generate shift cards HTML
@@ -144,7 +186,7 @@ serve(async (req) => {
                                 </div>
                             ` : ''}
                             <div style="font-weight: bold; color: #1f2937; margin-bottom: 8px;">
-                                ${new Date(item.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} • ${item.start_time} - ${item.end_time} (${item.duration_hours}h)
+                                ${new Date(item.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} • ${item.start_time} - ${item.end_time} (${item.duration_hours}h${item.billable_hours && item.billable_hours !== item.duration_hours ? `, ${item.billable_hours}h paid` : ''})
                             </div>
                             <div style="font-size: 14px; color: #6b7280; margin-bottom: 4px;">
                                 📍 ${item.client_name}${item.location ? ` → ${item.location}` : ''}
@@ -153,7 +195,7 @@ serve(async (req) => {
                                 👤 ${item.role}
                             </div>
                             <div style="font-size: 14px; color: #059669; font-weight: 600;">
-                                💰 £${item.pay_rate}/hr = £${((item.pay_rate || 0) * (item.duration_hours || 0)).toFixed(2)}
+                                💰 £${item.pay_rate}/hr = £${((item.pay_rate || 0) * (item.billable_hours || item.duration_hours || 0)).toFixed(2)}
                             </div>
                         </div>
                     `}).join('');
@@ -203,7 +245,7 @@ serve(async (req) => {
                                             💰 Total Earnings: £${totalEarnings.toFixed(2)}
                                         </div>
                                         <div style="font-size: 14px; color: #047857;">
-                                            ${totalHours} hours • ${shiftCount} shift${shiftCount > 1 ? 's' : ''}
+                                            ${totalBillableHours.toFixed(1)} billable hours • ${shiftCount} shift${shiftCount > 1 ? 's' : ''}
                                         </div>
                                     </div>
 
@@ -330,7 +372,7 @@ serve(async (req) => {
                     const shiftCount = queue.pending_items.length;
                     subject = `${shiftCount} Shift${shiftCount > 1 ? 's' : ''} Confirmed - ${agency?.name || 'Your Agency'}`;
 
-                    const totalHours = queue.pending_items.reduce((sum: number, item: ShiftItem) => sum + (item.duration_hours || 0), 0);
+                    const totalBillableHours = queue.pending_items.reduce((sum: number, item: any) => sum + (item.billable_hours || item.duration_hours || 0), 0);
 
                     // 1. Pre-generate staff profile links (Async)
                     const enrichedPendingItems = await Promise.all(queue.pending_items.map(async (item: any) => {
@@ -365,7 +407,7 @@ serve(async (req) => {
                         shift_count_plural: shiftCount > 1 ? 's' : '',
                         date_range: dateRange ? ` across ${dateRange}` : '',
                         role_summary_boxes: buildRoleSummaryBoxes(roleCounts),
-                        total_hours: totalHours,
+                        total_hours: totalBillableHours.toFixed(1),
                         grouped_shifts_html: groupedHtml,
                         agency_name: agency?.name || branding.companyName,
                         agency_email: agency?.contact_email || branding.supportEmail,
@@ -373,7 +415,89 @@ serve(async (req) => {
                         preferences_url: `${branding.siteUrl}/preferences?email=${encodeURIComponent(queue.recipient_email)}`,
                         current_year: new Date().getFullYear().toString()
                     });
-; }
+                }
+                // ✅ SHIFT RELEASE NOTICE (When a staff member loses an assignment)
+                else if (queue.notification_type === 'shift_release_notice') {
+                    const item = queue.pending_items[0];
+                    subject = `Shift Update: Assignment Released - ${item.date}`;
+                    
+                    emailHtml = `
+                        <!DOCTYPE html>
+                        <html>
+                        <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+                        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
+                            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                                <div style="background-color: #ef4444; padding: 30px 20px; text-align: center;">
+                                    <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: bold;">Assignment Released</h1>
+                                </div>
+                                <div style="padding: 30px 20px;">
+                                    <p style="font-size: 16px; color: #374151;">Hi ${queue.recipient_first_name || 'there'},</p>
+                                    <p style="font-size: 16px; color: #374151;">Your assignment for the shift on <strong>${item.date}</strong> has been released.</p>
+                                    
+                                    <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 20px; margin: 20px 0;">
+                                        <strong>Reason:</strong> ${item.reason || 'No confirmation received by deadline.'}<br/>
+                                        <strong>Status:</strong> Shift offered to other staff/marketplace.
+                                    </div>
+
+                                    <div style="text-align: center; margin: 30px 0;">
+                                        <a href="${branding.appUrl}/marketplace" style="display: inline-block; background-color: #ef4444; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                                            View Available Shifts
+                                        </a>
+                                    </div>
+                                </div>
+                                <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
+                                    <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} ${agency?.name || branding.companyName}. All rights reserved.</p>
+                                </div>
+                            </div>
+                        </body>
+                        </html>
+                    `;
+                }
+
+                // ✅ SHIFT CONFIRMATION REMINDER
+                else if (queue.notification_type === 'shift_confirmation_reminder') {
+                    const item = queue.pending_items[0];
+                    subject = `⏰ Action Required: Confirm your shift on ${item.date}`;
+                    
+                    const deadline = new Date(item.deadline);
+                    const deadlineStr = deadline.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                    const deadlineDateStr = deadline.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+                    emailHtml = `
+                        <!DOCTYPE html>
+                        <html>
+                        <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+                        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
+                            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                                <div style="background-color: #f59e0b; padding: 30px 20px; text-align: center;">
+                                    <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: bold;">⏰ Confirmation Reminder</h1>
+                                </div>
+                                <div style="padding: 30px 20px;">
+                                    <p style="font-size: 16px; color: #374151;">Hi ${queue.recipient_first_name || 'there'},</p>
+                                    <p style="font-size: 16px; color: #374151;">You have an assigned shift that needs confirmation. Please confirm <strong>to secure this booking</strong>.</p>
+                                    
+                                    <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0;">
+                                        <strong>Date:</strong> ${item.date}<br/>
+                                        <strong>Time:</strong> ${item.start_time}<br/>
+                                        <p style="color: #b45309; font-weight: bold; margin-top: 10px;">
+                                            ⚠️ Deadline: Please confirm by ${deadlineStr} (${deadlineDateStr}) or this shift will be released.
+                                        </p>
+                                    </div>
+
+                                    <div style="text-align: center; margin: 30px 0;">
+                                        <a href="${branding.staffPortalUrl}" style="display: inline-block; background-color: #f59e0b; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                                            Confirm Shift Now
+                                        </a>
+                                    </div>
+                                </div>
+                                <div style="background: #1e293b; color: #94a3b8; padding: 20px; text-align: center;">
+                                    <p style="margin: 0; font-size: 13px;">© ${new Date().getFullYear()} ${agency?.name || branding.companyName}. All rights reserved.</p>
+                                </div>
+                            </div>
+                        </body>
+                        </html>
+                    `;
+                }
 
                 // ✅ NEW: Check if user has opted out of this notification type
                 const recipientType = queue.recipient_type || 'client'; // Default to client
@@ -425,6 +549,30 @@ serve(async (req) => {
 
                 console.log(`✅ [Queue ${queue.id}] Preference check passed - proceeding with send`);
 
+                // 🌊 VOLUME ALERTING: Check if this user is being flooded (Warn only, don't block yet)
+                try {
+                    const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+                    const { count: recentCount } = await supabase
+                        .from("notification_log")
+                        .select("*", { count: "exact", head: true })
+                        .eq("recipient_email", queue.recipient_email)
+                        .eq("notification_type", queue.notification_type)
+                        .gt("created_at", oneHourAgo);
+
+                    if ((recentCount || 0) >= 10) {
+                        console.warn(`⚠️ [Queue ${queue.id}] Volume spike detected for ${queue.recipient_email}: ${recentCount} in 1hr`);
+                        await createSystemAlert(supabase, {
+                            type: 'NOTIFICATION_VOLUME_SPIKE',
+                            severity: 'warning',
+                            message: `Recipient ${queue.recipient_email} has received ${recentCount} emails of type ${queue.notification_type} in the last hour.`,
+                            metadata: { recipient: queue.recipient_email, type: queue.notification_type, count: recentCount },
+                            agencyId: queue.agency_id
+                        });
+                    }
+                } catch (vErr) {
+                    console.warn(`[Volume Check] Non-critical error:`, vErr);
+                }
+
                 // Send the batched email
                 const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-email', {
                     body: {
@@ -462,32 +610,58 @@ serve(async (req) => {
                     }
                 });
 
-                console.log(`✅ [Queue ${queue.id}] Successfully sent to ${queue.recipient_email}`);
+                console.log(`✅ [Queue ${queue.id}] Successfully sent email to ${queue.recipient_email}`);
 
-                // ✅ FIX: Changed from notification_queues to notification_queue (singular)
-                const { error: updateError } = await supabase
-                    .from("notification_queue")
-                    .update({
-                        status: 'sent',
-                        sent_at: new Date().toISOString(),
-                        provider_message_id: emailResult?.messageId
-                    })
-                    .eq("id", queue.id);
+                // ✅ UPDATE STATUS - MOST CRITICAL STEP
+                try {
+                    const { error: updateError } = await supabase
+                        .from("notification_queue")
+                        .update({
+                            status: 'sent',
+                            sent_at: new Date().toISOString(),
+                            provider_message_id: emailResult.messageId
+                        })
+                        .eq("id", queue.id);
 
-                if (updateError) {
-                    console.error(`❌ [Queue ${queue.id}] CRITICAL: Email sent but failed to update queue status:`, updateError);
-                    results.errors.push({
-                        queue_id: queue.id,
-                        error: `Email sent but DB update failed: ${updateError.message}`
-                    });
+                    if (updateError) {
+                        console.error(`❌ [Queue ${queue.id}] DB UPDATE FAILED:`, updateError);
+                        results.errors.push({
+                            queue_id: queue.id,
+                            error: `Email sent but DB update failed: ${updateError.message}`
+                        });
+                    }
+                } catch (updateErr) {
+                    console.error(`❌ [Queue ${queue.id}] UNEXPECTED UPDATE ERROR:`, updateErr);
                 }
 
-                // ✅ FIX: Add a small delay between sends to avoid 429 Rate Limiting from Resend
-                // Especially important for bulk assignments or manual triggers
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // ✅ LOGGING (Non-critical, in its own try/catch)
+                try {
+                    await logNotificationSent(supabase, {
+                        recipientEmail: queue.recipient_email,
+                        recipientFirstName: queue.recipient_first_name,
+                        recipientType: recipientType,
+                        agencyId: queue.agency_id,
+                        notificationType: queue.notification_type,
+                        channel: 'email',
+                        subject: subject,
+                        templateName: 'inline_html',
+                        provider: 'resend',
+                        providerMessageId: emailResult.messageId,
+                        preferenceChecked: preferenceCheck.preferenceChecked,
+                        preferenceStatus: preferenceCheck.preferenceStatus,
+                        queueId: queue.id,
+                        batchId: queue.id,
+                        metadata: {
+                            item_count: queue.item_count,
+                            agency_name: agency?.name
+                        }
+                    });
+                } catch (logErr) {
+                    console.error(`⚠️ [Queue ${queue.id}] Logging failed (non-critical):`, logErr);
+                }
 
-                console.log(`✅ [Queue ${queue.id}] Sent to ${queue.recipient_email}`);
-                results.sent++;
+                // ✅ Small delay to avoid rate limits
+                await new Promise(resolve => setTimeout(resolve, 500));
                 results.processed++;
 
             } catch (queueError) {
@@ -568,6 +742,7 @@ interface ShiftItem {
     staff_profile_link?: string;
     location?: string;
     duration_hours?: number;
+    billable_hours?: number;
 }
 
 interface GroupedShift {

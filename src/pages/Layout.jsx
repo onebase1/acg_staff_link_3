@@ -8,7 +8,7 @@ import {
   UserCog, FileText, Receipt, TrendingUp, Clock, CalendarCheck, Building2, Shield,
   UsersRound, LogOut, HelpCircle, UserPlus, Menu, X, Bell, ChevronDown, ChevronRight, Upload,
   CheckSquare, Rocket, DollarSign, Trash2, Mail, Shuffle, MessageCircle, CheckCircle, BookOpen,
-  Phone, GitBranch, Trophy, Activity // ✅ Added Activity icon for Live Rota
+  Phone, GitBranch, Trophy, Activity, Sparkles // ✅ Added Activity icon for Live Rota
 } from "lucide-react";
 import { useAppVersion } from "@/hooks/useAppVersion";
 import { supabaseAuth } from "@/api/supabaseAuth";
@@ -145,6 +145,7 @@ const clientPortalItems = [
 // Super admin only items
 const superAdminItems = [
   { title: "Pitch Command Center", url: createPageUrl("PitchCommandCenter"), icon: Trophy }, // 🎯 Sales toolkit - hooks, objections, demos
+  { title: "Master Benefits Repo", url: createPageUrl("MasterBenefits"), icon: Sparkles }, // 💎 New: Source of truth for marketing
   { title: "Agency Onboarding", url: createPageUrl("SuperAdminAgencyOnboarding"), icon: Building2 },
   { title: "Agency Management", url: createPageUrl("SuperAdminAgencyManagement"), icon: Users }, // ✅ ADDED: Manage existing agencies/admins
   { title: "Cron Command Center", url: createPageUrl("CronCommandCenter"), icon: Clock }, // 🤖 MODULE 6: Cron job monitoring
@@ -177,7 +178,7 @@ export default function Layout({ children, currentPageName }) {
   const { checkForUpdate, isChecking, currentVersion } = useAppVersion();
   // ✅ FIXED: Routes that bypass the layout (no sidebar/header)
   // We only bypass layout for staff profile simulation if a magic token is present (anonymous view)
-  const bypassPaths = ['/login', '/reset-password', '/auth/magic'];
+  const bypassPaths = ['/login', '/reset-password', '/auth/magic', '/landing', '/privacy', '/terms', '/contact', '/book-demo'];
   const isProfileSim = location.pathname.toLowerCase().startsWith('/staffprofilesimulation');
   const hasMagicToken = new URLSearchParams(location.search).has('token');
 
@@ -471,7 +472,7 @@ export default function Layout({ children, currentPageName }) {
 
   // ✅ NEW: Public Routes List
   // These routes will be wrapped in PublicLayout instead of the main authenticated Layout
-  const publicPaths = ['/landing', '/privacy', '/terms'];
+  const publicPaths = ['/landing', '/privacy', '/terms', '/contact', '/book-demo'];
   const isPublicRoute = publicPaths.some(path => location.pathname.toLowerCase().startsWith(path));
 
   if (isAuthRoute) {

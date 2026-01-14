@@ -147,6 +147,8 @@ import AuthMagicLink from "./AuthMagicLink";
 import Landing from "./Landing";
 import Privacy from "./Privacy";
 import Terms from "./Terms";
+import Contact from "./Contact";
+import MasterBenefits from "./MasterBenefits";
 
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
@@ -298,6 +300,8 @@ const PAGES = {
     Landing: Landing,
     Privacy: Privacy,
     Terms: Terms,
+    Contact: Contact,
+    MasterBenefits: MasterBenefits,
 }
 
 function _getCurrentPage(url) {
@@ -330,6 +334,8 @@ function PagesContent() {
                 <Route path="/landing" element={<Landing />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/book-demo" element={<Contact />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
 
                 <Route path="/Home" element={<Home />} />

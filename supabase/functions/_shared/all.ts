@@ -237,6 +237,9 @@ export const logNotificationSent = (s: any, p: any) => logNotification(s, { ...p
 export const logNotificationFailed = (s: any, p: any) => logNotification(s, { ...p, status: 'failed' });
 export const logNotificationSkipped = (s: any, p: any) => logNotification(s, { ...p, status: 'queued' });
 
+export { createSystemAlert } from "./notificationLogger.ts";
+export type { SystemAlertParams } from "./notificationLogger.ts";
+
 // ============================================================================
 // MAGIC TOKENS
 // ============================================================================

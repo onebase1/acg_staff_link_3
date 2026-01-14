@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import EmailTemplates from "./EmailTemplates";
 import { sendSMS as invokeSendSMS, sendWhatsApp as invokeSendWhatsApp } from "@/api/functions";
+import { calculateBillableHours } from "@/utils/shiftCalculations";
 
 /**
  * 📧 CENTRALIZED NOTIFICATION SERVICE - MULTI-CHANNEL
@@ -196,9 +197,10 @@ export const NotificationService = {
 
     const startTime = formatTime(shift.start_time);
     const endTime = formatTime(shift.end_time);
+    const billableHours = calculateBillableHours(shift);
 
     // ✅ SMS + WhatsApp (INSTANT)
-    const instantMessage = `📅 NEW SHIFT [${agencyName}]: ${client.name}${locationText} on ${new Date(shift.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}, ${startTime}-${endTime}. £${shift.pay_rate}/hr = £${((shift.pay_rate || 0) * (shift.duration_hours || 0)).toFixed(2)}. Confirm in Staff Portal.`;
+    const instantMessage = `📅 NEW SHIFT [${agencyName}]: ${client.name}${locationText} on ${new Date(shift.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}, ${startTime}-${endTime}. £${shift.pay_rate}/hr = £${((shift.pay_rate || 0) * billableHours).toFixed(2)}. Confirm in Staff Portal.`;
 
     const results = {
       email: { success: false },
@@ -233,6 +235,7 @@ export const NotificationService = {
       start_time: shift.start_time,
       end_time: shift.end_time,
       duration_hours: shift.duration_hours,
+      billable_hours: billableHours,
       role: shift.role_required.replace('_', ' '),
       pay_rate: shift.pay_rate,
       notes: shift.notes,
@@ -253,7 +256,8 @@ export const NotificationService = {
         { label: 'Client:', value: client.name },
         ...(shift.work_location_within_site ? [{ label: 'Location:', value: `📍 ${shift.work_location_within_site}` }] : []),
         { label: 'Date:', value: shift.date },
-        { label: 'Time:', value: `${shift.start_time} - ${shift.end_time} (${shift.duration_hours}h)` },
+        { label: 'Time:', value: `${startTime} - ${endTime} (${shift.duration_hours}h)` },
+        { label: 'Billable:', value: `${billableHours}h (break deducted)` },
         { label: 'Role:', value: shift.role_required.replace('_', ' ') },
         { label: 'Pay Rate:', value: `£${shift.pay_rate}/hour` }
       ];
@@ -596,7 +600,8 @@ export const NotificationService = {
       { label: 'Address:', value: `${client.address?.line1 || ''}, ${client.address?.city || ''}, ${client.address?.postcode || ''}` },
       ...(shift.work_location_within_site ? [{ label: 'Location:', value: `📍 ${shift.work_location_within_site}` }] : []),
       { label: 'Date:', value: shift.date },
-      { label: 'Time:', value: `${shift.start_time} - ${shift.end_time}` }
+      { label: 'Time:', value: `${shift.start_time} - ${shift.end_time} (${shift.duration_hours}h)` },
+      { label: 'Billable:', value: `${calculateBillableHours(shift)}h (break deducted)` }
     ];
 
     const html = EmailTemplates.baseWrapper({
@@ -749,6 +754,7 @@ export const NotificationService = {
    * FROM: Agile Care Management (admin email, not agency)
    */
   async notifyShiftConfirmedToClient({ staff, shift, client, useBatching = true }) {
+    const billableHours = calculateBillableHours(shift);
     const item = {
       shift_id: shift.id,
       staff_id: staff.id,
@@ -758,6 +764,7 @@ export const NotificationService = {
       start_time: shift.start_time,
       end_time: shift.end_time,
       duration_hours: shift.duration_hours,
+      billable_hours: billableHours,
       location: shift.work_location_within_site,
       role: shift.role_required.replace('_', ' '),
       charge_rate: shift.charge_rate

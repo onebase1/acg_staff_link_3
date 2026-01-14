@@ -63,12 +63,20 @@ export interface NotificationLogParams {
   retryCount?: number;
 }
 
+export interface SystemAlertParams {
+  type: string;
+  severity: 'warning' | 'critical';
+  message: string;
+  metadata?: Record<string, any>;
+  agencyId?: string;
+}
+
 /**
  * Check if logging is enabled via feature flag
  */
 function isLoggingEnabled(): boolean {
   const flag = Deno.env.get("ENABLE_NOTIFICATION_LOGGING");
-  return flag === "true" || flag === "1";
+  return flag !== "false" && flag !== "0";
 }
 
 /**
@@ -329,5 +337,98 @@ export async function updateNotificationLog(
   } catch (error) {
     console.error('❌ [Notification Logger] Update error:', error);
     return { success: false, error };
+  }
+}
+
+/**
+ * Create a system alert and optionally notify super admins
+ */
+export async function createSystemAlert(
+  supabase: SupabaseClient,
+  params: SystemAlertParams
+): Promise<{ success: boolean; error?: any }> {
+  try {
+    const { data: alert, error } = await supabase
+      .from('system_alerts')
+      .insert({
+        alert_type: params.type,
+        severity: params.severity,
+        message: params.message,
+        metadata: params.metadata || {},
+        agency_id: params.agencyId
+      })
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      console.error('❌ [SystemAlert] Failed to create alert:', error);
+      return { success: false, error };
+    }
+
+    // Notify Super Admins for Critical Alerts
+    if (params.severity === 'critical') {
+      await notifySuperAdmins(supabase, params);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('❌ [SystemAlert] Unexpected error:', error);
+    return { success: false, error };
+  }
+}
+
+/**
+ * Send alert email to Super Admins
+ */
+async function notifySuperAdmins(
+  supabase: SupabaseClient,
+  alert: SystemAlertParams
+) {
+  try {
+    // Get all Super Admins
+    const { data: admins } = await supabase
+      .from('profiles')
+      .select('email, full_name')
+      .eq('is_super_admin', true);
+
+    if (!admins || admins.length === 0) {
+      console.warn('⚠️ [SystemAlert] No super admins found to notify.');
+      return;
+    }
+
+    for (const admin of admins) {
+      if (!admin.email) continue;
+      
+      console.log(`✉️ [SystemAlert] Notifying Super Admin: ${admin.email}`);
+      
+      // Invoke send-email - Using try/catch to ensure one failure doesn't block others
+      try {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            to: admin.email,
+            subject: `🚨 CRITICAL ALERT: ${alert.type}`,
+            html: `
+              <div style="font-family: sans-serif; padding: 20px; border: 2px solid #ef4444; border-radius: 12px; background-color: #fef2f2;">
+                <h2 style="color: #b91c1c; margin-top: 0;">🚨 Critical System Alert</h2>
+                <p style="font-size: 16px; color: #1e293b;">A critical anomaly was detected in the notification system. Please investigate immediately.</p>
+                <div style="background: white; border: 1px solid #fee2e2; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                  <p><strong>Type:</strong> <span style="color: #b91c1c;">${alert.type}</span></p>
+                  <p><strong>Message:</strong> ${alert.message}</p>
+                  <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+                </div>
+                <p><strong>Diagnostic Data:</strong></p>
+                <pre style="background: #1e293b; color: #f8fafc; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 13px;">${JSON.stringify(alert.metadata, null, 2)}</pre>
+                <hr style="border: none; border-top: 1px solid #fee2e2; margin: 20px 0;"/>
+                <p style="font-size: 12px; color: #64748b;">This is an automated security alert from the Agile Care Management reliability engine.</p>
+              </div>
+            `
+          }
+        });
+      } catch (innerErr) {
+        console.error(`❌ [SystemAlert] Failed to send email to ${admin.email}:`, innerErr);
+      }
+    }
+  } catch (err) {
+    console.error('❌ [SystemAlert] Failed to notify super admins:', err);
   }
 }
