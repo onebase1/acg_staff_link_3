@@ -157,42 +157,39 @@ export default function StaffProfileSimulation() {
   });
 
   const { data: complianceDocs = [] } = useQuery({
-    queryKey: ['simulation-compliance', staff?.id, staff?.agency_id],
+    queryKey: ['simulation-compliance', staff?.id, staff?.agency_id, token],
     queryFn: async () => {
+      // 1. High-Trust Source: Public Profile RPC (Pre-verified)
       if (publicProfileData?.compliance) {
-        console.log('✅ Using compliance data from public profile RPC');
         return publicProfileData.compliance;
       }
 
       if (!staff?.id) return [];
 
-      // Always filter by both agency_id AND staff_id for maximum RLS compatibility
-      let query = supabase
-        .from('compliance')
-        .select('*')
-        .eq('staff_id', staff.id)
-        .order('created_date', { ascending: false });
+      // 2. Resilient Source: Secure RPC with token fallback
+      try {
+        const { data, error } = await supabase.rpc('get_staff_compliance_secure', {
+          p_staff_id: staff.id,
+          p_token: token || null
+        });
 
-      // If we have agency_id, add it to the filter (helps with RLS)
-      if (staff.agency_id) {
-        query = query.eq('agency_id', staff.agency_id);
-      }
+        if (error) {
+          // Fallback to direct query if authenticated as admin/staff
+          const { data: directData } = await supabase
+            .from('compliance')
+            .select('*')
+            .eq('staff_id', staff.id)
+            .eq('agency_id', String(staff.agency_id));
+          return directData || [];
+        }
 
-      const { data, error } = await query;
-
-      console.log('📊 [Diagnostics] Staff ID:', staff.id);
-      console.log('📊 [Diagnostics] Agency ID:', staff.agency_id);
-      console.log('📊 [Diagnostics] Query Result Count:', data?.length || 0);
-
-      if (error) {
-        console.error('❌ Error fetching compliance docs:', error);
+        return data || [];
+      } catch (e) {
         return [];
       }
-
-      return data || [];
     },
-    enabled: !!staff?.id || !!publicProfileData?.compliance,
-    initialData: []
+    enabled: !!staff?.id,
+    staleTime: 0 // Force fresh check
   });
 
   const handlePrint = () => {
@@ -280,11 +277,25 @@ export default function StaffProfileSimulation() {
     : null;
   const photoNeedsUpdate = photoAge && photoAge >= 3;
 
-  // Get specific compliance documents (CQC Requirements)
-  const dbsDoc = complianceDocs.find(d => d.document_type === 'dbs_check');
-  const passportDoc = complianceDocs.find(d => d.document_type === 'id_verification');
-  const rightToWorkDoc = complianceDocs.find(d => d.document_type === 'right_to_work');
-  const nmcDoc = complianceDocs.find(d => d.document_type === 'professional_registration');
+  // Get specific compliance documents (CQC Requirements) - Added support for aliases and case-insensitivity
+  const findDoc = (typeOrTypes) => {
+    const types = Array.isArray(typeOrTypes) ? typeOrTypes.map(t => t.toLowerCase()) : [typeOrTypes.toLowerCase()];
+    return complianceDocs.find(d => types.includes(d.document_type?.toLowerCase()));
+  };
+
+  const isVerified = (doc) => !!doc && doc.status?.toLowerCase() === 'verified';
+
+  const dbsDoc = findDoc(['dbs_check', 'dbs_certificate', 'enhanced_dbs']);
+  const passportDoc = findDoc(['id_verification', 'passport', 'id_card', 'proof_of_id', 'identity_verification']);
+  const rightToWorkDoc = findDoc(['right_to_work', 'rtw', 'visa', 'residence_permit']);
+  const nmcDoc = findDoc(['professional_registration', 'nmc_pin', 'nmc']);
+
+  console.log('📄 [Diagnostics] Critical Doc Presence:', {
+    dbs: !!dbsDoc,
+    id: !!passportDoc,
+    rtw: !!rightToWorkDoc,
+    complianceDocs: complianceDocs.map(d => d.document_type)
+  });
 
   // Mandatory training certificates (CQC Core Requirements)
   const mandatoryTraining = [
@@ -354,19 +365,19 @@ export default function StaffProfileSimulation() {
   const complianceChecks = [
     {
       item: "Proof of identity – Passport or Photo ID",
-      status: !!passportDoc && passportDoc.status === 'verified',
+      status: isVerified(passportDoc),
       required: true,
       doc: passportDoc
     },
     {
       item: "Enhanced DBS disclosure obtained and verified",
-      status: !!dbsDoc && dbsDoc.status === 'verified',
+      status: isVerified(dbsDoc),
       required: true,
       doc: dbsDoc
     },
     {
       item: "Two written references detailing recent work experience",
-      status: (staff.references || []).length >= 2,
+      status: (staff.references || staff.referees || []).length >= 2,
       required: true
     },
     {
@@ -380,7 +391,7 @@ export default function StaffProfileSimulation() {
     },
     {
       item: "Full employment history with explanations for gaps",
-      status: (staff.employment_history || []).length > 0,
+      status: (staff.employment_history || staff.work_history || []).length > 0,
       required: true
     },
     {
@@ -390,7 +401,7 @@ export default function StaffProfileSimulation() {
     },
     {
       item: "Evidence of NMC registration (where applicable)",
-      status: isNurse ? (!!nmcDoc && nmcDoc.status === 'verified' && !!staff.nmc_pin) : true,
+      status: isNurse ? (isVerified(nmcDoc) && !!staff.nmc_pin) : true,
       required: isNurse
     },
     {
@@ -400,7 +411,7 @@ export default function StaffProfileSimulation() {
     },
     {
       item: "Evidence of right to work in the UK",
-      status: !!rightToWorkDoc && rightToWorkDoc.status === 'verified',
+      status: isVerified(rightToWorkDoc),
       required: true
     },
     {
@@ -585,6 +596,20 @@ export default function StaffProfileSimulation() {
                   </div>
                 )}
 
+                <div className="p-3 border-b bg-amber-50">
+                  <p className="text-sm font-semibold text-gray-700">Proposed First Shift Date:</p>
+                  <p className="text-gray-900 font-bold">
+                    {staff.proposed_first_shift_date ? format(new Date(staff.proposed_first_shift_date), 'dd/MM/yyyy') : 'To be confirmed'}
+                  </p>
+                </div>
+
+                <div className="p-3 border-b">
+                  <p className="text-sm font-semibold text-gray-700">Total Experience:</p>
+                  <p className="text-gray-900">
+                    {staff.months_of_experience ? `${staff.months_of_experience} months` : 'N/A'}
+                  </p>
+                </div>
+
                 <div className="p-3 border-b">
                   <p className="text-sm font-semibold text-gray-700">D.O.B:</p>
                   <p className="text-gray-900">{format(new Date(staff.date_of_birth), 'dd/MM/yyyy')}</p>
@@ -647,6 +672,33 @@ export default function StaffProfileSimulation() {
               </div>
             </div>
           </div>
+
+          {/* Work Experience - Hidden from public profile simulation as per user request */}
+          {/* 
+          {(staff.employment_history || staff.work_history || []).length > 0 && (
+            <div className="mb-8">
+              <div className="bg-black text-white p-3 mb-0">
+                Work Experience & Employment History
+              </div>
+              <div className="border border-t-0 p-4 space-y-4">
+                {(staff.employment_history || staff.work_history || []).map((exp, idx) => (
+                  <div key={idx} className="border-b last:border-0 pb-3 last:pb-0">
+                    <div className="flex justify-between font-bold">
+                      <span>{exp.employer}</span>
+                      <span className="text-gray-600 text-sm">
+                        {exp.start_date ? format(new Date(exp.start_date), 'MMM yyyy') : ''} - {exp.end_date ? format(new Date(exp.end_date), 'MMM yyyy') : 'Present'}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium text-cyan-700 uppercase">{exp.position}</p>
+                    {exp.reason_for_leaving && (
+                      <p className="text-xs text-gray-500 mt-1 italic">Reason for leaving: {exp.reason_for_leaving}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          */}
 
           {/* CQC Compliance Checklist */}
           <div className="mb-8">
