@@ -275,7 +275,7 @@ export default function StaffProfileSimulation() {
   const photoAge = staff.profile_photo_uploaded_date
     ? differenceInYears(new Date(), new Date(staff.profile_photo_uploaded_date))
     : null;
-  const photoNeedsUpdate = photoAge && photoAge >= 3;
+  const photoNeedsUpdate = !!(photoAge && photoAge >= 3);
 
   // Get specific compliance documents (CQC Requirements) - Added support for aliases and case-insensitivity
   const findDoc = (typeOrTypes) => {
@@ -596,6 +596,8 @@ export default function StaffProfileSimulation() {
                   </div>
                 )}
 
+                {/* Hidden from public profile as per user request */}
+                {/* 
                 <div className="p-3 border-b bg-amber-50">
                   <p className="text-sm font-semibold text-gray-700">Proposed First Shift Date:</p>
                   <p className="text-gray-900 font-bold">
@@ -609,6 +611,7 @@ export default function StaffProfileSimulation() {
                     {staff.months_of_experience ? `${staff.months_of_experience} months` : 'N/A'}
                   </p>
                 </div>
+*/}
 
                 <div className="p-3 border-b">
                   <p className="text-sm font-semibold text-gray-700">D.O.B:</p>
