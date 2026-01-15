@@ -1,4 +1,5 @@
 import Layout from "./Layout.jsx";
+import PublicLayout from "./PublicLayout.jsx";
 
 import Home from "./Home";
 
@@ -330,13 +331,18 @@ function PagesContent() {
 
                 <Route path="/login" element={<Login />} />
                 <Route path="/Login" element={<Login />} />
-                <Route path="/auth/magic" element={<AuthMagicLink />} />
-                <Route path="/landing" element={<Landing />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/book-demo" element={<Contact />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+
+                {/* Public Marketing Pages wrapped in PublicLayout */}
+                <Route element={<PublicLayout />}>
+                    <Route path="/landing" element={<Landing />} />
+                    <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/terms" element={<Terms />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/book-demo" element={<Contact />} />
+                </Route>
+
+                <Route path="/auth/magic" element={<AuthMagicLink />} />
 
                 <Route path="/Home" element={<Home />} />
 

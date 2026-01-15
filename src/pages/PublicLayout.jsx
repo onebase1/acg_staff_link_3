@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Building2, Shield, FileText } from 'lucide-react';
+import { Building2, Shield, FileText, CheckCircle } from 'lucide-react';
 
 export default function PublicLayout({ children }) {
     const location = useLocation();
@@ -29,25 +29,48 @@ export default function PublicLayout({ children }) {
 
             {/* Header */}
             <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                    <Link to="/" className="flex items-center gap-2 group">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold shadow-sm group-hover:shadow-md transition-shadow">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+                    <Link to="/landing" className="flex items-center gap-3 group">
+                        <img
+                            src="/ACGTransLogo.png"
+                            alt="ACG StaffLink Logo"
+                            className="h-12 w-auto object-contain"
+                            onError={(e) => {
+                                // Fallback if image fails
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                            }}
+                        />
+                        <div className="hidden w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold shadow-lg">
                             ACG
                         </div>
-                        <span className="font-bold text-lg text-gray-900 tracking-tight">StaffLink</span>
+                        <span className="font-extrabold text-2xl text-gray-900 tracking-tight group-hover:text-cyan-600 transition-colors">
+                            StaffLink
+                        </span>
                     </Link>
 
-                    <nav className="flex items-center gap-6">
-                        <Link to="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-                            Log in
+                    {/* Standard Nav */}
+                    <nav className="hidden md:flex items-center gap-8">
+                        <Link to="/landing" className="text-sm font-bold text-gray-600 hover:text-cyan-600 transition-colors">Home</Link>
+                        <a href="#features" className="text-sm font-bold text-gray-600 hover:text-cyan-600 transition-colors">Features</a>
+                        <a href="#pricing" className="text-sm font-bold text-gray-600 hover:text-cyan-600 transition-colors">Pricing</a>
+                        <Link to="/contact" className="text-sm font-bold text-gray-600 hover:text-cyan-600 transition-colors">Contact</Link>
+                    </nav>
+
+                    <div className="flex items-center gap-4">
+                        <Link
+                            to="/login"
+                            className="hidden sm:block text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors px-4 py-2"
+                        >
+                            Sign In
                         </Link>
                         <Link
-                            to="/book-demo"
-                            className="public-btn-primary px-4 py-2 rounded-lg text-sm font-medium shadow-sm"
+                            to="/contact"
+                            className="public-btn-primary px-6 py-2.5 rounded-xl text-sm font-bold shadow-xl shadow-cyan-500/20"
                         >
-                            Book a Demo
+                            Get Started
                         </Link>
-                    </nav>
+                    </div>
                 </div>
             </header>
 
@@ -58,44 +81,60 @@ export default function PublicLayout({ children }) {
             </main>
 
             {/* Footer */}
-            <footer className="bg-white border-t border-gray-200 py-12">
+            <footer className="bg-gray-900 text-white py-20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
                         <div className="col-span-1 md:col-span-2">
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="w-6 h-6 rounded bg-gray-900 flex items-center justify-center text-white text-xs font-bold">A</div>
-                                <span className="font-bold text-gray-900">ACG StaffLink</span>
+                            <div className="flex items-center gap-3 mb-6">
+                                <img src="/ACGTransLogo.png" alt="Logo" className="h-8 w-auto brightness-0 invert" />
+                                <span className="font-bold text-xl tracking-tight">ACG StaffLink</span>
                             </div>
-                            <p className="text-gray-500 text-sm leading-relaxed max-w-sm">
-                                Empowering healthcare agencies with intelligent staffing, compliance automation, and financial precision.
+                            <p className="text-gray-400 text-sm leading-relaxed max-w-sm mb-8">
+                                The intelligent operating system for modern healthcare agencies.
+                                Automating scheduling, compliance, and payroll with agentic AI precision.
                             </p>
+                            <div className="flex gap-4">
+                                <Link to="/contact" className="text-xs bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors">Support Center</Link>
+                                <Link to="/contact" className="text-xs bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors">Book a Demo</Link>
+                            </div>
                         </div>
 
                         <div>
-                            <h4 className="font-semibold text-gray-900 mb-4 text-sm">Platform</h4>
-                            <ul className="space-y-2 text-sm text-gray-600">
-                                <li><Link to="/login" className="hover:text-cyan-600 transition-colors">Staff Portal</Link></li>
-                                <li><Link to="/login" className="hover:text-cyan-600 transition-colors">Client Portal</Link></li>
-                                <li><Link to="/login" className="hover:text-cyan-600 transition-colors">Admin Login</Link></li>
+                            <h4 className="font-bold text-white mb-6 text-sm uppercase tracking-widest">Platform</h4>
+                            <ul className="space-y-4 text-sm text-gray-400">
+                                <li><a href="/landing#features" className="hover:text-cyan-400 transition-colors">How it Works</a></li>
+                                <li><a href="/landing#pricing" className="hover:text-cyan-400 transition-colors">Pricing</a></li>
+                                <li><Link to="/login" className="hover:text-cyan-400 transition-colors">Client & Staff Portal</Link></li>
+                                <li><Link to="/login" className="hover:text-cyan-400 transition-colors">Sign In</Link></li>
                             </ul>
                         </div>
 
                         <div>
-                            <h4 className="font-semibold text-gray-900 mb-4 text-sm">Legal</h4>
-                            <ul className="space-y-2 text-sm text-gray-600">
-                                <li><Link to="/privacy" className="hover:text-cyan-600 transition-colors">Privacy Policy</Link></li>
-                                <li><Link to="/terms" className="hover:text-cyan-600 transition-colors">Terms of Service</Link></li>
+                            <h4 className="font-bold text-white mb-6 text-sm uppercase tracking-widest">Legal</h4>
+                            <ul className="space-y-4 text-sm text-gray-400">
+                                <li><Link to="/privacy" className="hover:text-cyan-400 transition-colors">Privacy Policy</Link></li>
+                                <li><Link to="/terms" className="hover:text-cyan-400 transition-colors">Terms of Service</Link></li>
+                                <li><Link to="/contact" className="hover:text-cyan-400 transition-colors">Contact Sales</Link></li>
                             </ul>
                         </div>
                     </div>
 
-                    <div className="pt-8 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
-                        <p className="text-xs text-gray-400">
-                            © {year} Agile Care Management. All rights reserved.
-                        </p>
-                        <div className="flex items-center gap-4 text-gray-400">
-                            <Shield className="w-4 h-4" />
-                            <span className="text-xs">SOC2 Compliant</span>
+                    <div className="pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center gap-6">
+                        <div className="flex items-center gap-6">
+                            <p className="text-xs text-gray-500">
+                                © {year} Agile Care Management Ltd.
+                            </p>
+                            <span className="text-gray-700 text-xs">UK Registered Company</span>
+                        </div>
+                        <div className="flex items-center gap-6 text-gray-500">
+                            <div className="flex items-center gap-2">
+                                <Shield className="w-4 h-4 text-cyan-500" />
+                                <span className="text-xs">UK GDPR Compliant</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                                <span className="text-xs">CQC Ready</span>
+                            </div>
                         </div>
                     </div>
                 </div>
