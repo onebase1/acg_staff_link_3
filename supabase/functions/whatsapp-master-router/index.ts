@@ -51,7 +51,7 @@ serve(async (req) => {
 
         // ✅ AUTHENTICATION FLOW (unchanged - works great!)
 
-        // 1. Check if user is already authenticated via PIN
+        // 1. Check if user is already authenticated via PIN (Staff)
         const { data: staffByWhatsApp, error: staffWhatsAppError } = await supabase
             .from("staff")
             .select("*")
@@ -64,8 +64,23 @@ serve(async (req) => {
         let staff = staffByWhatsApp?.[0];
 
         if (staff) {
-            console.log(`✅ [Authenticated] ${staff.first_name} ${staff.last_name}`);
-            await handleConversationalMessage(supabase, staff, body, phone, profileName);
+            console.log(`✅ [Authenticated Staff] ${staff.first_name} ${staff.last_name}`);
+            await handleConversationalMessage(supabase, { type: 'staff', data: staff }, body, phone, profileName);
+            return createTwilioResponse();
+        }
+
+        // 1b. Check if user is an Agency Admin (via profiles table)
+        const { data: adminProfiles } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("user_type", "agency_admin");
+
+        // Use findProfileByPhone helper
+        const adminProfile = await findProfileByPhone(adminProfiles || [], phone);
+
+        if (adminProfile) {
+            console.log(`✅ [Authenticated Admin] ${adminProfile.full_name}`);
+            await handleConversationalMessage(supabase, { type: 'admin', data: adminProfile }, body, phone, profileName);
             return createTwilioResponse();
         }
 
@@ -83,7 +98,7 @@ serve(async (req) => {
                 return createTwilioResponse();
             }
 
-            await handleConversationalMessage(supabase, staff, body, phone, profileName);
+            await handleConversationalMessage(supabase, { type: 'staff', data: staff }, body, phone, profileName);
             return createTwilioResponse();
         }
 
@@ -177,21 +192,25 @@ serve(async (req) => {
  * 🤖 V3: ENHANCED CONVERSATIONAL MESSAGE HANDLER
  * Uses OpenAI function calling for reliable action detection
  */
-async function handleConversationalMessage(supabase, staff, body, phone, profileName) {
+async function handleConversationalMessage(supabase, userContext, body, phone, profileName) {
+    const isStaff = userContext.type === 'staff';
+    const userData = userContext.data;
+    const agencyId = userData.agency_id;
+    const userName = isStaff ? userData.first_name : userData.full_name.split(' ')[0];
     try {
         // Load user context
         const { data: agencies } = await supabase
             .from("agencies")
             .select("*");
 
-        const agency = agencies?.find(a => a.id === staff.agency_id);
+        const agency = agencies?.find(a => a.id === userData.agency_id);
 
         // Get shifts for context
         const { data: shifts, error: shiftsError } = await supabase
             .from("shifts")
             .select("*")
-            .eq("assigned_staff_id", staff.id)
-            .eq("agency_id", staff.agency_id);
+            .eq("assigned_staff_id", userData.id)
+            .eq("agency_id", userData.agency_id);
 
         if (shiftsError) {
             console.error('Error fetching shifts:', shiftsError);
@@ -208,7 +227,7 @@ async function handleConversationalMessage(supabase, staff, body, phone, profile
             .from("shifts")
             .select("*")
             .eq("status", "open")
-            .eq("agency_id", staff.agency_id)
+            .eq("agency_id", userData.agency_id)
             .eq("marketplace_visible", true);
 
         if (openShiftsError) {
@@ -226,7 +245,7 @@ async function handleConversationalMessage(supabase, staff, body, phone, profile
         const { data: completedShifts } = await supabase
             .from("shifts")
             .select("*")
-            .eq("assigned_staff_id", staff.id)
+            .eq("assigned_staff_id", userData.id)
             .eq("status", "completed")
             .gte("date", twoDaysAgo.toISOString().split('T')[0]);
 
@@ -236,7 +255,7 @@ async function handleConversationalMessage(supabase, staff, body, phone, profile
                 .from("timesheets")
                 .select("*")
                 .eq("booking_id", shift.booking_id)
-                .eq("staff_id", staff.id)
+                .eq("staff_id", userData.id)
                 .eq("shift_date", shift.date);
 
             if (!existingTimesheets || existingTimesheets.length === 0) {
@@ -246,16 +265,17 @@ async function handleConversationalMessage(supabase, staff, body, phone, profile
 
         // Build context for AI
         const contextInfo = {
-            staff_name: `${staff.first_name} ${staff.last_name}`,
+            user_name: userName,
+            user_role: isStaff ? userData.role?.replace('_', ' ') : 'Agency Manager',
+            user_type: userContext.type,
             agency_name: agency?.name || 'your agency',
-            upcoming_shifts_count: upcomingShifts.length,
+            upcoming_shifts_count: isStaff ? upcomingShifts.length : 0,
             available_shifts_count: availableShifts.length,
-            pending_timesheets_count: shiftsNeedingTimesheets.length,
-            staff_role: staff.role?.replace('_', ' '),
-            staff_rating: staff.rating || 5
+            pending_timesheets_count: isStaff ? shiftsNeedingTimesheets.length : 0,
+            staff_rating: isStaff ? userData.rating || 5 : 5
         };
 
-        console.log(`🤖 [AI] Processing message for ${staff.first_name}: "${body}"`);
+        console.log(`🤖 [AI] Processing message for ${userName}: "${body}"`);
 
         // ✅ V3: Use OpenAI function calling for reliable action detection
         const response = await openai.chat.completions.create({
@@ -266,16 +286,15 @@ async function handleConversationalMessage(supabase, staff, body, phone, profile
                     content: `You are a helpful healthcare staffing assistant for ${contextInfo.agency_name}.
 
 **Context:**
-- Staff: ${contextInfo.staff_name} (${contextInfo.staff_role})
-- Upcoming shifts: ${contextInfo.upcoming_shifts_count}
-- Available shifts: ${contextInfo.available_shifts_count}
-- Pending timesheets: ${contextInfo.pending_timesheets_count}
+- User: ${contextInfo.user_name} (${contextInfo.user_role})
+- Agency: ${contextInfo.agency_name}
+${isStaff ? `- Upcoming shifts: ${contextInfo.upcoming_shifts_count}\n- Available shifts: ${contextInfo.available_shifts_count}\n- Pending timesheets: ${contextInfo.pending_timesheets_count}` : `- Available shifts for staff: ${contextInfo.available_shifts_count}`}
 
 **Your capabilities:**
-1. Show upcoming shifts → Use show_schedule function
+1. Show upcoming shifts → Use show_schedule function ${isStaff ? '' : '(Not available for managers)'}
 2. Find available shifts → Use find_shifts function
-3. Accept shifts → Use accept_shift function (when user says "accept first", "take 2", "apply for the second one")
-4. Submit timesheets → Use submit_timesheet function (when user provides hours worked)
+3. Accept shifts → Use accept_shift function ${isStaff ? '' : '(Not available for managers)'}
+4. Submit timesheets → Use submit_timesheet function ${isStaff ? '' : '(Not available for managers)'}
 5. Answer general questions about shifts, schedules, pay, and workplace policies
 
 **Strict Boundaries - You MUST refuse:**
@@ -391,19 +410,19 @@ Respond naturally to the user's work-related query. If the query is off-topic, p
 
                 switch (functionName) {
                     case 'show_schedule':
-                        await handleShowSchedule(supabase, staff, upcomingShifts, phone);
+                        await handleShowSchedule(supabase, userData, upcomingShifts, phone);
                         break;
 
                     case 'find_shifts':
-                        await handleFindShifts(supabase, staff, availableShifts, phone);
+                        await handleFindShifts(supabase, userData, availableShifts, phone);
                         break;
 
                     case 'accept_shift':
-                        await handleAcceptShift(supabase, staff, availableShifts, args.shift_index, phone);
+                        await handleAcceptShift(supabase, userData, availableShifts, args.shift_index, phone);
                         break;
 
                     case 'submit_timesheet':
-                        await handleSubmitTimesheet(supabase, staff, shiftsNeedingTimesheets, args, phone);
+                        await handleSubmitTimesheet(supabase, userData, shiftsNeedingTimesheets, args, phone);
                         break;
                 }
             }
@@ -797,6 +816,27 @@ async function findStaffByPhone(supabase, phone) {
     return null;
 }
 
+/**
+ * HELPER: Find profile by phone (for administrators)
+ */
+async function findProfileByPhone(profiles, phone) {
+    const cleanPhone = phone.replace(/[^\d]/g, '');
+    
+    return profiles.find(p => {
+        if (!p.phone) return false;
+        const pPhone = p.phone.replace(/[^\d]/g, '');
+        
+        // Exact match of digits
+        if (pPhone === cleanPhone) return true;
+        
+        // Match last 10 digits (common for UK/US)
+        if (pPhone.length >= 10 && cleanPhone.length >= 10) {
+            return pPhone.slice(-10) === cleanPhone.slice(-10);
+        }
+        
+        return false;
+    });
+}
 /**
  * HELPER: Send WhatsApp response
  */

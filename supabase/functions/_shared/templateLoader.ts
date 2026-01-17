@@ -10,20 +10,36 @@
  * @param variables - Object with key-value pairs to replace in the template
  * @returns Populated HTML string
  */
+import Handlebars from "https://esm.sh/handlebars@4.7.7?no-check";
+import { daily_agency_digest } from "./templates/daily_agency_digest.ts";
+import { weekly_agency_summary } from "./templates/weekly_agency_summary.ts";
+
+const TEMPLATES: Record<string, string> = {
+  daily_agency_digest,
+  weekly_agency_summary
+};
+
+/**
+ * Load and populate a template with data
+ * @param templateName - Name of the template (from TEMPLATES map)
+ * @param variables - Object with key-value pairs to replace in the template
+ * @returns Populated HTML string
+ */
 export async function loadTemplate(
   templateName: string,
   variables: Record<string, any>
 ): Promise<string> {
   try {
-    // Read the template file
-    const url = new URL(`./templates/${templateName}.html`, import.meta.url);
-    const html = await Deno.readTextFile(url);
+    // Get the template string from our embedded map
+    const source = TEMPLATES[templateName];
     
-    // Replace all template variables {{variable_name}}
-    for (const [key, value] of Object.entries(variables)) {
-      const regex = new RegExp(`{{${key}}}`, 'g');
-      html = html.replace(regex, String(value ?? ''));
+    if (!source) {
+      throw new Error(`Template "${templateName}" not found in embedded TEMPLATES map.`);
     }
+    
+    // Compile and execute Handlebars template
+    const template = Handlebars.compile(source);
+    const html = template(variables);
     
     return html;
   } catch (error) {

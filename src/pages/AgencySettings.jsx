@@ -162,6 +162,54 @@ export default function AgencySettings() {
     refetchOnMount: 'always'
   });
 
+  // 📋 Fetch all agency administrators for reporting preferences
+  const { data: admins = [], isLoadingAdmins, refetch: refetchAdmins } = useQuery({
+    queryKey: ['agency_admins', user?.agency_id],
+    queryFn: async () => {
+      if (!user?.agency_id) return [];
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, role, report_email_enabled, report_whatsapp_enabled')
+        .eq('agency_id', user.agency_id)
+        .eq('user_type', 'agency_admin')
+        .order('full_name');
+
+      if (error) {
+        console.error('❌ Error fetching admins:', error);
+        return [];
+      }
+      return data || [];
+    },
+    enabled: !!user?.agency_id
+  });
+
+  const toggleAdminPreferenceMutation = useMutation({
+    mutationFn: async ({ adminId, field, value }) => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ [field]: value })
+        .eq('id', adminId);
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agency_admins', user?.agency_id] });
+      toast.success('Preference updated');
+    },
+    onError: (error) => {
+      toast.error(`Failed to update preference: ${error.message}`);
+    }
+  });
+
+  const handleTogglePreference = (adminId, field, currentValue) => {
+    toggleAdminPreferenceMutation.mutate({
+      adminId,
+      field,
+      value: !currentValue
+    });
+  };
+
   useEffect(() => {
     if (user?.agency_id && agencies.length > 0) {
       const userAgency = agencies.find(a => a.id === user.agency_id);
@@ -688,6 +736,83 @@ export default function AgencySettings() {
         </CardContent>
       </Card>
 
+      {/* 📊 Report Recipients Management */}
+      <Card className="border-2 border-cyan-300">
+        <CardHeader className="border-b bg-cyan-50">
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-cyan-600" />
+            Report Recipients
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <Alert className="mb-6 border-cyan-300 bg-cyan-50">
+            <Info className="h-5 w-5 text-cyan-600" />
+            <AlertDescription className="text-cyan-900">
+              <strong>📊 Automated Insights:</strong> Select which administrators receive the daily digest and weekly summary reports.
+              <p className="mt-2 text-xs italic">
+                * Note: If no specific recipients are selected, reports will automatically fallback to the primary agency contact: <strong>{agency.contact_email}</strong>
+              </p>
+            </AlertDescription>
+          </Alert>
+
+          {isLoadingAdmins ? (
+            <div className="flex items-center justify-center p-8">
+              <RefreshCw className="w-6 h-6 animate-spin text-cyan-600" />
+            </div>
+          ) : admins.length === 0 ? (
+            <div className="text-center p-8 text-gray-500 italic">
+              No other agency administrators found to manage.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3">Administrator</th>
+                    <th className="px-4 py-3 text-center">Email Reports</th>
+                    <th className="px-4 py-3 text-center">WhatsApp Reports</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {admins.map((admin) => (
+                    <tr key={admin.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-4 py-4">
+                        <div className="font-semibold text-gray-900">{admin.full_name}</div>
+                        <div className="text-xs text-gray-500">{admin.role || 'Admin'}</div>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={admin.report_email_enabled || false}
+                            onChange={() => handleTogglePreference(admin.id, 'report_email_enabled', admin.report_email_enabled)}
+                            className="sr-only peer"
+                            disabled={toggleAdminPreferenceMutation.isPending}
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                        </label>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={admin.report_whatsapp_enabled || false}
+                            onChange={() => handleTogglePreference(admin.id, 'report_whatsapp_enabled', admin.report_whatsapp_enabled)}
+                            className="sr-only peer"
+                            disabled={toggleAdminPreferenceMutation.isPending}
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                        </label>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* ✅ ENHANCED: Platform Features - Add Auto-Approval Settings */}
       {/* This card combines and enhances the previous "Platform Features (Informational)" section */}
       <Card>
@@ -987,6 +1112,8 @@ export default function AgencySettings() {
               </p>
             </div>
           </div>
+
+
 
           {/* Staff Portal Settings */}
           <div className="border-t pt-6 mt-6">

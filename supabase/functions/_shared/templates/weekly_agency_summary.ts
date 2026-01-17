@@ -1,0 +1,550 @@
+export const weekly_agency_summary = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Summary - {{agencyName}}</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .email-container {
+            max-width: 650px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+        .header {
+            background: linear-gradient(135deg, {{primaryColor}} 0%, {{secondaryColor}} 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .header p {
+            margin: 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .summary-grid {
+            display: table;
+            width: 100%;
+            margin-bottom: 30px;
+            border-collapse: separate;
+            border-spacing: 10px;
+        }
+        .summary-row {
+            display: table-row;
+        }
+        .summary-card {
+            display: table-cell;
+            width: 50%;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            vertical-align: top;
+        }
+        .summary-card-large {
+            display: table-cell;
+            width: 100%;
+            background: linear-gradient(135deg, {{primaryColor}}15 0%, {{secondaryColor}}15 100%);
+            padding: 25px;
+            border-radius: 10px;
+            border: 2px solid {{primaryColor}}30;
+        }
+        .summary-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .summary-number {
+            font-size: 36px;
+            font-weight: 700;
+            color: {{primaryColor}};
+            display: block;
+            margin-bottom: 5px;
+        }
+        .summary-label {
+            font-size: 13px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+        .trend-indicator {
+            font-size: 14px;
+            margin-top: 8px;
+            font-weight: 600;
+        }
+        .trend-up {
+            color: #28a745;
+        }
+        .trend-down {
+            color: #dc3545;
+        }
+        .trend-neutral {
+            color: #6c757d;
+        }
+        .section {
+            margin-bottom: 35px;
+        }
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #1a1a1a;
+            border-bottom: 3px solid {{primaryColor}};
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .section-icon {
+            margin-right: 10px;
+            font-size: 24px;
+        }
+        .metric-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .metric-table th {
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #6c757d;
+            padding: 12px 10px;
+            background-color: #f8f9fa;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .metric-table td {
+            padding: 15px 10px;
+            font-size: 14px;
+            border-bottom: 1px solid #f1f3f5;
+        }
+        .metric-table tr:last-child td {
+            border-bottom: none;
+        }
+        .metric-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, {{primaryColor}} 0%, {{secondaryColor}} 100%);
+            border-radius: 4px;
+        }
+        .highlight-box {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+        }
+        .highlight-title {
+            font-weight: 700;
+            margin-bottom: 10px;
+            font-size: 16px;
+            color: #856404;
+        }
+        .highlight-content {
+            font-size: 14px;
+            color: #6c5500;
+            line-height: 1.6;
+        }
+        .staff-ranking {
+            display: table;
+            width: 100%;
+            margin-top: 15px;
+        }
+        .staff-rank-item {
+            display: table-row;
+        }
+        .staff-rank-position {
+            display: table-cell;
+            width: 40px;
+            padding: 12px 10px;
+            font-size: 20px;
+            font-weight: 700;
+            color: {{primaryColor}};
+            text-align: center;
+        }
+        .staff-rank-name {
+            display: table-cell;
+            padding: 12px 10px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .staff-rank-metric {
+            display: table-cell;
+            padding: 12px 10px;
+            text-align: right;
+            font-size: 13px;
+            color: #6c757d;
+        }
+        .chart-placeholder {
+            background: linear-gradient(135deg, #e9ecef 0%, #f8f9fa 100%);
+            height: 200px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 14px;
+            margin: 15px 0;
+            border: 2px dashed #dee2e6;
+        }
+        .notification-stats {
+            display: table;
+            width: 100%;
+            margin-top: 15px;
+        }
+        .notification-row {
+            display: table-row;
+        }
+        .notification-channel {
+            display: table-cell;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+        .channel-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .channel-metrics {
+            font-size: 12px;
+            color: #6c757d;
+        }
+        .channel-metric {
+            display: inline-block;
+            margin-right: 15px;
+        }
+        .metric-value {
+            font-weight: 700;
+            color: {{primaryColor}};
+        }
+        .compliance-alert {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .compliance-alert-title {
+            font-weight: 600;
+            color: #721c24;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .compliance-list {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 13px;
+            color: #721c24;
+        }
+        .cta-container {
+            text-align: center;
+            margin: 40px 0;
+            padding: 30px 20px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+        }
+        .cta-button {
+            display: inline-block;
+            padding: 15px 40px;
+            background-color: {{primaryColor}};
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 700;
+            margin: 5px;
+            font-size: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .cta-button:hover {
+            opacity: 0.9;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 25px 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #6c757d;
+            border-top: 3px solid {{primaryColor}};
+        }
+        .footer a {
+            color: {{primaryColor}};
+            text-decoration: none;
+            font-weight: 600;
+        }
+        @media only screen and (max-width: 600px) {
+            .summary-card {
+                display: block;
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            .cta-button {
+                display: block;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <h1> Weekly Performance Summary</h1>
+            <p>{{agencyName}} - {{weekRange}}</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Executive Summary -->
+            <div class="section">
+                <div class="summary-grid">
+                    <div class="summary-row">
+                        <div class="summary-card-large">
+                            <span class="summary-icon"></span>
+                            <span class="summary-number">£{{totalRevenue}}</span>
+                            <span class="summary-label">Weekly Revenue</span>
+                            <div class="trend-indicator {{revenueTrend}}">{{revenueTrendText}}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-grid">
+                    <div class="summary-row">
+                        <div class="summary-card">
+                            <span class="summary-icon">✅</span>
+                            <span class="summary-number">{{shiftsCompleted}}</span>
+                            <span class="summary-label">Shifts Completed</span>
+                            <div class="trend-indicator {{shiftsTrend}}">{{shiftsTrendText}}</div>
+                        </div>
+                        <div class="summary-card">
+                            <span class="summary-icon">📈</span>
+                            <span class="summary-number">{{profitMargin}}%</span>
+                            <span class="summary-label">Profit Margin</span>
+                            <div class="trend-indicator {{marginTrend}}">{{marginTrendText}}</div>
+                        </div>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-card">
+                            <span class="summary-icon">👥</span>
+                            <span class="summary-number">{{staffUtilization}}%</span>
+                            <span class="summary-label">Staff Utilization</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: {{staffUtilization}}%;"></div>
+                            </div>
+                        </div>
+                        <div class="summary-card">
+                            <span class="summary-icon">🎯</span>
+                            <span class="summary-number">{{fillRate}}%</span>
+                            <span class="summary-label">Fill Rate</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: {{fillRate}}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial Breakdown -->
+            <div class="section">
+                <div class="section-title">
+                    <span class="section-icon">💰</span>
+                    Financial Overview
+                </div>
+                <table class="metric-table">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th style="text-align: right;">This Week</th>
+                            <th style="text-align: right;">Last Week</th>
+                            <th style="text-align: right;">Change</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Revenue</strong></td>
+                            <td style="text-align: right;">£{{totalRevenue}}</td>
+                            <td style="text-align: right;">£{{lastWeekRevenue}}</td>
+                            <td style="text-align: right;" class="{{revenueTrend}}"><strong>{{revenueChange}}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Staff Costs</td>
+                            <td style="text-align: right;">£{{staffCosts}}</td>
+                            <td style="text-align: right;">£{{lastWeekStaffCosts}}</td>
+                            <td style="text-align: right;">{{staffCostsChange}}</td>
+                        </tr>
+                        <tr>
+                            <td>Platform Costs</td>
+                            <td style="text-align: right;">£{{platformCosts}}</td>
+                            <td style="text-align: right;">£{{lastWeekPlatformCosts}}</td>
+                            <td style="text-align: right;">{{platformCostsChange}}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Net Profit</strong></td>
+                            <td style="text-align: right;"><strong>£{{netProfit}}</strong></td>
+                            <td style="text-align: right;">£{{lastWeekNetProfit}}</td>
+                            <td style="text-align: right;" class="{{profitTrend}}"><strong>{{profitChange}}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Top Performing Staff -->
+            <div class="section">
+                <div class="section-title">
+                    <span class="section-icon">⭐</span>
+                    Top Performing Staff
+                </div>
+                <div class="staff-ranking">
+                    {{#each topStaff}}
+                    <div class="staff-rank-item">
+                        <div class="staff-rank-position">{{position}}</div>
+                        <div class="staff-rank-name">{{name}}</div>
+                        <div class="staff-rank-metric">{{metric}}</div>
+                    </div>
+                    {{#each}}
+                </div>
+            </div>
+
+            <!-- Client Performance -->
+            <div class="section">
+                <div class="section-title">
+                    <span class="section-icon">🏥</span>
+                    Client Breakdown
+                </div>
+                <table class="metric-table">
+                    <thead>
+                        <tr>
+                            <th>Client</th>
+                            <th style="text-align: center;">Shifts</th>
+                            <th style="text-align: center;">Hours</th>
+                            <th style="text-align: right;">Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each clients}}
+                        <tr>
+                            <td><strong>{{name}}</strong></td>
+                            <td style="text-align: center;">{{shifts}}</td>
+                            <td style="text-align: center;">{{hours}}h</td>
+                            <td style="text-align: right;">£{{revenue}}</td>
+                        </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Notification Effectiveness -->
+            <div class="section">
+                <div class="section-title">
+                    <span class="section-icon">📱</span>
+                    Communication Effectiveness
+                </div>
+                <p style="font-size: 14px; color: #6c757d; margin-bottom: 15px;">
+                    This week: {{totalNotifications}} notifications sent across all channels
+                </p>
+
+                {{#each notificationChannels}}
+                <div class="notification-channel" style="margin-bottom: 10px;">
+                    <span class="channel-name">{{icon}} {{name}}</span>
+                    <div class="channel-metrics">
+                        <span class="channel-metric">Sent: <span class="metric-value">{{sent}}</span></span>
+                        <span class="channel-metric">Delivered: <span class="metric-value">{{deliveryRate}}%</span></span>
+                        <span class="channel-metric">Opened: <span class="metric-value">{{openRate}}%</span></span>
+                        {{#if clickRate}}
+                        <span class="channel-metric">Clicked: <span class="metric-value">{{clickRate}}%</span></span>
+                        {{/if}}
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+
+            <!-- Compliance Alerts -->
+            {{#if complianceAlerts}}
+            <div class="section">
+                <div class="section-title">
+                    <span class="section-icon">🛡️</span>
+                    Compliance Alerts
+                </div>
+
+                {{#each complianceAlerts}}
+                <div class="compliance-alert">
+                    <div class="compliance-alert-title">{{title}}</div>
+                    <ul class="compliance-list">
+                        {{#each items}}
+                        <li>{{this}}</li>
+                        {{/each}}
+                    </ul>
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+
+            <!-- Key Insights -->
+            {{#if insights}}
+            <div class="section">
+                <div class="section-title">
+                    <span class="section-icon">💡</span>
+                    Key Insights
+                </div>
+                {{#each insights}}
+                <div class="highlight-box">
+                    <div class="highlight-title">{{title}}</div>
+                    <div class="highlight-content">{{content}}</div>
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+
+            <!-- Call to Action -->
+            <div class="cta-container">
+                <p style="font-size: 16px; margin-bottom: 20px; color: #495057;">
+                    <strong>Ready to dive deeper?</strong>
+                </p>
+                <a href="{{dashboardUrl}}" class="cta-button">View Full Analytics Dashboard</a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>{{agencyName}}</strong></p>
+            <p>{{agencyPhone}} | {{agencyEmail}}</p>
+            <p style="margin-top: 15px;">
+                <a href="{{preferencesUrl}}">Email Preferences</a> |
+                <a href="{{supportUrl}}">Support</a> |
+                <a href="{{downloadPdfUrl}}">Download PDF</a>
+            </p>
+            <p style="margin-top: 15px; color: #adb5bd; font-size: 11px;">
+                This is an automated weekly report. Generated by ACG StaffLink.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+`;

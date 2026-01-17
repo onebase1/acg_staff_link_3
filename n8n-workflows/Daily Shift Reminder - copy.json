@@ -1,0 +1,228 @@
+{
+  "name": "Daily Shift Reminder - copy",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://rzzxxkppkiasuouuglaf.supabase.co/rest/v1/shifts",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "date",
+              "value": "={{ 'eq.' + $now.plus({days: 1}).toFormat('yyyy-MM-dd') }}"
+            },
+            {
+              "name": "status",
+              "value": "in.(confirmed,assigned,awaiting_confirmation)"
+            },
+            {
+              "name": "assigned_staff_id",
+              "value": "not.is.null"
+            },
+            {
+              "name": "select",
+              "value": "*,clients!client_id(name,address),staff!assigned_staff_id(first_name,last_name,phone,email,opt_out_shift_reminders)"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ec921bb7-81ec-493b-97aa-25779e715fa3",
+      "name": "Get Tomorrow's Shifts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -48,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "filter-opt-out",
+              "leftValue": "={{ $json.staff?.opt_out_shift_reminders }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1b549bfc-578b-42ba-ae2c-12b7501c9aef",
+      "name": "Filter Tomorrow's Confirmed Shifts",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [
+        144,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const shift = item.json;\n  const staff = shift.staff;\n  const client = shift.clients;\n  \n  // Format date\n  const shiftDate = new Date(shift.date);\n  const formattedDate = shiftDate.toLocaleDateString('en-GB', { \n    weekday: 'short', \n    day: 'numeric', \n    month: 'short' \n  });\n  \n  // Format times\n  const startTime = shift.start_time.substring(0, 5); // HH:MM\n  const endTime = shift.end_time.substring(0, 5);\n  \n  // Calculate duration\n  const duration = shift.duration_hours || 12;\n  \n  // Calculate total earnings\n  const totalEarnings = (shift.pay_rate * duration).toFixed(2);\n  \n  return {\n    json: {\n      phone: staff.phone,\n      staff_name: staff.first_name,\n      shift_date: formattedDate,\n      start_time: startTime,\n      end_time: endTime,\n      client_name: client.name,\n      client_address: client.address,\n      total_earnings: totalEarnings\n    }\n  };\n});"
+      },
+      "id": "eba7b878-a5d0-40d6-bb22-a0c0631549fe",
+      "name": "Format Shift Reminders",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "phoneNumberId": "=683816761472557",
+        "recipientPhoneNumber": "={{ $json.phone }}",
+        "template": "=shiftreminder|en_GB",
+        "components": {
+          "component": [
+            {
+              "bodyParameters": {
+                "parameter": [
+                  {
+                    "text": "={{ $json.staff_name }}"
+                  },
+                  {
+                    "text": "={{ $json.shift_date }}"
+                  },
+                  {
+                    "text": "={{ $json.start_time }} - {{ $json.end_time }}"
+                  },
+                  {
+                    "text": "={{ $json.client_name }}"
+                  },
+                  {
+                    "text": "={{ $json.client_address.line1 }}"
+                  },
+                  {
+                    "text": "={{ $json.total_earnings }}"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "3d8db2bf-0d67-43b5-8063-10387aa4c7af",
+      "name": "Send WhatsApp Reminder",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        544,
+        -48
+      ],
+      "webhookId": "11c0dc38-44df-43c2-b6f9-85d253078cc3",
+      "notesInFlow": false,
+      "executeOnce": false,
+      "credentials": {
+        "whatsAppApi": {
+          "id": "M8TtYksLuUl3SLo4",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 18 * * *"
+            }
+          ]
+        }
+      },
+      "id": "e43e1484-ea95-4d12-9426-0229d3cd9c75",
+      "name": "Schedule Trigger (6 PM Daily)1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -256,
+        -48
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get Tomorrow's Shifts": {
+      "main": [
+        [
+          {
+            "node": "Filter Tomorrow's Confirmed Shifts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Tomorrow's Confirmed Shifts": {
+      "main": [
+        [
+          {
+            "node": "Format Shift Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Shift Reminders": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger (6 PM Daily)1": {
+      "main": [
+        [
+          {
+            "node": "Get Tomorrow's Shifts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "63d5a104-ced9-4508-9873-c6876a58262d",
+  "meta": {
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  },
+  "id": "jIEWPGV5In8-wEf713iJY",
+  "tags": []
+}

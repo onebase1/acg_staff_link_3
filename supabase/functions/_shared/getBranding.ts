@@ -93,7 +93,7 @@ export async function getBranding(
           enableWhiteLabel: config.enable_white_label || false
         };
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn(`⚠️ Could not fetch branding for agency ${agencyId}:`, err.message);
       // Fall through to SaaS defaults below
     }

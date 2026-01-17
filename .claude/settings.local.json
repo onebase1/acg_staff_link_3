@@ -74,10 +74,14 @@
       "Bash(git show:*)",
       "Bash(rm:*)",
       "Bash(sed:*)",
-      "Bash(npx supabase db execute:*)"
+      "Bash(npx supabase db execute:*)",
+      "Skill(n8n-mcp-tools-expert)"
     ],
     "deny": [],
     "ask": []
   },
-  "enableAllProjectMcpServers": true
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "linear"
+  ]
 }

@@ -131,7 +131,7 @@ export async function shouldSendNotification(
       };
     }
 
-  } catch (error) {
+  } catch (error: any) {
     // On error, DEFAULT TO ALLOW (fail open for reliability)
     console.error('❌ [Preference Check] Error checking preferences:', error);
     console.log('⚠️ [Preference Check] Defaulting to ALLOW due to error');

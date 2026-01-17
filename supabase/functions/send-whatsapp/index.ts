@@ -62,71 +62,69 @@ serve(async (req) => {
         const N8N_WHATSAPP_WEBHOOK_URL = Deno.env.get("N8N_WHATSAPP_WEBHOOK_URL");
         const USE_N8N = Deno.env.get("USE_N8N_WHATSAPP") === "true";
 
-        if (USE_N8N) {
-            // ========================================
-            // N8N WORKFLOW PATH (WhatsApp Business Cloud API - FREE)
-            // ========================================
-            if (!N8N_WHATSAPP_WEBHOOK_URL) {
-                console.error('❌ N8N_WHATSAPP_WEBHOOK_URL not configured');
-                return new Response(JSON.stringify({ error: 'n8n webhook not configured' }), {
-                    status: 500,
-                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+        let providerUsed = "none";
+        let messageId = null;
+        let lastError = null;
+
+        // ========================================
+        // 1. TRY N8N (WhatsApp Business Cloud API - FREE)
+        // ========================================
+        if (USE_N8N && N8N_WHATSAPP_WEBHOOK_URL) {
+            try {
+                console.log(`📤 [n8n] Attempting WhatsApp to ${to}`);
+                const response = await fetch(N8N_WHATSAPP_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to, message }),
                 });
+
+                const data = await response.json();
+                if (response.ok) {
+                    console.log('✅ WhatsApp sent successfully via n8n:', data.messageId || 'Success');
+                    return new Response(JSON.stringify({ 
+                        success: true, 
+                        provider: 'n8n', 
+                        messageId: data.messageId 
+                    }), {
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                } else {
+                    console.error('⚠️ n8n returned error, checking fallback:', data);
+                    lastError = data;
+                }
+            } catch (err) {
+                console.error('❌ n8n connection failed, checking fallback:', err.message);
+                lastError = err;
             }
+        }
 
-            console.log(`📤 [n8n] Sending WhatsApp to ${to}`);
+        // ========================================
+        // 2. FALLBACK TO TWILIO (PAID)
+        // ========================================
+        const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
+        const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
+        const TWILIO_WHATSAPP_NUMBER = Deno.env.get("TWILIO_WHATSAPP_NUMBER");
 
-            const response = await fetch(N8N_WHATSAPP_WEBHOOK_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    to: to,
-                    message: message
-                }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                console.error('❌ n8n error:', data);
-                return new Response(JSON.stringify({ error: 'Failed to send WhatsApp via n8n', details: data }), {
-                    status: 500,
-                    headers: { ...corsHeaders, "Content-Type": "application/json" }
-                });
-            }
-
-            console.log('✅ WhatsApp sent successfully via n8n:', data.messageId);
-            return new Response(JSON.stringify({ success: true, messageId: data.messageId }), {
+        if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_WHATSAPP_NUMBER) {
+            const errorReason = !USE_N8N ? "Twilio credentials missing and n8n disabled" : "n8n failed and Twilio credentials missing";
+            console.error(`❌ [Fallback] ${errorReason}`);
+            return new Response(JSON.stringify({ 
+                error: errorReason, 
+                n8nError: lastError 
+            }), {
+                status: 500,
                 headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
+        }
 
-        } else {
-            // ========================================
-            // TWILIO PATH (LEGACY - PAID)
-            // ========================================
-            const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
-            const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
-            const TWILIO_WHATSAPP_NUMBER = Deno.env.get("TWILIO_WHATSAPP_NUMBER");
-
-            if (!TWILIO_WHATSAPP_NUMBER) {
-                console.error('❌ TWILIO_WHATSAPP_NUMBER not configured');
-                return new Response(JSON.stringify({ error: 'WhatsApp number not configured' }), {
-                    status: 500,
-                    headers: { ...corsHeaders, "Content-Type": "application/json" }
-                });
-            }
-
+        try {
             const credentials = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
-
-            // Ensure phone number has whatsapp: prefix
             const whatsappTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
             const whatsappFrom = TWILIO_WHATSAPP_NUMBER.startsWith('whatsapp:')
                 ? TWILIO_WHATSAPP_NUMBER
                 : `whatsapp:${TWILIO_WHATSAPP_NUMBER}`;
 
-            console.log(`📤 [Twilio] Sending WhatsApp from ${whatsappFrom} to ${whatsappTo}`);
+            console.log(`📤 [Twilio] Falling back: Sending WhatsApp from ${whatsappFrom} to ${whatsappTo}`);
 
             const response = await fetch(
                 `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
@@ -148,14 +146,30 @@ serve(async (req) => {
 
             if (!response.ok) {
                 console.error('❌ Twilio error:', data);
-                return new Response(JSON.stringify({ error: 'Failed to send WhatsApp', details: data }), {
+                return new Response(JSON.stringify({ 
+                    error: 'Both n8n and Twilio failed', 
+                    twilioError: data, 
+                    n8nError: lastError 
+                }), {
                     status: 500,
                     headers: { ...corsHeaders, "Content-Type": "application/json" }
                 });
             }
 
-            console.log('✅ WhatsApp sent successfully via Twilio:', data.sid);
-            return new Response(JSON.stringify({ success: true, messageId: data.sid }), {
+            console.log('✅ WhatsApp successfully sent via Twilio Fallback:', data.sid);
+            return new Response(JSON.stringify({ 
+                success: true, 
+                provider: 'twilio', 
+                fallback: true, 
+                messageId: data.sid 
+            }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+
+        } catch (error) {
+            console.error('❌ Twilio fallback crash:', error);
+            return new Response(JSON.stringify({ error: error.message, n8nError: lastError }), {
+                status: 500,
                 headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
         }

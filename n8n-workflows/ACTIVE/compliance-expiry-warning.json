@@ -1,0 +1,233 @@
+{
+  "name": "Compliance Expiry Warning",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger - Every Monday 9 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "staff",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "keyValue": "active"
+            }
+          ]
+        }
+      },
+      "id": "get-all-staff",
+      "name": "Get All Active Staff",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "Vl1ZMO9tnqpJkJDe",
+          "name": "ACG-Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst now = new Date();\nconst warningDays = 30;\nconst expiringStaff = [];\n\nfor (const item of items) {\n  const staff = item.json;\n  const documents = staff.compliance_documents || {};\n  \n  const docTypes = [\n    { key: \"dbs_expiry\", name: \"DBS Check\" },\n    { key: \"right_to_work_expiry\", name: \"Right to Work\" },\n    { key: \"care_certificate_expiry\", name: \"Care Certificate\" },\n    { key: \"first_aid_expiry\", name: \"First Aid Certificate\" }\n  ];\n  \n  for (const docType of docTypes) {\n    const expiryDate = documents[docType.key];\n    \n    if (expiryDate) {\n      const expiry = new Date(expiryDate);\n      const daysUntilExpiry = Math.floor((expiry - now) / (1000 * 60 * 60 * 24));\n      \n      if (daysUntilExpiry > 0 && daysUntilExpiry <= warningDays) {\n        expiringStaff.push({\n          staff_id: staff.id,\n          staff_name: staff.first_name,\n          phone: staff.phone,\n          email: staff.email,\n          document_type: docType.name,\n          expiry_date: expiry.toLocaleDateString(\"en-GB\", { day: \"numeric\", month: \"long\", year: \"numeric\" }),\n          days_remaining: daysUntilExpiry,\n          upload_link: \"https://agilecaremanagement.netlify.app/staff/documents\"\n        });\n      }\n    }\n  }\n}\n\nreturn expiringStaff.map(staff => ({ json: staff }));"
+      },
+      "id": "check-document-expiry",
+      "name": "Check Document Expiry (30 Days)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.staff_id }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "filter-expiring-docs",
+      "name": "Filter Staff with Expiring Docs",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "683816761472557",
+        "recipientPhoneNumber": "={{ $json.phone }}",
+        "template": "complianceexpirywarning",
+        "components": {
+          "component": [
+            {
+              "bodyParameters": {
+                "parameter": [
+                  {
+                    "text": "={{ $json.staff_name }}"
+                  },
+                  {
+                    "text": "={{ $json.document_type }}"
+                  },
+                  {
+                    "text": "={{ $json.expiry_date }}"
+                  },
+                  {
+                    "text": "={{ $json.days_remaining }}"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "button",
+              "index": 0,
+              "buttonParameters": {
+                "parameter": [
+                  {
+                    "text": "={{ $json.upload_link }}"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "send-whatsapp-warning",
+      "name": "Send WhatsApp Warning",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [1120, 200],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "M8TtYksLuUl3SLo4",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "tableId": "notifications",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "staff_id",
+              "fieldValue": "={{ $json.staff_id }}"
+            },
+            {
+              "fieldId": "type",
+              "fieldValue": "complianceexpirywarning"
+            },
+            {
+              "fieldId": "recipient",
+              "fieldValue": "={{ $json.phone }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "sent"
+            },
+            {
+              "fieldId": "message_id",
+              "fieldValue": "={{ $json.messages[0].id }}"
+            },
+            {
+              "fieldId": "metadata",
+              "fieldValue": "={{ JSON.stringify({ document_type: $json.document_type, expiry_date: $json.expiry_date, days_remaining: $json.days_remaining }) }}"
+            }
+          ]
+        }
+      },
+      "id": "log-notification",
+      "name": "Log Notification",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1340, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "Vl1ZMO9tnqpJkJDe",
+          "name": "ACG-Supabase"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger - Every Monday 9 AM": {
+      "main": [
+        [
+          {
+            "node": "Get All Active Staff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Active Staff": {
+      "main": [
+        [
+          {
+            "node": "Check Document Expiry (30 Days)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Document Expiry (30 Days)": {
+      "main": [
+        [
+          {
+            "node": "Filter Staff with Expiring Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Staff with Expiring Docs": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Warning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Warning": {
+      "main": [
+        [
+          {
+            "node": "Log Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null
+}

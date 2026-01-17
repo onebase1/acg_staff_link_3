@@ -1,0 +1,388 @@
+// =====================================================
+// DAILY AGENCY DIGEST - Edge Function
+// =====================================================
+// Purpose: Send daily email + WhatsApp digest to agency owners
+// Schedule: Daily at 7:00 AM
+// Cron: 0 7 * * *
+// =====================================================
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { loadTemplate } from "../_shared/templateLoader.ts";
+import { getBranding } from "../_shared/brandingHelper.ts";
+import { logNotificationSent, logNotificationFailed } from "../_shared/notificationLogger.ts";
+
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+// Deep link base URL
+const APP_BASE_URL = "https://app.agilecaremanagement.co.uk";
+
+serve(async (req) => {
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Parse request (can be called manually or via cron)
+    const { agency_id, report_date, test_mode = false } = await req.json().catch(() => ({}));
+
+    const targetDate = report_date || new Date().toISOString().split('T')[0];
+
+    // Get agencies to process
+    let agenciesToProcess = [];
+
+    if (agency_id) {
+      // Single agency (manual trigger or test)
+      const { data: agency } = await supabase
+        .from("agencies")
+        .select("id, name, contact_email, phone, email_notifications, whatsapp_global_notifications")
+        .eq("id", agency_id)
+        .single();
+
+      if (agency) agenciesToProcess = [agency];
+    } else {
+      // All agencies with email notifications enabled (cron mode)
+      const { data: agencies } = await supabase
+        .from("agencies")
+        .select("id, name, contact_email, phone, email_notifications, whatsapp_global_notifications")
+        .eq("email_notifications", true);
+
+      agenciesToProcess = agencies || [];
+    }
+
+    if (agenciesToProcess.length === 0) {
+      return new Response(
+        JSON.stringify({ message: "No agencies to process" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const results = [];
+
+    // Process each agency
+    for (const agency of agenciesToProcess) {
+      try {
+        // Get daily report data from RPC function
+        const { data: reportData, error: reportError } = await supabase
+          .rpc("get_daily_agency_report", {
+            p_agency_id: agency.id,
+            p_report_date: targetDate,
+          });
+
+        if (reportError) {
+          console.error(`Error fetching report for ${agency.name}:`, reportError);
+          results.push({ agency: agency.name, status: "error", error: reportError.message });
+          continue;
+        }
+
+        // Skip if no shifts today (optional: can configure per agency)
+        if (!reportData.stats.totalShifts || reportData.stats.totalShifts === 0) {
+          console.log(`No shifts for ${agency.name}, skipping report`);
+          results.push({ agency: agency.name, status: "skipped", reason: "no_shifts" });
+          continue;
+        }
+
+        // Get agency branding
+        const branding = await getBranding(supabase, agency.id);
+
+        // Send Email
+        if (agency.email_notifications && agency.contact_email) {
+          await sendDailyEmail(
+            supabase,
+            agency,
+            reportData,
+            branding,
+            targetDate,
+            test_mode
+          );
+        }
+
+        // Send WhatsApp
+        if (agency.whatsapp_global_notifications && agency.phone) {
+          await sendDailyWhatsApp(
+            supabase,
+            agency,
+            reportData,
+            targetDate,
+            test_mode
+          );
+        }
+
+        results.push({ agency: agency.name, status: "success" });
+      } catch (error) {
+        console.error(`Error processing ${agency.name}:`, error);
+        results.push({ agency: agency.name, status: "error", error: error.message });
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        message: "Daily agency digest sent",
+        date: targetDate,
+        processed: results.length,
+        results,
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Daily digest error:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+});
+
+// =====================================================
+// SEND DAILY EMAIL
+// =====================================================
+
+async function sendDailyEmail(
+  supabase: any,
+  agency: any,
+  reportData: any,
+  branding: any,
+  reportDate: string,
+  testMode: boolean
+) {
+  try {
+    // Format date for display
+    const dateObj = new Date(reportDate);
+    const formattedDate = dateObj.toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    // Process clients and shifts for template
+    const clients = reportData.clients?.map((client: any) => ({
+      name: client.name,
+      shifts: client.shifts?.map((shift: any) => ({
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        role: formatRole(shift.role),
+        staffName: shift.staffName,
+        status: shift.status,
+      })) || [],
+    })) || [];
+
+    // Process action items
+    const criticalAlerts = reportData.actionItems?.criticalAlerts?.map((alert: any) =>
+      alert.message
+    ) || [];
+
+    const warningAlerts = reportData.actionItems?.warningAlerts?.map((alert: any) =>
+      alert.message
+    ) || [];
+
+    const hasAlerts = criticalAlerts.length > 0 || warningAlerts.length > 0;
+
+    // Process pending timesheets
+    const pendingTimesheets = reportData.pendingTimesheets?.map((ts: any) => ({
+      clientName: ts.clientName,
+      staffName: ts.staffName,
+      shiftDate: new Date(ts.shiftDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+      shiftTime: ts.shiftTime,
+      approvalLink: `${APP_BASE_URL}/timesheets/${ts.id}`,
+    })) || [];
+
+    // Template variables
+    const variables = {
+      agencyName: agency.name,
+      reportDate: formattedDate,
+      primaryColor: branding.primaryColor || "#2563eb",
+      secondaryColor: branding.secondaryColor || "#7c3aed",
+      totalShifts: reportData.stats.totalShifts || 0,
+      staffUtilization: reportData.stats.staffUtilization || 0,
+      notificationsSent: reportData.stats.notificationsSent || 0,
+      hasAlerts,
+      criticalAlerts,
+      warningAlerts,
+      clients,
+      pendingTimesheets: pendingTimesheets.length > 0 ? pendingTimesheets : null,
+      dashboardUrl: `${APP_BASE_URL}/dashboard/${agency.id}`,
+      approveTimesheetsUrl: `${APP_BASE_URL}/timesheets?status=pending`,
+      agencyPhone: agency.phone || "",
+      agencyEmail: agency.contact_email || "",
+      preferencesUrl: `${APP_BASE_URL}/settings/notifications`,
+      supportUrl: `${APP_BASE_URL}/support`,
+    };
+
+    // Load and populate template
+    const htmlContent = loadTemplate("daily_agency_digest", variables);
+
+    // Send via Resend
+    const emailResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: `${agency.name} <noreply@agilecaremanagement.co.uk>`,
+        to: testMode ? ["test@example.com"] : [agency.contact_email],
+        subject: `☀️ Daily Digest - ${formattedDate}`,
+        html: htmlContent,
+      }),
+    });
+
+    const emailResult = await emailResponse.json();
+
+    if (emailResponse.ok) {
+      await logNotificationSent(supabase, {
+        agency_id: agency.id,
+        recipient_email: agency.contact_email,
+        recipient_name: agency.name,
+        notification_type: "daily_agency_digest",
+        channel: "email",
+        provider: "resend",
+        provider_message_id: emailResult.id,
+      });
+      console.log(`✅ Daily email sent to ${agency.name}`);
+    } else {
+      throw new Error(`Resend API error: ${emailResult.message}`);
+    }
+  } catch (error) {
+    await logNotificationFailed(supabase, {
+      agency_id: agency.id,
+      recipient_email: agency.contact_email,
+      notification_type: "daily_agency_digest",
+      channel: "email",
+      error_message: error.message,
+    });
+    console.error(`❌ Email failed for ${agency.name}:`, error);
+  }
+}
+
+// =====================================================
+// SEND DAILY WHATSAPP
+// =====================================================
+
+async function sendDailyWhatsApp(
+  supabase: any,
+  agency: any,
+  reportData: any,
+  reportDate: string,
+  testMode: boolean
+) {
+  try {
+    // Check rate limits
+    const { data: rateLimitCheck } = await supabase
+      .rpc("is_rate_limited", { p_phone_number: agency.phone });
+
+    if (rateLimitCheck) {
+      console.log(`⚠️ Rate limited: ${agency.phone}`);
+      return;
+    }
+
+    // Get first client with shifts (typically will be main client)
+    const mainClient = reportData.clients?.[0];
+    if (!mainClient) return;
+
+    // Count shifts by role
+    const hcaShifts = mainClient.shifts?.filter((s: any) =>
+      s.role.toLowerCase().includes("hca") || s.role.toLowerCase().includes("healthcare_assistant")
+    ) || [];
+    const rnShifts = mainClient.shifts?.filter((s: any) =>
+      s.role.toLowerCase().includes("rn") || s.role.toLowerCase().includes("nurse")
+    ) || [];
+
+    // Get staff names for HCA day shifts (sample)
+    const hcaDayStaff = hcaShifts
+      .filter((s: any) => s.shiftType === "day")
+      .map((s: any) => s.staffName.split(" ")[0]) // First names only
+      .slice(0, 3) // Max 3 names
+      .join(", ");
+
+    const hcaNightStaff = hcaShifts
+      .filter((s: any) => s.shiftType === "night")
+      .map((s: any) => s.staffName.split(" ")[0])
+      .slice(0, 2)
+      .join(", ");
+
+    const rnDayStaff = rnShifts
+      .filter((s: any) => s.shiftType === "day")
+      .map((s: any) => s.staffName)
+      .slice(0, 2)
+      .join(", ");
+
+    // Count action items
+    const criticalCount = reportData.actionItems?.criticalAlerts?.length || 0;
+    const warningCount = reportData.actionItems?.warningAlerts?.length || 0;
+    const totalActions = criticalCount + warningCount;
+
+    // Sample action items (max 3)
+    const actionItems = [
+      ...(reportData.actionItems?.criticalAlerts?.map((a: any) => `• ${a.message}`) || []),
+      ...(reportData.actionItems?.warningAlerts?.map((a: any) => `• ${a.message}`) || []),
+    ].slice(0, 3);
+
+    // Build WhatsApp message
+    const message = `🌅 Good morning! Today's shifts for ${mainClient.name}:
+
+✅ ${reportData.stats.confirmedShifts} shifts confirmed
+📋 HCA Day (08:00-20:00): ${hcaDayStaff || "TBA"}
+📋 HCA Night (20:00-08:00): ${hcaNightStaff || "TBA"}
+📋 RN Day: ${rnDayStaff || "TBA"}
+
+${totalActions > 0 ? `⚠️ ${totalActions} action item${totalActions > 1 ? "s" : ""}:
+${actionItems.join("\n")}
+
+` : ""}📱 View full details:
+${APP_BASE_URL}/dashboard/${agency.id}
+
+---
+Reply STOP to unsubscribe from daily updates`;
+
+    // Character count check (should be under 1024)
+    if (message.length > 1024) {
+      console.warn(`⚠️ WhatsApp message too long: ${message.length} chars`);
+    }
+
+    // Send WhatsApp via send-whatsapp function
+    const whatsappResponse = await supabase.functions.invoke("send-whatsapp", {
+      body: {
+        to: testMode ? "+1234567890" : agency.phone,
+        message,
+        notification_type: "daily_agency_digest",
+        agency_id: agency.id,
+      },
+    });
+
+    if (whatsappResponse.error) {
+      throw whatsappResponse.error;
+    }
+
+    // Increment rate limit
+    await supabase.rpc("increment_rate_limit", {
+      p_phone_number: agency.phone,
+    });
+
+    console.log(`✅ Daily WhatsApp sent to ${agency.name}`);
+  } catch (error) {
+    await logNotificationFailed(supabase, {
+      agency_id: agency.id,
+      recipient_phone: agency.phone,
+      notification_type: "daily_agency_digest",
+      channel: "whatsapp",
+      error_message: error.message,
+    });
+    console.error(`❌ WhatsApp failed for ${agency.name}:`, error);
+  }
+}
+
+// =====================================================
+// HELPER FUNCTIONS
+// =====================================================
+
+function formatRole(role: string): string {
+  const roleMap: { [key: string]: string } = {
+    healthcare_assistant: "HCA",
+    registered_nurse: "RN",
+    senior_care_assistant: "Senior HCA",
+    care_home_manager: "Manager",
+  };
+
+  return roleMap[role] || role.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+}
