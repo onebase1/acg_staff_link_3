@@ -69,3 +69,22 @@ n8n-workflows/n8n-MASTER/
 n8n-workflows/**/*credentials*.json
 n8n-workflows/**/*secret*.json
 n8n-workflows/**/*api-key*.json
+
+# Local development scripts with hardcoded credentials
+.claude/settings.local.json
+apply-rls-direct.mjs
+apply-rls-policies.js
+add-pending-broadcast.mjs
+**/check_*.js
+**/apply_*.js
+debug-whatsapp.mjs
+debug_trigger.js
+cron_trigger.js
+deploy-agency-reports.mjs
+check-cron-job.mjs
+deploy-agency-reports.mjs
+fix-dashboard-rls.mjs
+
+# n8n workflow files may contain credentials
+n8n-workflows/misc/daily-shift-reminders.json
+n8n-workflows/misc/*-reminders.json

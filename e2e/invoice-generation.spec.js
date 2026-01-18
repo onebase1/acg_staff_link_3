@@ -7,7 +7,7 @@ test.describe('Invoice Generation Flow - Visual Test', () => {
     
     // Login as Dominion admin
     await page.fill('input[type="email"]', 'info@guest-glow.com');
-    await page.fill('input[type="password"]', 'Dominion#2025');
+    await page.fill('input[type="password"]', process.env.TEST_PASSWORD || 'test-password');
     await page.click('button[type="submit"]');
     
     // Wait for navigation after login

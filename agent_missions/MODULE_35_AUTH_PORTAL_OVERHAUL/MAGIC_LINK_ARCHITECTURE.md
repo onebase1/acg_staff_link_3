@@ -461,7 +461,7 @@ Content-Type: application/json
   "success": true,
   "data": {
     "session": {
-      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "access_token": "YOUR_SUPABASE_JWT_TOKEN.",
       "refresh_token": "...",
       "expires_in": 3600,
       "user": {

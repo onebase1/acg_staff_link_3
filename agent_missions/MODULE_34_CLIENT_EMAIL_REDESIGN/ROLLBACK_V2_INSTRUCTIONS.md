@@ -85,7 +85,7 @@ Run these tests:
 ```bash
 # Test 1: Check function exists
 curl -s "https://rzzxxkppkiasuouuglaf.supabase.co/functions/v1/notification-digest-engine" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Authorization: Bearer YOUR_SUPABASE_JWT_TOKEN." \
   -H "Content-Type: application/json" \
   -d '{"test":true}'
 

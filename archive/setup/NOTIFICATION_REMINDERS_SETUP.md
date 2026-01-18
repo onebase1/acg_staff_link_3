@@ -114,7 +114,7 @@ curl -X POST "https://rzzxxkppkiasuouuglaf.supabase.co/functions/v1/post-shift-t
    - Schedule: Every hour (0 * * * *)
    - Headers:
      ```
-     Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo
+     Authorization: Bearer YOUR_SUPABASE_JWT_TOKEN
      Content-Type: application/json
      ```
    - Body: `{}`

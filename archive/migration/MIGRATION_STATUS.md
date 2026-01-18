@@ -92,7 +92,7 @@
 - ⚠️ **TODO**: Update environment variables in `.env.local`:
   ```
   VITE_SUPABASE_URL=https://rzzxxkppkiasuouuglaf.supabase.co
-  VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+  VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_JWT_TOKEN.
   ```
 - ⚠️ **TODO**: Remove `@base44/sdk` from `package.json` (after full migration)
 
@@ -157,7 +157,7 @@
 Create `.env.local` file in project root:
 ```env
 VITE_SUPABASE_URL=https://rzzxxkppkiasuouuglaf.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1OTYwNDgsImV4cCI6MjA3NzE3MjA0OH0.eYyjJTxHeYSGJEmDhOEq-b1v473kg-OqHhAtC4BBHrY
+VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_JWT_TOKEN
 ```
 
 ### Supabase Storage Buckets

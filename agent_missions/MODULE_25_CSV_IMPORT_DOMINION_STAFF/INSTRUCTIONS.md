@@ -430,7 +430,7 @@ node scripts/validateImport.mjs
 **Set environment variable first:**
 ```bash
 # Windows PowerShell
-$env:SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.YXKJm4_Xu0j-h6K0WD2jEq8Y0-kJCL4HVjNQFyWxqOo"
+$env:SUPABASE_SERVICE_ROLE_KEY="YOUR_SUPABASE_JWT_TOKEN"
 
 # Run import
 node scripts/importDominionStaff.mjs
