@@ -12,7 +12,7 @@
                     ]
                 }
             },
-            "id": "e43e1484-ea95-4d12-9426-0229d3cd9c75",
+            "id": "trigger-daily-7am",
             "name": "Schedule Trigger (7 AM Daily)",
             "type": "n8n-nodes-base.scheduleTrigger",
             "typeVersion": 1.2,
@@ -52,7 +52,7 @@
                 },
                 "options": {}
             },
-            "id": "ec921bb7-81ec-493b-97aa-25779e715fa3",
+            "id": "get-agencies-ws",
             "name": "Get WhatsApp Agencies",
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.2,
@@ -74,7 +74,7 @@
                         },
                         {
                             "name": "p_report_date",
-                            "value": "={{ $now.toFormat('yyyy-MM-dd') }}"
+                            "value": "={{ $now.setZone('Europe/London').toFormat('yyyy-MM-dd') }}"
                         }
                     ]
                 },
@@ -93,7 +93,7 @@
                 },
                 "options": {}
             },
-            "id": "5db3a8f1-c23d-4e9b-97aa-25779e715fa4",
+            "id": "get-report-rpc",
             "name": "Get Report Data",
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.2,
@@ -137,7 +137,7 @@
                 },
                 "options": {}
             },
-            "id": "ec921bb7-81ec-493b-97aa-25779e715fa5",
+            "id": "get-recipients-ws",
             "name": "Get Recipients",
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.2,
@@ -148,9 +148,9 @@
         },
         {
             "parameters": {
-                "jsCode": "const reportData = $node[\"Get Report Data\"].json;\nconst recipients = $input.all();\nconst agency = $node[\"Get WhatsApp Agencies\"].json;\n\n// Format date for template\nconst now = new Date();\nconst dateLabel = now.toLocaleDateString('en-GB', { \n  weekday: 'short', \n  day: 'numeric', \n  month: 'short' \n});\n\n// Format alerts (Variable 6 - Part 1)\nconst alerts = [\n  ...(reportData.actionItems?.criticalAlerts || []),\n  ...(reportData.actionItems?.warningAlerts || []),\n].slice(0, 3);\n\nlet alertText = alerts.length > 0\n  ? alerts.map(a => `• ${a.message}`).join('\\n')\n  : \"No urgent actions today.\";\n\n// Format Shift Schedule (Variable 6 - Part 2)\nlet scheduleText = \"\";\nif (reportData.clients && reportData.clients.length > 0) {\n  scheduleText = \"\\n\\n📍 *Shift Schedule*:\\n\";\n  reportData.clients.forEach(client => {\n    scheduleText += `\\n*${client.name.toUpperCase()}*\\n`;\n    \n    const confirmed = (client.shifts || []).filter(s => s.status === 'confirmed');\n    const assigned = (client.shifts || []).filter(s => s.status === 'assigned');\n    const open = (client.shifts || []).filter(s => s.status === 'open');\n    \n    if (confirmed.length > 0) {\n      scheduleText += `✅ ${confirmed.length} Confirmed\\n`;\n      confirmed.forEach(s => {\n        const time = s.startTime ? s.startTime.substring(0, 5) : '??:??';\n        const name = s.staffName ? s.staffName.split(' ')[0].toUpperCase() : 'STAFF';\n        scheduleText += `  └ ${time} ${name}\\n`;\n      });\n    }\n\n    if (assigned.length > 0) {\n      scheduleText += `🤝 ${assigned.length} Assigned\\n`;\n    }\n    \n    if (open.length > 0) {\n      scheduleText += `📋 ${open.length} Open Shifts\\n`;\n    }\n  });\n}\n\n// Combine for Variable 6\nconst combinedContent = alertText + scheduleText;\n\n// If no specific recipients, check if we should fallback to agency phone\nlet finalRecipients = recipients.map(r => r.json);\n\nif (finalRecipients.length === 0 && agency.phone) {\n  finalRecipients = [{\n    full_name: agency.name,\n    phone: agency.phone\n  }];\n}\n\nreturn finalRecipients.map(recipient => {\n  const nameToUse = recipient.full_name || agency.name || 'Admin';\n  return {\n    json: {\n      recipient_name: nameToUse.split(' ')[0],\n      date_label: dateLabel,\n      total_shifts: reportData.stats.totalShifts || 0,\n      utilization: reportData.stats.staffUtilization || 0,\n      pending_workflows: reportData.stats.pendingWorkflowsCount || 0,\n      combined_content: combinedContent,  // This goes into {{6}}\n      phone: recipient.phone\n    }\n  };\n});"
+                "jsCode": "const reportData = $node[\"Get Report Data\"].json;\nconst recipients = $input.all();\n\n// Format date - Sun 18 Jan (Exactly matching Meta sample - NO COMMA)\nconst now = new Date();\nconst dateLabel = now.toLocaleDateString('en-GB', { \n  weekday: 'short', \n  day: 'numeric', \n  month: 'short' \n});\n\nlet scheduleParts = [];\n\nconst topAlert = [\n  ...(reportData.actionItems?.criticalAlerts || []),\n].filter(a => !a.message.includes(reportData.stats?.pendingWorkflows))[0];\n\nif (topAlert) {\n  scheduleParts.push(`Alert: ${topAlert.message.replace(/[^\\x00-\\x7F]/g, \"\")}`);\n}\n\nif (reportData.clients && reportData.clients.length > 0) {\n  reportData.clients.forEach(client => {\n    const confirmed = (client.shifts || []).filter(s => s.status === 'confirmed').length;\n    const open = (client.shifts || []).filter(s => s.status === 'open').length;\n    \n    // PURE ASCII FORMAT: CLIENT: 2C / 1O\n    let line = `${client.name.toUpperCase()}: ${confirmed}C`;\n    if (open > 0) line += ` / ${open}O`;\n    scheduleParts.push(line);\n  });\n}\n\n// Flat string with pipe separator - NO NEWLINES\nlet keyUpdates = scheduleParts.join(' | ');\nif (!keyUpdates) keyUpdates = \"All systems operational\";\n\nreturn recipients.map(item => {\n  const res = item.json;\n  const rawName = (res.full_name || 'Admin').toString();\n  const displayName = rawName.split(/[, ]/)[0].trim();\n  \n  return {\n    json: {\n      recipient_name: String(displayName).replace(/[^\\x00-\\x7F]/g, \"\").substring(0, 30),\n      date_label: String(dateLabel).replace(/[^\\x00-\\x7F]/g, \"\"),\n      total_shifts: String(reportData.stats?.totalShifts || 0),\n      utilization: String(reportData.stats?.staffUtilization || 0) + '%', \n      pending_workflows: String(reportData.stats?.pendingWorkflows || 0),\n      schedule_summary: String(keyUpdates).replace(/[^\\x00-\\x7F]/g, \"\").substring(0, 800),\n      phone: res.phone.toString()\n    }\n  };\n});"
             },
-            "id": "eba7b878-a5d0-40d6-bb22-a0c0631549fe",
+            "id": "format-digest-code",
             "name": "Format Digest Data",
             "type": "n8n-nodes-base.code",
             "typeVersion": 2,
@@ -162,7 +162,7 @@
         {
             "parameters": {
                 "phoneNumberId": "683816761472557",
-                "recipientPhoneNumber": "={{ $json.phone }}",
+                "recipientPhoneNumber": "={{ $json.phone.toString().replace(/\\D/g, '') }}",
                 "template": "agency_digest|en_GB",
                 "components": {
                     "component": [
@@ -185,7 +185,7 @@
                                         "text": "={{ $json.pending_workflows }}"
                                     },
                                     {
-                                        "text": "={{ $json.combined_content }}"
+                                        "text": "={{ $json.schedule_summary }}"
                                     }
                                 ]
                             }
@@ -193,7 +193,7 @@
                     ]
                 }
             },
-            "id": "3d8db2bf-0d67-43b5-8063-10387aa4c7af",
+            "id": "send-ws-digest-node",
             "name": "Send WhatsApp Digest",
             "type": "n8n-nodes-base.whatsApp",
             "typeVersion": 1,

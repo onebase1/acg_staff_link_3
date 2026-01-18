@@ -141,6 +141,7 @@ import RateManagement from "./RateManagement";
 
 import ClientManagement from "./ClientManagement";
 import LiveRota from "./LiveRota";
+import DailyReportView from "./DailyReportView";
 
 import Login from "./Login";
 import ResetPassword from "./ResetPassword";
@@ -291,6 +292,7 @@ const PAGES = {
 
     ClientManagement: ClientManagement,
     LiveRota: LiveRota,
+    DailyReportView: DailyReportView,
 
     ResetPassword: ResetPassword,
     AuthMagicLink: AuthMagicLink,
@@ -340,6 +342,7 @@ function PagesContent() {
                     <Route path="/terms" element={<Terms />} />
                     <Route path="/contact" element={<Contact />} />
                     <Route path="/book-demo" element={<Contact />} />
+                    <Route path="/DailyReportView" element={<DailyReportView />} />
                 </Route>
 
                 <Route path="/auth/magic" element={<AuthMagicLink />} />

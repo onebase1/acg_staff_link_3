@@ -14,14 +14,14 @@ Please create a new **Utility** template in the Meta Business Suite with the fol
 ### 3. Body Text
 Hi {{1}}, ☀️
 
-Here is your summary for {{2}}:
+Here is your agency summary for {{2}}:
 
-📊 **Quick Stats**:
+📊 *Quick Stats*:
 • Shifts Today: {{3}}
-• Staff Utilization: {{4}}%
-• Pending Workflows: {{5}}
+• Staff Utilization: {{4}}
+• Pending Workflow: {{5}}
 
-⚠️ **Urgent Actions**:
+📍 *Key Updates & Schedule*:
 {{6}}
 
 Click below to manage your operations:
@@ -41,10 +41,13 @@ Create two "Visit Website" buttons:
 
 ---
 
-### Variable Mapping Guide (for n8n mapping later):
-*   `{{1}}`: Recipient First Name
-*   `{{2}}`: Date (e.g., Sat, 17 Jan)
-*   `{{3}}`: Total Shifts Count
-*   `{{4}}`: Staff Utilization %
-*   `{{5}}`: Pending Workflows Count
-*   `{{6}}`: Formatted list of top alerts
+### Variable Mapping Guide (Use these as Sample Values):
+*   `{{1}}`: `Admin` (Recipient Name)
+*   `{{2}}`: `Sun 18 Jan` (Formatted Date)
+*   `{{3}}`: `12` (Total Shifts Count)
+*   `{{4}}`: `85%` (Staff Utilization with suffix)
+*   `{{5}}`: `3` (Pending Workflows Count)
+*   `{{6}}`: `• Critical Alert\n\nShift Schedule:\nRICHMOND COURT\n- Confirmed` (Combined alerts and schedule)
+
+> [!IMPORTANT]
+> When creating the template in Meta, ensure you provide **Sample Values** that look like the examples above. Meta uses these to verify your template category (Utility). If you don't include the `%` in the sample for `{{4}}`, they might reject it later when the n8n data includes it.

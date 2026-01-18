@@ -167,7 +167,8 @@ serve(async (req) => {
             reportData,
             targetDate,
             test_mode,
-            recipient
+            recipient,
+            APP_BASE_URL // Pass the base URL for link generation
           );
           if (success) successfulWhatsApps++;
         }
@@ -336,7 +337,8 @@ async function sendDailyWhatsApp(
   reportData: any,
   reportDate: string,
   testMode: boolean,
-  recipient: { phone: string; full_name: string }
+  recipient: { id?: string; phone: string; full_name: string },
+  appBaseUrl: string
 ): Promise<boolean> {
   try {
     const recipientPhone = recipient.phone;
@@ -360,20 +362,47 @@ async function sendDailyWhatsApp(
       month: "short",
     });
 
-    // Process alerts for template parameter 6
-    const alerts = [
-      ...(reportData.actionItems?.criticalAlerts || []),
-      ...(reportData.actionItems?.warningAlerts || [])
-    ].slice(0, 3);
+    // 🔗 Generate Short Link for the Rich Web View
+    const targetUrl = `${appBaseUrl}/DailyReportView?token=`; // We'll append the slug after creation
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    const { data: linkRecord, error: linkError } = await supabase
+      .from("short_links")
+      .insert({
+        target_url: "", // Temporary, will update after ID generation if needed, but ID is default
+        agency_id: agency.id,
+        recipient_id: recipient.id,
+        expires_at: expiresAt.toISOString(),
+      })
+      .select("id")
+      .single();
+
+    if (linkError) {
+      console.error("❌ Error creating short link record:", linkError);
+      // Fallback: we'll continue without the rich link or use a long one
+    }
+
+    const shortId = linkRecord?.id;
+    // Update the record with the actual URL if your logic requires absolute target
+    // In our case, DailyReportView just needs the token=ID.
+    const finalTargetUrl = `${appBaseUrl}/DailyReportView?token=${shortId}`;
+    await supabase.from("short_links").update({ target_url: finalTargetUrl }).eq("id", shortId);
+
+    const shortUrl = `${SUPABASE_URL}/functions/v1/url-shortener/${shortId}`;
+
+    // Process alerts for template parameter 6 - now a "TEASER"
+    const totalAlerts = (reportData.actionItems?.criticalAlerts?.length || 0) + 
+                       (reportData.actionItems?.warningAlerts?.length || 0);
     
-    let alertText = alerts.length > 0
-      ? alerts.map((a: any) => `• ${a.message}`).join('\n')
-      : "No urgent actions today.";
+    let teaserText = totalAlerts > 0
+      ? `🚨 ${totalAlerts} active alerts requiring review.`
+      : "✅ No critical issues reported today.";
 
     // Trigger n8n Meta-Workflow
     const N8N_DIGEST_WEBHOOK = "https://n8n.dreampathai.co.uk/webhook/agency-digest-whatsapp-v3";
     
-    console.log(`📤 Triggering n8n webhook: ${N8N_DIGEST_WEBHOOK}`);
+    console.log(`📤 Triggering n8n webhook with short link: ${shortUrl}`);
     
     const response = await fetch(N8N_DIGEST_WEBHOOK, {
       method: 'POST',
@@ -386,7 +415,8 @@ async function sendDailyWhatsApp(
           phone: testMode ? "+447557679989" : recipient.phone,
           full_name: recipient.full_name
         },
-        alert_text: alertText
+        alert_text: teaserText,
+        report_url: shortUrl // New parameter for n8n to map to a button or end of message
       })
     });
 
