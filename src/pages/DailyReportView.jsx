@@ -48,7 +48,7 @@ export default function DailyReportView() {
             console.log("🔍 [DailyReportView] Fetching report data for agency:", linkData.agency_id, "date:", targetDate);
             const { data, error } = await supabase.rpc('get_daily_agency_report', {
                 p_agency_id: linkData.agency_id,
-                p_date: targetDate
+                p_report_date: targetDate
             });
 
             if (error) {
