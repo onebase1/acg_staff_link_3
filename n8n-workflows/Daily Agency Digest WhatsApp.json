@@ -1,0 +1,276 @@
+{
+    "name": "Daily Agency Digest WhatsApp",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "cronExpression",
+                            "expression": "0 7 * * *"
+                        }
+                    ]
+                }
+            },
+            "id": "e43e1484-ea95-4d12-9426-0229d3cd9c75",
+            "name": "Schedule Trigger (7 AM Daily)",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                -256,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://rzzxxkppkiasuouuglaf.supabase.co/rest/v1/agencies",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "select",
+                            "value": "id,name,phone,whatsapp_global_notifications"
+                        },
+                        {
+                            "name": "whatsapp_global_notifications",
+                            "value": "eq.true"
+                        }
+                    ]
+                },
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo"
+                        },
+                        {
+                            "name": "Authorization",
+                            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "ec921bb7-81ec-493b-97aa-25779e715fa3",
+            "name": "Get WhatsApp Agencies",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                -48,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://rzzxxkppkiasuouuglaf.supabase.co/rest/v1/rpc/get_daily_agency_report",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "p_agency_id",
+                            "value": "={{ $json.id }}"
+                        },
+                        {
+                            "name": "p_report_date",
+                            "value": "={{ $now.toFormat('yyyy-MM-dd') }}"
+                        }
+                    ]
+                },
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo"
+                        },
+                        {
+                            "name": "Authorization",
+                            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "5db3a8f1-c23d-4e9b-97aa-25779e715fa4",
+            "name": "Get Report Data",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                160,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://rzzxxkppkiasuouuglaf.supabase.co/rest/v1/profiles",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "select",
+                            "value": "full_name,phone,report_whatsapp_enabled"
+                        },
+                        {
+                            "name": "agency_id",
+                            "value": "=eq.{{ $node[\"Get WhatsApp Agencies\"].json.id }}"
+                        },
+                        {
+                            "name": "report_whatsapp_enabled",
+                            "value": "eq.true"
+                        }
+                    ]
+                },
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo"
+                        },
+                        {
+                            "name": "Authorization",
+                            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "ec921bb7-81ec-493b-97aa-25779e715fa5",
+            "name": "Get Recipients",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                368,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const reportData = $node[\"Get Report Data\"].json;\nconst recipients = $input.all();\nconst agency = $node[\"Get WhatsApp Agencies\"].json;\n\n// Format date for template\nconst now = new Date();\nconst dateLabel = now.toLocaleDateString('en-GB', { \n  weekday: 'short', \n  day: 'numeric', \n  month: 'short' \n});\n\n// Format alerts (Variable 6 - Part 1)\nconst alerts = [\n  ...(reportData.actionItems?.criticalAlerts || []),\n  ...(reportData.actionItems?.warningAlerts || []),\n].slice(0, 3);\n\nlet alertText = alerts.length > 0\n  ? alerts.map(a => `• ${a.message}`).join('\\n')\n  : \"No urgent actions today.\";\n\n// Format Shift Schedule (Variable 6 - Part 2)\nlet scheduleText = \"\";\nif (reportData.clients && reportData.clients.length > 0) {\n  scheduleText = \"\\n\\n📍 *Shift Schedule*:\\n\";\n  reportData.clients.forEach(client => {\n    scheduleText += `\\n*${client.name.toUpperCase()}*\\n`;\n    \n    const confirmed = (client.shifts || []).filter(s => s.status === 'confirmed');\n    const assigned = (client.shifts || []).filter(s => s.status === 'assigned');\n    const open = (client.shifts || []).filter(s => s.status === 'open');\n    \n    if (confirmed.length > 0) {\n      scheduleText += `✅ ${confirmed.length} Confirmed\\n`;\n      confirmed.forEach(s => {\n        const time = s.startTime ? s.startTime.substring(0, 5) : '??:??';\n        const name = s.staffName ? s.staffName.split(' ')[0].toUpperCase() : 'STAFF';\n        scheduleText += `  └ ${time} ${name}\\n`;\n      });\n    }\n\n    if (assigned.length > 0) {\n      scheduleText += `🤝 ${assigned.length} Assigned\\n`;\n    }\n    \n    if (open.length > 0) {\n      scheduleText += `📋 ${open.length} Open Shifts\\n`;\n    }\n  });\n}\n\n// Combine for Variable 6\nconst combinedContent = alertText + scheduleText;\n\n// If no specific recipients, check if we should fallback to agency phone\nlet finalRecipients = recipients.map(r => r.json);\n\nif (finalRecipients.length === 0 && agency.phone) {\n  finalRecipients = [{\n    full_name: agency.name,\n    phone: agency.phone\n  }];\n}\n\nreturn finalRecipients.map(recipient => {\n  const nameToUse = recipient.full_name || agency.name || 'Admin';\n  return {\n    json: {\n      recipient_name: nameToUse.split(' ')[0],\n      date_label: dateLabel,\n      total_shifts: reportData.stats.totalShifts || 0,\n      utilization: reportData.stats.staffUtilization || 0,\n      pending_workflows: reportData.stats.pendingWorkflowsCount || 0,\n      combined_content: combinedContent,  // This goes into {{6}}\n      phone: recipient.phone\n    }\n  };\n});"
+            },
+            "id": "eba7b878-a5d0-40d6-bb22-a0c0631549fe",
+            "name": "Format Digest Data",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                576,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "phoneNumberId": "683816761472557",
+                "recipientPhoneNumber": "={{ $json.phone }}",
+                "template": "agency_digest|en_GB",
+                "components": {
+                    "component": [
+                        {
+                            "bodyParameters": {
+                                "parameter": [
+                                    {
+                                        "text": "={{ $json.recipient_name }}"
+                                    },
+                                    {
+                                        "text": "={{ $json.date_label }}"
+                                    },
+                                    {
+                                        "text": "={{ $json.total_shifts }}"
+                                    },
+                                    {
+                                        "text": "={{ $json.utilization }}"
+                                    },
+                                    {
+                                        "text": "={{ $json.pending_workflows }}"
+                                    },
+                                    {
+                                        "text": "={{ $json.combined_content }}"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            "id": "3d8db2bf-0d67-43b5-8063-10387aa4c7af",
+            "name": "Send WhatsApp Digest",
+            "type": "n8n-nodes-base.whatsApp",
+            "typeVersion": 1,
+            "position": [
+                784,
+                0
+            ],
+            "credentials": {
+                "whatsAppApi": {
+                    "id": "M8TtYksLuUl3SLo4",
+                    "name": "WhatsApp account"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Schedule Trigger (7 AM Daily)": {
+            "main": [
+                [
+                    {
+                        "node": "Get WhatsApp Agencies",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get WhatsApp Agencies": {
+            "main": [
+                [
+                    {
+                        "node": "Get Report Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Report Data": {
+            "main": [
+                [
+                    {
+                        "node": "Get Recipients",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Recipients": {
+            "main": [
+                [
+                    {
+                        "node": "Format Digest Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format Digest Data": {
+            "main": [
+                [
+                    {
+                        "node": "Send WhatsApp Digest",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": true,
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "meta": {
+        "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+    }
+}
