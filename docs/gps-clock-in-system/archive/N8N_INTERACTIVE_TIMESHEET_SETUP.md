@@ -81,7 +81,7 @@ In n8n, go to **Settings** → **Environment Variables**:
 
 ```bash
 SUPABASE_URL=https://rzzxxkppkiasuouuglaf.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_JWT_TOKEN
 ```
 
 ---

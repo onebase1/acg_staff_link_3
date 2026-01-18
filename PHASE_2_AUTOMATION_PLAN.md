@@ -275,7 +275,7 @@ Ensure the cron job has access to service role key:
 
 ```sql
 -- Set service role key for cron jobs
-ALTER DATABASE postgres SET app.settings.service_role_key TO 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo';
+ALTER DATABASE postgres SET app.settings.service_role_key TO 'YOUR_SUPABASE_JWT_TOKEN';
 ```
 
 ### Step 7: Add Manual Override (Optional)

@@ -68,7 +68,7 @@ OPENAI_API_KEY=sk-proj-...
 
 # Supabase
 SUPABASE_URL=https://rzzxxkppkiasuouuglaf.supabase.co
-SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_KEY=YOUR_SUPABASE_JWT_TOKEN.
 ```
 
 ### n8n Credentials to Configure

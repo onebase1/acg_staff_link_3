@@ -202,7 +202,7 @@ N8N_WHATSAPP_WEBHOOK_URL=https://your-n8n-instance.com/webhook/whatsapp
 
 # Supabase Configuration
 SUPABASE_URL=https://rzzxxkppkiasuouuglaf.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_JWT_TOKEN.
 
 # WhatsApp Business Cloud API
 WHATSAPP_PHONE_NUMBER_ID=683816761472557

@@ -55,7 +55,7 @@ This function shows you who has incomplete profiles and what they're missing.
 ```bash
 curl -X POST \
   'https://rzzxxkppkiasuouuglaf.supabase.co/functions/v1/get-incomplete-profiles' \
-  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo' \
+  -H 'Authorization: Bearer YOUR_SUPABASE_JWT_TOKEN' \
   -H 'Content-Type: application/json'
 ```
 
@@ -109,7 +109,7 @@ First, test without actually sending emails:
 ```bash
 curl -X POST \
   'https://rzzxxkppkiasuouuglaf.supabase.co/functions/v1/send-profile-reminders' \
-  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo' \
+  -H 'Authorization: Bearer YOUR_SUPABASE_JWT_TOKEN' \
   -H 'Content-Type: application/json' \
   -d '{
     "dry_run": true,
@@ -143,7 +143,7 @@ Send a real email to yourself for testing:
 ```bash
 curl -X POST \
   'https://rzzxxkppkiasuouuglaf.supabase.co/functions/v1/send-profile-reminders' \
-  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo' \
+  -H 'Authorization: Bearer YOUR_SUPABASE_JWT_TOKEN' \
   -H 'Content-Type: application/json' \
   -d '{
     "test_mode": true,
@@ -171,7 +171,7 @@ Once tested, send to everyone who needs reminders:
 ```bash
 curl -X POST \
   'https://rzzxxkppkiasuouuglaf.supabase.co/functions/v1/send-profile-reminders' \
-  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo' \
+  -H 'Authorization: Bearer YOUR_SUPABASE_JWT_TOKEN' \
   -H 'Content-Type: application/json' \
   -d '{
     "days_since_last_reminder": 7
@@ -229,7 +229,7 @@ SELECT cron.schedule(
     net.http_post(
       url := 'https://rzzxxkppkiasuouuglaf.supabase.co/functions/v1/send-profile-reminders',
       headers := jsonb_build_object(
-        'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo',
+        'Authorization', 'Bearer YOUR_SUPABASE_JWT_TOKEN',
         'Content-Type', 'application/json'
       ),
       body := jsonb_build_object(

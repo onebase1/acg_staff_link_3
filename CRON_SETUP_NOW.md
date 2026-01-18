@@ -17,22 +17,22 @@ GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA cron TO postgres;
 
 SELECT cron.schedule('shift-reminder-engine-hourly', '0 * * * *',
   $$SELECT net.http_post(url := 'https://rzzxxkppkiasuouuglaf.supabase.co/functions/v1/shift-reminder-engine',
-  headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo'),
+  headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer YOUR_SUPABASE_JWT_TOKEN'),
   body := '{}'::jsonb) AS request_id;$$);
 
 SELECT cron.schedule('post-shift-timesheet-reminder-hourly', '0 * * * *',
   $$SELECT net.http_post(url := 'https://rzzxxkppkiasuouuglaf.supabase.co/functions/v1/post-shift-timesheet-reminder',
-  headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo'),
+  headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer YOUR_SUPABASE_JWT_TOKEN'),
   body := '{}'::jsonb) AS request_id;$$);
 
 SELECT cron.schedule('compliance-monitor-daily', '0 8 * * *',
   $$SELECT net.http_post(url := 'https://rzzxxkppkiasuouuglaf.supabase.co/functions/v1/compliance-monitor',
-  headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo'),
+  headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer YOUR_SUPABASE_JWT_TOKEN'),
   body := '{}'::jsonb) AS request_id;$$);
 
 SELECT cron.schedule('email-automation-engine-5min', '*/5 * * * *',
   $$SELECT net.http_post(url := 'https://rzzxxkppkiasuouuglaf.supabase.co/functions/v1/email-automation-engine',
-  headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo'),
+  headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer YOUR_SUPABASE_JWT_TOKEN'),
   body := '{}'::jsonb) AS request_id;$$);
 
 CREATE OR REPLACE VIEW cron_job_status AS

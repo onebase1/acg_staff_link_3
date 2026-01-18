@@ -115,7 +115,7 @@ curl -X POST https://n8n.dreampathai.co.uk/webhook/send-whatsapp \
 const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
 const supabase = createClient(
   'https://rzzxxkppkiasuouuglaf.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1OTYwNDgsImV4cCI6MjA3NzE3MjA0OH0.eYyjJTxHeYSGJEmDhOEq-b1v473kg-OqHhAtC4BBHrY'
+  'YOUR_SUPABASE_JWT_TOKEN'
 );
 
 const { data, error } = await supabase.functions.invoke('send-whatsapp', {

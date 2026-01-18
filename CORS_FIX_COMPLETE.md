@@ -20,7 +20,7 @@ The dev server wasn't loading the Supabase environment variables correctly, caus
 ### **1. Created `.env.local` File**
 ```env
 VITE_SUPABASE_URL=https://rzzxxkppkiasuouuglaf.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_JWT_TOKEN.
 ```
 
 ### **2. Restarted Dev Server**

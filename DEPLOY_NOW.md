@@ -33,7 +33,7 @@ Value: https://rzzxxkppkiasuouuglaf.supabase.co
 **Variable 2:**
 ```
 Name: VITE_SUPABASE_ANON_KEY
-Value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1OTYwNDgsImV4cCI6MjA3NzE3MjA0OH0.eYyjJTxHeYSGJEmDhOEq-b1v473kg-OqHhAtC4BBHrY
+Value: YOUR_SUPABASE_JWT_TOKEN
 ```
 
 ### 5️⃣ Deploy!

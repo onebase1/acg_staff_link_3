@@ -8,7 +8,7 @@
 3. Fill in:
    - **Name**: `ACG-Supabase`
    - **Host**: `rzzxxkppkiasuouuglaf.supabase.co`
-   - **Service Role Secret**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo`
+   - **Service Role Secret**: `YOUR_SUPABASE_JWT_TOKEN`
 4. Click "Save"
 
 ### **1.2 Header Auth for Supabase Edge Functions**
@@ -17,7 +17,7 @@
 3. Fill in:
    - **Name**: `Supabase Service Role Key`
    - **Name** (header): `Authorization`
-   - **Value**: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo`
+   - **Value**: `Bearer YOUR_SUPABASE_JWT_TOKEN`
 4. Click "Save"
 
 ### **1.3 WhatsApp Business Cloud API** (Already exists)

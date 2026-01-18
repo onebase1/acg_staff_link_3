@@ -32,7 +32,7 @@ MCP (Model Context Protocol) servers allow AI assistants like Claude to directly
         "DISABLE_CONSOLE_OUTPUT": "true",
         "N8N_API_URL": "http://localhost:5678",
         "N8N_BASE_URL": "http://localhost:5678",
-        "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3OTUwOTUxNS0zZTI1LTQ2YzYtODc3OC04OTM5MzBlMTQ4MWUiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzY0NTgzMjY0fQ.ZT4ZGdRxfjnmAotFvxAr09oMm-NDAsAz_tB5Wi2cNBI"
+        "N8N_API_KEY": "YOUR_SUPABASE_JWT_TOKEN"
       }
     }
   }
@@ -41,7 +41,7 @@ MCP (Model Context Protocol) servers allow AI assistants like Claude to directly
 
 **Connection:**
 - API URL: `http://localhost:5678`
-- API Key: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+- API Key: `YOUR_SUPABASE_JWT_TOKEN.`
 - Mode: Local stdio
 
 ---
@@ -61,7 +61,7 @@ MCP (Model Context Protocol) servers allow AI assistants like Claude to directly
         "--streamableHttp",
         "https://n8n.dreampathai.co.uk/mcp-server/http",
         "--header",
-        "authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3OTUwOTUxNS0zZTI1LTQ2YzYtODc3OC04OTM5MzBlMTQ4MWUiLCJpc3MiOiJuOG4iLCJhdWQiOiJtY3Atc2VydmVyLWFwaSIsImp0aSI6ImZkMjMwYmMzLTQ1OTAtNDllMy1hMTI2LTRiMDllYTcyMDkxMiIsImlhdCI6MTc2NDU4MjcxOX0.RPpkAxVkSrpLLNklxGRx6olgZnnEXKeVBS6S-m1adMg"
+        "authorization:Bearer YOUR_SUPABASE_JWT_TOKEN"
       ]
     }
   }
@@ -191,7 +191,7 @@ MCP (Model Context Protocol) servers allow AI assistants like Claude to directly
 
 ### Local API Key
 ```
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3OTUwOTUxNS0zZTI1LTQ2YzYtODc3OC04OTM5MzBlMTQ4MWUiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzY0NTgzMjY0fQ.ZT4ZGdRxfjnmAotFvxAr09oMm-NDAsAz_tB5Wi2cNBI
+YOUR_SUPABASE_JWT_TOKEN
 ```
 
 **Decoded:**
@@ -201,7 +201,7 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3OTUwOTUxNS0zZTI1LTQ2YzYtODc3OC0
 
 ### Remote API Key (MCP Server)
 ```
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3OTUwOTUxNS0zZTI1LTQ2YzYtODc3OC04OTM5MzBlMTQ4MWUiLCJpc3MiOiJuOG4iLCJhdWQiOiJtY3Atc2VydmVyLWFwaSIsImp0aSI6ImZkMjMwYmMzLTQ1OTAtNDllMy1hMTI2LTRiMDllYTcyMDkxMiIsImlhdCI6MTc2NDU4MjcxOX0.RPpkAxVkSrpLLNklxGRx6olgZnnEXKeVBS6S-m1adMg
+YOUR_SUPABASE_JWT_TOKEN
 ```
 
 **Decoded:**
@@ -296,7 +296,7 @@ Test API key manually:
 
 ```bash
 curl -X GET "http://localhost:5678/api/v1/workflows" \
-  -H "X-N8N-API-KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  -H "X-N8N-API-KEY: YOUR_SUPABASE_JWT_TOKEN."
 ```
 
 Should return JSON list of workflows.

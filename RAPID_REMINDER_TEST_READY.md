@@ -108,11 +108,11 @@ UPDATE invoices SET due_date = (CURRENT_TIMESTAMP - INTERVAL '8 minutes') WHERE 
 ```bash
 # Reminder #1
 curl -X POST https://rzzxxkppkiasuouuglaf.supabase.co/functions/v1/payment-reminder-engine \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo"
+  -H "Authorization: Bearer YOUR_SUPABASE_JWT_TOKEN"
 
 # Wait 10 seconds, update invoice to 4 min overdue, then:
 curl -X POST https://rzzxxkppkiasuouuglaf.supabase.co/functions/v1/payment-reminder-engine \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6enh4a3Bwa2lhc3VvdXVnbGFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTU5NjA0OCwiZXhwIjoyMDc3MTcyMDQ4fQ.Uli0ZjO1FOrBZnfMNYCyx1W1sw2Ehia4-lkuuj70-Wo"
+  -H "Authorization: Bearer YOUR_SUPABASE_JWT_TOKEN"
 
 # Repeat for 6 min and 8 min...
 ```
