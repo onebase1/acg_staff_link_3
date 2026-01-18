@@ -178,7 +178,7 @@ export default function Layout({ children, currentPageName }) {
   const { checkForUpdate, isChecking, currentVersion } = useAppVersion();
   // ✅ FIXED: Routes that bypass the layout (no sidebar/header)
   // We only bypass layout for staff profile simulation if a magic token is present (anonymous view)
-  const bypassPaths = ['/login', '/reset-password', '/auth/magic', '/landing', '/privacy', '/terms', '/contact', '/book-demo'];
+  const bypassPaths = ['/login', '/reset-password', '/auth/magic', '/landing', '/privacy', '/terms', '/contact', '/book-demo', '/DailyReportView'];
   const isProfileSim = location.pathname.toLowerCase().startsWith('/staffprofilesimulation');
   const hasMagicToken = new URLSearchParams(location.search).has('token');
 
@@ -318,8 +318,8 @@ export default function Layout({ children, currentPageName }) {
           setIsAuthenticated(false);
           authCheckInProgress.current = false;
           const path = location.pathname.toLowerCase();
-          if (!bypassPaths.some((authPath) => path.startsWith(authPath))) {
-            window.location.replace(`/login?next=${encodeURIComponent(location.pathname)}`);
+          if (!bypassPaths.some((authPath) => path.startsWith(authPath.toLowerCase()))) {
+            window.location.replace(`/login?next=${encodeURIComponent(location.pathname + location.search)}`);
           }
           return;
         }
@@ -373,8 +373,8 @@ export default function Layout({ children, currentPageName }) {
         authCheckInProgress.current = false;
         authChecked.current = false; // Reset authChecked on error to allow retry if component re-mounts
         const path = location.pathname.toLowerCase();
-        if (!bypassPaths.some((authPath) => path.startsWith(authPath))) {
-          window.location.replace(`/login?next=${encodeURIComponent(location.pathname)}`);
+        if (!bypassPaths.some((authPath) => path.startsWith(authPath.toLowerCase()))) {
+          window.location.replace(`/login?next=${encodeURIComponent(location.pathname + location.search)}`);
         }
       }
     };

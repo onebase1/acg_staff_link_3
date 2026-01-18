@@ -17,15 +17,21 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
-
     const url = new URL(req.url);
     const pathParts = url.pathname.split("/").filter(Boolean);
     const slug = pathParts[pathParts.length - 1];
 
     // GET /url-shortener/:slug -> Redirection logic
-    if (req.method === "GET" && slug && slug !== "url-shortener") {
-      console.log(`🔍 Redirecting for slug: ${slug}`);
+    if (req.method === "GET") {
+      // If we are at the root, redirect to home or show error
+      if (!slug || slug === "url-shortener") {
+        return new Response("Missing link ID. Usage: /url-shortener/:id", { 
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "text/plain" }
+        });
+      }
 
+      console.log(`🔍 Redirecting for slug: ${slug}`);
       const { data, error } = await supabaseClient
         .from("short_links")
         .select("target_url")
@@ -34,10 +40,15 @@ serve(async (req) => {
 
       if (error || !data) {
         console.error("❌ Link not found:", error);
-        return new Response("Link not found", { status: 404 });
+        return new Response("Report link not found or expired.", { 
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "text/plain" }
+        });
       }
 
-      return Response.redirect(data.target_url, 302);
+      const redirectUrl = new URL(data.target_url);
+      redirectUrl.searchParams.set("token", slug);
+      return Response.redirect(redirectUrl.toString(), 302);
     }
 
     // POST /url-shortener -> Creation logic

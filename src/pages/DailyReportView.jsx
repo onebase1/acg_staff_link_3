@@ -15,6 +15,8 @@ import { format, parseISO } from "date-fns";
 export default function DailyReportView() {
     const [searchParams] = useSearchParams();
     const token = searchParams.get("token");
+    const urlDate = searchParams.get("date");
+    const targetDate = urlDate || format(new Date(), 'yyyy-MM-dd');
 
     // 1. Fetch the short link data to get agency context
     const { data: linkData, isLoading: loadingLink } = useQuery({
@@ -23,7 +25,7 @@ export default function DailyReportView() {
             if (!token) return null;
             const { data, error } = await supabase
                 .from('short_links')
-                .select('*')
+                .select('*, agencies(name)')
                 .eq('id', token)
                 .single();
 
@@ -40,7 +42,7 @@ export default function DailyReportView() {
             if (!linkData?.agency_id) return null;
             const { data, error } = await supabase.rpc('get_daily_agency_report', {
                 p_agency_id: linkData.agency_id,
-                p_date: format(new Date(), 'yyyy-MM-dd')
+                p_date: targetDate
             });
 
             if (error) throw error;
@@ -67,10 +69,10 @@ export default function DailyReportView() {
                         DAILY AGENCY REPORT
                     </Badge>
                     <h1 className="text-4xl font-black tracking-tight mb-1 font-outfit">
-                        {format(new Date(), 'dd MMMM yyyy')}
+                        {format(parseISO(targetDate), 'dd MMMM yyyy')}
                     </h1>
                     <p className="text-purple-200/80 font-medium">
-                        {linkData.agency_name || "Helix Health Staffing"}
+                        {linkData?.agencies?.name || "Helix Health Staffing"}
                     </p>
                 </div>
             </div>
