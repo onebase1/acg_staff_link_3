@@ -23,13 +23,18 @@ export default function DailyReportView() {
         queryKey: ['short-link', token],
         queryFn: async () => {
             if (!token) return null;
+            console.log("🔍 [DailyReportView] Fetching link data for token:", token);
             const { data, error } = await supabase
                 .from('short_links')
-                .select('*, agencies(name)')
+                .select('*')
                 .eq('id', token)
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                console.error("❌ [DailyReportView] Error fetching link data:", error);
+                throw error;
+            }
+            console.log("✅ [DailyReportView] Link data found:", data);
             return data;
         },
         enabled: !!token
@@ -40,12 +45,17 @@ export default function DailyReportView() {
         queryKey: ['daily-report', linkData?.agency_id],
         queryFn: async () => {
             if (!linkData?.agency_id) return null;
+            console.log("🔍 [DailyReportView] Fetching report data for agency:", linkData.agency_id, "date:", targetDate);
             const { data, error } = await supabase.rpc('get_daily_agency_report', {
                 p_agency_id: linkData.agency_id,
                 p_date: targetDate
             });
 
-            if (error) throw error;
+            if (error) {
+                console.error("❌ [DailyReportView] RPC Error:", error);
+                throw error;
+            }
+            console.log("✅ [DailyReportView] Report data received:", !!data);
             return data;
         },
         enabled: !!linkData?.agency_id
@@ -72,7 +82,7 @@ export default function DailyReportView() {
                         {format(parseISO(targetDate), 'dd MMMM yyyy')}
                     </h1>
                     <p className="text-purple-200/80 font-medium">
-                        {linkData?.agencies?.name || "Helix Health Staffing"}
+                        ACG StaffLink Report
                     </p>
                 </div>
             </div>
