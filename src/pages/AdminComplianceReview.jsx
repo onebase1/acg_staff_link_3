@@ -179,7 +179,7 @@ export default function AdminComplianceReview() {
     }
 
     const badges = {
-      pending: <Badge className="bg-yellow-100 text-yellow-800">Pending Review</Badge>,
+      pending: <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">Awaiting Review</Badge>,
       verified: <Badge className="bg-green-100 text-green-800">Verified</Badge>,
       rejected: <Badge className="bg-red-100 text-red-800">Rejected</Badge>
     };
@@ -312,7 +312,7 @@ export default function AdminComplianceReview() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-gray-600">Pending Review</p>
+                  <p className="text-xs text-gray-600">Awaiting Review</p>
                   <p className="text-2xl font-bold text-yellow-600">{pendingDocs.length}</p>
                 </div>
                 <Clock className="w-8 h-8 text-yellow-600" />
@@ -362,7 +362,7 @@ export default function AdminComplianceReview() {
           <Alert className="mb-6 border-yellow-300 bg-yellow-50">
             <Clock className="h-5 w-5 text-yellow-600" />
             <AlertDescription className="text-yellow-900">
-              <strong>{pendingDocs.length} document{pendingDocs.length > 1 ? 's' : ''} awaiting your review.</strong>
+              <strong>{pendingDocs.length} document{pendingDocs.length > 1 ? 's' : ''} awaiting review.</strong>
               <p className="text-sm mt-1">Staff cannot work shifts until their compliance documents are verified.</p>
             </AlertDescription>
           </Alert>

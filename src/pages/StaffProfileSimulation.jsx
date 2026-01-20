@@ -621,12 +621,12 @@ export default function StaffProfileSimulation() {
                 <div className="p-3 border-b">
                   <p className="text-sm font-semibold text-gray-700">Date of Enhanced DBS Disclosure:</p>
                   <p className="text-gray-900">
-                    {dbsDoc?.issue_date ? format(new Date(dbsDoc.issue_date), 'dd/MM/yyyy') : '⚠️ Pending'}
+                    {dbsDoc?.issue_date ? format(new Date(dbsDoc.issue_date), 'dd/MM/yyyy') : '⚠️ Awaiting Review'}
                   </p>
                 </div>
                 <div className="p-3 border-b">
                   <p className="text-sm font-semibold text-gray-700">DBS Disclosure Number:</p>
-                  <p className="text-gray-900 font-mono">{dbsDoc?.reference_number || '⚠️ Pending'}</p>
+                  <p className="text-gray-900 font-mono">{dbsDoc?.reference_number || '⚠️ Awaiting Review'}</p>
                 </div>
                 <div className="p-3 border-b">
                   <p className="text-sm font-semibold text-gray-700">POCA and POVA checked:</p>

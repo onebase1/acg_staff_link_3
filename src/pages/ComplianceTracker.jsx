@@ -1090,7 +1090,7 @@ export default function ComplianceTracker() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="pending">Pending Review</SelectItem>
+                        <SelectItem value="pending">Awaiting Review</SelectItem>
                         <SelectItem value="verified">Verified</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
                         <SelectItem value="expired">Expired</SelectItem>
