@@ -1,0 +1,101 @@
+{
+    "name": "Daily Agency Digest WhatsApp (Receiver) v3.1",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "agency-digest-whatsapp-v3-1",
+                "responseMode": "onReceived",
+                "options": {}
+            },
+            "id": "webhook-trigger",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "resource": "message",
+                "operation": "sendTemplate",
+                "phoneNumberId": "683816761472557",
+                "recipientPhoneNumber": "={{ $json.recipient.phone.toString().replace(/\\D/g, '') }}",
+                "template": "agency_digest|en_GB",
+                "components": {
+                    "component": [
+                        {
+                            "type": "body",
+                            "bodyParameters": {
+                                "parameter": [
+                                    {
+                                        "text": "={{ $json.recipient.full_name }}"
+                                    },
+                                    {
+                                        "text": "={{ $json.date_label }}"
+                                    },
+                                    {
+                                        "text": "={{ $json.stats.totalShifts }}"
+                                    },
+                                    {
+                                        "text": "={{ $json.stats.staffUtilization }}%"
+                                    },
+                                    {
+                                        "text": "={{ $json.stats.pendingWorkflows }}"
+                                    },
+                                    {
+                                        "text": "={{ $json.alert_text }}"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "type": "button",
+                            "index": "0",
+                            "sub_type": "url",
+                            "buttonParameters": {
+                                "parameter": [
+                                    {
+                                        "text": "={{ $json.short_link_id }}"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            "credentials": {
+                "whatsAppApi": {
+                    "id": "M8TtYksLuUl3SLo4",
+                    "name": "WhatsApp account"
+                }
+            },
+            "id": "send-whatsapp",
+            "name": "WhatsApp Business Cloud",
+            "type": "n8n-nodes-base.whatsApp",
+            "typeVersion": 1,
+            "position": [
+                500,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "WhatsApp Business Cloud",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    }
+}

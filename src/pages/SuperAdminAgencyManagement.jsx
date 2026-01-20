@@ -21,6 +21,7 @@ import {
   Eye,
   ChevronDown,
   ChevronRight,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -52,6 +53,10 @@ export default function SuperAdminAgencyManagement() {
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [newAdminName, setNewAdminName] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditAdminOpen, setIsEditAdminOpen] = useState(false);
+  const [editingAdmin, setEditingAdmin] = useState(null);
+  const [editAdminName, setEditAdminName] = useState("");
+  const [editAdminPhone, setEditAdminPhone] = useState("");
 
   const isSuperAdmin = useMemo(
     () => !!user && (user.email === "g.basera@yahoo.com" || user.user_type === "super_admin"),
@@ -198,6 +203,37 @@ export default function SuperAdminAgencyManagement() {
     },
   });
 
+  // Update admin mutation
+  const updateAdminMutation = useMutation({
+    mutationFn: async ({ adminId, fullName, phone }) => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: fullName,
+          phone: phone,
+        })
+        .eq("id", adminId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["saas-owner-view"]);
+      setIsEditAdminOpen(false);
+      toast.success("Administrator updated successfully", {
+        className: "bg-green-600 text-white border-none",
+      });
+    },
+    onError: (error) => {
+      console.error("Update admin error:", error);
+      toast.error("Error", {
+        description: error.message || "Failed to update administrator. Please try again.",
+      });
+    },
+  });
+
   const toggleAgency = (agencyId) => {
     const newSet = new Set(expandedAgencies);
     if (newSet.has(agencyId)) {
@@ -218,6 +254,22 @@ export default function SuperAdminAgencyManagement() {
       agencyId: selectedAgencyForAdmin,
       adminEmail: newAdminEmail,
       adminName: newAdminName,
+    });
+  };
+
+  const handleEditAdmin = (admin) => {
+    setEditingAdmin(admin);
+    setEditAdminName(admin.full_name || "");
+    setEditAdminPhone(admin.phone || "");
+    setIsEditAdminOpen(true);
+  };
+
+  const handleUpdateAdmin = () => {
+    if (!editingAdmin) return;
+    updateAdminMutation.mutate({
+      adminId: editingAdmin.id,
+      fullName: editAdminName,
+      phone: editAdminPhone,
     });
   };
 
@@ -465,17 +517,34 @@ export default function SuperAdminAgencyManagement() {
                               {agency.admins.map((admin) => (
                                 <div
                                   key={admin.id}
-                                  className="flex items-center justify-between p-3 bg-white border rounded-lg"
+                                  className="flex items-center justify-between p-3 bg-white border rounded-lg hover:shadow-sm transition-shadow group"
                                 >
                                   <div>
                                     <div className="font-medium text-gray-900">{admin.email}</div>
-                                    <div className="text-sm text-gray-500">
+                                    <div className="text-sm text-gray-500 flex items-center gap-2">
                                       {admin.full_name || "Name not set"}
+                                      {admin.phone && (
+                                        <Badge variant="outline" className="text-[10px] py-0 px-1 border-cyan-200 text-cyan-700 bg-cyan-50">
+                                          {admin.phone}
+                                        </Badge>
+                                      )}
                                     </div>
                                     <div className="text-xs text-gray-400">
                                       Added: {new Date(admin.created_at).toLocaleDateString()}
                                     </div>
                                   </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditAdmin(admin);
+                                    }}
+                                    className="h-8 text-cyan-600 border-cyan-100 hover:bg-cyan-50 hover:border-cyan-200"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5 mr-1" />
+                                    Edit
+                                  </Button>
                                 </div>
                               ))}
                             </div>
@@ -551,6 +620,65 @@ export default function SuperAdminAgencyManagement() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Admin Dialog */}
+      <Dialog open={isEditAdminOpen} onOpenChange={setIsEditAdminOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Administrator Profile</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Email Address (Read-only)</Label>
+              <Input value={editingAdmin?.email || ""} disabled className="bg-gray-50" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Full Name</Label>
+              <Input
+                id="edit-name"
+                value={editAdminName}
+                onChange={(e) => setEditAdminName(e.target.value)}
+                placeholder="John Doe"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-phone">Phone Number (WhatsApp)</Label>
+              <Input
+                id="edit-phone"
+                value={editAdminPhone}
+                onChange={(e) => setEditAdminPhone(e.target.value)}
+                placeholder="+447700900123"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Enter number in E.164 format (e.g., +447700900123) for WhatsApp notifications.
+              </p>
+            </div>
+            <div className="pt-4 flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setIsEditAdminOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 bg-cyan-600 hover:bg-cyan-700"
+                onClick={handleUpdateAdmin}
+                disabled={updateAdminMutation.isPending}
+              >
+                {updateAdminMutation.isPending ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Update Profile"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div >
   );
 }

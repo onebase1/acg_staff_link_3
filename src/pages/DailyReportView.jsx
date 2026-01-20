@@ -5,7 +5,7 @@ import { useSearchParams } from "react-router-dom";
 import {
     Activity, Calendar, Clock, AlertCircle, AlertTriangle,
     CheckCircle2, ChevronRight, Building2, TrendingUp, Sparkles,
-    MessageCircle, Info
+    MessageCircle, Info, Users
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -66,158 +66,180 @@ export default function DailyReportView() {
     if (!report) return <ErrorMessage message="Report data not found or expired." />;
 
     const stats = report.stats || {};
-    const alerts = report.alerts || [];
-    const schedule = report.schedule || [];
+    const actionItems = report.actionItems || {};
+    const criticalAlerts = actionItems.criticalAlerts || [];
+    const warningAlerts = actionItems.warningAlerts || [];
+    const clients = report.clients || [];
 
     return (
-        <div className="min-h-screen bg-slate-50 pb-12">
+        <div className="min-h-screen bg-slate-100 pb-16 font-inter">
             {/* Hero Header */}
-            <div className="bg-gradient-to-br from-indigo-900 via-purple-900 to-fuchsia-900 text-white p-6 pb-16 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl" />
-                <div className="relative z-10 flex flex-col items-center text-center">
-                    <Badge className="bg-white/10 text-purple-200 border-none mb-3 backdrop-blur-md">
-                        DAILY AGENCY REPORT
-                    </Badge>
-                    <h1 className="text-4xl font-black tracking-tight mb-1 font-outfit">
+            <div className="bg-gradient-to-br from-[#4c1d95] to-[#7c3aed] text-white p-10 pb-24 text-center relative overflow-hidden">
+                <div className="absolute top-[-50px] right-[-50px] w-48 h-48 bg-white/10 rounded-full blur-[40px]" />
+                <div className="relative z-10 flex flex-col items-center">
+                    <div className="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/20 mb-6 animate-pulse flex items-center gap-2">
+                        <Badge className="bg-amber-400 text-[#4c1d95] hover:bg-amber-400 border-none px-2 py-0 text-[10px] font-black">ACTION REQUIRED</Badge>
+                        <span className="text-xs font-bold tracking-wide">VERIFY ROSTER BEFORE 08:00 DISPATCH</span>
+                    </div>
+                    <p className="text-sm font-bold opacity-90 tracking-widest uppercase mb-2">
+                        DAILY AGENCY SUMMARY
+                    </p>
+                    <h1 className="text-4xl font-black tracking-tight mb-2 font-outfit">
                         {format(parseISO(targetDate), 'dd MMMM yyyy')}
                     </h1>
-                    <p className="text-purple-200/80 font-medium">
-                        ACG StaffLink Report
+                    <p className="text-lg opacity-80 font-medium">
+                        Helix Health Staffing
                     </p>
                 </div>
             </div>
 
-            <div className="max-w-md mx-auto px-4 -mt-10 relative z-20 space-y-4">
+            <div className="max-w-xl mx-auto px-4 -mt-10 relative z-20 space-y-6">
                 {/* Main Stats Grid */}
-                <div className="grid grid-cols-2 gap-3">
-                    <Card className="border-none shadow-xl shadow-purple-500/10 rounded-3xl">
-                        <CardContent className="p-5">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Utilization</span>
-                                <span className="text-3xl font-black text-slate-900 font-outfit">{stats.staffUtilization || '0%'}</span>
-                                <div className="flex items-center gap-1 mt-1 text-emerald-500 font-bold text-[10px]">
-                                    <TrendingUp className="w-3 h-3" />
-                                    <span>+2.4% vs yest</span>
-                                </div>
-                            </div>
-                        </CardContent>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Card className="p-6 border-none shadow-sm bg-white/80 backdrop-blur-sm rounded-[20px]">
+                        <div className="flex flex-col">
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Fill Rate</span>
+                            <span className="text-3xl font-black text-slate-900 font-outfit">
+                                {stats.totalShifts > 0 ? Math.round((stats.confirmedShifts / stats.totalShifts) * 100) : 0}%
+                            </span>
+                        </div>
                     </Card>
-
-                    <Card className="border-none shadow-xl shadow-purple-500/10 rounded-3xl">
-                        <CardContent className="p-5">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Shifts</span>
-                                <span className="text-3xl font-black text-slate-900 font-outfit">{stats.totalShifts || 0}</span>
-                                <div className="flex items-center gap-1 mt-1 text-emerald-500 font-bold text-[10px]">
-                                    <Activity className="w-3 h-3" />
-                                    <span>{stats.shiftsUpcoming || 0} active</span>
-                                </div>
-                            </div>
-                        </CardContent>
+                    <Card className="p-6 border-none shadow-sm bg-white/80 backdrop-blur-sm rounded-[20px]">
+                        <div className="flex flex-col">
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Scheduled</span>
+                            <span className="text-3xl font-black text-slate-900 font-outfit">{stats.totalShifts || 0}</span>
+                        </div>
                     </Card>
-
-                    <Card className="col-span-2 border-none shadow-xl shadow-red-500/10 rounded-3xl bg-white">
-                        <CardContent className="p-5 flex items-center justify-between">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Pending Alerts</span>
-                                <span className="text-2xl font-black text-red-600 font-outfit">{alerts.length} Critical Issues</span>
-                            </div>
-                            <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-600">
-                                <AlertCircle className="w-6 h-6" />
-                            </div>
-                        </CardContent>
+                    <Card className="p-6 border-none shadow-sm bg-white/80 backdrop-blur-sm rounded-[20px]">
+                        <div className="flex flex-col">
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Confirmed</span>
+                            <span className="text-3xl font-black text-emerald-600 font-outfit">{stats.confirmedShifts || 0}</span>
+                        </div>
+                    </Card>
+                    <Card className="p-6 border-none shadow-sm bg-white/80 backdrop-blur-sm rounded-[20px]">
+                        <div className="flex flex-col">
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Action Items</span>
+                            <span className={`text-3xl font-black font-outfit ${criticalAlerts.length > 0 ? 'text-amber-500' : 'text-slate-900'}`}>
+                                {criticalAlerts.length + warningAlerts.length}
+                            </span>
+                        </div>
                     </Card>
                 </div>
 
                 {/* Critical Alerts Section */}
-                {alerts.length > 0 && (
-                    <div className="space-y-3">
-                        <div className="flex justify-between items-center px-1">
-                            <h2 className="text-lg font-bold text-slate-900 px-1">Critical Alerts</h2>
-                            <Badge variant="destructive" className="rounded-full text-[10px] px-3">High Priority</Badge>
-                        </div>
-                        {alerts.map((alert, i) => (
-                            <div key={i} className="bg-white p-4 rounded-3xl shadow-sm border-l-4 border-red-500 flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 shrink-0">
-                                    <AlertTriangle className="w-5 h-5" />
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center px-1">
+                        <h2 className="text-xl font-bold text-slate-900 font-outfit">Critical Alerts</h2>
+                        <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-none rounded-full text-[10px] px-3 font-bold uppercase">High Priority</Badge>
+                    </div>
+                    {criticalAlerts.length > 0 ? (
+                        criticalAlerts.map((alert, i) => (
+                            <div key={i} className="bg-white p-5 rounded-2xl shadow-sm border-l-[4px] border-red-500 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500 shrink-0">
+                                    <AlertCircle className="w-6 h-6" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="font-bold text-slate-900 text-sm truncate">{alert.message}</h3>
-                                    <p className="text-xs text-slate-500">{alert.client_name || 'System Alert'}</p>
+                                    <h3 className="font-bold text-slate-900 text-base">{alert.message}</h3>
+                                    <p className="text-xs text-slate-500 font-medium">
+                                        {alert.clientName} • Assigned: <span className="text-slate-900 font-bold">{alert.staffName || 'Unknown'}</span>
+                                    </p>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                )}
+                        ))
+                    ) : (
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border-l-[4px] border-emerald-500 flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0">
+                                <CheckCircle2 className="w-6 h-6" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="font-bold text-slate-900 text-base">All clear!</h3>
+                                <p className="text-xs text-slate-500">No urgent gaps reported currently.</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
 
-                {/* Rota Summary Breakdown */}
-                <div className="space-y-4 pt-4">
+                {/* Rota Summary Section */}
+                <div className="space-y-4">
                     <div className="flex justify-between items-center px-1">
-                        <h2 className="text-lg font-bold text-slate-900 px-1">Rota Summary</h2>
-                        <Badge className="bg-emerald-100 text-emerald-800 border-none rounded-full text-[10px] px-3">
-                            {schedule.length} Clients Active
+                        <h2 className="text-xl font-bold text-slate-900 font-outfit">Rota Summary</h2>
+                        <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-none rounded-full text-[10px] px-3 font-bold uppercase">
+                            {clients.length} Clients Active
                         </Badge>
                     </div>
 
                     <div className="space-y-3">
-                        {schedule.map((item, i) => (
-                            <div key={i} className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-                                <div className="flex justify-between items-start mb-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                                            <Building2 className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <h3 className="font-bold text-slate-900">{item.client_name}</h3>
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{item.location}</p>
-                                        </div>
-                                    </div>
-                                    <Badge className={`rounded-full text-[10px] px-2 py-0.5 ${item.open === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'} border-none`}>
-                                        {item.open === 0 ? 'Fully Filled' : 'Hiring'}
-                                    </Badge>
-                                </div>
+                        {clients.map((client, i) => {
+                            const shifts = client.shifts || [];
+                            const confirmedCount = shifts.filter(s => s.status === 'confirmed').length;
+                            const openCount = shifts.filter(s => s.status === 'open').length;
+                            const total = confirmedCount + openCount;
+                            const fillRate = total > 0 ? Math.round((confirmedCount / total) * 100) : 0;
 
-                                <div className="flex justify-between items-end mb-2">
-                                    <div className="flex gap-4">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase">Confirmed</span>
-                                            <span className="font-bold text-slate-900">{item.confirmed}</span>
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase">Open</span>
-                                            <span className="font-bold text-amber-600">{item.open}</span>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-xs font-black text-slate-900">{Math.round((item.confirmed / (item.confirmed + item.open)) * 100)}%</span>
-                                    </div>
-                                </div>
+                            let badgeStyle = "bg-red-100 text-red-800";
+                            let progressStyle = "bg-red-500";
+                            if (fillRate >= 100) {
+                                badgeStyle = "bg-emerald-100 text-emerald-800";
+                                progressStyle = "bg-emerald-500";
+                            } else if (fillRate >= 70) {
+                                badgeStyle = "bg-amber-100 text-amber-800";
+                                progressStyle = "bg-yellow-500";
+                            }
 
-                                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                    <div
-                                        className={`h-full rounded-full ${item.open === 0 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
-                                        style={{ width: `${(item.confirmed / (item.confirmed + item.open)) * 100}%` }}
-                                    />
+                            return (
+                                <div key={i} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <span className="font-bold text-slate-900 text-base font-outfit">{client.name}</span>
+                                        <Badge className={`${badgeStyle} hover:${badgeStyle} border-none rounded-full text-[10px] px-3 font-bold`}>
+                                            {fillRate}% FILLED
+                                        </Badge>
+                                    </div>
+                                    <div className="flex gap-16 font-medium text-sm text-slate-500 mb-3">
+                                        <span><strong className="text-slate-900 text-base">{confirmedCount}</strong> Confirmed</span>
+                                        <span><strong className="text-slate-900 text-base">{openCount}</strong> Open</span>
+                                    </div>
+                                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-500 ${progressStyle}`}
+                                            style={{ width: `${fillRate}%` }}
+                                        />
+                                    </div>
+
+                                    {shifts.some(s => s.staffName !== 'Unassigned') && (
+                                        <div className="mt-4 pt-4 border-t border-slate-50">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Users className="w-3.5 h-3.5 text-slate-400" />
+                                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Assigned Team</span>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {shifts.filter(s => s.staffName !== 'Unassigned').map((s, idx) => (
+                                                    <div key={idx} className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                        <span className="text-xs font-semibold text-slate-700">{s.staffName}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 
                 {/* Action Button */}
                 <button
                     onClick={() => window.location.href = '/Dashboard'}
-                    className="w-full bg-indigo-600 py-4 rounded-3xl text-white font-black text-lg shadow-xl shadow-indigo-600/30 active:scale-95 transition-all mt-8 mb-4 font-outfit"
+                    className="w-full bg-[#7c3aed] py-5 rounded-2xl text-white font-black text-lg shadow-xl shadow-purple-500/30 active:scale-[0.98] transition-all mt-6 font-outfit"
                 >
-                    Open Full Dashboard
+                    Open Full Admin Dashboard
                 </button>
 
-                <div className="text-center pb-8">
-                    <div className="flex items-center justify-center gap-2 text-slate-400 text-xs mb-1">
-                        <Sparkles className="w-3 h-3 text-purple-400" />
-                        <span>Powered by ACG StaffLink v3.0</span>
-                    </div>
-                    <p className="text-slate-300 text-[10px]">Security Verified • Encrypted Access • {new Date().getFullYear()}</p>
+                <div className="text-center pb-10 space-y-2">
+                    <p className="text-slate-400 text-sm font-medium">Powered by ACG StaffLink v3.0</p>
+                    <p className="text-slate-300 text-[11px] px-8 leading-relaxed">
+                        Security Verified • Encrypted Access • © {new Date().getFullYear()} Helix Health Group. All data is real-time.
+                    </p>
                 </div>
             </div>
         </div>

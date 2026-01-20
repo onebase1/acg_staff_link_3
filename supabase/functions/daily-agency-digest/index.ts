@@ -191,7 +191,7 @@ async function prepareAgencyDigest(supabase: any, agency: any, targetDate: strin
       pending_shifts: statsResult.pendingShifts || 0,
     };
 
-    const teaserText = `${normalizedStats.active_shifts} active shifts, ${normalizedStats.filled_rate}% filled today. Action required on ${normalizedStats.pending_alerts} alerts.`;
+    const teaserText = `*${normalizedStats.total_shifts}* shifts scheduled, *${normalizedStats.filled_rate}%* filled. Please verify & update the roster before client alert dispatch.`;
 
     const agencyPayloads: any[] = [];
     for (const recipient of recipients || []) {
@@ -200,13 +200,16 @@ async function prepareAgencyDigest(supabase: any, agency: any, targetDate: strin
         continue;
       }
 
+      // Extract first name only for the greeting
+      const firstName = (recipient.full_name || "Agency Admin").trim().split(' ')[0];
+
       const payload = {
         agency_name: agency.name,
         date_label: dateLabel,
         stats: normalizedStats,
         recipient: {
           phone: recipient.phone,
-          full_name: recipient.full_name || "Agency Admin"
+          first_name: firstName // Use first name for {{1}}
         },
         alert_text: teaserText,
         report_url: shortUrl,

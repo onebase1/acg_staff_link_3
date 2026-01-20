@@ -1,0 +1,155 @@
+{
+    "name": "WhatsApp Digest (Pull Model) v4.0",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hours": 18
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-trigger-id",
+            "name": "Schedule Trigger",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1,
+            "position": [
+                400,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "=https://tueoaxfswyegitogmffy.supabase.co/functions/v1/daily-agency-digest",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "Bearer YOUR_SERVICE_ROLE_KEY"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "return_payload",
+                            "value": "true"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "http-request-id",
+            "name": "Fetch Digest Data",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                600,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "phoneNumberId": "488310344368560",
+                "template": "daily_summary_v3",
+                "language": "en_GB",
+                "components": {
+                    "parameters": [
+                        {
+                            "type": "body",
+                            "parameters": [
+                                {
+                                    "type": "text",
+                                    "text": "={{ $json.recipient.full_name }}"
+                                },
+                                {
+                                    "type": "text",
+                                    "text": "={{ $json.date_label }}"
+                                },
+                                {
+                                    "type": "text",
+                                    "text": "={{ $json.stats.active_shifts || 0 }}"
+                                },
+                                {
+                                    "type": "text",
+                                    "text": "={{ $json.stats.filled_rate || 0 }}%"
+                                },
+                                {
+                                    "type": "text",
+                                    "text": "={{ $json.stats.pending_alerts || 0 }}"
+                                },
+                                {
+                                    "type": "text",
+                                    "text": "={{ $json.alert_text }}"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "button",
+                            "index": 0,
+                            "sub_type": "url",
+                            "buttonParameters": {
+                                "parameter": [
+                                    {
+                                        "text": "={{ $json.short_link_id }}"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            "id": "whatsapp-node-id",
+            "name": "Send WhatsApp Digest",
+            "type": "n8n-nodes-base.whatsApp",
+            "typeVersion": 1,
+            "position": [
+                850,
+                300
+            ],
+            "credentials": {
+                "whatsAppApi": {
+                    "id": "M8TtYksLuUl3SLo4",
+                    "name": "WhatsApp account"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Schedule Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Digest Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Digest Data": {
+            "main": [
+                [
+                    {
+                        "node": "Send WhatsApp Digest",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    }
+}

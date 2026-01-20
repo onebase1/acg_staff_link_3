@@ -31,18 +31,26 @@ DECLARE
     v_staff_count INT;
     v_active_staff INT;
     v_staff_utilization NUMERIC;
+    v_pending_workflows_count INT;
 BEGIN
     -- Calculate quick stats
     SELECT
-        COUNT(*) FILTER (WHERE s.status IN ('confirmed', 'in_progress', 'completed')),
-        COUNT(*) FILTER (WHERE s.status = 'confirmed'),
-        COUNT(*) FILTER (WHERE s.status = 'open'),
+        COUNT(*) FILTER (WHERE s.status IN ('confirmed', 'in_progress', 'completed') AND (s.staff_confirmed_at IS NOT NULL OR s.status = 'completed')),
+        COUNT(*) FILTER (WHERE s.assigned_staff_id IS NOT NULL AND s.staff_confirmed_at IS NULL AND s.status != 'completed'),
+        COUNT(*) FILTER (WHERE s.status = 'open' OR s.assigned_staff_id IS NULL),
         COUNT(*)
     INTO v_confirmed_shifts, v_pending_shifts, v_open_shifts, v_total_shifts
     FROM shifts s
     JOIN clients c ON s.client_id = c.id
     WHERE c.agency_id = p_agency_id
     AND s.date = p_report_date;
+
+    -- Calculate pending workflows volume
+    SELECT COUNT(*)
+    INTO v_pending_workflows_count
+    FROM admin_workflows
+    WHERE agency_id = p_agency_id
+    AND status = 'pending';
 
     -- Calculate notifications sent today for this agency
     SELECT COUNT(*)
@@ -53,25 +61,17 @@ BEGIN
     AND status IN ('sent', 'delivered', 'opened', 'clicked');
 
     -- Calculate staff utilization
-    SELECT COUNT(DISTINCT id), COUNT(DISTINCT CASE WHEN id IN (
-        SELECT DISTINCT assigned_staff_id
-        FROM shifts s
-        JOIN clients c ON s.client_id = c.id
-        WHERE c.agency_id = p_agency_id
-        AND s.date = p_report_date
-        AND s.assigned_staff_id IS NOT NULL
-    ) THEN id END)
+    -- % of staff assigned to at least one shift on this date
+    SELECT COUNT(DISTINCT st.id), COUNT(DISTINCT s.assigned_staff_id)
     INTO v_staff_count, v_active_staff
-    FROM staff
-    WHERE agency_id = p_agency_id
-    AND status = 'active';
+    FROM staff st
+    LEFT JOIN shifts s ON st.id = s.assigned_staff_id AND s.date = p_report_date
+    WHERE st.agency_id = p_agency_id
+    AND st.status = 'active';
 
-    v_staff_utilization := CASE
-        WHEN v_staff_count > 0 THEN ROUND((v_active_staff::NUMERIC / v_staff_count) * 100, 0)
-        ELSE 0
-    END;
+    v_staff_utilization := CASE WHEN v_staff_count > 0 THEN ROUND((v_active_staff::NUMERIC / v_staff_count::NUMERIC) * 100, 0) ELSE 0 END;
 
-    -- Build comprehensive JSON result
+    -- Build final result
     SELECT json_build_object(
         'reportDate', p_report_date,
         'agencyId', p_agency_id,
@@ -81,62 +81,43 @@ BEGIN
             'pendingShifts', v_pending_shifts,
             'openShifts', v_open_shifts,
             'staffUtilization', v_staff_utilization,
-            'notificationsSent', v_notifications_sent
+            'notificationsSent', v_notifications_sent,
+            'pendingWorkflows', v_pending_workflows_count
         ),
         'actionItems', json_build_object(
             'criticalAlerts', (
-                SELECT json_agg(json_build_object(
-                    'type', 'urgent_shift_confirmation',
-                    'message', 'Shift needs confirmation (starts in ' ||
-                        EXTRACT(HOUR FROM ((s.date::text || ' ' || s.start_time)::timestamp - NOW())) || 'h)',
-                    'shiftId', s.id,
-                    'clientName', c.name,
-                    'startTime', s.start_time
-                ))
+                SELECT json_agg(
+                    json_build_object(
+                        'type', 'URGENT_CONFIRMATION',
+                        'message', 'Urgent: Shift unconfirmed by ' || st.first_name || ' ' || st.last_name,
+                        'staffName', st.first_name || ' ' || st.last_name,
+                        'clientName', c.name,
+                        'shiftId', s.id,
+                        'startTime', s.start_time
+                    )
+                )
+                FROM shifts s
+                JOIN clients c ON s.client_id = c.id
+                JOIN staff st ON s.assigned_staff_id = st.id
+                WHERE c.agency_id = p_agency_id
+                AND s.date = p_report_date
+                AND s.status = 'confirmed'
+                AND s.staff_confirmed_at IS NULL
+            ),
+            'warningAlerts', (
+                SELECT json_agg(
+                    json_build_object(
+                        'type', 'OPEN_SHIFT',
+                        'message', 'Open Shift: ' || s.start_time || ' at ' || c.name,
+                        'clientName', c.name,
+                        'shiftId', s.id
+                    )
+                )
                 FROM shifts s
                 JOIN clients c ON s.client_id = c.id
                 WHERE c.agency_id = p_agency_id
                 AND s.date = p_report_date
-                AND s.status = 'confirmed'
-                AND s.assigned_staff_id IS NOT NULL
-                AND (s.date::text || ' ' || s.start_time)::timestamp BETWEEN NOW() AND NOW() + INTERVAL '3 hours'
-                AND NOT COALESCE(s.staff_confirmed_completion, FALSE)
-            ),
-            'warningAlerts', (
-                SELECT json_agg(alert)
-                FROM (
-                    SELECT DISTINCT alert::jsonb as alert
-                    FROM (
-                        -- Pending timesheets from yesterday
-                        SELECT json_build_object(
-                            'type', 'pending_timesheets',
-                            'message', COUNT(*) || ' timesheets pending approval from yesterday',
-                            'count', COUNT(*)
-                        ) as alert
-                        FROM timesheets t
-                        JOIN shifts s ON t.shift_id = s.id
-                        JOIN clients c ON s.client_id = c.id
-                        WHERE c.agency_id = p_agency_id
-                        AND s.date = p_report_date - INTERVAL '1 day'
-                        AND t.status = 'pending'
-                        HAVING COUNT(*) > 0
-
-                        UNION ALL
-
-                        -- Compliance documents expiring soon
-                        SELECT json_build_object(
-                            'type', 'compliance_expiring',
-                            'message', COUNT(*) || ' compliance documents expire in 7 days',
-                            'count', COUNT(*)
-                        )
-                        FROM compliance comp
-                        JOIN staff st ON comp.staff_id = st.id
-                        WHERE st.agency_id = p_agency_id
-                        AND comp.expiry_date BETWEEN p_report_date AND p_report_date + INTERVAL '7 days'
-                        AND comp.status = 'valid'
-                        HAVING COUNT(*) > 0
-                    ) alerts_raw
-                ) alerts_distinct
+                AND s.status = 'open'
             )
         ),
         'clients', (
@@ -148,19 +129,11 @@ BEGIN
                         SELECT json_agg(
                             json_build_object(
                                 'id', s.id,
-                                'date', s.date,
+                                'staffName', COALESCE(st.first_name || ' ' || st.last_name, 'Unassigned'),
                                 'startTime', s.start_time,
                                 'endTime', s.end_time,
-                                'role', s.role,
-                                'shiftType', s.shift_type,
-                                'staffId', s.assigned_staff_id,
-                                'staffName', CASE
-                                    WHEN s.assigned_staff_id IS NOT NULL
-                                    THEN st.first_name || ' ' || st.last_name
-                                    ELSE 'Unassigned'
-                                END,
                                 'status', s.status,
-                                'confirmedByStaff', COALESCE(s.staff_confirmed_completion, FALSE)
+                                'confirmedByStaff', s.staff_confirmed_at IS NOT NULL
                             )
                             ORDER BY s.start_time
                         )
@@ -178,30 +151,6 @@ BEGIN
                 WHERE s.client_id = c.id
                 AND s.date = p_report_date
             )
-        ),
-        'pendingTimesheets', (
-            SELECT json_agg(
-                json_build_object(
-                    'id', t.id,
-                    'shiftId', s.id,
-                    'clientId', c.id,
-                    'clientName', c.name,
-                    'staffId', st.id,
-                    'staffName', st.first_name || ' ' || st.last_name,
-                    'shiftDate', s.date,
-                    'shiftTime', s.start_time || '-' || s.end_time,
-                    'status', t.status,
-                    'submittedAt', t.created_at
-                )
-                ORDER BY s.start_time
-            )
-            FROM timesheets t
-            JOIN shifts s ON t.shift_id = s.id
-            JOIN clients c ON s.client_id = c.id
-            JOIN staff st ON t.staff_id = st.id
-            WHERE c.agency_id = p_agency_id
-            AND s.date = p_report_date - INTERVAL '1 day'
-            AND t.status = 'pending'
         )
     ) INTO v_result;
 

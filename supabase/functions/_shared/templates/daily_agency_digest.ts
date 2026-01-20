@@ -5,336 +5,298 @@ export const daily_agency_digest = `<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daily Digest - {{agencyName}}</title>
     <style>
+        :root {
+            --primary: {{primaryColor}};
+            --secondary: {{secondaryColor}};
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
         body {
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f5f5f5;
-            color: #333;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.5;
         }
-        .email-container {
+        .wrapper {
+            width: 100%;
+            table-layout: fixed;
+            background-color: var(--bg);
+            padding: 40px 0;
+        }
+        .container {
             max-width: 600px;
             margin: 0 auto;
-            background-color: #ffffff;
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         .header {
-            background: linear-gradient(135deg, {{primaryColor}} 0%, {{secondaryColor}} 100%);
-            color: white;
-            padding: 30px 20px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            padding: 40px 30px;
             text-align: center;
+            color: white;
         }
         .header h1 {
-            margin: 0 0 10px 0;
-            font-size: 24px;
-            font-weight: 600;
+            margin: 0;
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.025em;
         }
         .header p {
-            margin: 0;
-            font-size: 14px;
+            margin: 8px 0 0;
+            font-size: 16px;
             opacity: 0.9;
+            font-weight: 500;
         }
         .content {
-            padding: 30px 20px;
+            padding: 40px 30px;
         }
-        .stat-cards {
+        .grid {
             display: table;
             width: 100%;
-            margin-bottom: 30px;
+            border-spacing: 12px 0;
+            margin: 0 -12px 30px;
         }
-        .stat-card {
+        .grid-item {
             display: table-cell;
             width: 33.33%;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px 10px;
             text-align: center;
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-radius: 8px;
         }
-        .stat-card + .stat-card {
-            padding-left: 10px;
-        }
-        .stat-number {
-            font-size: 32px;
-            font-weight: 700;
-            color: {{primaryColor}};
+        .grid-value {
             display: block;
-            margin-bottom: 5px;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
         }
-        .stat-label {
+        .grid-label {
+            display: block;
             font-size: 12px;
-            color: #6c757d;
+            font-weight: 600;
+            color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .section {
-            margin-bottom: 30px;
+            letter-spacing: 0.05em;
+            margin-top: 4px;
         }
         .section-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #1a1a1a;
-            border-bottom: 2px solid {{primaryColor}};
-            padding-bottom: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
         }
-        .client-block {
-            background-color: #f8f9fa;
-            border-left: 4px solid {{primaryColor}};
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 4px;
+        .section-title::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
+            margin-left: 12px;
+        }
+        .alert-card {
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            border-left: 4px solid;
+        }
+        .alert-card.critical {
+            background-color: #fef2f2;
+            border-left-color: var(--danger);
+            color: #991b1b;
+        }
+        .alert-card.warning {
+            background-color: #fffbeb;
+            border-left-color: var(--warning);
+            color: #92400e;
+        }
+        .alert-list {
+            margin: 8px 0 0;
+            padding-left: 20px;
+            font-size: 14px;
+        }
+        .client-card {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .client-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
         }
         .client-name {
             font-size: 16px;
-            font-weight: 600;
-            color: #1a1a1a;
-            margin-bottom: 10px;
+            font-weight: 700;
         }
         .shift-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
-        }
-        .shift-table th {
-            text-align: left;
-            font-size: 11px;
-            text-transform: uppercase;
-            color: #6c757d;
-            padding: 8px 5px;
-            border-bottom: 1px solid #dee2e6;
         }
         .shift-table td {
-            padding: 10px 5px;
-            font-size: 14px;
-            border-bottom: 1px solid #f1f3f5;
+            padding: 10px 0;
+            font-size: 13px;
+            border-bottom: 1px solid #e2e8f0;
         }
         .shift-table tr:last-child td {
             border-bottom: none;
         }
-        .status-badge {
+        .badge {
             display: inline-block;
-            padding: 3px 8px;
-            border-radius: 12px;
+            padding: 2px 8px;
+            border-radius: 9999px;
             font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
         }
-        .status-confirmed {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .status-pending {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-        .status-open {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        .alert-box {
-            background-color: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-        }
-        .alert-box.critical {
-            background-color: #f8d7da;
-            border-left-color: #dc3545;
-        }
-        .alert-icon {
-            font-size: 18px;
-            margin-right: 8px;
-        }
-        .alert-title {
-            font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-        .alert-list {
-            margin: 0;
-            padding-left: 20px;
-            font-size: 13px;
-            color: #495057;
-        }
-        .alert-list li {
-            margin-bottom: 5px;
-        }
-        .cta-container {
+        .badge-confirmed { background: #d1fae5; color: #065f46; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-open { background: #fee2e2; color: #991b1b; }
+        
+        .cta-section {
             text-align: center;
-            margin: 30px 0;
+            padding: 40px 30px;
+            background: #f1f5f9;
         }
-        .cta-button {
+        .btn {
             display: inline-block;
-            padding: 12px 30px;
-            background-color: {{primaryColor}};
+            padding: 14px 32px;
+            background-color: var(--primary);
             color: white;
             text-decoration: none;
-            border-radius: 6px;
+            border-radius: 10px;
             font-weight: 600;
-            margin: 0 5px;
-            font-size: 14px;
+            font-size: 15px;
+            transition: all 0.2s;
         }
-        .cta-button.secondary {
-            background-color: #6c757d;
+        .btn-secondary {
+            background-color: white;
+            color: var(--text-main);
+            border: 1px solid #e2e8f0;
+            margin-left: 12px;
         }
         .footer {
-            background-color: #f8f9fa;
-            padding: 20px;
+            padding: 40px 30px;
             text-align: center;
-            font-size: 12px;
-            color: #6c757d;
+            font-size: 13px;
+            color: var(--text-muted);
         }
-        .footer a {
-            color: {{primaryColor}};
-            text-decoration: none;
-        }
-        @media only screen and (max-width: 600px) {
-            .stat-card {
-                display: block;
-                width: 100%;
-                margin-bottom: 10px;
-            }
-            .stat-card + .stat-card {
-                padding-left: 15px;
-            }
-            .cta-button {
-                display: block;
-                margin: 10px 0;
-            }
+        .footer a { color: var(--primary); text-decoration: none; font-weight: 500; }
+        
+        @media (max-width: 600px) {
+            .grid-item { display: block; width: auto; margin: 0 12px 12px; }
+            .btn { display: block; width: auto; margin: 10px 0; }
+            .btn-secondary { margin-left: 0; }
         }
     </style>
 </head>
 <body>
-    <div class="email-container">
-        <!-- Header -->
-        <div class="header">
-            <h1>Good Morning!</h1>
-            <p>Daily Digest for {{agencyName}} - {{reportDate}}</p>
-        </div>
-
-        <!-- Content -->
-        <div class="content">
-            <!-- Quick Stats -->
-            <div class="stat-cards">
-                <div class="stat-card">
-                    <span class="stat-number">{{totalShifts}}</span>
-                    <span class="stat-label">Shifts Today</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number">{{staffUtilization}}%</span>
-                    <span class="stat-label">Staff Utilization</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number">{{notificationsSent}}</span>
-                    <span class="stat-label">Notifications Sent</span>
-                </div>
+    <div class="wrapper">
+        <div class="container">
+            <div class="header">
+                <h1>Daily Agency Digest</h1>
+                <p>{{agencyName}} • {{reportDate}}</p>
             </div>
+            
+            <div class="content">
+                <div class="grid">
+                    <div class="grid-item">
+                        <span class="grid-value">{{totalShifts}}</span>
+                        <span class="grid-label">Shifts Today</span>
+                    </div>
+                    <div class="grid-item">
+                        <span class="grid-value">{{staffUtilization}}%</span>
+                        <span class="grid-label">Utilization</span>
+                    </div>
+                    <div class="grid-item">
+                        <span class="grid-value">{{notificationsSent}}</span>
+                        <span class="grid-label">Alerts Sent</span>
+                    </div>
+                </div>
 
-            <!-- Action Items -->
-            {{#if hasAlerts}}
-            <div class="section">
-                <div class="section-title"> Action Items</div>
-
+                {{#if hasAlerts}}
+                <div class="section-title">Action Required</div>
                 {{#if criticalAlerts}}
-                <div class="alert-box critical">
-                    <div class="alert-title"><span class="alert-icon"></span>Urgent</div>
+                <div class="alert-card critical">
+                    <strong>Critical Issues</strong>
                     <ul class="alert-list">
-                        {{#each criticalAlerts}}
-                        <li>{{this}}</li>
-                        {{/each}}
+                        {{#each criticalAlerts}}<li>{{this.message}}</li>{{/each}}
                     </ul>
                 </div>
                 {{/if}}
-
                 {{#if warningAlerts}}
-                <div class="alert-box">
-                    <div class="alert-title"><span class="alert-icon"></span>Needs Attention</div>
+                <div class="alert-card warning">
+                    <strong>Attention Needed</strong>
                     <ul class="alert-list">
-                        {{#each warningAlerts}}
-                        <li>{{this}}</li>
-                        {{/each}}
+                        {{#each warningAlerts}}<li>{{this.message}}</li>{{/each}}
                     </ul>
                 </div>
                 {{/if}}
-            </div>
-            {{/if}}
+                {{/if}}
 
-            <!-- Today's Shifts by Client -->
-            <div class="section">
-                <div class="section-title"> Today's Shifts</div>
-
+                <div style="margin-top: 40px;"></div>
+                <div class="section-title">Today's Schedule</div>
                 {{#each clients}}
-                <div class="client-block">
+                <div class="client-card">
                     <div class="client-name">{{name}}</div>
                     <table class="shift-table">
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Role</th>
-                                <th>Staff</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{#each shifts}}
-                            <tr>
-                                <td>{{startTime}} - {{endTime}}</td>
-                                <td>{{role}}</td>
-                                <td>{{staffName}}</td>
-                                <td><span class="status-badge status-{{status}}">{{status}}</span></td>
-                            </tr>
-                            {{/each}}
-                        </tbody>
+                        {{#each shifts}}
+                        <tr>
+                            <td style="width: 35%;">{{startTime}} - {{endTime}}</td>
+                            <td style="width: 40%;"><strong>{{staffName}}</strong><br/><span style="color:var(--text-muted)">{{role}}</span></td>
+                            <td style="text-align: right;"><span class="badge badge-{{status}}">{{status}}</span></td>
+                        </tr>
+                        {{/each}}
                     </table>
                 </div>
                 {{/each}}
-            </div>
 
-            <!-- Pending Timesheets -->
-            {{#if pendingTimesheets}}
-            <div class="section">
-                <div class="section-title"> Pending Timesheets (Yesterday)</div>
-                <table class="shift-table">
-                    <thead>
-                        <tr>
-                            <th>Client</th>
-                            <th>Staff</th>
-                            <th>Shift</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                {{#if pendingTimesheets}}
+                <div style="margin-top: 40px;"></div>
+                <div class="section-title">Pending Approvals</div>
+                <div class="client-card" style="padding: 0 20px;">
+                    <table class="shift-table">
                         {{#each pendingTimesheets}}
                         <tr>
-                            <td>{{clientName}}</td>
-                            <td>{{staffName}}</td>
-                            <td>{{shiftDate}} {{shiftTime}}</td>
-                            <td><a href="{{approvalLink}}" style="color: {{primaryColor}};">Review →</a></td>
+                            <td>{{clientName}}<br/><span style="color:var(--text-muted)">{{staffName}}</span></td>
+                            <td style="text-align: right;"><a href="{{approvalLink}}" style="color:var(--primary); font-weight:600;">Approve →</a></td>
                         </tr>
                         {{/each}}
-                    </tbody>
-                </table>
+                    </table>
+                </div>
+                {{/if}}
             </div>
-            {{/if}}
 
-            <!-- Call to Action -->
-            <div class="cta-container">
-                <a href="{{dashboardUrl}}" class="cta-button">View Full Dashboard</a>
-                <a href="{{approveTimesheetsUrl}}" class="cta-button secondary">Approve Timesheets</a>
+            <div class="cta-section">
+                <a href="{{dashboardUrl}}" class="btn">Open Admin Dashboard</a>
+                <a href="{{approveTimesheetsUrl}}" class="btn btn-secondary">Review Timesheets</a>
             </div>
-        </div>
 
-        <!-- Footer -->
-        <div class="footer">
-            <p><strong>{{agencyName}}</strong></p>
-            <p>{{agencyPhone}} | {{agencyEmail}}</p>
-            <p style="margin-top: 15px;">
-                <a href="{{preferencesUrl}}">Email Preferences</a> |
-                <a href="{{supportUrl}}">Support</a>
-            </p>
-            <p style="margin-top: 10px; color: #adb5bd; font-size: 11px;">
-                Powered by ACG StaffLink
-            </p>
+            <div class="footer">
+                <p><strong>{{agencyName}}</strong></p>
+                <p>{{agencyPhone}} • {{agencyEmail}}</p>
+                <p style="margin-top: 20px;">
+                    <a href="{{preferencesUrl}}">Email Preferences</a> • 
+                    <a href="{{supportUrl}}">Help Center</a>
+                </p>
+                <p style="margin-top: 20px; opacity: 0.5; font-size: 11px;">
+                    Powered by ACG StaffLink
+                </p>
+            </div>
         </div>
     </div>
 </body>
