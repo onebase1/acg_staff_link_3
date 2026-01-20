@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import {
   Shield, Upload, Download, AlertTriangle, CheckCircle, XCircle,
-  Calendar, FileText, Search, Filter, User, Edit2, Trash2, Eye, HelpCircle
+  Calendar, FileText, Search, Filter, User, Edit2, Trash2, Eye, HelpCircle, Clock
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { toast } from "sonner";
@@ -488,14 +488,14 @@ export default function ComplianceTracker() {
 
   const getStatusBadge = (status) => {
     const variants = {
-      pending: { className: 'bg-yellow-100 text-yellow-800 text-xs whitespace-nowrap', icon: AlertTriangle, text: 'Pending' },
+      pending: { className: 'bg-yellow-50 text-yellow-700 border-yellow-200 text-xs whitespace-nowrap', icon: Clock, text: 'Awaiting Review' },
       verified: { className: 'bg-green-100 text-green-800 text-xs whitespace-nowrap', icon: CheckCircle, text: 'Verified' },
       expired: { className: 'bg-red-100 text-red-800 text-xs whitespace-nowrap', icon: XCircle, text: 'Expired' },
       rejected: { className: 'bg-gray-100 text-gray-800 text-xs whitespace-nowrap', icon: XCircle, text: 'Rejected' }
     };
     const info = variants[status] || variants.pending;
     const Icon = info.icon;
-    return <Badge className={info.className}><Icon className="w-3 h-3 mr-1 flex-shrink-0" /> {info.text}</Badge>;
+    return <Badge variant="outline" className={info.className}><Icon className="w-3 h-3 mr-1 flex-shrink-0" /> {info.text}</Badge>;
   };
 
   const getComplianceStoragePath = (documentUrl) => {

@@ -306,7 +306,7 @@ function ComplianceDocumentCard({ documentType, document, onUpload, onView }) {
       return <Badge className="bg-green-100 text-green-800 border-green-300">Verified</Badge>;
     }
     if (document.status === 'pending') {
-      return <Badge className="bg-blue-100 text-blue-800 border-blue-300">Pending Review</Badge>;
+      return <Badge className="bg-blue-100 text-blue-800 border-blue-300">Awaiting Review</Badge>;
     }
     return <Badge className="bg-gray-100 text-gray-800 border-gray-300">{document.status}</Badge>;
   };
