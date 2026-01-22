@@ -341,16 +341,18 @@ function ComplianceDocumentCard({ documentType, document, onUpload, onView }) {
               <p className="text-xs text-red-600 font-semibold">Required for shift eligibility</p>
             )}
             <div className="flex gap-2 mt-3">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => onUpload(documentType)}
-                className="h-8 text-xs"
-              >
-                <Upload className="w-3 h-3 mr-1" />
-                {document ? 'Update' : 'Upload'}
-              </Button>
+              {document?.status !== 'verified' && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onUpload(documentType)}
+                  className="h-8 text-xs"
+                >
+                  <Upload className="w-3 h-3 mr-1" />
+                  {document ? 'Update' : 'Upload'}
+                </Button>
+              )}
               {document?.document_url && (
                 <Button
                   type="button"

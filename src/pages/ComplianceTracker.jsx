@@ -455,7 +455,7 @@ export default function ComplianceTracker() {
         reference_number: editingDoc.reference_number,
         issuing_authority: editingDoc.issuing_authority,
         notes: editingDoc.notes,
-        status: editingDoc.status
+        status: isStaff ? 'pending' : editingDoc.status // ✅ Staff updates reset status to pending
       }
     });
   };
@@ -761,24 +761,28 @@ export default function ComplianceTracker() {
                         View
                       </Button>
                     )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1 h-10"
-                      onClick={() => handleEdit(doc)}
-                    >
-                      <Edit2 className="w-4 h-4 mr-2" />
-                      Edit
-                    </Button>
-                    {/* ✅ CHANGED: Staff can now delete their own documents */}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-10 text-red-600"
-                      onClick={() => handleDelete(doc.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {/* ✅ HIDE Edit/Delete for verified documents if user is staff */}
+                    {(!isStaff || (doc.status !== 'verified')) && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 h-10"
+                          onClick={() => handleEdit(doc)}
+                        >
+                          <Edit2 className="w-4 h-4 mr-2" />
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-10 text-red-600"
+                          onClick={() => handleDelete(doc.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </CardContent>
               </Card>
