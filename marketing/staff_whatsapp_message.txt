@@ -1,0 +1,20 @@
+📢 *Compliance Update: Simplified Rejection Alerts*
+
+Hi Team,
+
+We’ve updated the Staff Portal to make document verification faster and clearer! 🚀
+
+*What’s New?*
+Instead of receiving multiple emails, you will now get a single summary email if any of your compliance docs are rejected. This email will list exactly which documents need updating and the specific reason why (e.g., photo too blurred, certificate expired).
+
+*What do I need to do?*
+1. Check your email for "Action Required" alerts.
+2. Log into the *Staff Portal* and head to the *Compliance Tracker*.
+3. Look for items with a *'Rejected'* badge.
+4. Click *'Edit'* to see the notes from the admin and upload a new clear copy.
+
+Once you upload, the status will show as *'Awaiting Review'*. Please keep your documents up to date to ensure you never miss a shift! ⏱️
+
+Thanks,
+Compliance Team
+Agile Care Management

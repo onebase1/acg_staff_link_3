@@ -579,10 +579,27 @@ export default function ComplianceTracker() {
   // Calculate compliance progress for staff
   const complianceProgress = isStaff && staffRecord ? (() => {
     const required = ['dbs_check', 'right_to_work', 'professional_registration'];
-    const completed = required.filter(type =>
+
+    // 1. Calculate how many required types have AT LEAST ONE verified document
+    const verifiedTypes = required.filter(type =>
       compliance.some(d => d.document_type === type && d.status === 'verified')
     ).length;
-    return Math.round((completed / required.length) * 100);
+
+    // 2. Count total verified vs pending/rejected across all uploaded docs
+    const totalVerified = compliance.filter(d => d.status === 'verified').length;
+    const totalPending = compliance.filter(d => d.status === 'pending').length;
+    const totalRejected = compliance.filter(d => d.status === 'rejected').length;
+
+    // Basic percentage of required documents verified
+    let pct = Math.round((verifiedTypes / required.length) * 100);
+
+    // 🛡️ REFINEMENT: If we have all required but also have "Pends" or "Rejects", 
+    // we shouldn't show a perfect 100% because there is work/waiting to do.
+    if (pct === 100 && (totalPending > 0 || totalRejected > 0)) {
+      pct = 99; // Visual hint that things are still "In Progress"
+    }
+
+    return pct;
   })() : null;
 
   const documentTypeInfo = {
