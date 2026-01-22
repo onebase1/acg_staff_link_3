@@ -133,7 +133,8 @@ const TEMPLATES: Record<string, string> = {
         </div>
     </div>
 </body>
-</html>`
+</html>`,
+    compliance_rejection: `<!DOCTYPE html><html><body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;"><div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><div style="background-color: #ef4444; padding: 30px 20px; text-align: center; color: white;"><h1 style="margin: 0;">⚠️ Action Required</h1><p style="margin: 10px 0 0 0;">Compliance Document Update Needed</p></div><div style="padding: 30px 20px;"><p>Dear {{staff_name}},</p><p>Some of your compliance documents were not approved after review. Please see the details below and update them in the portal to stay compliant for shifts.</p><div style="margin: 20px 0;">{{rejection_items}}</div><div style="text-align: center; margin-top: 30px;"><a href="{{portal_url}}" style="display: inline-block; background-color: #ef4444; color: #ffffff; padding: 14px 28px; border-radius: 8px; font-weight: bold; text-decoration: none;">Update in Staff Portal</a></div></div><div style="background-color: #f9fafb; padding: 25px; border-top: 1px solid #f1f5f9; text-align: center;"><p style="margin: 0; font-size: 14px; color: #64748b;">{{agency_name}}</p></div></div></body></html>`
 };
 
 export async function loadTemplate(name: string, variables: Record<string, any>): Promise<string> {

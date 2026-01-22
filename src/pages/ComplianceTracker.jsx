@@ -476,11 +476,17 @@ export default function ComplianceTracker() {
     return differenceInDays(new Date(expiryDate), new Date());
   };
 
-  const getExpiryBadge = (expiryDate) => {
+  const getExpiryBadge = (expiryDate, status) => {
     if (!expiryDate) return <Badge variant="secondary" className="text-xs whitespace-nowrap">No Expiry</Badge>;
 
     const days = getDaysUntilExpiry(expiryDate);
-    if (days < 0) return <Badge className="bg-red-600 text-white text-xs whitespace-nowrap flex items-center"><XCircle className="w-3 h-3 mr-1 flex-shrink-0" /> Expired</Badge>;
+
+    // ✅ If status is already 'expired', we don't need a redundant date-based 'Expired' badge
+    if (days < 0) {
+      if (status === 'expired') return null;
+      return <Badge className="bg-red-600 text-white text-xs whitespace-nowrap flex items-center"><XCircle className="w-3 h-3 mr-1 flex-shrink-0" /> Expired</Badge>;
+    }
+
     if (days <= 7) return <Badge className="bg-red-500 text-white text-xs whitespace-nowrap flex items-center"><AlertTriangle className="w-3 h-3 mr-1 flex-shrink-0" /> {days}d</Badge>;
     if (days <= 30) return <Badge className="bg-orange-500 text-white text-xs whitespace-nowrap flex items-center"><Calendar className="w-3 h-3 mr-1 flex-shrink-0" /> {days}d</Badge>;
     return <Badge className="bg-green-600 text-white text-xs whitespace-nowrap flex items-center"><CheckCircle className="w-3 h-3 mr-1 flex-shrink-0" /> {days}d</Badge>;
@@ -725,10 +731,23 @@ export default function ComplianceTracker() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      {getExpiryBadge(doc.expiry_date)}
+                      {getExpiryBadge(doc.expiry_date, doc.status)}
                       {getStatusBadge(doc.status)}
                     </div>
                   </div>
+
+                  {/* ✅ NEW: Prominent Rejection Reason */}
+                  {doc.status === 'rejected' && doc.notes && (
+                    <Alert className="mb-3 border-red-200 bg-red-50 py-2">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-bold text-red-800">Rejection Reason:</p>
+                          <p className="text-xs text-red-700">{doc.notes}</p>
+                        </div>
+                      </div>
+                    </Alert>
+                  )}
 
                   {/* Dates */}
                   <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 mb-3 bg-gray-50 p-2 rounded">
@@ -761,8 +780,8 @@ export default function ComplianceTracker() {
                         View
                       </Button>
                     )}
-                    {/* ✅ HIDE Edit/Delete for verified documents if user is staff */}
-                    {(!isStaff || (doc.status !== 'verified')) && (
+                    {/* ✅ SHOW Edit/Delete if status is not verified OR if it is expired by date */}
+                    {(!isStaff || (doc.status !== 'verified' || getDaysUntilExpiry(doc.expiry_date) < 0)) && (
                       <>
                         <Button
                           size="sm"
@@ -1097,19 +1116,36 @@ export default function ComplianceTracker() {
                         <SelectItem value="pending">Awaiting Review</SelectItem>
                         <SelectItem value="verified">Verified</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
-                        <SelectItem value="expired">Expired</SelectItem>
+                        {/* ✅ Manual 'Expired' hidden to enforce automation */}
                       </SelectContent>
                     </Select>
                   </div>
                 )}
 
+                {/* ✅ NEW: Admin Warning for Expired Dates */}
+                {!isStaff && editingDoc.status === 'verified' && editingDoc.expiry_date && getDaysUntilExpiry(editingDoc.expiry_date) < 0 && (
+                  <Alert className="border-orange-300 bg-orange-50">
+                    <AlertTriangle className="h-4 w-4 text-orange-600" />
+                    <AlertDescription className="text-orange-900 text-xs">
+                      <strong>Warning:</strong> You are verifying a document with an <strong>expiry date in the past</strong>. This document will appear as 'Expired' immediately.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <div>
-                  <Label>Notes</Label>
+                  <Label className={editingDoc.status === 'rejected' ? 'text-red-600 font-bold' : ''}>
+                    Notes {editingDoc.status === 'rejected' && '(Required for rejection) *'}
+                  </Label>
                   <Input
+                    placeholder={editingDoc.status === 'rejected' ? "Please explain why this was rejected..." : "Optional notes..."}
                     value={editingDoc.notes || ''}
                     onChange={(e) => setEditingDoc({ ...editingDoc, notes: e.target.value })}
-                    className="h-12"
+                    className={`h-12 ${editingDoc.status === 'rejected' && !editingDoc.notes ? 'border-red-500 ring-red-500' : ''}`}
+                    required={editingDoc.status === 'rejected'}
                   />
+                  {editingDoc.status === 'rejected' && !editingDoc.notes && (
+                    <p className="text-xs text-red-600 mt-1">Please provide a reason for rejection so the staff member knows what to fix.</p>
+                  )}
                 </div>
 
                 <div className="flex gap-3 pt-4 border-t">
@@ -1136,7 +1172,8 @@ export default function ComplianceTracker() {
             </CardContent>
           </Card>
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 }

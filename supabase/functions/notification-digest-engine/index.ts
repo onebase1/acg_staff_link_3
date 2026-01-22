@@ -498,6 +498,32 @@ serve(async (req) => {
                         </html>
                     `;
                 }
+                
+                // ✅ BATCHED COMPLIANCE REJECTIONS
+                else if (queue.notification_type === 'compliance_rejection') {
+                    const docCount = queue.pending_items.length;
+                    subject = `⚠️ Action Required: ${docCount} Compliance Document${docCount > 1 ? 's' : ''} Rejected`;
+
+                    // Generate rejection list HTML
+                    const rejectionItemsHtml = queue.pending_items.map((item: any) => `
+                        <div style="border-left: 4px solid #ef4444; padding: 15px; background: #fee2e2; border-radius: 8px; margin-bottom: 12px;">
+                            <div style="font-weight: bold; color: #b91c1c; margin-bottom: 5px;">📍 ${item.document_name}</div>
+                            <div style="font-size: 14px; color: #7f1d1d; line-height: 1.4;">
+                                <strong>Reason:</strong> ${item.rejection_reason || 'No reason provided.'}
+                            </div>
+                            <div style="font-size: 12px; color: #991b1b; margin-top: 8px; font-style: italic;">
+                                Rejected on: ${new Date(item.rejected_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                            </div>
+                        </div>
+                    `).join('');
+
+                    emailHtml = await loadTemplate('compliance_rejection', {
+                        staff_name: queue.recipient_first_name || 'Team Member',
+                        rejection_items: rejectionItemsHtml,
+                        portal_url: branding.staffPortalUrl,
+                        agency_name: agency?.name || branding.companyName
+                    });
+                }
 
                 // ✅ NEW: Check if user has opted out of this notification type
                 const recipientType = queue.recipient_type || 'client'; // Default to client
