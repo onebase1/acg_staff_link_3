@@ -23,6 +23,10 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
   const [client, setClient] = useState(null);
   const [existingTimesheet, setExistingTimesheet] = useState(initialTimesheet);
   const [existingBooking, setExistingBooking] = useState(null);
+  const [isOnMyWaySent, setIsOnMyWaySent] = useState(false);
+  const [onMyWayLoading, setOnMyWayLoading] = useState(false);
+  const [showEtaOptions, setShowEtaOptions] = useState(false);
+  const [selectedEta, setSelectedEta] = useState('');
 
   // 🔒 ANTI-DUPLICATE PROTECTION
   const [isClockingIn, setIsClockingIn] = useState(false);
@@ -416,6 +420,36 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
       setIsClockingIn(false);
       setLoading(false);
       clockInAttemptRef.current = null;
+    }
+  };
+
+  const handleOnMyWay = async (eta) => {
+    if (!eta) {
+      setShowEtaOptions(true);
+      return;
+    }
+
+    setOnMyWayLoading(true);
+    try {
+      const { data, error } = await invokeFunction('shift-verification-chain', {
+        body: {
+          shift_id: shift.id,
+          trigger_point: 'staff_on_my_way',
+          additional_data: { eta }
+        }
+      });
+
+      if (error) throw error;
+
+      setSelectedEta(eta);
+      setIsOnMyWaySent(true);
+      setShowEtaOptions(false);
+      toast.success(`🏠 Enroute: Client notified! ETA: ${eta}`);
+    } catch (error) {
+      console.error('Error sending on-my-way notification:', error);
+      toast.error('Failed to notify client');
+    } finally {
+      setOnMyWayLoading(false);
     }
   };
 
@@ -828,38 +862,107 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
               </Alert>
             )}
 
-            {/* ✨ IMPROVEMENT 4: Check Location Button */}
-            <Button
-              onClick={handleCheckLocation}
-              variant="outline"
-              className="w-full mb-2"
-              disabled={loading || isClockingIn}
-            >
-              <Navigation className="w-4 h-4 mr-2" />
-              Check My Location
-            </Button>
+            {/* 🏠 ON MY WAY BUTTON & ETA SELECTOR */}
+            {!isGPSTimesheet && !isOnMyWaySent && (
+              <div className="mb-6 space-y-3">
+                {!showEtaOptions ? (
+                  <Button
+                    onClick={() => handleOnMyWay()}
+                    disabled={onMyWayLoading}
+                    variant="outline"
+                    className="w-full py-8 border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold"
+                  >
+                    <Navigation className="w-6 h-6 mr-2" />
+                    IM ON MY WAY
+                  </Button>
+                ) : (
+                  <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg animate-in fade-in slide-in-from-top-2">
+                    <p className="text-blue-800 font-semibold mb-3 text-center">Select your ETA:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['15 mins', '30 mins', '45 mins', '1 hour+'].map((eta) => (
+                        <Button
+                          key={eta}
+                          onClick={() => handleOnMyWay(eta)}
+                          disabled={onMyWayLoading}
+                          variant="secondary"
+                          className="bg-white border-blue-200 hover:bg-blue-100 text-blue-700"
+                        >
+                          {onMyWayLoading && selectedEta === eta ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : null}
+                          {eta}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      onClick={() => setShowEtaOptions(false)}
+                      className="w-full mt-2 text-blue-600 text-xs"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
 
-            <Button
-              onClick={handleClockIn}
-              disabled={loading || isClockingIn || isLoadingLocation}
-              className={`w-full py-6 text-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed`}
-            >
-              {loading || isClockingIn || isLoadingLocation ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Clocking In...
-                </>
-              ) : (
-                <>
-                  <Clock className="w-5 h-5 mr-2" />
-                  Clock In Now
-                </>
-              )}
-            </Button>
+            {isOnMyWaySent && (
+              <Alert className="border-blue-300 bg-blue-50 mb-6">
+                <Navigation className="h-5 w-5 text-blue-600" />
+                <AlertDescription className="text-blue-900">
+                  <strong>Enroute notification sent!</strong>
+                  <p className="text-xs">Client tagged with ETA: {selectedEta}</p>
+                </AlertDescription>
+              </Alert>
+            )}
 
-            <div className="text-xs text-gray-500 text-center">
+            {/* 📅 GPS vs PAPER ADVISORY */}
+            {client?.geofence_enabled === false ? (
+              <Alert className="border-orange-300 bg-orange-50 mb-4">
+                <Info className="h-5 w-5 text-orange-600" />
+                <AlertDescription className="text-orange-900">
+                  <strong>Paper Timesheet Required</strong>
+                  <p className="text-sm mt-1">This site does not use GPS. Please ensure your paper timesheet is signed by the client.</p>
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <div className="space-y-4">
+                {/* ✨ IMPROVEMENT 4: Check Location Button */}
+                <Button
+                  onClick={handleCheckLocation}
+                  variant="outline"
+                  className="w-full mb-2"
+                  disabled={loading || isClockingIn}
+                >
+                  <Navigation className="w-4 h-4 mr-2" />
+                  Check My Location
+                </Button>
+
+                <Button
+                  onClick={handleClockIn}
+                  disabled={loading || isClockingIn || isLoadingLocation}
+                  className={`w-full py-6 text-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed`}
+                >
+                  {loading || isClockingIn || isLoadingLocation ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Clocking In...
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="w-5 h-5 mr-2" />
+                      Clock In Now
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            <div className="text-xs text-gray-500 text-center mt-4">
               <Shield className="w-3 h-3 inline mr-1" />
-              Your location is captured once at the moment you clock in/out.
+              {client?.geofence_enabled === false
+                ? "Timesheet must be uploaded manually after shift."
+                : "Your location is captured once at the moment you clock in/out."}
             </div>
           </div>
         )}

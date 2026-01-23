@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Edit2, Save, X as XIcon, Loader2, Download, CalendarIcon, CheckCircle, Mail, MessageSquare,
   ChevronDown, ChevronRight, CalendarDays, RefreshCw, Zap, AlertTriangle, AlertCircle, Clock,
-  Building2, UserPlus, MapPin, Calendar, Plus, List, LayoutGrid
+  Building2, UserPlus, MapPin, Calendar, Plus, List, LayoutGrid, Navigation
 } from "lucide-react";
 import { format, subDays, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { toast } from "sonner";
@@ -1965,11 +1965,20 @@ export default function Shifts() {
               </div>
 
               {(shift.actual_staff_id || shift.assigned_staff_id) && (
-                <div className="mt-2 text-sm text-cyan-600 font-medium">
-                  {shift.actual_staff_id ? (
-                    <>✓ Actually worked by {getStaffName(shift.actual_staff_id)}</>
-                  ) : (
-                    <>✓ Assigned to {getStaffName(shift.assigned_staff_id)}</>
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="text-sm text-cyan-600 font-medium">
+                    {shift.actual_staff_id ? (
+                      <>✓ Actually worked by {getStaffName(shift.actual_staff_id)}</>
+                    ) : (
+                      <>✓ Assigned to {getStaffName(shift.assigned_staff_id)}</>
+                    )}
+                  </div>
+
+                  {shift.on_my_way_at && !shift.shift_started_at && (
+                    <Badge className="bg-orange-100 text-orange-800 border-orange-200 animate-pulse">
+                      <Navigation className="w-3 h-3 mr-1" />
+                      EN ROUTE {shift.estimated_arrival_time ? `(${shift.estimated_arrival_time})` : ''}
+                    </Badge>
                   )}
                 </div>
               )}

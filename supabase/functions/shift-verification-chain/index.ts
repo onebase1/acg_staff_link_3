@@ -254,6 +254,20 @@ serve(async (req) => {
                     });
                 }
 
+                // 🎯 RICHMOND COURT FIX: Only send arrival email if GPS is enabled for the client
+                // This prevents "Staff Has Arrived" emails for paper-only clients where GPS validation is bypassed
+                if (client.geofence_enabled === false) {
+                    console.log(`⏭️ [Verification Chain] Skipping clock-in email for non-GPS client: ${client.name}`);
+                    return new Response(JSON.stringify({ 
+                        success: true, 
+                        message: 'Skipped - client has GPS disabled',
+                        skipped: true,
+                        reason: 'geofence_disabled'
+                    }), { 
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                }
+
                 // IMMEDIATE SEND (Clock-in is real-time awareness)
                 emailSubject = `✅ Staff Clocked In: ${staffMember.first_name} ${staffMember.last_name}`;
                 emailBody = `
@@ -296,6 +310,90 @@ serve(async (req) => {
                 }
 
                 changeLogDescription = `Staff clock-in notification sent to ${client.name}`;
+                break;
+
+            case 'staff_on_my_way':
+                if (!staffMember) {
+                    return new Response(JSON.stringify({ success: false, error: 'Staff member not found' }), { 
+                        status: 400,
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                }
+
+                const eta = additional_data?.eta || 'shortly';
+                
+                // 💾 PERSISTENCE: Save to shifts table for admin visibility & AI
+                try {
+                    const journeyEntry = {
+                        state: 'on_my_way',
+                        timestamp: new Date().toISOString(),
+                        method: 'staff_portal',
+                        notes: `Staff marked themselves as enroute. ETA: ${eta}`
+                    };
+
+                    // Get current logs to append
+                    const { data: currentShift } = await supabase
+                        .from("shifts")
+                        .select("shift_journey_log")
+                        .eq("id", shift.id)
+                        .single();
+
+                    const currentLogs = currentShift?.shift_journey_log || [];
+                    const newLogs = Array.isArray(currentLogs) ? [...currentLogs, journeyEntry] : [journeyEntry];
+
+                    await supabase.from("shifts").update({
+                        on_my_way_at: new Date().toISOString(),
+                        estimated_arrival_time: eta,
+                        shift_journey_log: newLogs
+                    }).eq("id", shift.id);
+
+                    console.log(`💾 [Verification Chain] Persisted 'On My Way' for shift ${shift.id.substring(0, 8)} with ETA: ${eta}`);
+                } catch (updateError) {
+                    console.error('❌ [Verification Chain] Failed to persist On My Way data:', updateError);
+                }
+
+                // IMMEDIATE SEND (Departure is real-time awareness)
+                emailSubject = `🏠 Staff Member Enroute: ${staffMember.first_name} ${staffMember.last_name}`;
+                emailBody = `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <div style="background: #3b82f6; padding: 30px; text-align: center;">
+                            ${agency?.logo_url ? `<img src="${agency.logo_url}" alt="${agency.name}" style="max-width: 120px; margin-bottom: 15px; filter: brightness(0) invert(1);">` : ''}
+                            <h1 style="color: white; margin: 0;">Staff Member Enroute</h1>
+                        </div>
+                        <div style="padding: 30px; background: #f9fafb;">
+                            <p>Dear ${client.contact_person.name || 'Team'},</p>
+                            <p>This is to inform you that <strong>${staffMember.first_name} ${staffMember.last_name}</strong> is now on their way to your site for their scheduled shift.</p>
+                            
+                            <div style="background: white; border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0;">
+                                <h3>Shift Details</h3>
+                                <p><strong>Date:</strong> ${shift.date}</p>
+                                <p><strong>Scheduled Start:</strong> ${shift.start_time}</p>
+                                <p><strong>Estimated Arrival:</strong> <span style="color: #3b82f6; font-weight: bold;">${eta}</span></p>
+                                <p><strong>Role:</strong> ${shift.role_required}</p>
+                            </div>
+                            
+                            <p>Reference: SHIFT-${shift.id.substring(0, 8).toUpperCase()}</p>
+                            <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">
+                                Powered by ACG StaffLink
+                            </p>
+                        </div>
+                    </div>
+                `;
+                
+                try {
+                    await supabase.functions.invoke('send-email', {
+                        body: {
+                            to: client.contact_person.email,
+                            subject: emailSubject,
+                            html: emailBody,
+                            from_name: agency?.name || branding.saasName
+                        }
+                    });
+                } catch (emailError) {
+                    console.error('❌ [Verification Chain] On My Way email failed:', emailError);
+                }
+
+                changeLogDescription = `Staff 'On My Way' (ETA: ${eta}) notification sent to ${client.name}`;
                 break;
 
             default:

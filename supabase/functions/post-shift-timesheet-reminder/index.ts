@@ -71,53 +71,31 @@ serve(async (req) => {
 
         // Otherwise, find all shifts that ended recently without timesheet
         const now = new Date();
-        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-        console.log('📋 [Post-Shift Reminder] Finding shifts that ended in the last hour...');
+        console.log('📋 [Post-Shift Reminder] Finding unprocessed shifts from the last 7 days...');
 
         const { data: allShifts, error: shiftsError } = await supabase
             .from("shifts")
             .select("*")
-            .in("status", ['awaiting_admin_closure', 'in_progress']);
+            .eq("status", 'awaiting_admin_closure')
+            .eq("timesheet_reminder_sent", false)
+            .gte("date", sevenDaysAgo.toISOString().split('T')[0]);
 
         if (shiftsError) {
             throw shiftsError;
         }
 
-        console.log(`📋 [Post-Shift Reminder] Found ${allShifts.length} potential shifts`);
-
-        const shiftsToRemind = allShifts.filter(shift => {
-            // Check if shift has ended
-            const shiftDate = new Date(shift.date);
-            const [endHour, endMin] = shift.end_time.split(':').map(Number);
-            const shiftEnd = new Date(shiftDate);
-            shiftEnd.setHours(endHour, endMin, 0, 0);
-
-            // Shift ended between 1 hour ago and now
-            const hasEnded = shiftEnd <= now && shiftEnd >= oneHourAgo;
-
-            // Don't send if already sent reminder
-            const reminderAlreadySent = shift.timesheet_reminder_sent === true;
-
-            // ✅ FIX: Don't send reminder if shift already completed (GPS auto-complete)
-            const shiftAlreadyCompleted = shift.status === 'completed';
-
-            // ✅ FIX: Don't send reminder if timesheet already received
-            const timesheetAlreadyReceived = shift.timesheet_received === true;
-
-            return hasEnded && !reminderAlreadySent && !shiftAlreadyCompleted && !timesheetAlreadyReceived;
-        });
-
-        console.log(`📋 [Post-Shift Reminder] ${shiftsToRemind.length} shifts need reminders`);
+        console.log(`📋 [Post-Shift Reminder] Found ${allShifts.length} shifts needing reminders`);
 
         const results = {
             success: true,
-            shifts_processed: shiftsToRemind.length,
+            shifts_processed: allShifts.length,
             reminders_sent: 0,
             errors: []
         };
 
-        for (const shift of shiftsToRemind) {
+        for (const shift of allShifts) {
             try {
                 await sendTimesheetReminder(supabase, shift);
                 results.reminders_sent++;
@@ -170,12 +148,9 @@ async function sendTimesheetReminder(supabase, shift) {
 
     const client = allClients?.find(c => c.id === shift.client_id);
 
-    // 🆕 Skip timesheet reminders for non-GPS shifts (Option A - admin handles manually)
+    // 📅 Check if GPS is required for this shift/client
     const requiresGPS = shiftRequiresGPS(shift, client);
-    if (!requiresGPS) {
-        console.log(`⏭️ [Reminder] Shift ${shift.id} - GPS not required, skipping timesheet reminder (admin will handle)`);
-        return { skipped: true, reason: 'Non-GPS shift - admin handles timesheet' };
-    }
+    console.log(`📍 [Reminder] Shift ${shift.id} - GPS required: ${requiresGPS}`);
 
     const { data: allAgencies } = await supabase
         .from("agencies")
@@ -193,43 +168,16 @@ async function sendTimesheetReminder(supabase, shift) {
         .eq("client_id", shift.client_id)
         .eq("shift_date", shift.date);
 
-    let timesheetId;
-    if (existingTimesheets && existingTimesheets.length > 0) {
-        timesheetId = existingTimesheets[0].id;
-        console.log(`📝 [Reminder] Timesheet exists: ${timesheetId}`);
-    } else {
-        // Create draft timesheet if doesn't exist
-        console.log(`📝 [Reminder] Creating draft timesheet`);
-        const { data: newTimesheet, error: createError } = await supabase
-            .from("timesheets")
-            .insert({
-                agency_id: shift.agency_id,
-                staff_id: staffMember.id,
-                client_id: shift.client_id,
-                shift_date: shift.date,
-                work_location_within_site: shift.work_location_within_site,
-                pay_rate: shift.pay_rate,
-                charge_rate: shift.charge_rate,
-                total_hours: shift.duration_hours,
-                break_duration_minutes: shift.break_duration_minutes || 0,
-                staff_pay_amount: shift.duration_hours * shift.pay_rate,
-                client_charge_amount: shift.duration_hours * shift.charge_rate,
-                status: 'draft'
-            })
-            .select()
-            .single();
-
-        if (createError) throw createError;
-        timesheetId = newTimesheet.id;
-    }
-
     // Portal link to Staff Portal (they can navigate to timesheets from there)
-    const portalLink = 'https://your-app-url.com/StaffPortal'; // Replace with actual URL
+    const portalLink = 'https://agilecaremanagement.netlify.app/staff'; 
 
-    // 🎯 GPS-OPTIMIZED MESSAGING: Different messages for GPS vs non-GPS staff
-    const hasGPSConsent = staffMember.gps_consent === true;
+    // 🎯 MESSAGING STRATEGY: Differentiate between GPS vs Paper shifts
+    const timesheet = existingTimesheets && existingTimesheets.length > 0 
+        ? existingTimesheets[0] 
+        : null; // Note: We insert/select above if missing
+
     const hasGPSData = timesheet?.clock_in_time && timesheet?.clock_out_time;
-    const isGPSTimesheet = hasGPSConsent && hasGPSData;
+    const isGPSTimesheet = requiresGPS && hasGPSData;
 
     let whatsappMessage, emailSubject, emailBody;
 
