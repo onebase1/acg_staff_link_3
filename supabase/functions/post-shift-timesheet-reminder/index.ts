@@ -304,6 +304,21 @@ async function sendTimesheetReminder(supabase, shift) {
         `;
     }
 
+    // 🚀 DEFENSIVE: Mark as sent BEFORE dispatching to prevent loops if function times out
+    const { error: updateError } = await supabase
+        .from("shifts")
+        .update({
+            timesheet_reminder_sent: true,
+            timesheet_reminder_sent_at: new Date().toISOString()
+        })
+        .eq("id", shift.id)
+        .eq("timesheet_reminder_sent", false); // Important: only if not already sent
+
+    if (updateError) {
+        console.log(`⏭️ [Reminder] Shift ${shift.id} already processed or update failed. Skipping.`);
+        return { skipped: true, reason: 'Already processed or update failed' };
+    }
+
     const results = {
         whatsapp: { success: false },
         email: { success: false }
@@ -541,14 +556,6 @@ async function sendTimesheetReminder(supabase, shift) {
         }
     }
 
-    // Mark shift as reminder sent
-    await supabase
-        .from("shifts")
-        .update({
-            timesheet_reminder_sent: true,
-            timesheet_reminder_sent_at: new Date().toISOString()
-        })
-        .eq("id", shift.id);
 
     console.log(`✅ [Reminder] Sent to ${staffMember.first_name}: WhatsApp=${results.whatsapp.success}, Email=${results.email.success}`);
 
