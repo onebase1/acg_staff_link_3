@@ -16,6 +16,6 @@ Instead of receiving multiple separate emails, you will now receive a **single s
 
 Once you upload a replacement, your progress will show as *'Awaiting Review'*. Thanks for helping us keep our service standards high! ⏱️
 
-Thanks,
-Compliance Team
-Agile Care Management
+Regards,
+Gizzy DevOps
+
