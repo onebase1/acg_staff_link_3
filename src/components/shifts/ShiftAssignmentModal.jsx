@@ -243,8 +243,12 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
       const now = new Date();
       const hoursUntilShift = (shiftDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-      if (!bypassConfirmation && hoursUntilShift < 24 && hoursUntilShift > 0) {
-        throw new Error(`⚠️ Cannot assign staff to shifts starting within 24 hours. Please enable "Admin Bypass" to confirm immediately (${Math.round(hoursUntilShift)} hours until shift starts).`);
+      if (!bypassConfirmation && hoursUntilShift < 24) {
+        if (hoursUntilShift > 0) {
+          throw new Error(`⚠️ Cannot assign staff to shifts starting within 24 hours. Please enable "Admin Bypass" to confirm immediately (${Math.round(hoursUntilShift)} hours until shift starts).`);
+        } else {
+          throw new Error(`⚠️ This shift has already started (${Math.abs(Math.round(hoursUntilShift))} hours ago). Please enable "Admin Bypass" to confirm immediately.`);
+        }
       }
 
       const newStatus = bypassConfirmation ? 'confirmed' : 'assigned';

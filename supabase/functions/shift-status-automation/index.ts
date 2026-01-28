@@ -463,6 +463,17 @@ serve(async (req) => {
                         ? new Date(lastAssignedEntry.confirmation_deadline) 
                         : new Date(new Date(lastAssignedEntry.timestamp).getTime() + 24 * 60 * 60 * 1000);
 
+                    // ✅ NEW: 15-minute grace period for new assignments
+                    // Prevent unassigning shifts that were just assigned by an admin
+                    const assignedAt = new Date(lastAssignedEntry.timestamp);
+                    const minutesSinceAssignment = (now.getTime() - assignedAt.getTime()) / (1000 * 60);
+                    const GRACE_PERIOD_MINUTES = 15;
+
+                    if (minutesSinceAssignment < GRACE_PERIOD_MINUTES) {
+                        console.log(`⏳ [Shift Automation] Shift ${shift.id.substring(0, 8)} is in grace period (${minutesSinceAssignment.toFixed(1)}m < ${GRACE_PERIOD_MINUTES}m) - skipping unassignment`);
+                        continue;
+                    }
+
                     const isExpired = now > deadline;
                     const hoursUntilStart = (new Date(`${shift.date}T${shift.start_time}`).getTime() - now.getTime()) / 3600000;
 

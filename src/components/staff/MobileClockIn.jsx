@@ -863,7 +863,7 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
             )}
 
             {/* 🏠 ON MY WAY BUTTON & ETA SELECTOR */}
-            {!isGPSTimesheet && !isOnMyWaySent && (
+            {!existingTimesheet?.clock_in_time && !isOnMyWaySent && (
               <div className="mb-6 space-y-3">
                 {!showEtaOptions ? (
                   <Button
