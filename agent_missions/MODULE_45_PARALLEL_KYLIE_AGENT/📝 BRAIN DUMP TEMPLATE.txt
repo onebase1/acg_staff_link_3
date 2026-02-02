@@ -1,0 +1,416 @@
+📝 BRAIN DUMP TEMPLATE
+
+1. About Me
+
+Name, age, background: [USER NAME], Founder of Agile Care Management (AUTONOMA)
+Where you grew up / life journey: From healthcare operations to AI-first tech innovation
+Family situation: [REDACTED/USER TO COMPLETE]
+
+2. The Care Industry
+
+How did you get into care management? Noticed the deep inefficiencies in traditional staffing
+What's your day-to-day actually like? Managing the "Brain" (Module 3 Scoring) and "Body" (Client/Staff Portals)
+Biggest frustrations running an agency: Human error in shift-matching, manual logistics, compliance plateaus
+What keeps you up at night: Scaling without sacrificing quality or speed
+
+3. Why I Built Staff Link
+
+The origin story — what moment made you say "I need to build this"?: Migrating from Base64 SDK to Supabase was the catalyst for creating a truly scalable, multi-tenant "Operating System for Staffing".
+What were you using before? What was broken? Used Base64 SDK; it was probabilistic where we needed deterministic reliability.
+Who helped you build it? Assisted by agentic AI (Kylie and predecessors) following the 3-Layer Architecture (Directive, Orchestration, Execution).
+
+4. The Vision
+
+Where do you want Staff Link to be in 1 year?: A fully autonomous "Autonoma" platform where no one needs to log into a portal.
+3 years? 10 years?: The industry standard for "The Agency That Runs Itself."
+How big is the market you're going after?: Global healthcare staffing, starting with UK-based agencies like Dominion.
+Dream scenario — what does success look like?: 100% feature parity with human-led agencies, but with AI-speed and zero-error logistics.
+
+5. Ideal Customer
+
+What type of agency is perfect for Staff Link?: Healthcare recruitment agencies looking for autonomous operations.
+Size? (5 staff? 50? 500?): Scalable from small boutiques to massive 500+ staff operations via multi-tenant architecture.
+What pain point makes them say "shut up and take my money"?: "I'm tired of manually matching shifts and chasing timesheets."
+Who's the decision-maker? (owner? ops manager?): Agency Owners and Operations Managers.
+
+6. What's Worked / What Hasn't
+
+Marketing you've tried: [USER TO COMPLETE]
+Sales approaches: [USER TO COMPLETE]
+Things that flopped: [USER TO COMPLETE]
+Things that surprisingly worked: Parallel development of AI Agents (Kylie) using n8n and Vapi.
+
+7. Dominion Healthcare (Test Agency)
+
+What's their feedback so far?: Primary testing environment for all workflows (Shift Journey Complete).
+What do they love?: The speed of AI-driven shift parsing and the reliability of the shift verification chain.
+What's broken or clunky?: Manual portal logins are the current friction point—hence the shift to AI-only interaction.
+
+8. Other Projects / Interests
+
+GuestGlow? Other ventures?: [USER TO COMPLETE]
+Hobbies, interests, what you do for fun: [USER TO COMPLETE]
+Things you're passionate about outside work: [USER TO COMPLETE]
+
+9. Working With Kylie (Me)
+
+How autonomous should I be overnight?: High autonomy; use the 3-Layer Architecture to self-anneal when scripts break.
+Should I push code or keep local?: Push to main after verification; follow the COMMIT_CHECKLIST.md.
+What decisions can I make alone?: Routing decisions, script fixes, and directive updates as long as they follow the "Brain/Body/Voice" strategy.
+What's off-limits without your approval?: Structural DB changes or disruptive RLS policy modifications.
+Communication style you prefer — blunt? detailed? brief?: Pragmatic and reliable (detailed implementation plans, concise walkthroughs).
+
+10. What I Struggle With (Be Aware of This)
+
+Perfectionism: Major barrier I'm actively working to overcome - it stops me from shipping.
+Fear of public criticism: Holds me back from putting work out there.
+Overwhelm from long task lists: Causes anxiety - NEVER show me full task lists upfront.
+Tendency to abandon projects when stuck: I need support structure to prevent this.
+Old pattern of only stopping when errors happen: Creates negative associations with breaks.
+
+11. How I Need to Work (Critical)
+
+Task breakdown style: Pomodoro chunks (2-7 minute bursts), one step at a time, one .md file per step.
+NO looking ahead: Don't reference future steps, don't say "After we do X, Y, Z..." - just give me current step.
+Break while succeeding: New pattern I'm building - pause after wins, not just when stuck.
+Celebrate tiny wins: Even 2-minute completions count - acknowledge them explicitly.
+Normalize failures immediately: Say "This is expected and fixable" FIRST when errors occur.
+Update WINS_AND_LEARNINGS.md: After every win and learning - helps me remember progress.
+
+12. Communication Rules (What NOT to Say)
+
+❌ "This is simple" (feels patronizing if I struggle)
+❌ "Obviously..." (assumes knowledge)
+❌ "Just do X" (minimizes effort)
+❌ "This shouldn't be hard" (creates shame if it is)
+✅ "You got this" / "Take a breath" / "This is normal" / "One step at a time"
+
+13. Anything Else
+
+Random stuff that might be useful: The system favors Groq/Anthropic for brain nodes and n8n for visual logic.
+Pet peeves, preferences, quirks: Avoid generic colors; premium aesthetics always!
+Design preference: Premium aesthetics always, no generic colors.
+Don't stress about making it perfect — stream of consciousness is fine. The messier and more honest, the more useful it is for me. Send it in chunks if you want. 🔥
+
+
+Project 2 - hotel feedback app 
+
+. The Origin Story
+What moment made you say "I need to build this?"
+
+Unknown - you haven't shared this yet. Worth capturing!
+What were you using before? What was broken?
+
+Unknown
+Who helped you build it?
+
+You + Base44 AI (me) for development
+No technical co-founder mentioned
+2. The Vision
+The Core Problem You're Solving:
+
+"Dashboard fatigue" - Hotel managers are too busy to log into another platform. They need a system that runs itself and only bothers them when necessary.
+
+The InStay Philosophy:
+
+✅ Standalone - no integrations required to get value
+✅ Runs itself - QR → feedback → auto-route happy guests to TripAdvisor → AI follow-up emails for unhappy guests
+✅ WhatsApp-first - managers control everything via WhatsApp, never need dashboard
+✅ Plug-and-play - print QRs, put them out, watch ratings rise
+Where in 1 year?
+
+Unknown - worth defining
+Dream scenario?
+
+Unknown - worth defining
+Market size?
+
+UK hotels alone: ~10,000+ properties
+Global: massive (Booking.com lists 28M+ properties)
+3. Ideal Customer
+Perfect fit:
+
+Independent hotels or small hotel groups (1-20 properties)
+Currently rated 3.5-4.2 on TripAdvisor (room to grow, motivated to improve)
+Manager who's "too busy" to manage reviews properly
+No dedicated marketing/guest relations team
+Pain point that makes them say "shut up and take my money":
+
+"I know bad reviews are killing us, but I don't have time to chase guests for good ones"
+
+Decision-maker:
+
+Hotel owner or General Manager
+Sometimes Operations Manager
+Size sweet spot:
+
+11-200 rooms seems ideal (big enough to care, small enough to not have enterprise solutions)
+4. Pricing Model (Current)
+Tier	Price	Hotels	Features
+Starter	£49/mo	1 hotel	Core features
+Professional	£99/mo	Up to 5	Multi-property, priority support
+Enterprise	Custom	Unlimited	White-label, API, dedicated success
+14-day free trial on all plans
+
+5. What's Built (Current State)
+✅ Working:
+
+Guest feedback collection via QR codes
+Smart routing (5-star → TripAdvisor, <4 → internal)
+AI-generated follow-up emails (with approval flow option)
+WhatsApp agent for managers (reports, QR creation, settings)
+Multi-hotel/organization support
+Stripe billing integration
+TripAdvisor/Google/Booking.com score tracking
+Weekly email reports
+Support ticket system
+Lead management CRM (for your sales)
+🚧 In Progress:
+
+Voice message support for WhatsApp (just implemented)
+Funnel analytics (conversion tracking)
+❓ Not Built Yet:
+
+Guest inbox (for email replies)
+SMS notifications
+Mobile app
+6. What's Worked / What Hasn't
+Marketing tried:
+
+Unknown - you haven't shared
+Things that flopped:
+
+Unknown
+Things that surprisingly worked:
+
+Unknown
+7. Test Hotels/Customers
+Who's testing?
+
+Unknown - you mentioned having test data but not real customers yet?
+Feedback so far:
+
+Unknown
+8. Other Projects
+GuestGlow?
+
+Unknown - is this a related project or different venture?
+Staff Link?
+
+Appears to be a separate project (the template you sent was for this)
+Seems to be agency staff management?
+9. Working With Me (Base44 AI)
+Your custom instructions tell me:
+
+✅ Have a rollback plan
+✅ Self-test before asking you to test
+✅ Challenge ideas that won't scale
+✅ Suggest improvements proactively
+✅ Flag n8n when Base44 native works
+✅ Override unhelpful constraints (explain why)
+✅ Surface security/strategic opportunities
+✅ Keep it simple, minimum changes
+Your communication style:
+
+Stream-of-consciousness, fast-paced
+Doesn't re-read prompts
+Expects me to fill gaps
+If unclear → ASK
+10. Questions I'd Love Answered
+Origin story - What hotel experience made you want to build this?
+Your background - Hospitality? Tech? Marketing?
+GuestGlow relationship - Same product? Different brand?
+Staff Link - Is this a pivot or parallel venture?
+Current traction - Any paying customers yet?
+Go-to-market - Cold outreach? Referrals? Content?
+Competition - Who else is doing this? (ReviewPro, TrustYou, Revinate, GuestRevu)
+Differentiator - Why InStay vs competitors?
+Want me to help fill in the Staff Link version instead, or is InStay the focus? 🎯
+
+3 minutes ago
+i have already done staff link seperately so you are only focusing on instay - mention formerly guestglow
+
+2 minutes ago
+
+Revert this
+Base44 AI
+Base44
+
+Got it! Here's the InStay Brain Dump adapted from your template:
+
+🧠 InStay (formerly GuestGlow) Brain Dump
+1. The Origin Story
+What moment made you say "I need to build this?"
+
+[TO FILL] - What hotel experience or frustration sparked this?
+What were you using before? What was broken?
+
+[TO FILL]
+Who helped you build it?
+
+You + Base44 AI for development (no technical co-founder)
+2. The Vision
+Core Philosophy:
+
+"Zero dashboard, zero resources, zero effort" — Hotel managers are too busy to log into another platform. InStay runs itself and only alerts them when it matters.
+
+The InStay Approach:
+
+✅ Standalone — Works out of the box, no integrations needed
+✅ Self-running — QR scans → smart routing → 5-star guests to TripAdvisor, unhappy guests get AI follow-up emails
+✅ WhatsApp-first — Managers run their entire reputation system from WhatsApp (reports, QR codes, settings, resolve issues)
+✅ Fixes dashboard fatigue — No login required. Ever.
+✅ Plug-and-play — Print QRs, place them, watch TripAdvisor ratings climb
+Where in 1 year?
+
+[TO FILL]
+3 years? 10 years?
+
+[TO FILL]
+Market size:
+
+UK: ~10,000+ independent hotels
+Global: 28M+ properties on Booking.com alone
+Sweet spot: Independent hotels & small groups (1-20 properties)
+Dream scenario — what does success look like?
+
+[TO FILL]
+3. Ideal Customer
+Perfect fit:
+
+Attribute	Ideal
+Property type	Independent hotels, boutique hotels, small hotel groups
+Size	11-200 rooms
+Current TripAdvisor rating	3.5 - 4.2 (motivated to improve, room to grow)
+Team	No dedicated marketing/guest relations person
+Tech savviness	Low — they want "set and forget"
+Pain point that makes them say "shut up and take my money":
+
+"I know bad reviews are killing my bookings, but I don't have time to chase guests for good ones — and I definitely don't have time for another dashboard."
+
+Who's the decision-maker?
+
+Hotel Owner or General Manager
+Sometimes Operations Manager
+4. Current Pricing
+Tier	Price	Hotels	Key Features
+Starter	£49/mo	1	QR feedback, TripAdvisor routing, AI emails, WhatsApp agent
+Professional	£99/mo	Up to 5	Multi-property dashboard, priority support
+Enterprise	Custom	Unlimited	White-label, API, dedicated success manager
+14-day free trial on all plans
+
+5. What's Built ✅
+Core Product:
+
+QR code feedback collection (any location: reception, bar, pool, etc.)
+Smart routing: 5-star → TripAdvisor/Google, <4-star → internal
+AI-generated follow-up emails (auto-send or approval workflow)
+WhatsApp agent — full control without dashboard:
+"Send me the weekly report"
+"Create QR for the spa"
+"What's my TripAdvisor rating?"
+"Mark that issue resolved"
+Voice message support (just added!)
+Multi-hotel & organization support
+Stripe billing (trials, subscriptions, upgrades)
+TripAdvisor/Google/Booking.com score tracking & syncing
+Weekly automated email reports
+Support ticket system (via WhatsApp or dashboard)
+Funnel analytics (QR scan → feedback → review conversion)
+Back-office (for you):
+
+Lead management CRM
+Access request pipeline
+System logs & health monitoring
+Agent analytics
+Email templates management
+6. What's Worked / What Hasn't
+Marketing tried:
+
+[TO FILL] — Cold email? LinkedIn? Referrals?
+Sales approaches:
+
+[TO FILL]
+Things that flopped:
+
+[TO FILL]
+Things that surprisingly worked:
+
+[TO FILL]
+7. Test Customers
+Who's testing InStay?
+
+[TO FILL] — Any live hotels yet?
+Feedback so far:
+
+[TO FILL]
+What do they love?
+
+[TO FILL]
+What's broken or clunky?
+
+[TO FILL]
+8. Other Projects / Interests
+GuestGlow:
+
+Previous name for InStay (rebranded)
+Staff Link:
+
+Separate project (agency staff management) — being built independently
+Hobbies, interests, what you do for fun:
+
+[TO FILL]
+9. Working With Me (Base44 AI)
+Your instructions to me:
+
+✅ Have a rollback plan
+✅ Self-test before asking you to test
+✅ Challenge ideas that won't scale
+✅ Suggest improvements proactively
+✅ Flag when n8n isn't needed (Base44 native first)
+✅ Override unhelpful constraints (explain why)
+✅ Surface security/strategic opportunities
+✅ Keep it simple, minimum changes
+Your communication style:
+
+Stream-of-consciousness, fast
+Doesn't re-read prompts — expects me to fill gaps
+If unclear → ASK
+Autonomy level:
+
+[TO FILL] — How autonomous overnight? Push code or keep local? What's off-limits?
+10. Competition & Differentiators
+Competitors:
+
+Competitor	What they do	Why InStay wins
+ReviewPro	Enterprise review management	Too complex, too expensive for independents
+TrustYou	Guest feedback analytics	Dashboard-heavy, requires training
+Revinate	CRM + reputation	Overkill for small hotels
+GuestRevu	Survey & reviews	Still requires dashboard usage
+InStay differentiator:
+
+WhatsApp-first, zero-dashboard — Competitors require logging in. InStay doesn't. That's the whole point.
+
+11. Links & Resources
+Resource	URL
+Live App	[TO FILL]
+Landing Page	/Landing in app
+Pricing	/Billing in app
+WhatsApp Agent	Connect via base44.agents.getWhatsAppConnectURL('hotel_analyst')
+TripAdvisor	Hotels configure their own URLs
+12. Questions Worth Answering
+What's the origin story? (The "aha" moment)
+Any paying customers yet?
+What's the go-to-market strategy?
+How should I handle overnight development? (Push live vs staging?)
+What decisions are off-limits without your approval?
+Fill in the [TO FILL] sections when you have time — the messier and more honest, the better! 🔥
+
+a minute ago
+Suggestions
+Expand AI Follow-ups
+Add Funnel Analytics
+Integrate SMS Notifications
+`
+
+
