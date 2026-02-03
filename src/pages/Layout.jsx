@@ -8,7 +8,7 @@ import {
   UserCog, FileText, Receipt, TrendingUp, Clock, CalendarCheck, Building2, Shield,
   UsersRound, LogOut, HelpCircle, UserPlus, Menu, X, Bell, ChevronDown, ChevronRight, Upload,
   CheckSquare, Rocket, DollarSign, Trash2, Mail, Shuffle, MessageCircle, CheckCircle, BookOpen,
-  Phone, GitBranch, Trophy, Activity, Sparkles // ✅ Added Activity icon for Live Rota
+  Phone, GitBranch, Trophy, Activity, Sparkles, AlertTriangle // ✅ Added AlertTriangle
 } from "lucide-react";
 import { useAppVersion } from "@/hooks/useAppVersion";
 import { supabaseAuth } from "@/api/supabaseAuth";
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import PublicLayout from "./PublicLayout";
 import ViewSwitcher from "@/components/admin/ViewSwitcher";
+import { supabase } from "@/lib/supabase"; // ✅ Added for system health checks
 
 const navigationStructure = [
   {
@@ -207,6 +208,32 @@ export default function Layout({ children, currentPageName }) {
   // ✅ NEW: Prevent repeated auth checks with ref
   const authCheckInProgress = useRef(false);
   const authChecked = useRef(false);
+  const [criticalAlerts, setCriticalAlerts] = useState(0);
+
+  // ✅ NEW: Fetch critical system alerts for Super Adimin
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+
+    const fetchAlerts = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('system_alerts')
+          .select('*', { count: 'exact', head: true })
+          .eq('severity', 'critical')
+          .eq('is_resolved', false);
+
+        if (!error) {
+          setCriticalAlerts(count || 0);
+        }
+      } catch (err) {
+        console.error('Error fetching system health:', err);
+      }
+    };
+
+    fetchAlerts();
+    const interval = setInterval(fetchAlerts, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [isSuperAdmin]);
 
   // ✅ NEW: Close dropdown when clicking outside
   useEffect(() => {
@@ -732,20 +759,29 @@ export default function Layout({ children, currentPageName }) {
           {/* Super Admin Only */}
           {isSuperAdmin && (
             <div className="mt-6 pt-6 border-t border-gray-300">
-              <div className="section-header">
+              <div className="section-header relative">
                 <Shield className="w-4 h-4 text-purple-600 mr-2" />
-                <span>Super Admin</span>
+                <span className="flex-1">Super Admin</span>
+                {criticalAlerts > 0 && (
+                  <Badge className="bg-red-500 text-white hover:bg-red-600 animate-pulse px-1.5 h-5 min-w-[20px] flex items-center justify-center">
+                    <AlertTriangle className="w-3 h-3 mr-1" />
+                    {criticalAlerts}
+                  </Badge>
+                )}
               </div>
               <div className="ml-2">
                 {superAdminItems.map((item) => (
                   <Link
                     key={item.title}
                     to={item.url}
-                    className={`sidebar-link ${isActive(item.url) ? 'active' : ''}`}
+                    className={`sidebar-link relative ${isActive(item.url) ? 'active' : ''}`}
                     onClick={() => setSidebarOpen(false)}
                   >
                     <item.icon className="w-4 h-4" />
-                    <span className="ml-3">{item.title}</span>
+                    <span className="ml-3 flex-1">{item.title}</span>
+                    {item.title === 'Cron Command Center' && criticalAlerts > 0 && (
+                      <span className="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+                    )}
                   </Link>
                 ))}
               </div>

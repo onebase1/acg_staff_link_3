@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 import ApproveUserModal from "@/components/admin/ApproveUserModal";
 
 export default function AdminWorkflows() {
@@ -23,13 +24,17 @@ export default function AdminWorkflows() {
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [shiftResolutionAction, setShiftResolutionAction] = useState('completed');
   const [actualStaffId, setActualStaffId] = useState('none');
   const [actualStartTime, setActualStartTime] = useState('');
   const [actualEndTime, setActualEndTime] = useState('');
-  const [viewMode, setViewMode] = useState('table'); // ✅ NEW: Default to table view
-  const [approveUserWorkflow, setApproveUserWorkflow] = useState(null); // ✅ NEW: For user approval modal
+  const [viewMode, setViewMode] = useState('table');
+  const [clientIdFilter, setClientIdFilter] = useState('all');
+  const [startDateFilter, setStartDateFilter] = useState('');
+  const [endDateFilter, setEndDateFilter] = useState('');
+  const [approveUserWorkflow, setApproveUserWorkflow] = useState(null);
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
 
@@ -260,6 +265,26 @@ export default function AdminWorkflows() {
     }
   });
 
+  const bulkResolveMutation = useMutation({
+    mutationFn: async ({ status, notes, outcome }) => {
+      const { data, error } = await supabase.rpc('bulk_resolve_admin_workflows', {
+        target_workflow_ids: selectedIds,
+        resolution_status: status,
+        notes: notes,
+        shift_outcome: outcome
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`✅ ${data.updated_count} workflows resolved in bulk`);
+      setSelectedIds([]);
+      queryClient.invalidateQueries(['workflows']);
+      queryClient.invalidateQueries(['shifts']);
+    },
+    onError: (error) => toast.error(`Bulk update failed: ${error.message}`)
+  });
+
   const handleStatusChange = (workflowId, newStatus) => {
     if (updateWorkflowMutation.isPending) {
       console.log('⏸️ [Admin Workflow] Already processing, ignoring duplicate call');
@@ -296,8 +321,43 @@ export default function AdminWorkflows() {
     const matchesStatus = statusFilter === 'all' || w.status === statusFilter;
     const matchesPriority = priorityFilter === 'all' || w.priority === priorityFilter;
     const matchesType = typeFilter === 'all' || w.type === typeFilter;
-    return matchesStatus && matchesPriority && matchesType;
+
+    let matchesClient = true;
+    if (clientIdFilter !== 'all') {
+      const shiftId = w.related_entity?.entity_id;
+      const shift = shifts.find(s => s.id === shiftId);
+      matchesClient = shift?.client_id === clientIdFilter;
+    }
+
+    let matchesDate = true;
+    if (startDateFilter || endDateFilter) {
+      const shiftId = w.related_entity?.entity_id;
+      const shift = shifts.find(s => s.id === shiftId);
+      if (shift?.date) {
+        if (startDateFilter && shift.date < startDateFilter) matchesDate = false;
+        if (endDateFilter && shift.date > endDateFilter) matchesDate = false;
+      } else {
+        // Fallback to workflow created date if no shift date
+        const workflowDate = format(new Date(w.created_date), 'yyyy-MM-dd');
+        if (startDateFilter && workflowDate < startDateFilter) matchesDate = false;
+        if (endDateFilter && workflowDate > endDateFilter) matchesDate = false;
+      }
+    }
+
+    return matchesStatus && matchesPriority && matchesType && matchesClient && matchesDate;
   });
+
+  const toggleAll = () => {
+    if (selectedIds.length === filteredWorkflows.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredWorkflows.map(w => w.id));
+    }
+  };
+
+  const toggleOne = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
 
   const getPriorityBadge = (priority) => {
     const variants = {
@@ -497,6 +557,20 @@ export default function AdminWorkflows() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="flex-1">
+                <Select value={clientIdFilter} onValueChange={setClientIdFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by Client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Clients</SelectItem>
+                    {clients.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* ✅ NEW: View Toggle */}
@@ -524,6 +598,52 @@ export default function AdminWorkflows() {
         </CardContent>
       </Card>
 
+      {/* ✅ QUICK DATE SELECTS */}
+      <div className="flex flex-wrap items-center gap-3 px-1">
+        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Target Period:</span>
+        <div className="flex items-center gap-2">
+          <Input
+            type="date"
+            className="h-8 w-36 text-xs"
+            value={startDateFilter}
+            onChange={(e) => setStartDateFilter(e.target.value)}
+          />
+          <span className="text-gray-400">to</span>
+          <Input
+            type="date"
+            className="h-8 w-36 text-xs"
+            value={endDateFilter}
+            onChange={(e) => setEndDateFilter(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-2 ml-2">
+          <Button
+            variant="outline"
+            size="xs"
+            className="h-7 text-[10px] bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 font-bold"
+            onClick={() => { setStartDateFilter('2025-12-01'); setEndDateFilter('2025-12-31'); }}
+          >
+            🗓️ Dec 2025
+          </Button>
+          <Button
+            variant="outline"
+            size="xs"
+            className="h-7 text-[10px]"
+            onClick={() => {
+              const d = new Date();
+              const first = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+              const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+              setStartDateFilter(first); setEndDateFilter(last);
+            }}
+          >
+            📅 This Month
+          </Button>
+          <Button variant="ghost" size="xs" className="h-7 text-[10px] text-gray-400" onClick={() => { setStartDateFilter(''); setEndDateFilter(''); }}>
+            Clear Dates
+          </Button>
+        </div>
+      </div>
+
       {/* ✅ NEW: Table View */}
       {viewMode === 'table' ? (
         <Card>
@@ -532,6 +652,12 @@ export default function AdminWorkflows() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 border-b sticky top-0">
                   <tr>
+                    <th className="px-4 py-3 text-left">
+                      <Checkbox
+                        checked={selectedIds.length > 0 && selectedIds.length === filteredWorkflows.length}
+                        onCheckedChange={toggleAll}
+                      />
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Priority</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
@@ -548,7 +674,13 @@ export default function AdminWorkflows() {
                     const relatedLink = getRelatedEntityLink(workflow);
 
                     return (
-                      <tr key={workflow.id} className="hover:bg-gray-50">
+                      <tr key={workflow.id} className="hover:bg-gray-50 border-b">
+                        <td className="px-4 py-3">
+                          <Checkbox
+                            checked={selectedIds.includes(workflow.id)}
+                            onCheckedChange={() => toggleOne(workflow.id)}
+                          />
+                        </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <Badge className={priorityInfo.className}>
                             {workflow.priority}
@@ -680,7 +812,13 @@ export default function AdminWorkflows() {
             const relatedLink = getRelatedEntityLink(workflow);
 
             return (
-              <Card key={workflow.id} className={`hover:shadow-lg transition-shadow ${workflow.priority === 'critical' ? 'border-2 border-red-300' : ''}`}>
+              <Card key={workflow.id} className={`hover:shadow-lg transition-shadow relative ${workflow.priority === 'critical' ? 'border-2 border-red-300' : ''}`}>
+                <div className="absolute top-4 right-4 z-10">
+                  <Checkbox
+                    checked={selectedIds.includes(workflow.id)}
+                    onCheckedChange={() => toggleOne(workflow.id)}
+                  />
+                </div>
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row justify-between gap-4">
                     <div className="flex-1">
@@ -820,6 +958,52 @@ export default function AdminWorkflows() {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* ✅ NEW: Bulk Action Bar */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-2xl px-4">
+          <Card className="shadow-2xl border-2 border-blue-500 bg-white/95 backdrop-blur-sm">
+            <CardContent className="p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Badge className="bg-blue-600 text-white text-lg px-3 py-1">
+                  {selectedIds.length} Selected
+                </Badge>
+                <span className="text-sm font-medium text-gray-700">workflows selected for bulk action</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedIds([])}
+                  disabled={bulkResolveMutation.isPending}
+                >
+                  Clear
+                </Button>
+
+                <Select disabled={bulkResolveMutation.isPending} onValueChange={(val) => {
+                  if (val === 'dismiss') {
+                    bulkResolveMutation.mutate({ status: 'dismissed', notes: 'Bulk dismissed by admin' });
+                  } else {
+                    const outcome = window.confirm(`Mark ${selectedIds.length} workflows as Resolved?`) ? 'completed' : null;
+                    if (outcome) {
+                      bulkResolveMutation.mutate({ status: 'resolved', notes: 'Bulk resolved by admin', outcome });
+                    }
+                  }
+                }}>
+                  <SelectTrigger className="w-[180px] bg-blue-600 text-white hover:bg-blue-700 font-bold">
+                    <SelectValue placeholder="Bulk Action" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="resolve">✅ Mark as Resolved</SelectItem>
+                    <SelectItem value="dismiss">🚫 Bulk Dismiss</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 

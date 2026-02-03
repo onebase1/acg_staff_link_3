@@ -151,6 +151,15 @@ import Privacy from "./Privacy";
 import Terms from "./Terms";
 import Contact from "./Contact";
 import MasterBenefits from "./MasterBenefits";
+import SuperAdminPlaceholder from "./SuperAdminPlaceholder";
+import StakeholderPresentation from "./StakeholderPresentation";
+import DominionPresentation from "./DominionPresentation";
+import EmailNotificationTester from "./EmailNotificationTester";
+import UATTesterGuide from "./UATTesterGuide";
+import TestingTracker from "./TestingTracker";
+import PhoneDiagnostic from "./PhoneDiagnostic";
+import TestShiftReminders from "./TestShiftReminders";
+import TestUserCredentials from "./TestUserCredentials";
 
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
@@ -261,7 +270,7 @@ const PAGES = {
     MyAvailability: MyAvailability,
 
     MyShifts: MyShifts,
-
+    MyScore: MyScore,
     AdminTrainingHub: AdminTrainingHub,
 
     QuickStartGuide: QuickStartGuide,
@@ -305,6 +314,15 @@ const PAGES = {
     Terms: Terms,
     Contact: Contact,
     MasterBenefits: MasterBenefits,
+    SuperAdminPlaceholder: SuperAdminPlaceholder,
+    StakeholderPresentation: StakeholderPresentation,
+    DominionPresentation: DominionPresentation,
+    EmailNotificationTester: EmailNotificationTester,
+    UATTesterGuide: UATTesterGuide,
+    TestingTracker: TestingTracker,
+    PhoneDiagnostic: PhoneDiagnostic,
+    TestShiftReminders: TestShiftReminders,
+    TestUserCredentials: TestUserCredentials,
 }
 
 function _getCurrentPage(url) {
@@ -332,7 +350,6 @@ function PagesContent() {
                 <Route path="/" element={<Home />} />
 
                 <Route path="/login" element={<Login />} />
-                <Route path="/Login" element={<Login />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
 
                 {/* Public Marketing Pages wrapped in PublicLayout */}
@@ -488,6 +505,18 @@ function PagesContent() {
                 <Route path="/LiveRota" element={<LiveRota />} />
 
                 <Route path="/CronCommandCenter" element={<CronCommandCenter />} />
+                <Route path="/PitchCommandCenter" element={<PitchCommandCenter />} />
+                <Route path="/MasterBenefits" element={<MasterBenefits />} />
+
+                {/* Placeholders for pending features */}
+                <Route path="/StakeholderPresentation" element={<StakeholderPresentation />} />
+                <Route path="/DominionPresentation" element={<DominionPresentation />} />
+                <Route path="/EmailNotificationTester" element={<EmailNotificationTester />} />
+                <Route path="/UATTesterGuide" element={<UATTesterGuide />} />
+                <Route path="/TestingTracker" element={<TestingTracker />} />
+                <Route path="/PhoneDiagnostic" element={<PhoneDiagnostic />} />
+                <Route path="/TestShiftReminders" element={<TestShiftReminders />} />
+                <Route path="/TestUserCredentials" element={<TestUserCredentials />} />
 
             </Routes>
         </Layout>
