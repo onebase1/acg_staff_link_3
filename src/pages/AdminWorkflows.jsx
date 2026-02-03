@@ -30,7 +30,14 @@ export default function AdminWorkflows() {
   const [actualStaffId, setActualStaffId] = useState('none');
   const [actualStartTime, setActualStartTime] = useState('');
   const [actualEndTime, setActualEndTime] = useState('');
-  const [viewMode, setViewMode] = useState('table');
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem('adminWorkflowsViewMode') || 'cards';
+  });
+
+  // Save view mode preference
+  useEffect(() => {
+    localStorage.setItem('adminWorkflowsViewMode', viewMode);
+  }, [viewMode]);
   const [clientIdFilter, setClientIdFilter] = useState('all');
   const [startDateFilter, setStartDateFilter] = useState('');
   const [endDateFilter, setEndDateFilter] = useState('');
@@ -813,103 +820,118 @@ export default function AdminWorkflows() {
 
             return (
               <Card key={workflow.id} className={`hover:shadow-lg transition-shadow relative ${workflow.priority === 'critical' ? 'border-2 border-red-300' : ''}`}>
-                <div className="absolute top-4 right-4 z-10">
-                  <Checkbox
-                    checked={selectedIds.includes(workflow.id)}
-                    onCheckedChange={() => toggleOne(workflow.id)}
-                  />
-                </div>
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3 flex-wrap">
-                        <Badge className={priorityInfo.className}>
-                          <PriorityIcon className="w-3 h-3 mr-1" />
-                          {workflow.priority}
-                        </Badge>
-                        <Badge className={statusInfo.className}>
-                          <StatusIcon className="w-3 h-3 mr-1" />
-                          {workflow.status}
-                        </Badge>
-                        <span className="text-sm text-gray-600">{getTypeName(workflow.type)}</span>
+                    <div className="flex gap-4">
+                      {/* Checkbox positioned more naturally */}
+                      <div className="pt-1">
+                        <Checkbox
+                          checked={selectedIds.includes(workflow.id)}
+                          onCheckedChange={() => toggleOne(workflow.id)}
+                          className="w-5 h-5 border-2 border-gray-300 data-[state=checked]:bg-blue-600"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3 flex-wrap">
+                          <Badge className={priorityInfo.className}>
+                            <PriorityIcon className="w-3 h-3 mr-1" />
+                            {workflow.priority}
+                          </Badge>
+                          <Badge className={statusInfo.className}>
+                            <StatusIcon className="w-3 h-3 mr-1" />
+                            {workflow.status}
+                          </Badge>
+                          <span className="text-sm text-gray-600">{getTypeName(workflow.type)}</span>
+                        </div>
+
+                        <h3 className="font-semibold text-gray-900 text-lg mb-2">{workflow.title}</h3>
+                        <p className="text-sm text-gray-600 mb-3">{workflow.description}</p>
+
+                        {workflow.deadline && (
+                          <p className="text-xs text-gray-500">
+                            <Clock className="w-3 h-3 inline mr-1" />
+                            Deadline: {format(new Date(workflow.deadline), 'MMM d, yyyy HH:mm')}
+                          </p>
+                        )}
+
+                        {workflow.related_entity?.entity_type === 'shift' && (
+                          <div className="mt-3 grid grid-cols-2 gap-4 p-3 bg-gray-50 rounded-lg border border-gray-100 italic">
+                            {(() => {
+                              const shift = shifts.find(s => s.id === workflow.related_entity.entity_id);
+                              if (shift) {
+                                return (
+                                  <>
+                                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                                      <Building2 className="w-3.5 h-3.5" />
+                                      <span>{clientMap[shift.client_id] || 'Unknown Client'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                                      <User className="w-3.5 h-3.5" />
+                                      <span>{staffMap[shift.assigned_staff_id || shift.actual_staff_id] || 'Unassigned'}</span>
+                                    </div>
+                                  </>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        )}
+
+                        {workflow.resolved_at && (
+                          <div className="mt-3 p-3 bg-green-50 rounded border border-green-200">
+                            <p className="text-sm text-green-800">
+                              <strong>Resolved:</strong> {format(new Date(workflow.resolved_at), 'MMM d, yyyy HH:mm')}
+                            </p>
+                            {workflow.resolution_notes && (
+                              <p className="text-sm text-green-700 mt-1">{workflow.resolution_notes}</p>
+                            )}
+                          </div>
+                        )}
                       </div>
 
-                      <h3 className="font-semibold text-gray-900 text-lg mb-2">{workflow.title}</h3>
-                      <p className="text-sm text-gray-600 mb-3">{workflow.description}</p>
-
-                      {workflow.deadline && (
-                        <p className="text-xs text-gray-500">
-                          <Clock className="w-3 h-3 inline mr-1" />
-                          Deadline: {format(new Date(workflow.deadline), 'MMM d, yyyy HH:mm')}
-                        </p>
-                      )}
-
-                      {workflow.related_entity?.entity_type === 'shift' && (
-                        <div className="mt-3 grid grid-cols-2 gap-4 p-3 bg-gray-50 rounded-lg border border-gray-100 italic">
-                          {(() => {
-                            const shift = shifts.find(s => s.id === workflow.related_entity.entity_id);
-                            if (shift) {
-                              return (
-                                <>
-                                  <div className="flex items-center gap-2 text-xs text-gray-600">
-                                    <Building2 className="w-3.5 h-3.5" />
-                                    <span>{clientMap[shift.client_id] || 'Unknown Client'}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-xs text-gray-600">
-                                    <User className="w-3.5 h-3.5" />
-                                    <span>{staffMap[shift.assigned_staff_id || shift.actual_staff_id] || 'Unassigned'}</span>
-                                  </div>
-                                </>
-                              );
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      )}
-
-                      {workflow.resolved_at && (
-                        <div className="mt-3 p-3 bg-green-50 rounded border border-green-200">
-                          <p className="text-sm text-green-800">
-                            <strong>Resolved:</strong> {format(new Date(workflow.resolved_at), 'MMM d, yyyy HH:mm')}
-                          </p>
-                          {workflow.resolution_notes && (
-                            <p className="text-sm text-green-700 mt-1">{workflow.resolution_notes}</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col gap-2 min-w-[200px]">
-                      {/* ✅ NEW: Approve User button for pending user signups */}
-                      {isPendingUserSignup(workflow) && (
-                        <Button
-                          size="sm"
-                          onClick={() => setApproveUserWorkflow(workflow)}
-                          disabled={updateWorkflowMutation.isPending}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <UserPlus className="w-4 h-4 mr-2" />
-                          Approve User
-                        </Button>
-                      )}
-
-                      {workflow.status === 'pending' && !isPendingUserSignup(workflow) && (
-                        <>
+                      <div className="flex flex-col gap-2 min-w-[200px]">
+                        {/* ✅ NEW: Approve User button for pending user signups */}
+                        {isPendingUserSignup(workflow) && (
                           <Button
                             size="sm"
-                            onClick={() => handleStatusChange(workflow.id, 'in_progress')}
+                            onClick={() => setApproveUserWorkflow(workflow)}
                             disabled={updateWorkflowMutation.isPending}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            className="bg-green-600 hover:bg-green-700"
                           >
-                            {updateWorkflowMutation.isPending ? (
-                              <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Processing...
-                              </>
-                            ) : (
-                              'Start Working'
-                            )}
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            Approve User
                           </Button>
+                        )}
+
+                        {workflow.status === 'pending' && !isPendingUserSignup(workflow) && (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => handleStatusChange(workflow.id, 'in_progress')}
+                              disabled={updateWorkflowMutation.isPending}
+                              className="bg-blue-600 hover:bg-blue-700"
+                            >
+                              {updateWorkflowMutation.isPending ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Processing...
+                                </>
+                              ) : (
+                                'Start Working'
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setSelectedWorkflow(workflow)}
+                              disabled={updateWorkflowMutation.isPending}
+                            >
+                              Mark Resolved
+                            </Button>
+                          </>
+                        )}
+
+                        {workflow.status === 'in_progress' && !isPendingUserSignup(workflow) && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -918,40 +940,29 @@ export default function AdminWorkflows() {
                           >
                             Mark Resolved
                           </Button>
-                        </>
-                      )}
+                        )}
 
-                      {workflow.status === 'in_progress' && !isPendingUserSignup(workflow) && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setSelectedWorkflow(workflow)}
-                          disabled={updateWorkflowMutation.isPending}
-                        >
-                          Mark Resolved
-                        </Button>
-                      )}
+                        {relatedLink && (
+                          <Link to={relatedLink}>
+                            <Button size="sm" variant="outline" className="w-full">
+                              <Eye className="w-4 h-4 mr-2" />
+                              View {workflow.related_entity.entity_type}
+                            </Button>
+                          </Link>
+                        )}
 
-                      {relatedLink && (
-                        <Link to={relatedLink}>
-                          <Button size="sm" variant="outline" className="w-full">
-                            <Eye className="w-4 h-4 mr-2" />
-                            View {workflow.related_entity.entity_type}
+                        {!isPendingUserSignup(workflow) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleStatusChange(workflow.id, 'dismissed')}
+                            disabled={updateWorkflowMutation.isPending}
+                            className="text-gray-600"
+                          >
+                            Dismiss
                           </Button>
-                        </Link>
-                      )}
-
-                      {!isPendingUserSignup(workflow) && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleStatusChange(workflow.id, 'dismissed')}
-                          disabled={updateWorkflowMutation.isPending}
-                          className="text-gray-600"
-                        >
-                          Dismiss
-                        </Button>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -993,8 +1004,8 @@ export default function AdminWorkflows() {
                     }
                   }
                 }}>
-                  <SelectTrigger className="w-[180px] bg-blue-600 text-white hover:bg-blue-700 font-bold">
-                    <SelectValue placeholder="Bulk Action" />
+                  <SelectTrigger className="w-[180px] bg-blue-700 text-white hover:bg-blue-800 font-bold border-2 border-blue-400">
+                    <SelectValue placeholder={<span className="text-white">Bulk Action</span>} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="resolve">✅ Mark as Resolved</SelectItem>
