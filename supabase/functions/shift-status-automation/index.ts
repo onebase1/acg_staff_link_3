@@ -217,12 +217,9 @@ serve(async (req) => {
                     let canAutoComplete = false;
                     let autoCompleteReason = '';
 
-                    // 🆕 Check 0: Non-GPS shift - auto-complete without GPS verification
-                    if (!requiresGPS) {
-                        canAutoComplete = true;
-                        autoCompleteReason = 'Non-GPS shift (manual timesheet mode)';
-                        console.log(`✅ [Shift Automation] Shift ${shift.id.substring(0, 8)} is non-GPS shift - auto-completing`);
-                    }
+                    // 🎯 REGRESSION FIX: Non-GPS shifts MUST NOT auto-complete without a timesheet.
+                    // Previously this was auto-completing, which skipped the reminder engine.
+                    // We now rely on Check 1 (Approved Timesheet) or Check 2 (GPS) below.
 
                     // Check 1: Is there an approved timesheet?
                     if (!canAutoComplete) {

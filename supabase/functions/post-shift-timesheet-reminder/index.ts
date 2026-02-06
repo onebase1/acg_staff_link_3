@@ -46,24 +46,26 @@ serve(async (req) => {
 
         console.log('📋 [Post-Shift Reminder] Starting run...');
 
-        const { shift_id } = await req.json();
+        const requestData = await req.json().catch(() => ({}));
+        const { shift_id } = requestData;
 
         // If specific shift provided, process it
         if (shift_id) {
             console.log(`📋 [Post-Shift Reminder] Processing shift: ${shift_id}`);
-            const { data: shifts, error } = await supabase
+            const { data: shift, error } = await supabase
                 .from("shifts")
                 .select("*")
-                .eq("id", shift_id);
+                .eq("id", shift_id)
+                .single();
 
-            if (error || shifts.length === 0) {
+            if (error || !shift) {
                 return new Response(JSON.stringify({ error: 'Shift not found' }), {
                     status: 404,
                     headers: { ...corsHeaders, "Content-Type": "application/json" }
                 });
             }
 
-            const result = await sendTimesheetReminder(supabase, shifts[0]);
+            const result = await sendTimesheetReminder(supabase, shift);
             return new Response(JSON.stringify({ success: true, result }), {
                 headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
@@ -128,53 +130,54 @@ serve(async (req) => {
 async function sendTimesheetReminder(supabase, shift) {
     console.log(`📋 [Reminder] Processing shift ${shift.id}`);
 
-    // Get staff, client, agency
-    const { data: allStaff, error: staffError } = await supabase
-        .from("staff")
-        .select("*");
-
-    if (staffError) throw staffError;
-
-    const staffMember = allStaff.find(s => s.id === shift.assigned_staff_id);
-
-    if (!staffMember) {
+    if (!shift.assigned_staff_id) {
         console.log(`⚠️ [Reminder] No staff assigned to shift ${shift.id}`);
         return { skipped: true, reason: 'No staff assigned' };
     }
 
-    const { data: allClients } = await supabase
-        .from("clients")
-        .select("*");
+    // 🚀 EFFICIENCY FIX: Targeted queries instead of select("*")
+    const [
+        { data: staffMember, error: staffError },
+        { data: client, error: clientError },
+        { data: agency, error: agencyError }
+    ] = await Promise.all([
+        supabase.from("staff").select("*").eq("id", shift.assigned_staff_id).single(),
+        supabase.from("clients").select("*").eq("id", shift.client_id).single(),
+        supabase.from("agencies").select("*").eq("id", shift.agency_id).single()
+    ]);
 
-    const client = allClients?.find(c => c.id === shift.client_id);
+    if (staffError || !staffMember) {
+        console.warn(`⚠️ [Reminder] Staff lookup failed for ${shift.assigned_staff_id}:`, staffError);
+        return { skipped: true, reason: 'Staff lookup failed' };
+    }
 
     // 📅 Check if GPS is required for this shift/client
     const requiresGPS = shiftRequiresGPS(shift, client);
     console.log(`📍 [Reminder] Shift ${shift.id} - GPS required: ${requiresGPS}`);
-
-    const { data: allAgencies } = await supabase
-        .from("agencies")
-        .select("*");
-
-    const agency = allAgencies?.find(a => a.id === shift.agency_id);
 
     const agencyName = agency?.name || 'Your Agency';
 
     // Check if timesheet already exists
     const { data: existingTimesheets } = await supabase
         .from("timesheets")
-        .select("*")
+        .select("id, clock_in_time, clock_out_time, actual_start_time, actual_end_time, total_hours")
         .eq("staff_id", staffMember.id)
         .eq("client_id", shift.client_id)
         .eq("shift_date", shift.date);
-
-    // Portal link to Staff Portal (they can navigate to timesheets from there)
-    const portalLink = 'https://agilecaremanagement.netlify.app/staff'; 
 
     // 🎯 MESSAGING STRATEGY: Differentiate between GPS vs Paper shifts
     const timesheet = existingTimesheets && existingTimesheets.length > 0 
         ? existingTimesheets[0] 
         : null; // Note: We insert/select above if missing
+
+    // 🔗 DYNAMIC LINKING: Construct link to specific timesheet or general portal
+    const BASE_URL = 'https://agilecaremanagement.netlify.app';
+    let portalLink = `${BASE_URL}/staff`; 
+
+    if (timesheet?.id) {
+        portalLink = `${BASE_URL}/timesheet-detail?id=${timesheet.id}`;
+        console.log(`🔗 [Reminder] Dynamic link generated: ${portalLink}`);
+    }
 
     const hasGPSData = timesheet?.clock_in_time && timesheet?.clock_out_time;
     const isGPSTimesheet = requiresGPS && hasGPSData;
@@ -556,6 +559,23 @@ async function sendTimesheetReminder(supabase, shift) {
         }
     }
 
+
+    // ✅ PERSISTENCE: Mark reminder as sent in the database
+    // This prevents the hourly cron from double-processing this shift
+    if (results.whatsapp.success || results.email.success) {
+        console.log(`💾 [Reminder] Updating shift ${shift.id} reminder status...`);
+        const { error: updateError } = await supabase
+            .from("shifts")
+            .update({
+                timesheet_reminder_sent: true,
+                timesheet_reminder_sent_at: new Date().toISOString()
+            })
+            .eq("id", shift.id);
+
+        if (updateError) {
+            console.error(`❌ [Reminder] Database update failed for shift ${shift.id}:`, updateError);
+        }
+    }
 
     console.log(`✅ [Reminder] Sent to ${staffMember.first_name}: WhatsApp=${results.whatsapp.success}, Email=${results.email.success}`);
 

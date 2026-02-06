@@ -324,7 +324,7 @@ export default function Shifts() {
       const dateFilter = getDateRangeFilter();
       console.log('📅 [Shifts Query] Date filter:', dateFilter);
 
-      let query = supabase.from('shifts').select('*');
+      let query = supabase.from('shifts').select('*, timesheets(status)');
 
       // Filter by agency
       if (currentAgency) {
@@ -1857,10 +1857,13 @@ export default function Shifts() {
     const shiftEndDateTime = new Date(`${shift.date}T${shift.end_time}`);
     const hasEnded = shiftEndDateTime <= new Date();
 
-    // Can request if: shift ended, in awaiting_admin_closure, in_progress or confirmed status, and no timesheet received yet
+    // Can request if: shift ended, in awaiting_admin_closure, in_progress or confirmed status
+    // AND (no timesheet received yet OR timesheet is in rejected/draft status)
+    const tsStatus = shift.timesheets?.[0]?.status || (shift.timesheet_received ? 'received' : 'none');
+
     return hasEnded &&
       (shift.status === 'awaiting_admin_closure' || shift.status === 'in_progress' || shift.status === 'confirmed') &&
-      !shift.timesheet_received;
+      (!shift.timesheet_received || tsStatus === 'rejected' || tsStatus === 'draft');
   };
 
   const renderShiftCard = (shift) => {

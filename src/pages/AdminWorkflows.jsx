@@ -166,6 +166,30 @@ export default function AdminWorkflows() {
   }, [profiles]);
 
   // ✅ FIX 3: Enhanced workflow mutation with proper shift update
+  const requestTimesheetMutation = useMutation({
+    mutationFn: async (shiftId) => {
+      console.log('📋 [Workflow Request] Sending timesheet request for shift:', shiftId);
+      toast.info('📤 Sending timesheet request...');
+
+      const { data, error } = await supabase.functions.invoke('post-shift-timesheet-reminder', {
+        body: {
+          shift_id: shiftId
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data, shiftId) => {
+      queryClient.invalidateQueries(['shifts']);
+      toast.success('✅ Timesheet request sent successfully');
+    },
+    onError: (error) => {
+      console.error('❌ [Workflow Request] Error:', error);
+      toast.error(`Failed to send request: ${error.message}`);
+    }
+  });
+
   const updateWorkflowMutation = useMutation({
     mutationFn: async ({ id, data, shiftId, shiftAction, actualStaffId, actualStartTime, actualEndTime }) => {
       console.log('🔄 [Admin Workflow] Updating workflow:', id);
@@ -321,6 +345,17 @@ export default function AdminWorkflows() {
       actualStaffId,
       actualStartTime,
       actualEndTime
+    }, {
+      onSuccess: () => {
+        // ✅ NAVIGATION: If we just started working, navigate to the related link
+        if (newStatus === 'in_progress') {
+          const relatedLink = getRelatedEntityLink(workflow);
+          if (relatedLink) {
+            console.log(`🚀 [Admin Workflow] Started working, navigating to: ${relatedLink}`);
+            navigate(relatedLink);
+          }
+        }
+      }
     });
   };
 
@@ -926,6 +961,26 @@ export default function AdminWorkflows() {
                               'Start Working'
                             )}
                           </Button>
+
+                          {/* ✅ NEW: Quick Request Button for shift completion workflows */}
+                          {workflow.type === 'shift_completion_verification' && workflow.related_entity?.entity_id && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => requestTimesheetMutation.mutate(workflow.related_entity.entity_id)}
+                              disabled={requestTimesheetMutation.isPending}
+                              className="border-2 border-blue-200 text-blue-700 hover:bg-blue-50 font-bold"
+                            >
+                              {requestTimesheetMutation.isPending ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <>
+                                  <Mail className="w-3.5 h-3.5 mr-1.5" />
+                                  Request Timesheet
+                                </>
+                              )}
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"
