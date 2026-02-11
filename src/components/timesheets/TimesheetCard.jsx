@@ -76,8 +76,8 @@ export default function TimesheetCard({
       },
       submitted: {
         bg: 'bg-yellow-50 border-yellow-200',
-        badge: 'bg-yellow-100 text-yellow-700 border-gray-300',
-        label: 'Pending'
+        badge: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+        label: 'Awaiting Review'
       },
       approved: {
         bg: 'bg-green-50 border-green-200',
@@ -93,6 +93,11 @@ export default function TimesheetCard({
         bg: 'bg-emerald-50 border-emerald-200',
         badge: 'bg-emerald-100 text-emerald-700 border-emerald-300',
         label: 'Paid'
+      },
+      missing: {
+        bg: 'bg-red-50 border-red-100',
+        badge: 'bg-red-600 text-white border-transparent shadow-sm',
+        label: 'Missing'
       }
     };
     return configs[status] || configs.draft;
@@ -139,10 +144,11 @@ export default function TimesheetCard({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate(createPageUrl('TimesheetDetail') + `?id=${timesheet.id}`)}
-            className="text-blue-600 hover:text-blue-700"
+            onClick={() => !timesheet.is_missing && navigate(createPageUrl('TimesheetDetail') + `?id=${timesheet.id}`)}
+            className={`${timesheet.is_missing ? 'opacity-30 cursor-not-allowed' : 'text-blue-600 hover:text-blue-700'}`}
+            disabled={timesheet.is_missing}
           >
-            View Details
+            {timesheet.is_missing ? 'Action Required' : 'View Details'}
           </Button>
         </div>
 

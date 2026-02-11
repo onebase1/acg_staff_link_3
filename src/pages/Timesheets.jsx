@@ -497,6 +497,8 @@ export default function Timesheets() {
 
     const matchesStatus = statusFilter === 'all' ||
       (statusFilter === 'pending' && (t.status === 'submitted' || t.status === 'draft')) ||
+      (statusFilter === 'draft' && t.status === 'draft') ||
+      (statusFilter === 'submitted' && t.status === 'submitted') ||
       (statusFilter === 'approved' && t.status === 'approved') ||
       (statusFilter === 'rejected' && t.status === 'rejected') ||
       (statusFilter === 'paid' && t.status === 'paid');
@@ -514,11 +516,51 @@ export default function Timesheets() {
     return matchesStatus && matchesSearch;
   });
 
-  const pendingCount = timesheets.filter(t => t.status === 'submitted' || t.status === 'draft').length;
+  // ✅ MISSING TIMESHEET LOGIC: Find shifts that should have timesheets but don't
+  const missingTimesheetShifts = shifts.filter(s => {
+    const hasTimesheet = timesheets.some(t => t.booking_id === s.id || t.shift_id === s.id);
+    const shiftHasEnded = new Date(s.date) < new Date();
+    // Only care about completed or confirmed shifts in the past
+    const isRelevantStatus = ['completed', 'awaiting_admin_closure', 'confirmed'].includes(s.status);
 
-  // ✅ FIX 2: Correct total hours calculation - include ALL timesheets with total_hours, not just approved/paid
+    return !hasTimesheet && shiftHasEnded && isRelevantStatus;
+  });
+
+  // ✅ MISSING TIMESHEET WRAPPER: Convert shifts to "placeholder" timesheets for the UI
+  const missingPlaceholders = missingTimesheetShifts.map(s => ({
+    id: `missing-${s.id}`,
+    staff_id: s.actual_staff_id || s.staff_id,
+    client_id: s.client_id,
+    booking_id: s.id,
+    shift_date: s.date,
+    status: 'missing',
+    total_hours: s.duration_hours || 0,
+    created_date: s.created_at,
+    is_missing: true
+  }));
+
+  const displayItems = statusFilter === 'missing' ? missingPlaceholders : filteredTimesheets;
+
+  // ✅ QUICK AUDIT LOGIC
+  const auditFilters = {
+    hasIssues: (t) => validateTimesheet(t).length > 0,
+    noDocs: (t) => !t.uploaded_documents || t.uploaded_documents.length === 0,
+    verified: (t) => t.geofence_validated && t.clock_out_geofence_validated
+  };
+
+  const [activeAudit, setActiveAudit] = useState(null);
+
+  const auditedItems = activeAudit && statusFilter !== 'missing'
+    ? displayItems.filter(auditFilters[activeAudit])
+    : displayItems;
+
+  const pendingCount = timesheets.filter(t => t.status === 'submitted').length;
+  const draftCount = timesheets.filter(t => t.status === 'draft').length;
+  const missingCount = missingTimesheetShifts.length;
+
+  // ✅ FIX 2: Correct total hours calculation
   const totalHours = timesheets
-    .filter(t => t.total_hours && t.total_hours > 0) // ✅ Count all timesheets with hours
+    .filter(t => t.total_hours && t.total_hours > 0)
     .reduce((sum, t) => sum + (t.total_hours || 0), 0);
 
   // Derived State for Retrospective Workflow
@@ -832,25 +874,42 @@ export default function Timesheets() {
                 All
               </Button>
               <Button
-                variant={statusFilter === 'pending' ? 'default' : 'outline'}
+                variant={statusFilter === 'submitted' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setStatusFilter('pending')}
+                onClick={() => setStatusFilter('submitted')}
+                className="relative"
               >
-                Pending ({pendingCount})
+                Awaiting Review
+                {pendingCount > 0 && (
+                  <span className="ml-2 bg-yellow-400 text-yellow-900 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                    {pendingCount}
+                  </span>
+                )}
               </Button>
+              <Button
+                variant={statusFilter === 'draft' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setStatusFilter('draft')}
+              >
+                Drafts ({draftCount})
+              </Button>
+              {isAdmin && (
+                <Button
+                  variant={statusFilter === 'missing' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter('missing')}
+                  className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                >
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  Missing ({missingCount})
+                </Button>
+              )}
               <Button
                 variant={statusFilter === 'approved' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setStatusFilter('approved')}
               >
                 Approved
-              </Button>
-              <Button
-                variant={statusFilter === 'rejected' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setStatusFilter('rejected')}
-              >
-                Rejected
               </Button>
               <Button
                 variant={statusFilter === 'paid' ? 'default' : 'outline'}
@@ -861,6 +920,43 @@ export default function Timesheets() {
               </Button>
             </div>
           </div>
+
+          {/* ✅ NEW: Quick Audit Toggles */}
+          {isAdmin && statusFilter !== 'missing' && (
+            <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 overflow-x-auto no-scrollbar">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Quick Audit:</span>
+              <button
+                onClick={() => setActiveAudit(activeAudit === 'hasIssues' ? null : 'hasIssues')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${activeAudit === 'hasIssues'
+                  ? 'bg-red-600 text-white shadow-sm ring-2 ring-red-100'
+                  : 'bg-red-50 text-red-700 hover:bg-red-100'
+                  }`}
+              >
+                <AlertTriangle className="w-3 h-3" />
+                Has Issues
+              </button>
+              <button
+                onClick={() => setActiveAudit(activeAudit === 'noDocs' ? null : 'noDocs')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${activeAudit === 'noDocs'
+                  ? 'bg-orange-600 text-white shadow-sm ring-2 ring-orange-100'
+                  : 'bg-orange-50 text-orange-700 hover:bg-orange-100'
+                  }`}
+              >
+                <FileText className="w-3 h-3" />
+                No Documents
+              </button>
+              <button
+                onClick={() => setActiveAudit(activeAudit === 'verified' ? null : 'verified')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${activeAudit === 'verified'
+                  ? 'bg-green-600 text-white shadow-sm ring-2 ring-green-100'
+                  : 'bg-green-50 text-green-700 hover:bg-green-100'
+                  }`}
+              >
+                <ShieldCheck className="w-3 h-3" />
+                GPS Verified
+              </button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -888,7 +984,7 @@ export default function Timesheets() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {filteredTimesheets.map((timesheet) => {
+                  {auditedItems.map((timesheet) => {
                     const issues = validateTimesheet(timesheet);
                     const staffMember = staff.find(s => s.id === timesheet.staff_id);
                     const shift = shifts.find(s => s.id === timesheet.booking_id);
@@ -1044,7 +1140,7 @@ export default function Timesheets() {
       ) : viewMode === 'cards' ? (
         /* Timesheets Grid */
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filteredTimesheets.map(timesheet => {
+          {auditedItems.map(timesheet => {
             const staffMember = staff.find(s => s.id === timesheet.staff_id);
             const shift = shifts.find(s => s.id === timesheet.booking_id);
             const clientObj = clients.find(c => c.id === timesheet.client_id);
