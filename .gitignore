@@ -88,3 +88,13 @@ fix-dashboard-rls.mjs
 # n8n workflow files may contain credentials
 n8n-workflows/misc/daily-shift-reminders.json
 n8n-workflows/misc/*-reminders.json
+
+# One-off verification and test scripts with credentials
+verify*.js
+verify*.mjs
+trigger*.js
+test-multi-recipient.mjs
+
+# SQL setup scripts that may contain credentials
+CRON_SETUP_COPY_PASTE.sql
+**/CRON_SETUP*.sql
