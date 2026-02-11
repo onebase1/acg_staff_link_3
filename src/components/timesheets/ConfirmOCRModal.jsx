@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import {
-  CheckCircle2,
+  CheckCircle,
   XCircle,
   AlertTriangle,
   Camera,
@@ -187,7 +187,7 @@ export default function ConfirmOCRModal({
           <div className="flex flex-wrap items-center gap-2">
             {hasHighConfidence ? (
               <Badge className="bg-green-100 text-green-700 border-green-200 px-3 py-1 text-xs">
-                <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                <CheckCircle className="w-4 h-4 mr-1.5" />
                 Verified by AI
               </Badge>
             ) : (
@@ -247,7 +247,7 @@ export default function ConfirmOCRModal({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           {isSelected ? (
-                            <CheckCircle2 className="w-6 h-6 text-green-600" />
+                            <CheckCircle className="w-6 h-6 text-green-600" />
                           ) : (
                             <div className="w-6 h-6 rounded-full border-2 border-gray-300" />
                           )}
@@ -362,7 +362,7 @@ export default function ConfirmOCRModal({
             {confirming ? (
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
             ) : (
-              <CheckCircle2 className="w-5 h-5 mr-2" />
+              <CheckCircle className="w-5 h-5 mr-2" />
             )}
             {confirming ? 'Saving Timesheet...' : 'Yes, Information is Correct'}
           </Button>
@@ -429,7 +429,7 @@ function DataField({ icon, label, value, expected, mismatch }) {
         </p>
         {expected && !isRealMismatch && matchesExpected && (
           <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" /> Matches scheduled
+            <CheckCircle className="w-3 h-3" /> Matches scheduled
           </p>
         )}
         {isRealMismatch && (
@@ -441,7 +441,7 @@ function DataField({ icon, label, value, expected, mismatch }) {
       {isRealMismatch ? (
         <XCircle className="w-5 h-5 text-red-600" />
       ) : (expected && matchesExpected) ? (
-        <CheckCircle2 className="w-5 h-5 text-green-600" />
+        <CheckCircle className="w-5 h-5 text-green-600" />
       ) : null}
     </div>
   );

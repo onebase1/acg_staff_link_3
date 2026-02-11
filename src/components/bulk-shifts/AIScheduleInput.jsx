@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Sparkles, Send, Loader2, CheckCircle2, Building2 } from 'lucide-react';
+import { Sparkles, Send, Loader2, CheckCircle, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { conversationalExtraction, convertToGridData } from '@/utils/aiShiftParser';
 import { supabase } from '@/lib/supabase';

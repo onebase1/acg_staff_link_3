@@ -20,7 +20,7 @@ import {
     User,
     Clock,
     UserPlus,
-    CheckCircle2,
+    CheckCircle,
     Users,
     Plus,
     List,
@@ -573,7 +573,7 @@ export default function LiveRota() {
                                                         }}
                                                     >
                                                         {s.assigned_staff_id ? (
-                                                            <CheckCircle2 className="w-5 h-5 drop-shadow-sm" />
+                                                            <CheckCircle className="w-5 h-5 drop-shadow-sm" />
                                                         ) : (
                                                             <UserPlus className="w-5 h-5 drop-shadow-sm" />
                                                         )}

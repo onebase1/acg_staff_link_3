@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useSearchParams } from "react-router-dom";
 import {
     Activity, Calendar, Clock, AlertCircle, AlertTriangle,
-    CheckCircle2, ChevronRight, Building2, TrendingUp, Sparkles,
+    CheckCircle, ChevronRight, Building2, TrendingUp, Sparkles,
     MessageCircle, Info, Users
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -149,7 +149,7 @@ export default function DailyReportView() {
                     ) : (
                         <div className="bg-white p-5 rounded-2xl shadow-sm border-l-[4px] border-emerald-500 flex items-center gap-4">
                             <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0">
-                                <CheckCircle2 className="w-6 h-6" />
+                                <CheckCircle className="w-6 h-6" />
                             </div>
                             <div className="flex-1">
                                 <h3 className="font-bold text-slate-900 text-base">All clear!</h3>

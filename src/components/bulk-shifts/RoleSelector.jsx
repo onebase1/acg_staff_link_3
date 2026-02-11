@@ -14,7 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { STAFF_ROLES, getRoleLabel, getRoleIcon } from '@/constants/staffRoles';
 import { getEnabledRoles } from '@/utils/clientHelpers';
-import { CheckCircle2, Circle, ArrowRight } from 'lucide-react';
+import { CheckCircle, Circle, ArrowRight } from 'lucide-react';
 
 export default function RoleSelector({ client, onContinue }) {
   const [selectedRoles, setSelectedRoles] = useState([]);
@@ -164,7 +164,7 @@ export default function RoleSelector({ client, onContinue }) {
                     <span className="text-2xl">{role.icon}</span>
                     <span className="font-semibold">{role.label}</span>
                   </Label>
-                  {isSelected && <CheckCircle2 className="w-5 h-5 text-cyan-600" />}
+                  {isSelected && <CheckCircle className="w-5 h-5 text-cyan-600" />}
                 </div>
 
                 {/* Shift Type Selection (only if role is selected) */}

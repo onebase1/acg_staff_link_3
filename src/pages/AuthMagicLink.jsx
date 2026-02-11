@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Shield, Loader2, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
+import { Shield, Loader2, CheckCircle, XCircle, ArrowRight } from 'lucide-react';
 
 const AuthMagicLink = () => {
     const [searchParams] = useSearchParams();
@@ -71,7 +71,7 @@ const AuthMagicLink = () => {
 
                     {status === 'success' && (
                         <div className="flex flex-col items-center">
-                            <CheckCircle2 className="w-12 h-12 text-emerald-500 mb-3" />
+                            <CheckCircle className="w-12 h-12 text-emerald-500 mb-3" />
                             <p className="text-emerald-700 font-semibold">{message}</p>
                             <div className="mt-6 animate-pulse flex items-center text-emerald-600 font-medium">
                                 Taking you to dashboard <ArrowRight className="ml-2 w-4 h-4" />

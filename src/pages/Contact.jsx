@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Send, CheckCircle2 } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, CheckCircle } from 'lucide-react';
 
 export default function Contact() {
     const [submitted, setSubmitted] = useState(false);
@@ -21,7 +21,7 @@ export default function Contact() {
             <div className="min-h-[80vh] flex items-center justify-center px-6">
                 <div className="max-w-md w-full text-center p-12 rounded-[2.5rem] bg-gray-50 border border-gray-100">
                     <div className="w-20 h-20 bg-cyan-100 text-cyan-600 rounded-full flex items-center justify-center mx-auto mb-8">
-                        <CheckCircle2 className="w-10 h-10" />
+                        <CheckCircle className="w-10 h-10" />
                     </div>
                     <h2 className="text-3xl font-bold text-gray-900 mb-4 tracking-tight text-center">Inquiry Received</h2>
                     <p className="text-gray-600 leading-relaxed text-center mb-8">

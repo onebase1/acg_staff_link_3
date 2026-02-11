@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { createPageUrl } from "@/utils";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, Sparkles } from "lucide-react";
+import { ArrowLeft, CheckCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -547,7 +547,7 @@ export default function BulkShiftCreation() {
       <div className="max-w-4xl mx-auto space-y-6 py-12">
         <Card>
           <CardContent className="p-12 text-center">
-            <CheckCircle2 className="w-20 h-20 text-emerald-500 mx-auto mb-6" />
+            <CheckCircle className="w-20 h-20 text-emerald-500 mx-auto mb-6" />
             <h1 className="text-4xl font-bold text-emerald-700 mb-3">
               Success!
             </h1>

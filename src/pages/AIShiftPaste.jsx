@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
-import { ArrowLeft, Sparkles, Send, Loader2, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, Send, Loader2, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -318,7 +318,7 @@ export default function AIShiftPaste() {
         <Card className="border-green-200 bg-green-50">
           <CardContent className="pt-6">
             <div className="text-center">
-              <CheckCircle2 className="w-16 h-16 text-green-600 mx-auto mb-4" />
+              <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
               <h2 className="text-2xl font-bold text-green-900 mb-2">
                 🎉 Shifts Created Successfully!
               </h2>
@@ -549,7 +549,7 @@ export default function AIShiftPaste() {
 
               {context.client_id && (
                 <Alert className="border-green-200 bg-green-50">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <CheckCircle className="h-4 w-4 text-green-600" />
                   <AlertDescription className="text-green-900 text-sm">
                     All required information collected! Send your schedule to proceed.
                   </AlertDescription>

@@ -31,7 +31,8 @@ export default function TimesheetCard({
   isApproving = false,
   isRejecting = false,
   user: currentUser, // Logged in user
-  clientObj // Optional full client object
+  clientObj, // Optional full client object
+  extraFooter = null // ✅ NEW: Injectable footer content
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const navigate = useNavigate();
@@ -254,16 +255,35 @@ export default function TimesheetCard({
           </div>
         )}
 
+        {/* ✅ ENHANCED: Professional Document Links */}
+        {timesheet.uploaded_documents?.length > 0 && (
+          <div className="mt-4 pt-4 border-t">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Attached Documents</p>
+            <div className="flex flex-col gap-2">
+              {timesheet.uploaded_documents.map((doc, idx) => (
+                <a
+                  key={idx}
+                  href={doc.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 transition-colors group"
+                >
+                  <FileText className="w-4 h-4 text-gray-400 group-hover:text-blue-600" />
+                  <span className="underline decoration-blue-100 underline-offset-4 group-hover:decoration-blue-600">
+                    {doc.file_name || `Timesheet Document ${idx + 1}`}
+                  </span>
+                  <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ✅ INTEGRATED UPLOADER: Move Doc Upload inside the card for a unified feel */}
         {shiftHasEnded && (timesheet.status === 'draft' || timesheet.status === 'rejected' || hasIssues) && (
           <div className="mt-4 pt-4 border-t border-dashed">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Manual Document Upload</p>
-              {timesheet.uploaded_documents?.length > 0 && (
-                <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
-                  {timesheet.uploaded_documents.length} Doc(s) Attached
-                </Badge>
-              )}
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Upload Timesheet</p>
             </div>
             <TimesheetUploader
               timesheetId={timesheet.id}
@@ -275,6 +295,13 @@ export default function TimesheetCard({
               mode="inline"
               onSuccess={() => queryClient.invalidateQueries(['timesheets'])}
             />
+          </div>
+        )}
+
+        {/* ✅ NEW: Extra Footer Injection Point */}
+        {extraFooter && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            {extraFooter}
           </div>
         )}
 

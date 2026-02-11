@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  FileText, Building2, Calendar, DollarSign, AlertCircle, CheckCircle2,
+  FileText, Building2, Calendar, DollarSign, AlertCircle, CheckCircle,
   ArrowLeft, Loader2, Clock, User, AlertTriangle
 } from "lucide-react";
 import { toast } from "sonner";
@@ -485,7 +485,7 @@ export default function GenerateInvoices() {
                   <p className="text-3xl font-bold text-blue-900">{selectedTimesheets.length}</p>
                   <p className="text-xs text-blue-600 mt-1">selected</p>
                 </div>
-                <CheckCircle2 className="w-10 h-10 text-blue-600 opacity-30" />
+                <CheckCircle className="w-10 h-10 text-blue-600 opacity-30" />
               </div>
             </CardContent>
           </Card>
@@ -521,7 +521,7 @@ export default function GenerateInvoices() {
       {timesheets.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
-            <CheckCircle2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <CheckCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">All Caught Up!</h3>
             <p className="text-gray-600">No approved timesheets waiting to be invoiced</p>
             <Button
@@ -794,7 +794,7 @@ export default function GenerateInvoices() {
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  <CheckCircle className="w-4 h-4 mr-2" />
                   Generate {invoiceCount} {invoiceCount === 1 ? 'Invoice' : 'Invoices'}
                 </>
               )}

@@ -1064,27 +1064,25 @@ export default function Timesheets() {
                   isRejecting={processingTimesheets.rejecting.has(timesheet.id)}
                   user={user}
                   clientObj={clientObj}
+                  extraFooter={isAdmin && timesheet.status === 'submitted' && (
+                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
+                      <AutoApprovalIndicator
+                        timesheet={timesheet}
+                        shift={shift}
+                        staffMember={staffMember}
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => autoApproveMutation.mutate(timesheet.id)}
+                        disabled={autoApproveMutation.isPending}
+                        className="w-full mt-2 bg-purple-600 hover:bg-purple-700 font-bold shadow-sm"
+                      >
+                        <Zap className="w-4 h-4 mr-2" />
+                        {autoApproveMutation.isPending ? 'Processing...' : 'Run Auto-Approval'}
+                      </Button>
+                    </div>
+                  )}
                 />
-
-                {/* ✅ NEW: Auto-Approval Indicator in Cards - Integrated below card if needed */}
-                {isAdmin && timesheet.status === 'submitted' && (
-                  <div className="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                    <AutoApprovalIndicator
-                      timesheet={timesheet}
-                      shift={shift}
-                      staffMember={staffMember}
-                    />
-                    <Button
-                      size="sm"
-                      onClick={() => autoApproveMutation.mutate(timesheet.id)}
-                      disabled={autoApproveMutation.isPending}
-                      className="w-full mt-2 bg-purple-600 hover:bg-purple-700"
-                    >
-                      <Zap className="w-4 h-4 mr-2" />
-                      {autoApproveMutation.isPending ? 'Processing...' : 'Run Auto-Approval'}
-                    </Button>
-                  </div>
-                )}
               </div>
             );
           })}

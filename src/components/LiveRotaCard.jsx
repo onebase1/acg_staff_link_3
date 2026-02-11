@@ -11,7 +11,7 @@ import {
     Sun,
     Moon,
     AlertCircle,
-    CheckCircle2,
+    CheckCircle,
     Calendar,
     MoreVertical
 } from 'lucide-react';

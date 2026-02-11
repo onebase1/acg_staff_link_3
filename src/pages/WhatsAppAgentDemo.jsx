@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, CheckCircle2, Clock, Sparkles } from "lucide-react";
+import { MessageSquare, CheckCircle, Clock, Sparkles } from "lucide-react";
 
 export default function WhatsAppAgentDemo() {
   const conversations = [
@@ -54,19 +54,19 @@ export default function WhatsAppAgentDemo() {
               <h4 className="font-bold text-gray-900 mb-2">For Staff</h4>
               <ul className="space-y-2 text-sm text-gray-700">
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
                   <span>Find shifts via WhatsApp (platform they already use)</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
                   <span>Accept shifts with one message</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
                   <span>Check schedule anytime</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
                   <span>Upload documents via photo</span>
                 </li>
               </ul>
@@ -75,19 +75,19 @@ export default function WhatsAppAgentDemo() {
               <h4 className="font-bold text-gray-900 mb-2">For Admins</h4>
               <ul className="space-y-2 text-sm text-gray-700">
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
                   <span>Post shifts via text message</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
                   <span>Get instant staff availability</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
                   <span>Emergency broadcasts in seconds</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
                   <span>Ask questions in natural language</span>
                 </li>
               </ul>
@@ -96,19 +96,19 @@ export default function WhatsAppAgentDemo() {
               <h4 className="font-bold text-gray-900 mb-2">For Your Business</h4>
               <ul className="space-y-2 text-sm text-gray-700">
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
                   <span>98% staff adoption (everyone uses WhatsApp)</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
                   <span>50% faster shift fills</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
                   <span>Zero training required</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
                   <span>24/7 availability (AI never sleeps)</span>
                 </li>
               </ul>
@@ -184,7 +184,7 @@ export default function WhatsAppAgentDemo() {
               <p className="text-sm text-gray-600">Ask questions in plain English. No commands to memorize.</p>
             </div>
             <div className="p-4 border rounded-lg bg-gradient-to-br from-purple-50 to-pink-50">
-              <CheckCircle2 className="w-8 h-8 text-purple-600 mb-3" />
+              <CheckCircle className="w-8 h-8 text-purple-600 mb-3" />
               <h4 className="font-bold text-gray-900 mb-2">Document Upload</h4>
               <p className="text-sm text-gray-600">Send photos of certificates. AI extracts dates automatically.</p>
             </div>
