@@ -19,7 +19,7 @@ export default function AutoApprovalIndicator({ timesheet, shift, staffMember })
   if (timesheet.status === 'approved' || timesheet.status === 'paid') {
     // Check if it was auto-approved
     const wasAutoApproved = timesheet.notes?.includes('[AUTO-APPROVED');
-    
+
     return (
       <div className="flex items-center gap-2">
         <Badge className={wasAutoApproved ? 'bg-green-600 text-white' : 'bg-blue-100 text-blue-800'}>
@@ -39,16 +39,13 @@ export default function AutoApprovalIndicator({ timesheet, shift, staffMember })
     );
   }
 
-  // Not yet submitted
-  if (timesheet.status === 'draft') {
-    return null;
-  }
+  // No early return for drafts anymore - we want to see audit status for all active timesheets
 
   // Calculate validation criteria
   const criteria = {
     signatures: timesheet.staff_signature && timesheet.client_signature,
-    gps: staffMember?.gps_consent 
-      ? timesheet.geofence_validated === true 
+    gps: staffMember?.gps_consent
+      ? timesheet.geofence_validated === true
       : true, // Skip GPS check if no consent
     hours: shift ? (() => {
       const scheduledHours = shift.duration_hours || 12;
@@ -86,13 +83,13 @@ export default function AutoApprovalIndicator({ timesheet, shift, staffMember })
         <Badge variant="outline" className={criteria.signatures ? 'border-green-500 text-green-700' : 'border-red-500 text-red-700'}>
           {criteria.signatures ? '✅' : '❌'} Signatures
         </Badge>
-        
+
         {staffMember?.gps_consent && (
           <Badge variant="outline" className={criteria.gps ? 'border-green-500 text-green-700' : 'border-red-500 text-red-700'}>
             {criteria.gps ? '✅' : '❌'} GPS
           </Badge>
         )}
-        
+
         <Badge variant="outline" className={criteria.hours ? 'border-green-500 text-green-700' : 'border-red-500 text-red-700'}>
           {criteria.hours ? '✅' : '❌'} Hours
         </Badge>

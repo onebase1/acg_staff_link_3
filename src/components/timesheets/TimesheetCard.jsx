@@ -261,10 +261,22 @@ export default function TimesheetCard({
           </div>
         )}
 
-        {/* ✅ ENHANCED: Professional Document Links */}
+        {/* ✅ ENHANCED: Professional Document Links & Big Button for Admins */}
         {timesheet.uploaded_documents?.length > 0 && (
           <div className="mt-4 pt-4 border-t">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Attached Documents</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Timesheet Documents</p>
+
+            {/* Prominent Action Button for Reviewers */}
+            {(isAdmin || timesheet.status === 'submitted') && (
+              <Button
+                onClick={() => window.open(timesheet.uploaded_documents[0].file_url, '_blank')}
+                className="w-full bg-green-600 hover:bg-green-700 text-white mb-3 shadow-sm font-bold py-5 h-auto"
+              >
+                <Eye className="w-5 h-5 mr-2" />
+                View Uploaded Timesheet
+              </Button>
+            )}
+
             <div className="flex flex-col gap-2">
               {timesheet.uploaded_documents.map((doc, idx) => (
                 <a
@@ -311,8 +323,8 @@ export default function TimesheetCard({
           </div>
         )}
 
-        {/* ✅ FIX 3: Show Approve/Reject buttons for BOTH draft AND submitted */}
-        {isAdmin && (timesheet.status === 'submitted' || timesheet.status === 'draft') && shiftHasEnded && (
+        {/* ✅ FIX 3: Show Approve/Reject buttons for reviewable states */}
+        {isAdmin && (timesheet.status === 'submitted' || timesheet.status === 'draft' || timesheet.status === 'pending_admin_review') && shiftHasEnded && (
           <div className="space-y-2 mt-4 pt-4 border-t">
             {issues.length === 0 && (
               <div className="p-2 bg-purple-50 border border-purple-200 rounded text-xs text-purple-800 flex items-center gap-2">

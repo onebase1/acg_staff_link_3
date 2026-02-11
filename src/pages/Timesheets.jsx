@@ -1160,7 +1160,7 @@ export default function Timesheets() {
                   isRejecting={processingTimesheets.rejecting.has(timesheet.id)}
                   user={user}
                   clientObj={clientObj}
-                  extraFooter={isAdmin && timesheet.status === 'submitted' && (
+                  extraFooter={isAdmin && (timesheet.status === 'submitted' || timesheet.status === 'draft' || timesheet.status === 'pending_admin_review') && (
                     <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
                       <AutoApprovalIndicator
                         timesheet={timesheet}
