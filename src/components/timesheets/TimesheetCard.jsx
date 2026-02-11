@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   User, Building2, Calendar, Clock, MapPin, ChevronDown, ChevronUp,
   CheckCircle, XCircle, AlertTriangle, FileText, ExternalLink, Loader2,
-  Zap, RefreshCw, AlertCircle // Added AlertCircle
+  Zap, RefreshCw, AlertCircle, Eye // Added Eye and AlertCircle
 } from "lucide-react";
 import { format } from "date-fns";
 import GPSIndicator, { GPSDetails } from "./GPSIndicator";
