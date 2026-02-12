@@ -21,6 +21,19 @@ import { format } from "date-fns";
 import AutoApprovalIndicator from "../components/timesheets/AutoApprovalIndicator";
 import TimesheetUploader from "../components/timesheets/TimesheetUploader";
 
+// ✅ HELPER: Move outside component to prevent re-creation on every render
+const formatSafeDate = (dateStr) => {
+  if (!dateStr) return 'No Date';
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'Invalid Date';
+    return format(date, 'MMM d, yyyy');
+  } catch (error) {
+    console.error('Date format error:', dateStr, error);
+    return 'Date Error';
+  }
+};
+
 export default function Timesheets() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,13 +47,6 @@ export default function Timesheets() {
 
   // OCR Modal state (for advanced timesheet upload with AI extraction)
   // These states are now managed within TimesheetUploader component
-  // const [showConfirmModal, setShowConfirmModal] = useState(false);
-  // const [pendingOcrData, setPendingOcrData] = useState(null);
-  // const [pendingDocument, setPendingDocument] = useState(null);
-  // const [pendingFile, setPendingFile] = useState(null);
-  // const [pendingTimesheetId, setPendingTimesheetId] = useState(null);
-  // const [confirming, setConfirming] = useState(false);
-  // const [rejecting, setRejecting] = useState(false);
   const [processingTimesheets, setProcessingTimesheets] = useState({
     approving: new Set(),
     rejecting: new Set()
@@ -140,6 +146,17 @@ export default function Timesheets() {
       // Update total count for pagination controls
       if (count !== null) {
         setTotalCount(count);
+      }
+
+      // ✅ FIX: If an admin is filtering, we need to fetch a larger range or all
+      // to avoid in-memory filtering desync with pagination
+      if (isAdmin && (statusFilter !== 'all' || searchTerm)) {
+        const { data: allData } = await supabase
+          .from('timesheets')
+          .select('*')
+          .eq('agency_id', user.agency_id)
+          .order('created_date', { ascending: true });
+        return allData || [];
       }
 
       return data || [];
@@ -495,9 +512,12 @@ export default function Timesheets() {
       return false;
     }
 
+    const hasDocs = t.uploaded_documents && t.uploaded_documents.length > 0;
+    const isAwaitingReview = t.status === 'submitted' || t.status === 'pending_admin_review' || (t.status === 'draft' && hasDocs);
+
     const matchesStatus = statusFilter === 'all' ||
-      (statusFilter === 'pending' && (t.status === 'submitted' || t.status === 'draft')) ||
-      (statusFilter === 'draft' && t.status === 'draft') ||
+      (statusFilter === 'pending' && isAwaitingReview) ||
+      (statusFilter === 'draft' && t.status === 'draft' && !hasDocs) ||
       (statusFilter === 'submitted' && t.status === 'submitted') ||
       (statusFilter === 'approved' && t.status === 'approved') ||
       (statusFilter === 'rejected' && t.status === 'rejected') ||
@@ -554,8 +574,12 @@ export default function Timesheets() {
     ? displayItems.filter(auditFilters[activeAudit])
     : displayItems;
 
-  const pendingCount = timesheets.filter(t => t.status === 'submitted').length;
-  const draftCount = timesheets.filter(t => t.status === 'draft').length;
+  const pendingCount = timesheets.filter(t =>
+    t.status === 'submitted' || t.status === 'pending_admin_review' || (t.status === 'draft' && t.uploaded_documents?.length > 0)
+  ).length;
+  const draftCount = timesheets.filter(t =>
+    t.status === 'draft' && (!t.uploaded_documents || t.uploaded_documents.length === 0)
+  ).length;
   const missingCount = missingTimesheetShifts.length;
 
   // ✅ FIX 2: Correct total hours calculation
@@ -874,9 +898,9 @@ export default function Timesheets() {
                 All
               </Button>
               <Button
-                variant={statusFilter === 'submitted' ? 'default' : 'outline'}
+                variant={statusFilter === 'pending' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setStatusFilter('submitted')}
+                onClick={() => setStatusFilter('pending')}
                 className="relative"
               >
                 Awaiting Review
@@ -988,22 +1012,7 @@ export default function Timesheets() {
                     const issues = validateTimesheet(timesheet);
                     const staffMember = staff.find(s => s.id === timesheet.staff_id);
                     const shift = shifts.find(s => s.id === timesheet.booking_id);
-
-                    // ✅ NEW: Check if shift has ended
                     const shiftHasEnded = timesheet.shift_date ? new Date(timesheet.shift_date) < new Date() : false;
-
-                    // ✅ FIX: Safe date formatting helper
-                    const formatSafeDate = (dateStr) => {
-                      if (!dateStr) return 'No Date';
-                      try {
-                        const date = new Date(dateStr);
-                        if (isNaN(date.getTime())) return 'Invalid Date';
-                        return format(date, 'MMM d, yyyy');
-                      } catch (error) {
-                        console.error('Date format error:', dateStr, error);
-                        return 'Date Error';
-                      }
-                    };
 
                     return (
                       <tr key={timesheet.id} className="hover:bg-gray-50 transition-colors">
@@ -1077,11 +1086,13 @@ export default function Timesheets() {
                         {/* ✅ NEW: Auto-Approval Status */}
                         {isAdmin && (
                           <td className="px-4 py-3">
-                            <AutoApprovalIndicator
-                              timesheet={timesheet}
-                              shift={shift}
-                              staffMember={staffMember}
-                            />
+                            {timesheet.uploaded_documents?.length > 0 && (
+                              <AutoApprovalIndicator
+                                timesheet={timesheet}
+                                shift={shift}
+                                staffMember={staffMember}
+                              />
+                            )}
                           </td>
                         )}
 
@@ -1093,8 +1104,8 @@ export default function Timesheets() {
                                 View
                               </Button>
                             </Link>
-                            {/* ✅ FIX 4: Show approve/reject for submitted OR draft (if shift ended) */}
-                            {isAdmin && (timesheet.status === 'submitted' || timesheet.status === 'draft') && shiftHasEnded && (
+                            {/* ✅ FIX 4: Show approve/reject for submitted OR draft (if shift ended AND has docs) */}
+                            {isAdmin && (timesheet.status === 'submitted' || timesheet.status === 'pending_admin_review' || (timesheet.status === 'draft' && timesheet.uploaded_documents?.length > 0)) && shiftHasEnded && (
                               <>
                                 {/* ✅ NEW: Auto-Approve Button */}
                                 <Button
@@ -1160,7 +1171,7 @@ export default function Timesheets() {
                   isRejecting={processingTimesheets.rejecting.has(timesheet.id)}
                   user={user}
                   clientObj={clientObj}
-                  extraFooter={isAdmin && (timesheet.status === 'submitted' || timesheet.status === 'draft' || timesheet.status === 'pending_admin_review') && (
+                  extraFooter={isAdmin && (timesheet.status === 'submitted' || timesheet.status === 'pending_admin_review' || (timesheet.status === 'draft' && timesheet.uploaded_documents?.length > 0)) && (
                     <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
                       <AutoApprovalIndicator
                         timesheet={timesheet}

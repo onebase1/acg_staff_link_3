@@ -216,8 +216,10 @@ export function calculateDurationHours(startTime, endTime) {
 export function calculateBillableHoursWithRule(durationHours) {
   if (!durationHours || durationHours < 0) return 0;
 
-  // Rule: Remove 60 mins (1 hour) if total hours >= 10
-  const breakDeduction = durationHours >= 10 ? 1 : 0;
+  // Rule: Remove 60 mins (1 hour) if total hours > 10
+  // This ensures 10.0h worked = 10.0h charged. 
+  // 12.0h worked = 11.0h charged.
+  const breakDeduction = durationHours > 10 ? 1 : 0;
 
   return Math.max(0, durationHours - breakDeduction);
 }

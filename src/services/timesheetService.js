@@ -91,38 +91,75 @@ const timesheetService = {
 
     /**
      * Helper to calculate final timesheet data based on OCR results and user overrides.
-     * Enforces business rules for hour calculations.
+     * Enforces business rules for hour calculations and maps verbatim times to DB.
+     * @param {Object} extracted - The full extracted OCR data object.
+     * @param {Object} rowData - The specific row or matched data to save.
+     * @param {string} shiftDate - The YYYY-MM-DD date of the shift.
      */
-    calculateFinalData(extracted, rowData) {
+    calculateFinalData(extracted, rowData, shiftDate) {
         const finalData = {};
+        const dateStr = shiftDate || rowData.date || extracted.date;
 
-        // Prioritize row times
-        if (rowData.start_time) finalData.actual_start_time = rowData.start_time;
-        if (rowData.end_time) finalData.actual_end_time = rowData.end_time;
+        // Helper to combine date and time into ISO string
+        const createTimestamp = (timeStr) => {
+            if (!dateStr || !timeStr) return null;
+            try {
+                // Remove any non-time characters
+                const time = String(timeStr).trim().match(/(\d{1,2})[:.](\d{2})/);
+                if (!time) return null;
+
+                const h = parseInt(time[1], 10);
+                const m = parseInt(time[2], 10);
+
+                const date = new Date(dateStr);
+                date.setHours(h, m, 0, 0);
+                return date.toISOString();
+            } catch (e) {
+                console.error('Error creating timestamp:', e);
+                return null;
+            }
+        };
+
+        // Verbatim Time Mapping (Priority: User Override -> Extracted Row)
+        const startTime = rowData.start_time || rowData.actual_shift_start || rowData.clock_in_time;
+        const endTime = rowData.end_time || rowData.actual_shift_end || rowData.clock_out_time;
+
+        if (startTime) {
+            finalData.actual_start_time = startTime; // RESTORE for Invoice Generator
+            finalData.clock_in = createTimestamp(startTime);
+            finalData.clock_in_time = finalData.clock_in; // Sync both legacy and new columns
+        }
+        if (endTime) {
+            finalData.actual_end_time = endTime;     // RESTORE for Invoice Generator
+            finalData.clock_out = createTimestamp(endTime);
+            finalData.clock_out_time = finalData.clock_out; // Sync both legacy and new columns
+        }
 
         if (rowData.break_minutes !== undefined && rowData.break_minutes !== null) {
             finalData.break_duration_minutes = rowData.break_minutes;
         }
 
         // Calculate hours with 10-hour rule
-        if (finalData.actual_start_time && finalData.actual_end_time) {
-            const rawDuration = calculateDurationHours(finalData.actual_start_time, finalData.actual_end_time);
+        if (startTime && endTime) {
+            const rawDuration = calculateDurationHours(startTime, endTime);
             const calculatedHours = calculateBillableHoursWithRule(rawDuration);
 
-            finalData.hours_worked = calculatedHours;
-            finalData.total_hours = calculatedHours;
-            finalData.break_duration_minutes = rawDuration >= 10 ? 60 : 0;
-        } else {
-            // Fallback
-            const hours = rowData.hours ?? rowData.hours_worked ?? extracted.total_hours ?? null;
-            if (hours !== null) {
-                finalData.hours_worked = hours;
-                finalData.total_hours = hours;
-            }
-        }
+            finalData.hours_worked = rawDuration;      // Gross (e.g. 12.0)
+            finalData.total_hours = calculatedHours;   // Net (e.g. 11.0)
+            finalData.raw_total_hours = rawDuration;  // Sync verbatim Gross column
 
-        if (typeof extracted.raw_total_hours === 'number') {
-            finalData.raw_total_hours = extracted.raw_total_hours;
+            // If break duration wasn't explicitly provided, set it based on the rule
+            if (finalData.break_duration_minutes === undefined || finalData.break_duration_minutes === null) {
+                finalData.break_duration_minutes = rawDuration >= 10 ? 60 : 0;
+            }
+        } else {
+            // Fallback: If only hours were extracted/overridden without times
+            const hours = rowData.hours ?? rowData.hours_worked ?? extracted.hours_worked ?? extracted.total_hours ?? null;
+            if (hours !== null) {
+                finalData.hours_worked = parseFloat(hours);
+                finalData.total_hours = calculateBillableHoursWithRule(parseFloat(hours));
+                finalData.raw_total_hours = parseFloat(hours);
+            }
         }
 
         return finalData;

@@ -38,6 +38,14 @@ export default function TimesheetUploader({
     const [pendingOcrData, setPendingOcrData] = useState(null);
     const [pendingDocument, setPendingDocument] = useState(null);
 
+    // ✅ FIX: State to hold resolved context for the OCR modal
+    const [resolvedContext, setResolvedContext] = useState({
+        ts: initialTimesheet,
+        staff: initialStaff,
+        client: initialClient,
+        shift: initialShift
+    });
+
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -75,6 +83,14 @@ export default function TimesheetUploader({
                 const { data } = await supabase.from('shifts').select('*').eq('id', ts.shift_id).single();
                 shiftObj = data;
             }
+
+            // Update state so the render method has access to these resolved values
+            setResolvedContext({
+                ts,
+                staff: staffMember,
+                client: clientObj,
+                shift: shiftObj
+            });
 
             // 2. Upload to storage
             const fileUrl = await timesheetService.uploadFile(file);
@@ -133,8 +149,13 @@ export default function TimesheetUploader({
         try {
             const ts = initialTimesheet || await supabase.from('timesheets').select('*').eq('id', timesheetId).single().then(r => r.data);
             const shiftId = ts?.shift_id || initialShift?.id;
+            const shiftDate = ts?.shift_date || initialShift?.date || resolvedContext.shift?.date;
 
-            const finalTimesheetData = timesheetService.calculateFinalData(pendingOcrData, overrideRowData || pendingOcrData.matched_row_info || pendingOcrData);
+            const finalTimesheetData = timesheetService.calculateFinalData(
+                pendingOcrData,
+                overrideRowData || pendingOcrData.matched_row_info || pendingOcrData,
+                shiftDate
+            );
 
             const existingDocs = ts?.uploaded_documents || [];
             const updateData = {
@@ -146,10 +167,24 @@ export default function TimesheetUploader({
             };
 
             // Auto-approval logic
+            const isSmartMatch = (field, expected, actual) => {
+                if (field === 'hours') {
+                    const e = parseFloat(expected);
+                    const a = parseFloat(actual);
+                    if (isNaN(e) || isNaN(a)) return false;
+                    // Rule: Strictly > 10 trigger deduction
+                    const breakDeduction = e > 10 ? 1 : 0;
+                    return (e - breakDeduction) === a;
+                }
+                return false;
+            };
+
+            const effectiveMismatches = pendingOcrData.mismatches?.filter(m => !isSmartMatch(m.field, m.expected, m.actual)) || [];
+
             const canAutoApprove = (
-                pendingOcrData.confidence?.overall >= 80 &&
-                pendingOcrData.validation_status === 'match' &&
-                !pendingOcrData.mismatches?.some(m => m.severity === 'critical')
+                pendingOcrData.confidence?.overall >= 95 && // BUMP to 95% for auto-approval
+                (pendingOcrData.validation_status === 'match' || effectiveMismatches.length === 0) &&
+                !effectiveMismatches.some(m => m.severity === 'critical')
             );
 
             if (canAutoApprove) {
@@ -250,11 +285,11 @@ export default function TimesheetUploader({
                     onClose={() => setShowConfirmModal(false)}
                     extractedData={pendingOcrData}
                     expectedData={{
-                        staff_name: staffMember ? `${staffMember.first_name} ${staffMember.last_name}` :
+                        staff_name: resolvedContext.staff ? `${resolvedContext.staff.first_name} ${resolvedContext.staff.last_name}` :
                             initialStaff ? `${initialStaff.first_name} ${initialStaff.last_name}` : null,
-                        client_name: clientObj?.name || initialClient?.name || null,
-                        shift_date: initialTimesheet?.shift_date || ts?.shift_date || null,
-                        scheduled_hours: initialTimesheet?.total_hours || initialShift?.duration_hours || ts?.total_hours || null,
+                        client_name: resolvedContext.client?.name || initialClient?.name || null,
+                        shift_date: initialTimesheet?.shift_date || resolvedContext.ts?.shift_date || null,
+                        scheduled_hours: initialTimesheet?.total_hours || initialShift?.duration_hours || resolvedContext.ts?.total_hours || null,
                     }}
                     onConfirm={handleConfirm}
                     onReject={handleReject}

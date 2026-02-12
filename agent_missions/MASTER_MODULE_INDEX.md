@@ -1,10 +1,10 @@
 # 🏢 MASTER MODULE INDEX - ACG StaffLink Enterprise Transformation
 
 **Created:** 2025-12-17
-**Last Updated:** 2025-12-17
+**Last Updated:** 2026-02-12
 **Author:** Enterprise Architecture Review
 **Purpose:** Central index of all actionable modules for multi-turn agent execution
-**Total Modules:** 20 (11 MVP, 5 High Priority, 4+ Post-MVP)
+**Total Modules:** 48 (including business/funding modules)
 
 ---
 
@@ -143,6 +143,20 @@
 - Staff Portal UX Overhaul
 - Mobile App Preparation
 - Advanced Analytics & BI
+
+### MODULE_47: Multi-Shift Batch Processing
+**Goal:** Transition "One-to-One" confirmation into "Smart Batch Update" flow.
+**Impact:** 97% of timesheets are multi-row; massive UX improvement.
+**Time:** 8-10 hours | **Risk:** High
+**Files:** `agent_missions/MODULE_47_MULTI_SHIFT_BATCH_PROCESSING/`
+**Status:** 🟡 PLANNED
+
+### MODULE_48: UK Government Grant Application
+**Goal:** Secure £10k-£25k government funding to validate ACG StaffLink.
+**Impact:** Essential for growth and investor readiness.
+**Time:** 15-20 hours | **Risk:** Medium
+**Files:** `agent_missions/MODULE_48_UK_GOVERNMENT_GRANT_APPLICATION/`
+**Status:** ✅ COMPLETE
 
 ---
 

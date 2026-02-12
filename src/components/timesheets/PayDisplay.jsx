@@ -97,10 +97,21 @@ export default function PayDisplay({ shift, timesheet }) {
   // ========================================
   if (mode === 'actual' && timesheet) {
     const isGPS = timesheet.clock_in_location && Object.keys(timesheet.clock_in_location).length > 0;
-    const actualHours = timesheet.total_hours || 0;
-    const breakMins = timesheet.break_duration_minutes || 0;
-    const billableHours = actualHours - (breakMins / 60);
-    const pay = timesheet.staff_pay_amount || 0;
+
+    // ✅ DATA STANDARD: 
+    // - hours_worked = Gross Duration (verbatim extracted)
+    // - total_hours = Net Billable Total (after 10-hour rule)
+    let grossHours = timesheet.hours_worked || timesheet.raw_total_hours || timesheet.total_hours || 0;
+    let netBillableHours = timesheet.total_hours || 0;
+
+    // Reconciliation for legacy/draft records: 
+    // If net equals gross and duration > 10h, apply the 10-hour rule for display/consistency
+    if (grossHours === netBillableHours && grossHours > 10) {
+      netBillableHours = grossHours - 1;
+    }
+
+    const breakMins = timesheet.break_duration_minutes || (grossHours > 10 ? 60 : 0);
+    const pay = timesheet.staff_pay_amount || (netBillableHours * (timesheet.pay_rate || shift.pay_rate || 0));
     const geofenceDistance = timesheet.geofence_distance_meters;
 
     return (
@@ -122,8 +133,8 @@ export default function PayDisplay({ shift, timesheet }) {
         {/* Hours Breakdown */}
         <div className="space-y-1 text-sm text-green-800 mb-3 p-2 bg-green-100 rounded">
           <div className="flex justify-between">
-            <span>Worked:</span>
-            <span className="font-semibold">{actualHours.toFixed(2)}h</span>
+            <span>Worked (Duration):</span>
+            <span className="font-semibold">{Number(grossHours).toFixed(2)}h</span>
           </div>
           {breakMins > 0 && (
             <div className="flex justify-between text-green-700">
@@ -131,9 +142,9 @@ export default function PayDisplay({ shift, timesheet }) {
               <span>{breakMins}min</span>
             </div>
           )}
-          <div className="flex justify-between border-t border-green-200 pt-1 font-semibold">
-            <span>Billable:</span>
-            <span>{billableHours.toFixed(2)}h</span>
+          <div className="flex justify-between border-t border-green-200 pt-1 font-semibold text-green-900 bg-green-200/50 -mx-2 px-2 mt-1">
+            <span>Billable Total:</span>
+            <span>{Number(netBillableHours).toFixed(2)}h</span>
           </div>
         </div>
 
@@ -144,7 +155,7 @@ export default function PayDisplay({ shift, timesheet }) {
             £{pay.toFixed(2)}
           </div>
           <div className="text-xs text-green-600 mt-1">
-            £{timesheet.pay_rate?.toFixed(2) || '0.00'}/hr × {billableHours.toFixed(2)}h
+            £{timesheet.pay_rate?.toFixed(2) || '0.00'}/hr × {netBillableHours.toFixed(2)}h
           </div>
         </div>
 

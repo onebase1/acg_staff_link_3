@@ -21,8 +21,10 @@ import {
   Building2,
   Coffee,
   MousePointerClick,
+  Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { calculateBillableHoursWithRule } from '@/utils/shiftCalculations';
 
 /**
  * 🔍 CONFIRM OCR MODAL
@@ -68,13 +70,41 @@ export default function ConfirmOCRModal({
   }, [extractedData]);
 
   const confidence = extractedData.confidence?.overall || 0;
-  const hasHighConfidence = confidence >= 80;
-  const hasLowConfidence = confidence < 60;
+  const hasHighConfidence = confidence >= 95; // BUMP to 95% per user preference
+  const hasLowConfidence = confidence < 75;
+
+  // ✅ SMART VALIDATION: 10-Hour Gold Rule
+  // Uses centralized utility to see if "actual" exactly matches "expected" after break deduction
+  const isSmartMatch = (field, expected, actual) => {
+    if (field === 'hours') {
+      const e = parseFloat(expected);
+      const a = parseFloat(actual);
+      if (isNaN(e) || isNaN(a)) return false;
+
+      // If expected gross matches actual net after rule-based deduction (e.g. 12 -> 11)
+      return calculateBillableHoursWithRule(e) === a;
+    }
+    return false;
+  };
+
+  const effectiveMismatches = extractedData.mismatches?.filter(m => !isSmartMatch(m.field, m.expected, m.actual)) || [];
+
+  // ✅ SMART WARNING FILTERING
+  // Filter out warnings that describe the 10-hour break deduction (not really an error)
+  const isBreakWarning = (msg) => {
+    return (msg.includes('scheduled: 12') && msg.includes('actual: 11')) ||
+      (msg.includes('1.0h difference') && msg.includes('scheduled:'));
+  };
+
+  const effectiveWarnings = extractedData.warnings?.filter(w => {
+    const msg = typeof w === 'string' ? w : w.message;
+    return !isBreakWarning(msg);
+  }) || [];
 
   const canAutoApprove = (
     hasHighConfidence &&
-    extractedData.validation_status === 'match' &&
-    !extractedData.mismatches?.some(m => m.severity === 'critical')
+    (extractedData.validation_status === 'match' || effectiveMismatches.length === 0) &&
+    !effectiveMismatches.some(m => m.severity === 'critical')
   );
 
   // Get confidence color and label
@@ -288,7 +318,8 @@ export default function ConfirmOCRModal({
               label="Hours Worked"
               value={getDisplayValue('hours')}
               expected={expectedData?.scheduled_hours ? `${expectedData.scheduled_hours}h` : null}
-              mismatch={extractedData.mismatches?.find(m => m.field === 'hours')}
+              mismatch={effectiveMismatches.find(m => m.field === 'hours')}
+              isSmartMatch={isSmartMatch('hours', expectedData?.scheduled_hours, parseFloat(getDisplayValue('hours')))}
             />
           </div>
 
@@ -300,13 +331,13 @@ export default function ConfirmOCRModal({
         </div>
 
         {/* Mismatches Alert */}
-        {extractedData.mismatches && extractedData.mismatches.length > 0 && (
+        {effectiveMismatches.length > 0 && (
           <Alert className="bg-red-50 border-red-300">
             <XCircle className="w-5 h-5 text-red-600" />
             <AlertDescription>
               <p className="font-bold text-red-900 mb-2">⚠️ Data Mismatches Detected</p>
               <div className="space-y-2">
-                {extractedData.mismatches.map((m, idx) => (
+                {effectiveMismatches.map((m, idx) => (
                   <div key={idx} className="text-sm">
                     <p className="font-medium text-red-800">{m.field}:</p>
                     <p className="text-red-700">
@@ -324,11 +355,11 @@ export default function ConfirmOCRModal({
         )}
 
         {/* Warnings */}
-        {extractedData.warnings && extractedData.warnings.length > 0 && (
+        {effectiveWarnings.length > 0 && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
             <p className="font-medium text-yellow-900 mb-2">⚠️ Warnings</p>
             <ul className="text-sm text-yellow-800 space-y-1 list-disc list-inside">
-              {extractedData.warnings.map((warning, idx) => (
+              {effectiveWarnings.map((warning, idx) => (
                 <li key={idx}>{typeof warning === 'string' ? warning : warning.message}</li>
               ))}
             </ul>
@@ -405,16 +436,16 @@ export default function ConfirmOCRModal({
 /**
  * DataField Component - Shows a single extracted field with optional mismatch
  */
-function DataField({ icon, label, value, expected, mismatch }) {
+function DataField({ icon, label, value, expected, mismatch, isSmartMatch }) {
   // 🧹 NORMALIZE VALUES FOR COMPARISON
   // This fixes the "2025-01-17" vs "2025-01-17" mismatch bug caused by type/whitespace
   const normalize = (val) => String(val || '').trim().toLowerCase();
 
   // Check if mismatch is real (ignoring case and whitespace)
-  const isRealMismatch = mismatch && normalize(mismatch.actual) !== normalize(mismatch.expected);
+  const isRealMismatch = mismatch && normalize(mismatch.actual) !== normalize(mismatch.expected) && !isSmartMatch;
 
   // Also check if the current 'value' matches 'expected' (for dynamic row updates)
-  const matchesExpected = expected && normalize(value) === normalize(expected);
+  const matchesExpected = isSmartMatch || (expected && normalize(value) === normalize(expected));
 
   return (
     <div className={`flex items-start gap-3 p-3 rounded-lg ${isRealMismatch ? 'bg-red-50 border border-red-200' : 'bg-gray-50'
@@ -427,9 +458,9 @@ function DataField({ icon, label, value, expected, mismatch }) {
         <p className={`text-lg font-bold leading-none ${isRealMismatch ? 'text-red-900' : 'text-gray-900'}`}>
           {value || 'Not found'}
         </p>
-        {expected && !isRealMismatch && matchesExpected && (
+        {matchesExpected && (
           <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
-            <CheckCircle className="w-3 h-3" /> Matches scheduled
+            <CheckCircle className="w-3 h-3" /> {isSmartMatch ? 'Correct Break Deduction' : 'Matches scheduled'}
           </p>
         )}
         {isRealMismatch && (
@@ -440,7 +471,7 @@ function DataField({ icon, label, value, expected, mismatch }) {
       </div>
       {isRealMismatch ? (
         <XCircle className="w-5 h-5 text-red-600" />
-      ) : (expected && matchesExpected) ? (
+      ) : matchesExpected ? (
         <CheckCircle className="w-5 h-5 text-green-600" />
       ) : null}
     </div>

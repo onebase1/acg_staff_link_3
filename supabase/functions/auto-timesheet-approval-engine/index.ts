@@ -114,18 +114,21 @@ serve(async (req) => {
       { data: agencies },
       { data: staff },
       { data: shifts },
-      { data: bookings }
+      { data: bookings },
+      { data: clients }
     ] = await Promise.all([
       supabase.from("agencies").select("*"),
       supabase.from("staff").select("*"),
       supabase.from("shifts").select("*"),
-      supabase.from("bookings").select("*")
+      supabase.from("bookings").select("*"),
+      supabase.from("clients").select("*")
     ]);
 
     const agency = agencies?.find(a => a.id === timesheet.agency_id);
     const staffMember = staff?.find(s => s.id === timesheet.staff_id);
     const booking = bookings?.find(b => b.id === timesheet.booking_id);
     const shift = booking ? shifts?.find(s => s.id === booking.shift_id) : null;
+    const client = clients?.find(c => c.id === timesheet.client_id);
 
     // Check if agency has auto-approval enabled
     const autoApprovalEnabled = agency?.settings?.automation_settings?.auto_timesheet_approval ?? true;
@@ -203,9 +206,12 @@ serve(async (req) => {
     // 3. Check hours discrepancy
     const hoursThreshold = 0.25; // 15 minutes tolerance
     if (shift && timesheet.total_hours) {
-      const scheduledHours = shift.duration_hours || 12;
+      const scheduledGrossHours = shift.duration_hours || 12;
+      // ✅ APPLY 10-HOUR GOLD RULE: If scheduled gross > 10, the "target" Net is -1h
+      const scheduledNetHours = scheduledGrossHours > 10 ? scheduledGrossHours - 1 : scheduledGrossHours;
+      
       const workedHours = timesheet.total_hours;
-      const hoursDiff = Math.abs(workedHours - scheduledHours);
+      const hoursDiff = Math.abs(workedHours - scheduledNetHours);
 
       if (hoursDiff <= hoursThreshold) {
         validationResults.hours_acceptable = true;
@@ -213,7 +219,7 @@ serve(async (req) => {
         const issue = {
           type: 'hours_mismatch',
           severity: hoursDiff > 1 ? 'high' : 'medium', // High severity if > 1 hour
-          message: `Worked ${workedHours}h, scheduled ${scheduledHours}h (${hoursDiff > 0 ? '+' : ''}${hoursDiff.toFixed(1)}h difference)`
+          message: `Worked ${workedHours}h, expected net ${scheduledNetHours}h (from ${scheduledGrossHours}h gross) | diff: ${hoursDiff.toFixed(1)}h`
         };
         issues.push(issue);
 
@@ -228,7 +234,7 @@ serve(async (req) => {
                 <li><strong>Staff:</strong> ${staffMember?.first_name} ${staffMember?.last_name}</li>
                 <li><strong>Client:</strong> ${agency?.name || 'Unknown'}</li>
                 <li><strong>Shift Date:</strong> ${timesheet.shift_date}</li>
-                <li><strong>Scheduled Hours:</strong> ${scheduledHours}h</li>
+                <li><strong>Scheduled Hours:</strong> ${scheduledGrossHours}h</li>
                 <li><strong>Worked Hours:</strong> ${workedHours}h</li>
                 <li><strong>Overtime:</strong> ${hoursDiff.toFixed(2)}h</li>
               </ul>
@@ -325,11 +331,6 @@ serve(async (req) => {
       // Send notification to staff
       if (staffMember?.email) {
         try {
-          const { data: clients } = await supabase
-            .from("clients")
-            .select("*");
-          const client = clients?.find(c => c.id === timesheet.client_id);
-
           // Check preference
           const preferenceCheck = await shouldSendNotification(
               supabase,

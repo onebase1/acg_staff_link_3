@@ -192,16 +192,19 @@ Please extract all data from the document and compare with expected values.`
     if (expected_data) {
       // 1. HOURS VALIDATION (most important)
       if (expected_data.scheduled_hours && extractedData.total_hours) {
-        const hoursDiff = Math.abs(expected_data.scheduled_hours - extractedData.total_hours);
-        const percentDiff = (hoursDiff / expected_data.scheduled_hours) * 100;
+        // ✅ APPLY 10-HOUR GOLD RULE: If scheduled gross > 10, the "target" Net is -1h
+        const expectedNetHours = expected_data.scheduled_hours > 10 ? expected_data.scheduled_hours - 1 : expected_data.scheduled_hours;
+        
+        const hoursDiff = Math.abs(expectedNetHours - extractedData.total_hours);
+        const percentDiff = (hoursDiff / expectedNetHours) * 100;
 
         if (hoursDiff > 0.5) {
           validation.validation_status = 'mismatch';
           validation.mismatches.push({
             field: 'hours',
-            expected: expected_data.scheduled_hours,
+            expected: expectedNetHours, // We compare with the expected NET
             actual: extractedData.total_hours,
-            scheduled_hours: extractedData.scheduled_hours,
+            scheduled_gross: expected_data.scheduled_hours,
             difference: hoursDiff,
             percent_difference: percentDiff.toFixed(1),
             severity: percentDiff > 20 ? 'critical' : percentDiff > 10 ? 'high' : 'medium'
