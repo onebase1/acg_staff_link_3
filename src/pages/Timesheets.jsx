@@ -44,6 +44,9 @@ export default function Timesheets() {
   const [searchTerm, setSearchTerm] = useState(shiftIdParam || '');
   const [user, setUser] = useState(null);
   const [viewMode, setViewMode] = useState('cards'); // NEW: Card or Table view
+  const [clientFilter, setClientFilter] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   // OCR Modal state (for advanced timesheet upload with AI extraction)
   // These states are now managed within TimesheetUploader component
@@ -533,7 +536,41 @@ export default function Timesheets() {
       t.booking_id?.includes(searchTerm) ||
       t.shift_id?.includes(searchTerm);
 
-    return matchesStatus && matchesSearch;
+    // ✅ NEW: Client Filter
+    const matchesClient = clientFilter === 'all' || t.client_id === clientFilter;
+
+    // ✅ NEW: Date Range Filter
+    const shiftDate = t.shift_date ? new Date(t.shift_date) : null;
+    let matchesDate = true;
+    if (shiftDate) {
+      if (startDate && new Date(startDate) > shiftDate) matchesDate = false;
+      if (endDate && new Date(endDate) < shiftDate) matchesDate = false;
+    }
+
+    return matchesStatus && matchesSearch && matchesClient && matchesDate;
+  });
+
+  // ✅ PRE-FILTERED DATA FOR COUNTS (Everything except status filter)
+  const baseFilteredTimesheets = timesheets.filter(t => {
+    const staffName = getStaffName(t.staff_id).toLowerCase();
+    const clientName = getClientName(t.client_id).toLowerCase();
+
+    const matchesSearch = staffName.includes(searchTerm.toLowerCase()) ||
+      clientName.includes(searchTerm.toLowerCase()) ||
+      t.id?.includes(searchTerm) ||
+      t.booking_id?.includes(searchTerm) ||
+      t.shift_id?.includes(searchTerm);
+
+    const matchesClient = clientFilter === 'all' || t.client_id === clientFilter;
+
+    const shiftDate = t.shift_date ? new Date(t.shift_date) : null;
+    let matchesDate = true;
+    if (shiftDate) {
+      if (startDate && new Date(startDate) > shiftDate) matchesDate = false;
+      if (endDate && new Date(endDate) < shiftDate) matchesDate = false;
+    }
+
+    return matchesSearch && matchesClient && matchesDate;
   });
 
   // ✅ MISSING TIMESHEET LOGIC: Find shifts that should have timesheets but don't
@@ -543,7 +580,16 @@ export default function Timesheets() {
     // Only care about completed or confirmed shifts in the past
     const isRelevantStatus = ['completed', 'awaiting_admin_closure', 'confirmed'].includes(s.status);
 
-    return !hasTimesheet && shiftHasEnded && isRelevantStatus;
+    // Apply active filters to missing shifts too
+    const matchesClient = clientFilter === 'all' || s.client_id === clientFilter;
+    const shiftDate = s.date ? new Date(s.date) : null;
+    let matchesDate = true;
+    if (shiftDate) {
+      if (startDate && new Date(startDate) > shiftDate) matchesDate = false;
+      if (endDate && new Date(endDate) < shiftDate) matchesDate = false;
+    }
+
+    return !hasTimesheet && shiftHasEnded && isRelevantStatus && matchesClient && matchesDate;
   });
 
   // ✅ MISSING TIMESHEET WRAPPER: Convert shifts to "placeholder" timesheets for the UI
@@ -574,16 +620,19 @@ export default function Timesheets() {
     ? displayItems.filter(auditFilters[activeAudit])
     : displayItems;
 
-  const pendingCount = timesheets.filter(t =>
+  const pendingCount = baseFilteredTimesheets.filter(t =>
     t.status === 'submitted' || t.status === 'pending_admin_review' || (t.status === 'draft' && t.uploaded_documents?.length > 0)
   ).length;
-  const draftCount = timesheets.filter(t =>
+  const draftCount = baseFilteredTimesheets.filter(t =>
     t.status === 'draft' && (!t.uploaded_documents || t.uploaded_documents.length === 0)
   ).length;
   const missingCount = missingTimesheetShifts.length;
+  const approvedCount = baseFilteredTimesheets.filter(t => t.status === 'approved').length;
+  const paidCount = baseFilteredTimesheets.filter(t => t.status === 'paid').length;
+  const rejectedCount = baseFilteredTimesheets.filter(t => t.status === 'rejected').length;
 
   // ✅ FIX 2: Correct total hours calculation
-  const totalHours = timesheets
+  const totalHours = baseFilteredTimesheets
     .filter(t => t.total_hours && t.total_hours > 0)
     .reduce((sum, t) => sum + (t.total_hours || 0), 0);
 
@@ -591,7 +640,7 @@ export default function Timesheets() {
   const targetedShift = shiftIdParam ? shifts.find(s => s.id === shiftIdParam) : null;
   const hasTimesheetForTargetedShift = targetedShift ? timesheets.some(t => t.shift_id === shiftIdParam || t.booking_id === shiftIdParam) : true;
 
-  const totalValue = timesheets
+  const totalValue = baseFilteredTimesheets
     .filter(t => t.status === 'approved' || t.status === 'paid')
     .reduce((sum, t) => sum + (t.client_charge_amount || 0), 0);
 
@@ -879,68 +928,154 @@ export default function Timesheets() {
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search by staff or client..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Search by staff or ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-10"
+                />
+              </div>
+
+              {isAdmin && (
+                <div className="w-full md:w-64">
+                  <select
+                    value={clientFilter}
+                    onChange={(e) => setClientFilter(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <option value="all">All Clients</option>
+                    {clients.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex gap-2 w-full md:w-auto">
+                <div className="relative flex-1 md:w-40">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="pl-10 h-10"
+                    placeholder="Start Date"
+                  />
+                </div>
+                <div className="relative flex-1 md:w-40">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="pl-10 h-10"
+                    placeholder="End Date"
+                  />
+                </div>
+              </div>
             </div>
-            <div className="flex gap-2 flex-wrap">
+
+            <div className="flex gap-2 flex-wrap items-center pt-2 border-t">
               <Button
                 variant={statusFilter === 'all' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setStatusFilter('all')}
+                className="rounded-full px-4 h-8"
               >
                 All
+                <Badge variant="secondary" className="ml-2 bg-gray-200 text-gray-700 hover:bg-gray-200 border-none px-1.5 py-0 min-w-[20px] justify-center">
+                  {baseFilteredTimesheets.length}
+                </Badge>
               </Button>
+
               <Button
                 variant={statusFilter === 'pending' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setStatusFilter('pending')}
-                className="relative"
+                className="rounded-full px-4 h-8"
               >
-                Awaiting Review
+                Pending Review
                 {pendingCount > 0 && (
-                  <span className="ml-2 bg-yellow-400 text-yellow-900 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                  <Badge variant="secondary" className="ml-2 bg-orange-100 text-orange-700 hover:bg-orange-100 border-none px-1.5 py-0 min-w-[20px] justify-center">
                     {pendingCount}
-                  </span>
+                  </Badge>
                 )}
               </Button>
+
               <Button
                 variant={statusFilter === 'draft' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setStatusFilter('draft')}
+                className="rounded-full px-4 h-8"
               >
-                Drafts ({draftCount})
+                Draft
+                {draftCount > 0 && (
+                  <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-700 hover:bg-blue-100 border-none px-1.5 py-0 min-w-[20px] justify-center">
+                    {draftCount}
+                  </Badge>
+                )}
               </Button>
+
               {isAdmin && (
                 <Button
                   variant={statusFilter === 'missing' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setStatusFilter('missing')}
-                  className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                  className="rounded-full px-4 h-8"
                 >
-                  <AlertCircle className="w-4 h-4 mr-2" />
-                  Missing ({missingCount})
+                  Missing
+                  {missingCount > 0 && (
+                    <Badge variant="secondary" className="ml-2 bg-red-100 text-red-700 hover:bg-red-100 border-none px-1.5 py-0 min-w-[20px] justify-center">
+                      {missingCount}
+                    </Badge>
+                  )}
                 </Button>
               )}
+
               <Button
                 variant={statusFilter === 'approved' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setStatusFilter('approved')}
+                className="rounded-full px-4 h-8"
               >
                 Approved
+                {approvedCount > 0 && (
+                  <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700 hover:bg-green-100 border-none px-1.5 py-0 min-w-[20px] justify-center">
+                    {approvedCount}
+                  </Badge>
+                )}
               </Button>
+
               <Button
                 variant={statusFilter === 'paid' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setStatusFilter('paid')}
+                className="rounded-full px-4 h-8"
               >
                 Paid
+                {paidCount > 0 && (
+                  <Badge variant="secondary" className="ml-2 bg-cyan-100 text-cyan-700 hover:bg-cyan-100 border-none px-1.5 py-0 min-w-[20px] justify-center">
+                    {paidCount}
+                  </Badge>
+                )}
+              </Button>
+
+              <Button
+                variant={statusFilter === 'rejected' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setStatusFilter('rejected')}
+                className="rounded-full px-4 h-8"
+              >
+                Rejected
+                {rejectedCount > 0 && (
+                  <Badge variant="secondary" className="ml-2 bg-red-50 text-red-600 hover:bg-red-50 border-none px-1.5 py-0 min-w-[20px] justify-center">
+                    {rejectedCount}
+                  </Badge>
+                )}
               </Button>
             </div>
           </div>
@@ -985,285 +1120,291 @@ export default function Timesheets() {
       </Card>
 
       {/* NEW: Table View */}
-      {viewMode === 'table' && filteredTimesheets.length > 0 ? (
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Staff</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Client</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Location</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Hours</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Pay</th>
-                    {isAdmin && <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Charge</th>}
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">GPS</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Docs</th>
-                    {/* ✅ NEW: Auto-Approval Column */}
-                    {isAdmin && <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Auto-Approval</th>}
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {auditedItems.map((timesheet) => {
-                    const issues = validateTimesheet(timesheet);
-                    const staffMember = staff.find(s => s.id === timesheet.staff_id);
-                    const shift = shifts.find(s => s.id === timesheet.booking_id);
-                    const shiftHasEnded = timesheet.shift_date ? new Date(timesheet.shift_date) < new Date() : false;
+      {
+        viewMode === 'table' && filteredTimesheets.length > 0 ? (
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Staff</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Client</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Location</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Hours</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Pay</th>
+                      {isAdmin && <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Charge</th>}
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">GPS</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Docs</th>
+                      {/* ✅ NEW: Auto-Approval Column */}
+                      {isAdmin && <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Auto-Approval</th>}
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {auditedItems.map((timesheet) => {
+                      const issues = validateTimesheet(timesheet);
+                      const staffMember = staff.find(s => s.id === timesheet.staff_id);
+                      const shift = shifts.find(s => s.id === timesheet.booking_id);
+                      const shiftHasEnded = timesheet.shift_date ? new Date(timesheet.shift_date) < new Date() : false;
 
-                    return (
-                      <tr key={timesheet.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3">
-                          <Badge className={
-                            timesheet.status === 'draft' ? 'bg-gray-100 text-gray-700' :
-                              timesheet.status === 'submitted' ? 'bg-yellow-100 text-yellow-800' :
-                                timesheet.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                  timesheet.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                    'bg-emerald-100 text-emerald-800'
-                          }>
-                            {timesheet.status}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">
-                          <p className="font-medium text-sm">{getStaffName(timesheet.staff_id)}</p>
-                          {staffMember?.role && (
-                            <p className="text-xs text-gray-500 capitalize">{staffMember.role.replace('_', ' ')}</p>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm">{getClientName(timesheet.client_id)}</td>
-                        <td className="px-4 py-3">
-                          {timesheet.work_location_within_site ? (
-                            <Badge className="bg-cyan-100 text-cyan-800 text-xs">
-                              📍 {timesheet.work_location_within_site}
-                            </Badge>
-                          ) : (
-                            <span className="text-xs text-gray-400">-</span>
-                          )}
-                        </td>
-                        {/* ✅ FIX: Safe date display in table */}
-                        <td className="px-4 py-3 text-sm">
-                          {timesheet.shift_date ? (
-                            <span>{formatSafeDate(timesheet.shift_date)}</span>
-                          ) : (
-                            <span className="text-red-600 italic">No Date</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <p className="font-semibold text-sm">{timesheet.total_hours || 0}h</p>
-                          {/* ✅ FIX: Only show issue count if shift has ended */}
-                          {shiftHasEnded && issues.length > 0 && (
-                            <p className="text-xs text-red-600">{issues.length} issue{issues.length > 1 ? 's' : ''}</p>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 font-semibold text-sm">£{(timesheet.staff_pay_amount || 0).toFixed(2)}</td>
-                        {isAdmin && <td className="px-4 py-3 font-semibold text-sm text-green-600">£{(timesheet.client_charge_amount || 0).toFixed(2)}</td>}
-                        <td className="px-4 py-3">
-                          {staffMember?.gps_consent ? (
-                            timesheet.geofence_validated ? (
-                              <Badge className="bg-green-100 text-green-700 text-xs">✓ Verified</Badge>
-                            ) : timesheet.clock_in_location ? (
-                              <Badge className="bg-red-100 text-red-700 text-xs">⚠️ Failed</Badge>
-                            ) : (
-                              <Badge className="bg-gray-100 text-gray-600 text-xs">Pending</Badge>
-                            )
-                          ) : (
-                            <Badge className="bg-gray-100 text-gray-600 text-xs">No Consent</Badge>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          {timesheet.uploaded_documents && timesheet.uploaded_documents.length > 0 ? (
-                            <Badge className="bg-green-100 text-green-700 text-xs">
-                              {timesheet.uploaded_documents.length} doc{timesheet.uploaded_documents.length > 1 ? 's' : ''}
-                            </Badge>
-                          ) : (
-                            <span className="text-xs text-gray-400">None</span>
-                          )}
-                        </td>
-
-                        {/* ✅ NEW: Auto-Approval Status */}
-                        {isAdmin && (
+                      return (
+                        <tr key={timesheet.id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-4 py-3">
-                            {timesheet.uploaded_documents?.length > 0 && (
-                              <AutoApprovalIndicator
-                                timesheet={timesheet}
-                                shift={shift}
-                                staffMember={staffMember}
-                              />
+                            <Badge className={
+                              timesheet.status === 'draft' ? 'bg-gray-100 text-gray-700' :
+                                timesheet.status === 'submitted' ? 'bg-yellow-100 text-yellow-800' :
+                                  timesheet.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                    timesheet.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                      'bg-emerald-100 text-emerald-800'
+                            }>
+                              {timesheet.status}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="font-medium text-sm">{getStaffName(timesheet.staff_id)}</p>
+                            {staffMember?.role && (
+                              <p className="text-xs text-gray-500 capitalize">{staffMember.role.replace('_', ' ')}</p>
                             )}
                           </td>
-                        )}
-
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex justify-end gap-2">
-                            <Link to={createPageUrl('TimesheetDetail') + `?id=${timesheet.id}`}>
-                              <Button size="sm" variant="outline">
-                                <Eye className="w-3 h-3 mr-1" />
-                                View
-                              </Button>
-                            </Link>
-                            {/* ✅ FIX 4: Show approve/reject for submitted OR draft (if shift ended AND has docs) */}
-                            {isAdmin && (timesheet.status === 'submitted' || timesheet.status === 'pending_admin_review' || (timesheet.status === 'draft' && timesheet.uploaded_documents?.length > 0)) && shiftHasEnded && (
-                              <>
-                                {/* ✅ NEW: Auto-Approve Button */}
-                                <Button
-                                  size="sm"
-                                  onClick={() => autoApproveMutation.mutate(timesheet.id)}
-                                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                                  disabled={autoApproveMutation.isPending}
-                                  title="Run Auto-Approval Engine"
-                                >
-                                  <Zap className="w-3 h-3 mr-1" />
-                                  Auto
-                                </Button>
-
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleApprove(timesheet.id)}
-                                  className="bg-green-600 hover:bg-green-700 text-white"
-                                  disabled={processingTimesheets.approving.has(timesheet.id)}
-                                >
-                                  {processingTimesheets.approving.has(timesheet.id) ? 'Approving...' : 'Approve'}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleReject(timesheet.id)}
-                                  className="text-red-600 border-red-600"
-                                  disabled={processingTimesheets.rejecting.has(timesheet.id)}
-                                >
-                                  {processingTimesheets.rejecting.has(timesheet.id) ? 'Rejecting...' : 'Reject'}
-                                </Button>
-                              </>
+                          <td className="px-4 py-3 text-sm">{getClientName(timesheet.client_id)}</td>
+                          <td className="px-4 py-3">
+                            {timesheet.work_location_within_site ? (
+                              <Badge className="bg-cyan-100 text-cyan-800 text-xs">
+                                📍 {timesheet.work_location_within_site}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-gray-400">-</span>
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      ) : viewMode === 'cards' ? (
-        /* Timesheets Grid */
-        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {auditedItems.map(timesheet => {
-            const staffMember = staff.find(s => s.id === timesheet.staff_id);
-            const shift = shifts.find(s => s.id === timesheet.booking_id);
-            const clientObj = clients.find(c => c.id === timesheet.client_id);
+                          </td>
+                          {/* ✅ FIX: Safe date display in table */}
+                          <td className="px-4 py-3 text-sm">
+                            {timesheet.shift_date ? (
+                              <span>{formatSafeDate(timesheet.shift_date)}</span>
+                            ) : (
+                              <span className="text-red-600 italic">No Date</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="font-semibold text-sm">{timesheet.total_hours || 0}h</p>
+                            {/* ✅ FIX: Only show issue count if shift has ended */}
+                            {shiftHasEnded && issues.length > 0 && (
+                              <p className="text-xs text-red-600">{issues.length} issue{issues.length > 1 ? 's' : ''}</p>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-sm">£{(timesheet.staff_pay_amount || 0).toFixed(2)}</td>
+                          {isAdmin && <td className="px-4 py-3 font-semibold text-sm text-green-600">£{(timesheet.client_charge_amount || 0).toFixed(2)}</td>}
+                          <td className="px-4 py-3">
+                            {staffMember?.gps_consent ? (
+                              timesheet.geofence_validated ? (
+                                <Badge className="bg-green-100 text-green-700 text-xs">✓ Verified</Badge>
+                              ) : timesheet.clock_in_location ? (
+                                <Badge className="bg-red-100 text-red-700 text-xs">⚠️ Failed</Badge>
+                              ) : (
+                                <Badge className="bg-gray-100 text-gray-600 text-xs">Pending</Badge>
+                              )
+                            ) : (
+                              <Badge className="bg-gray-100 text-gray-600 text-xs">No Consent</Badge>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {timesheet.uploaded_documents && timesheet.uploaded_documents.length > 0 ? (
+                              <Badge className="bg-green-100 text-green-700 text-xs">
+                                {timesheet.uploaded_documents.length} doc{timesheet.uploaded_documents.length > 1 ? 's' : ''}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-gray-400">None</span>
+                            )}
+                          </td>
 
-            return (
-              <div key={timesheet.id} className="relative">
-                <TimesheetCard
-                  timesheet={timesheet}
-                  shift={shift}
-                  staffName={getStaffName(timesheet.staff_id)}
-                  clientName={getClientName(timesheet.client_id)}
-                  issues={validateTimesheet(timesheet)}
-                  onApprove={handleApprove}
-                  onReject={handleReject}
-                  isAdmin={isAdmin}
-                  isApproving={processingTimesheets.approving.has(timesheet.id)}
-                  isRejecting={processingTimesheets.rejecting.has(timesheet.id)}
-                  user={user}
-                  clientObj={clientObj}
-                  extraFooter={isAdmin && (timesheet.status === 'submitted' || timesheet.status === 'pending_admin_review' || (timesheet.status === 'draft' && timesheet.uploaded_documents?.length > 0)) && (
-                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
-                      <AutoApprovalIndicator
-                        timesheet={timesheet}
-                        shift={shift}
-                        staffMember={staffMember}
-                      />
-                      <Button
-                        size="sm"
-                        onClick={() => autoApproveMutation.mutate(timesheet.id)}
-                        disabled={autoApproveMutation.isPending}
-                        className="w-full mt-2 bg-purple-600 hover:bg-purple-700 font-bold shadow-sm"
-                      >
-                        <Zap className="w-4 h-4 mr-2" />
-                        {autoApproveMutation.isPending ? 'Processing...' : 'Run Auto-Approval'}
-                      </Button>
-                    </div>
-                  )}
-                />
+                          {/* ✅ NEW: Auto-Approval Status */}
+                          {isAdmin && (
+                            <td className="px-4 py-3">
+                              {timesheet.uploaded_documents?.length > 0 && (
+                                <AutoApprovalIndicator
+                                  timesheet={timesheet}
+                                  shift={shift}
+                                  staffMember={staffMember}
+                                />
+                              )}
+                            </td>
+                          )}
+
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex justify-end gap-2">
+                              <Link to={createPageUrl('TimesheetDetail') + `?id=${timesheet.id}`}>
+                                <Button size="sm" variant="outline">
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  View
+                                </Button>
+                              </Link>
+                              {/* ✅ FIX 4: Show approve/reject for submitted OR draft (if shift ended AND has docs) */}
+                              {isAdmin && (timesheet.status === 'submitted' || timesheet.status === 'pending_admin_review' || (timesheet.status === 'draft' && timesheet.uploaded_documents?.length > 0)) && shiftHasEnded && (
+                                <>
+                                  {/* ✅ NEW: Auto-Approve Button */}
+                                  <Button
+                                    size="sm"
+                                    onClick={() => autoApproveMutation.mutate(timesheet.id)}
+                                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                                    disabled={autoApproveMutation.isPending}
+                                    title="Run Auto-Approval Engine"
+                                  >
+                                    <Zap className="w-3 h-3 mr-1" />
+                                    Auto
+                                  </Button>
+
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleApprove(timesheet.id)}
+                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                    disabled={processingTimesheets.approving.has(timesheet.id)}
+                                  >
+                                    {processingTimesheets.approving.has(timesheet.id) ? 'Approving...' : 'Approve'}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleReject(timesheet.id)}
+                                    className="text-red-600 border-red-600"
+                                    disabled={processingTimesheets.rejecting.has(timesheet.id)}
+                                  >
+                                    {processingTimesheets.rejecting.has(timesheet.id) ? 'Rejecting...' : 'Reject'}
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            );
-          })}
-        </div>
-      ) : null}
+            </CardContent>
+          </Card>
+        ) : viewMode === 'cards' ? (
+          /* Timesheets Grid */
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {auditedItems.map(timesheet => {
+              const staffMember = staff.find(s => s.id === timesheet.staff_id);
+              const shift = shifts.find(s => s.id === timesheet.booking_id);
+              const clientObj = clients.find(c => c.id === timesheet.client_id);
+
+              return (
+                <div key={timesheet.id} className="relative">
+                  <TimesheetCard
+                    timesheet={timesheet}
+                    shift={shift}
+                    staffName={getStaffName(timesheet.staff_id)}
+                    clientName={getClientName(timesheet.client_id)}
+                    issues={validateTimesheet(timesheet)}
+                    onApprove={handleApprove}
+                    onReject={handleReject}
+                    isAdmin={isAdmin}
+                    isApproving={processingTimesheets.approving.has(timesheet.id)}
+                    isRejecting={processingTimesheets.rejecting.has(timesheet.id)}
+                    user={user}
+                    clientObj={clientObj}
+                    extraFooter={isAdmin && (timesheet.status === 'submitted' || timesheet.status === 'pending_admin_review' || (timesheet.status === 'draft' && timesheet.uploaded_documents?.length > 0)) && (
+                      <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
+                        <AutoApprovalIndicator
+                          timesheet={timesheet}
+                          shift={shift}
+                          staffMember={staffMember}
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => autoApproveMutation.mutate(timesheet.id)}
+                          disabled={autoApproveMutation.isPending}
+                          className="w-full mt-2 bg-purple-600 hover:bg-purple-700 font-bold shadow-sm"
+                        >
+                          <Zap className="w-4 h-4 mr-2" />
+                          {autoApproveMutation.isPending ? 'Processing...' : 'Run Auto-Approval'}
+                        </Button>
+                      </div>
+                    )}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        ) : null
+      }
 
       {/* Pagination Controls */}
-      {totalCount > pageSize && (
-        <Card className="mt-6">
-          <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              {/* Page Info */}
-              <div className="text-sm text-gray-600">
-                Showing {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalCount)} of {totalCount} timesheets
-              </div>
+      {
+        totalCount > pageSize && (
+          <Card className="mt-6">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                {/* Page Info */}
+                <div className="text-sm text-gray-600">
+                  Showing {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalCount)} of {totalCount} timesheets
+                </div>
 
-              {/* Pagination Buttons */}
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
-                >
-                  First
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                <span className="text-sm font-medium px-4">
-                  Page {currentPage} of {Math.ceil(totalCount / pageSize)}
-                </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={currentPage >= Math.ceil(totalCount / pageSize)}
-                >
-                  Next
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setCurrentPage(Math.ceil(totalCount / pageSize))}
-                  disabled={currentPage >= Math.ceil(totalCount / pageSize)}
-                >
-                  Last
-                </Button>
+                {/* Pagination Buttons */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                  >
+                    First
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm font-medium px-4">
+                    Page {currentPage} of {Math.ceil(totalCount / pageSize)}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={currentPage >= Math.ceil(totalCount / pageSize)}
+                  >
+                    Next
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCurrentPage(Math.ceil(totalCount / pageSize))}
+                    disabled={currentPage >= Math.ceil(totalCount / pageSize)}
+                  >
+                    Last
+                  </Button>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        )
+      }
 
-      {filteredTimesheets.length === 0 && (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Timesheets Found</h3>
-            <p className="text-gray-600">
-              {isStaff
-                ? 'Your timesheets will appear here after you complete shifts'
-                : statusFilter === 'pending'
-                  ? 'No timesheets awaiting approval'
-                  : 'Timesheets will appear here after shifts are completed'}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {
+        filteredTimesheets.length === 0 && (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Timesheets Found</h3>
+              <p className="text-gray-600">
+                {isStaff
+                  ? 'Your timesheets will appear here after you complete shifts'
+                  : statusFilter === 'pending'
+                    ? 'No timesheets awaiting approval'
+                    : 'Timesheets will appear here after shifts are completed'}
+              </p>
+            </CardContent>
+          </Card>
+        )
+      }
 
       {/* Modal containers removed - now handled by TimesheetUploader and sub-components */}
     </div>

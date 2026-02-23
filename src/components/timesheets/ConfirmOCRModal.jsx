@@ -14,6 +14,7 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
+  AlertCircle,
   Camera,
   Clock,
   Calendar,
@@ -22,9 +23,16 @@ import {
   Coffee,
   MousePointerClick,
   Loader2,
+  Check,
+  History,
+  FileSearch,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
-import { format } from 'date-fns';
+
+import { format, parseISO, isSameDay } from 'date-fns';
 import { calculateBillableHoursWithRule } from '@/utils/shiftCalculations';
+import timesheetService from '@/services/timesheetService';
 
 /**
  * 🔍 CONFIRM OCR MODAL
@@ -54,27 +62,94 @@ export default function ConfirmOCRModal({
   if (!extractedData) return null;
 
   const [staffNote, setStaffNote] = useState('');
-  // State to track which row is currently selected (defaults to auto-matched row)
   const [activeRow, setActiveRow] = useState(null);
 
-  // Initialize active row when data loads
+  // NEW: Batch Processing State
+  const [addressableShifts, setAddressableShifts] = useState([]);
+  const [isFetchingShifts, setIsFetchingShifts] = useState(false);
+  const [selectedIndices, setSelectedIndices] = useState(new Set()); // Indices of extractedData.rows to update
+
+  // Initialize active row and fetch addressable shifts
   useEffect(() => {
     if (extractedData?.matched_row_info) {
       setActiveRow(extractedData.matched_row_info);
     } else if (extractedData?.rows && extractedData.rows.length > 0) {
-      // Fallback to first row if no match found but rows exist
       setActiveRow(extractedData.rows[0]);
     } else {
       setActiveRow(null);
     }
-  }, [extractedData]);
+
+    // Fetch other shifts for this staff to enable batch save
+    const fetchOtherShifts = async () => {
+      const staffId = extractedData.staff_id || expectedData?.staff_id;
+      if (!staffId || !extractedData.rows?.length) return;
+
+      setIsFetchingShifts(true);
+      try {
+        // Find date range from OCR rows
+        const dates = extractedData.rows
+          .map(r => r.date)
+          .filter(Boolean)
+          .map(d => {
+            // Attempt to parse various date formats (DD/MM/YY is common)
+            try {
+              const parts = d.split(/[/.-]/);
+              if (parts.length === 3) {
+                const day = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1;
+                const year = parts[2].length === 2 ? 2000 + parseInt(parts[2], 10) : parseInt(parts[2], 10);
+                return new Date(year, month, day);
+              }
+            } catch (e) { }
+            return null;
+          })
+          .filter(Boolean);
+
+        if (dates.length > 0) {
+          const minDate = new Date(Math.min(...dates)).toISOString().split('T')[0];
+          const maxDate = new Date(Math.max(...dates)).toISOString().split('T')[0];
+
+          const shifts = await timesheetService.fetchAddressableTimesheets(staffId, minDate, maxDate);
+          setAddressableShifts(shifts);
+
+          // AUTO-SELECTION LOGIC
+          const newSelected = new Set();
+          extractedData.rows.forEach((row, idx) => {
+            const match = shifts.find(s => s.shift_date === row.date || (row.date && s.shift_date && isSameDay(parseISO(s.shift_date), parseISO(row.date))));
+
+            if (match) {
+              // Always select if it matches the current timesheet we are focused on
+              if (match.id === expectedData.timesheet_id) {
+                newSelected.add(idx);
+                return;
+              }
+
+              // Select if draft or pending and data differs (conflict) OR is empty
+              const dbHours = parseFloat(match.total_hours || 0);
+              const ocrHours = parseFloat(row.hours || 0);
+
+              if (dbHours === 0 || Math.abs(dbHours - ocrHours) > 0.1) {
+                newSelected.add(idx);
+              }
+            }
+          });
+          setSelectedIndices(newSelected);
+        }
+      } catch (err) {
+        console.error('Failed to fetch addressable shifts:', err);
+      } finally {
+        setIsFetchingShifts(false);
+      }
+    };
+
+    fetchOtherShifts();
+  }, [extractedData, expectedData?.staff_id, expectedData.timesheet_id]);
 
   const confidence = extractedData.confidence?.overall || 0;
   const hasHighConfidence = confidence >= 95; // BUMP to 95% per user preference
   const hasLowConfidence = confidence < 75;
 
-  // ✅ SMART VALIDATION: 10-Hour Gold Rule
-  // Uses centralized utility to see if "actual" exactly matches "expected" after break deduction
+  // ✅ SMART VALIDATION: 10-Hour Gold Rule & Name Fuzzy Match
   const isSmartMatch = (field, expected, actual) => {
     if (field === 'hours') {
       const e = parseFloat(expected);
@@ -84,6 +159,17 @@ export default function ConfirmOCRModal({
       // If expected gross matches actual net after rule-based deduction (e.g. 12 -> 11)
       return calculateBillableHoursWithRule(e) === a;
     }
+
+    if (field === 'staff_name' || field === 'employee_name') {
+      const e = String(expected || '').toLowerCase();
+      const a = String(actual || '').toLowerCase();
+      if (!e || !a) return false;
+
+      // Fuzzy match: if one is contained in the other or they are very similar
+      // e.g. "Navya Prathyusha Tunuguntla" vs "Navya Tunuguntla"
+      return e.includes(a) || a.includes(e);
+    }
+
     return false;
   };
 
@@ -129,38 +215,30 @@ export default function ConfirmOCRModal({
   // Multi-row detection
   const hasMultipleRows = extractedData.rows && extractedData.rows.length > 1;
 
-  // Handler for row selection
-  const handleRowSelect = (row) => {
-    console.log('👆 User selected row:', row);
-    setActiveRow(row);
+  // Handler for row checkbox toggle
+  const toggleRowSelection = (idx) => {
+    const newSelected = new Set(selectedIndices);
+    if (newSelected.has(idx)) {
+      newSelected.delete(idx);
+    } else {
+      newSelected.add(idx);
+    }
+    setSelectedIndices(newSelected);
   };
 
-  // Handler for confirm - injects the selected row data
+  // Handler for confirm - injects the selected batch updates
   const handleConfirmWrapper = () => {
-    // If user selected a different row, we need to pass that info back
-    // We can attach it to the extractedData or pass it as a separate argument
-    // For now, we'll modify the extractedData object in place before passing it back (or rely on parent to use activeRow if we passed it)
+    const selectedUpdates = Array.from(selectedIndices).map(idx => {
+      const row = extractedData.rows[idx];
+      const match = addressableShifts.find(s => s.shift_date === row.date);
+      return {
+        row,
+        timesheetId: match?.id || expectedData.timesheet_id, // Fallback if no match found but it's the current one
+        isPrimary: match?.id === expectedData.timesheet_id
+      };
+    });
 
-    // Actually, the parent `handleConfirmOCR` uses `pendingOcrData`. 
-    // We should probably pass the activeRow to the onConfirm callback.
-    // But `onConfirm` currently only takes `staffNote`.
-
-    // Let's modify `onConfirm` in the parent to accept an override object, 
-    // OR we update the `extractedData` in the parent context.
-    // Since we can't easily change the parent's state from here without a setter, 
-    // we will pass the `activeRow` as a second argument to `onConfirm`.
-
-    // Wait, `onConfirm` signature in parent is `(staffNote)`. 
-    // We need to update the parent to handle this. 
-    // For now, let's assume we can pass it.
-
-    // BETTER APPROACH: The parent uses `pendingOcrData`. 
-    // We can't mutate that safely.
-    // Let's pass `{ ...extractedData, matched_row_info: activeRow }` to onConfirm?
-    // No, `onConfirm` doesn't take data.
-
-    // Let's pass it as a second arg: onConfirm(staffNote, activeRow)
-    onConfirm(staffNote, activeRow);
+    onConfirm(staffNote, selectedUpdates);
   };
 
   // Helper to format display values based on Active Row or Global Data
@@ -182,25 +260,14 @@ export default function ConfirmOCRModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       // 🔒 PREVENT ACCIDENTAL CLOSURE
-      // Only allow closing if explicitly calling onClose (which usually happens via buttons)
-      // We block the default "click outside" or "escape" closing by not calling onClose(false) here
-      // unless we really want to. 
-      // Actually, onOpenChange is called by the library. We should just ignore false if we want to lock it.
-      // But we need to allow the parent to close it.
-      // The best way in Radix UI / shadcn is to use onInteractOutside and onEscapeKeyDown on Content.
       if (!open) {
-        // Do nothing here to prevent close. The buttons will call onClose directly if needed.
-        // Or better, we just don't pass onOpenChange to Dialog if we want to fully control it?
-        // No, we need it for the close button (X) if it exists.
-        // Let's rely on the Content props below.
+        // Handled by buttons
       }
     }}>
       <DialogContent
         className="max-w-2xl max-h-[90vh] overflow-y-auto"
-        // 🔒 LOCK MODAL: Prevent closing by clicking outside or pressing Escape
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
-        // Hide the default close button (X) to force user to choose an action
         hideCloseButton={true}
       >
         <DialogHeader>
@@ -218,12 +285,12 @@ export default function ConfirmOCRModal({
             {hasHighConfidence ? (
               <Badge className="bg-green-100 text-green-700 border-green-200 px-3 py-1 text-xs">
                 <CheckCircle className="w-4 h-4 mr-1.5" />
-                Verified by AI
+                Verified by AI ({confidence}%)
               </Badge>
             ) : (
               <Badge className="bg-orange-100 text-orange-700 border-orange-200 px-3 py-1 text-xs">
                 <AlertTriangle className="w-4 h-4 mr-1.5" />
-                Manual Review Suggested
+                Manual Review Suggested ({confidence}%)
               </Badge>
             )}
             {canAutoApprove && (
@@ -248,62 +315,107 @@ export default function ConfirmOCRModal({
           )}
 
 
-          {/* Multi-Row Timesheet Display - MOVED UP for better visibility */}
+          {/* Multi-Row Timesheet Display */}
           {hasMultipleRows && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start gap-2 mb-3">
-                <MousePointerClick className="w-5 h-5 text-blue-600 mt-0.5" />
+                <CheckSquare className="w-5 h-5 text-blue-600 mt-0.5" />
                 <div>
-                  <p className="font-bold text-blue-900 text-base">📋 Multi-Day Timesheet Detected</p>
+                  <p className="font-bold text-blue-900 text-base">📋 Batch Processing Detected</p>
                   <p className="text-sm text-blue-700 leading-relaxed">
                     We found {extractedData.rows.length} shifts.
-                    <strong> Tap the correct row</strong> to use its data.
+                    <strong> Toggle checkboxes</strong> to update multiple shifts at once.
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-2 mt-3">
-                {extractedData.rows.map((row, idx) => {
-                  const isSelected = row.date === activeRow?.date; // Use activeRow for selection state
-                  return (
-                    <div
-                      key={idx}
-                      onClick={() => handleRowSelect(row)}
-                      className={`p-4 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md active:scale-[0.98] ${isSelected
-                        ? 'bg-green-50 border-green-500 ring-1 ring-green-500'
-                        : 'bg-white border-gray-200 hover:border-blue-300'
-                        }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          {isSelected ? (
-                            <CheckCircle className="w-6 h-6 text-green-600" />
-                          ) : (
-                            <div className="w-6 h-6 rounded-full border-2 border-gray-300" />
-                          )}
-                          <span className={`font-bold text-sm sm:text-base ${isSelected ? 'text-green-900' : 'text-gray-700'}`}>
-                            {row.date}
-                          </span>
+              {isFetchingShifts ? (
+                <div className="flex items-center justify-center p-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-600 mr-2" />
+                  <span className="text-sm text-blue-600 font-medium">Reconciling with database...</span>
+                </div>
+              ) : (
+                <div className="space-y-2 mt-3">
+                  {extractedData.rows.map((row, idx) => {
+                    const isSelected = selectedIndices.has(idx);
+                    const match = addressableShifts.find(s => s.shift_date === row.date);
+
+                    let statusColor = 'bg-gray-100 text-gray-600';
+                    let statusLabel = 'New Date';
+                    let isUpToDate = false;
+
+                    if (match) {
+                      const dbHours = parseFloat(match.total_hours || 0);
+                      const ocrHours = parseFloat(row.hours || 0);
+
+                      if (dbHours > 0 && Math.abs(dbHours - ocrHours) < 0.1) {
+                        statusColor = 'bg-green-100 text-green-700';
+                        statusLabel = 'Up to Date';
+                        isUpToDate = true;
+                      } else if (dbHours > 0) {
+                        statusColor = 'bg-orange-100 text-orange-700 font-bold animate-pulse';
+                        statusLabel = `Conflict (DB: ${dbHours}h)`;
+                      } else {
+                        statusColor = 'bg-blue-100 text-blue-700';
+                        statusLabel = 'Ready to Save';
+                      }
+                    }
+
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => !isUpToDate && toggleRowSelection(idx)}
+                        className={`p-4 rounded-lg border-2 transition-all cursor-pointer hover:shadow-sm active:scale-[0.99] ${isSelected
+                          ? 'bg-white border-blue-500 ring-1 ring-blue-500 shadow-sm'
+                          : isUpToDate
+                            ? 'bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed'
+                            : 'bg-white border-gray-200 hover:border-blue-200'
+                          }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3">
+                            <div className={`mt-1 flex items-center justify-center w-5 h-5 rounded border-2 transition-colors ${isUpToDate
+                              ? 'bg-green-500 border-green-500'
+                              : isSelected
+                                ? 'bg-blue-600 border-blue-600'
+                                : 'border-gray-300'
+                              }`}>
+                              {isUpToDate ? (
+                                <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
+                              ) : isSelected && (
+                                <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
+                              )}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm sm:text-base text-gray-900">
+                                  {row.date}
+                                </span>
+                                <Badge className={`text-[10px] px-2 py-0 h-4 border-none ${statusColor}`}>
+                                  {statusLabel}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-500 mt-0.5">
+                                {row.start_time || '??'} - {row.end_time || '??'}
+                                {row.break_minutes > 0 && ` (${row.break_minutes}m break)`}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-bold text-base text-gray-900 leading-none">
+                              {row.hours}h
+                            </span>
+                          </div>
                         </div>
-                        <span className={`font-bold text-base ${isSelected ? 'text-green-900' : 'text-gray-600'}`}>
-                          {row.hours}h
-                        </span>
                       </div>
-                      {row.start_time && row.end_time && (
-                        <p className={`text-sm mt-2 ml-9 leading-relaxed ${isSelected ? 'text-green-700' : 'text-gray-500'}`}>
-                          {row.start_time} - {row.end_time}
-                          {row.break_minutes > 0 && ` (${row.break_minutes}min break)`}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {/* Date */}
             <DataField
               icon={<Calendar className="w-4 h-4" />}
               label="Date"
@@ -312,7 +424,6 @@ export default function ConfirmOCRModal({
               mismatch={extractedData.mismatches?.find(m => m.field === 'date')}
             />
 
-            {/* Hours Worked */}
             <DataField
               icon={<Clock className="w-4 h-4" />}
               label="Hours Worked"
@@ -323,14 +434,12 @@ export default function ConfirmOCRModal({
             />
           </div>
 
-          {/* Employee Name (Subtle) */}
           <div className="px-3 py-1 flex justify-between items-center text-[11px] text-gray-500 border-t pt-2">
             <span>Staff: {extractedData.employee_name || 'N/A'}</span>
             <span>Client: {extractedData.client_name || 'N/A'}</span>
           </div>
         </div>
 
-        {/* Mismatches Alert */}
         {effectiveMismatches.length > 0 && (
           <Alert className="bg-red-50 border-red-300">
             <XCircle className="w-5 h-5 text-red-600" />
@@ -354,7 +463,6 @@ export default function ConfirmOCRModal({
           </Alert>
         )}
 
-        {/* Warnings */}
         {effectiveWarnings.length > 0 && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
             <p className="font-medium text-yellow-900 mb-2">⚠️ Warnings</p>
@@ -366,7 +474,6 @@ export default function ConfirmOCRModal({
           </div>
         )}
 
-        {/* Optional staff note to help admins on review */}
         <div className="mt-4">
           <label className="text-xs font-medium text-gray-700 block mb-1">
             Add a note for your agency (optional)
@@ -382,51 +489,53 @@ export default function ConfirmOCRModal({
           </p>
         </div>
 
-        <DialogFooter className="sticky bottom-0 bg-white border-t pt-4 mt-6 flex flex-col gap-2">
+        <DialogFooter className="sticky bottom-0 bg-white border-t pt-4 mt-6 flex flex-col gap-3">
           {/* Confirm Button - PRIMARY CTA */}
           <Button
             type="button"
             onClick={handleConfirmWrapper}
-            disabled={confirming || rejecting}
-            className="w-full h-12 text-base bg-green-600 hover:bg-green-700 shadow-lg shadow-green-100"
+            disabled={confirming || rejecting || selectedIndices.size === 0}
+            className={`w-full h-14 text-lg font-bold shadow-xl transition-all duration-300 active:scale-95 ${selectedIndices.size === 0
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-green-600 hover:bg-green-700 shadow-green-100'
+              }`}
           >
             {confirming ? (
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              <Loader2 className="w-6 h-6 animate-spin mr-3" />
             ) : (
-              <CheckCircle className="w-5 h-5 mr-2" />
+              <CheckCircle className="w-6 h-6 mr-3" />
             )}
-            {confirming ? 'Saving Timesheet...' : 'Yes, Information is Correct'}
+            {confirming ? 'Processing...' : `Yes, Everything looks Correct`}
           </Button>
 
-          <div className="grid grid-cols-2 gap-2">
-            {/* Re-Upload Button */}
+          {/* Secondary Actions Row */}
+          <div className="flex flex-col sm:flex-row gap-2 w-full">
             <Button
               type="button"
               variant="outline"
               onClick={onReUpload}
               disabled={confirming || rejecting}
-              className="w-full text-gray-600"
+              className="flex-1 h-11 text-gray-600 border-gray-300 hover:bg-gray-50 font-medium"
             >
               <Camera className="w-4 h-4 mr-2" />
-              Re-Upload
+              Retake / Change Photo
             </Button>
 
-            {/* Reject Button */}
             <Button
               type="button"
               variant="ghost"
               onClick={() => onReject(staffNote)}
               disabled={confirming || rejecting}
-              className="w-full text-red-600 hover:bg-red-50"
+              className="flex-1 h-11 text-red-600 hover:bg-red-50 font-medium opacity-80 hover:opacity-100"
             >
-              {rejecting ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <XCircle className="w-4 h-4 mr-2" />
-              )}
-              Problem with AI
+              <AlertCircle className="w-4 h-4 mr-2" />
+              AI Error? Send to Agency
             </Button>
           </div>
+
+          <p className="text-[10px] text-gray-400 text-center px-4 italic">
+            Reporting an error will flag this for manual review by your agency.
+          </p>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -437,14 +546,8 @@ export default function ConfirmOCRModal({
  * DataField Component - Shows a single extracted field with optional mismatch
  */
 function DataField({ icon, label, value, expected, mismatch, isSmartMatch }) {
-  // 🧹 NORMALIZE VALUES FOR COMPARISON
-  // This fixes the "2025-01-17" vs "2025-01-17" mismatch bug caused by type/whitespace
   const normalize = (val) => String(val || '').trim().toLowerCase();
-
-  // Check if mismatch is real (ignoring case and whitespace)
   const isRealMismatch = mismatch && normalize(mismatch.actual) !== normalize(mismatch.expected) && !isSmartMatch;
-
-  // Also check if the current 'value' matches 'expected' (for dynamic row updates)
   const matchesExpected = isSmartMatch || (expected && normalize(value) === normalize(expected));
 
   return (

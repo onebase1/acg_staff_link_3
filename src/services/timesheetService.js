@@ -58,6 +58,19 @@ const timesheetService = {
      * @returns {Promise<Object>} - The updated timesheet record.
      */
     async updateTimesheet(timesheetId, updateData) {
+        if (!timesheetId) throw new Error('Timesheet ID is required for update');
+
+        // Defensive: Prevent empty updates
+        if (!updateData || Object.keys(updateData).length === 0) {
+            console.warn('⚠️ Service: Empty update data provided for timesheet', timesheetId);
+            return null;
+        }
+
+        // Defensive: Ensure numeric fields are actually numbers
+        if (updateData.hours_worked !== undefined) updateData.hours_worked = parseFloat(updateData.hours_worked) || 0;
+        if (updateData.total_hours !== undefined) updateData.total_hours = parseFloat(updateData.total_hours) || 0;
+        if (updateData.break_duration_minutes !== undefined) updateData.break_duration_minutes = parseInt(updateData.break_duration_minutes, 10) || 0;
+
         const { data, error } = await supabase
             .from('timesheets')
             .update(updateData)
@@ -65,7 +78,10 @@ const timesheetService = {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error(`❌ Service: Update failed for timesheet ${timesheetId}:`, error);
+            throw error;
+        }
         return data;
     },
 
@@ -150,7 +166,7 @@ const timesheetService = {
 
             // If break duration wasn't explicitly provided, set it based on the rule
             if (finalData.break_duration_minutes === undefined || finalData.break_duration_minutes === null) {
-                finalData.break_duration_minutes = rawDuration >= 10 ? 60 : 0;
+                finalData.break_duration_minutes = rawDuration > 10 ? 60 : 0;
             }
         } else {
             // Fallback: If only hours were extracted/overridden without times
@@ -163,6 +179,69 @@ const timesheetService = {
         }
 
         return finalData;
+    },
+
+    /**
+     * Fetches all addressable timesheets for a staff member within a date range.
+     * Addressable means status is 'draft' or 'pending_admin_review'.
+     * @param {string} staffId - The ID of the staff member.
+     * @param {string} minDate - Earliest date (YYYY-MM-DD).
+     * @param {string} maxDate - Latest date (YYYY-MM-DD).
+     * @returns {Promise<Array>} - List of timesheet objects with joined shift data.
+     */
+    async fetchAddressableTimesheets(staffId, minDate, maxDate) {
+        if (!staffId || !minDate || !maxDate) return [];
+
+        const { data, error } = await supabase
+            .from('timesheets')
+            .select('*, shift:shifts(*)')
+            .eq('staff_id', staffId)
+            .in('status', ['draft', 'pending_admin_review', 'overdue'])
+            .gte('shift_date', minDate)
+            .lte('shift_date', maxDate);
+
+        if (error) {
+            console.error('❌ Error fetching addressable shifts:', error);
+            return [];
+        }
+
+        return data || [];
+    },
+
+
+    /**
+     * Performs a batch update of multiple timesheets.
+     * @param {Array} updates - List of objects containing {timesheetId, updateData}.
+     * @returns {Promise<Array>} - Results of the updates.
+     */
+    batchSaveTimesheets: async (updates) => {
+        if (!updates || updates.length === 0) return [];
+
+        try {
+            console.log(`🚀 Service: Starting batch save for ${updates.length} updates...`);
+            const results = await Promise.all(updates.map(async (update) => {
+                const { timesheetId, updateData, shiftId } = update;
+
+                // Use the defensive update method
+                const data = await timesheetService.updateTimesheet(timesheetId, updateData);
+
+                if (shiftId) {
+                    await timesheetService.linkShift(shiftId, timesheetId);
+                }
+
+                return {
+                    id: timesheetId,
+                    data,
+                    autoApproved: updateData.auto_approved,
+                    success: true
+                };
+            }));
+
+            return results;
+        } catch (error) {
+            console.error('❌ Service: Batch save failed:', error);
+            throw error;
+        }
     }
 };
 

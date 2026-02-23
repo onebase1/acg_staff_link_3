@@ -32,6 +32,7 @@ export default function TimesheetUploader({
     const queryClient = useQueryClient();
     const [uploading, setUploading] = useState(false);
     const [confirming, setConfirming] = useState(false);
+    const [rejecting, setRejecting] = useState(false);
 
     // OCR Pending State
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -142,84 +143,99 @@ export default function TimesheetUploader({
         }
     };
 
-    const handleConfirm = async (staffNote, overrideRowData) => {
+    const handleConfirm = async (staffNote, selectedUpdates) => {
         if (!pendingOcrData || !pendingDocument) return;
 
         setConfirming(true);
         try {
-            const ts = initialTimesheet || await supabase.from('timesheets').select('*').eq('id', timesheetId).single().then(r => r.data);
-            const shiftId = ts?.shift_id || initialShift?.id;
-            const shiftDate = ts?.shift_date || initialShift?.date || resolvedContext.shift?.date;
+            // If it's a batch update (array of {row, timesheetId, isPrimary})
+            const updatesList = Array.isArray(selectedUpdates)
+                ? selectedUpdates
+                : [{ row: selectedUpdates || pendingOcrData.matched_row_info || pendingOcrData, timesheetId: timesheetId, isPrimary: true }];
 
-            const finalTimesheetData = timesheetService.calculateFinalData(
-                pendingOcrData,
-                overrideRowData || pendingOcrData.matched_row_info || pendingOcrData,
-                shiftDate
-            );
+            console.log(`🚀 Preparing ${updatesList.length} updates for batch save...`);
 
-            const existingDocs = ts?.uploaded_documents || [];
-            const updateData = {
-                ...finalTimesheetData,
-                uploaded_documents: [...existingDocs, pendingDocument],
-                staff_confirmed: true,
-                staff_confirmed_at: new Date().toISOString(),
-                notes: staffNote ? `${ts?.notes || ''}\n[Staff note]: ${staffNote}` : ts?.notes
-            };
+            const preparedUpdates = await Promise.all(updatesList.map(async (update) => {
+                const targetTsId = update.timesheetId;
 
-            // Auto-approval logic
-            const isSmartMatch = (field, expected, actual) => {
-                if (field === 'hours') {
-                    const e = parseFloat(expected);
-                    const a = parseFloat(actual);
-                    if (isNaN(e) || isNaN(a)) return false;
-                    // Rule: Strictly > 10 trigger deduction
-                    const breakDeduction = e > 10 ? 1 : 0;
-                    return (e - breakDeduction) === a;
+                // Fetch target timesheet if not primary (to get existing data)
+                let targetTs = update.isPrimary ? (initialTimesheet || resolvedContext.ts) : null;
+                if (!targetTs) {
+                    const { data } = await supabase.from('timesheets').select('*').eq('id', targetTsId).single();
+                    targetTs = data;
                 }
-                return false;
-            };
 
-            const effectiveMismatches = pendingOcrData.mismatches?.filter(m => !isSmartMatch(m.field, m.expected, m.actual)) || [];
+                const finalTimesheetData = timesheetService.calculateFinalData(
+                    pendingOcrData,
+                    update.row,
+                    targetTs?.shift_date
+                );
 
-            const canAutoApprove = (
-                pendingOcrData.confidence?.overall >= 95 && // BUMP to 95% for auto-approval
-                (pendingOcrData.validation_status === 'match' || effectiveMismatches.length === 0) &&
-                !effectiveMismatches.some(m => m.severity === 'critical')
-            );
+                const existingDocs = targetTs?.uploaded_documents || [];
+                const updateData = {
+                    ...finalTimesheetData,
+                    uploaded_documents: [...existingDocs, pendingDocument],
+                    staff_confirmed: true,
+                    staff_confirmed_at: new Date().toISOString(),
+                    notes: staffNote ? `${targetTs?.notes || ''}\n[Staff note]: ${staffNote}` : targetTs?.notes
+                };
 
-            if (canAutoApprove) {
-                updateData.status = 'approved';
-                updateData.approved_by = 'auto_approved_by_staff';
-                updateData.approved_at = new Date().toISOString();
-                updateData.auto_approved = true;
+                // Auto-approval logic (Shared logic)
+                const isSmartMatch = (field, expected, actual) => {
+                    if (field === 'hours') {
+                        const e = parseFloat(expected);
+                        const a = parseFloat(actual);
+                        if (isNaN(e) || isNaN(a)) return false;
+                        const breakDeduction = e > 10 ? 1 : 0; // Rule: Strictly > 10 per core rule
+                        return (e - breakDeduction) === a;
+                    }
+                    return false;
+                };
+
+                const effectiveMismatches = pendingOcrData.mismatches?.filter(m => !isSmartMatch(m.field, m.expected, m.actual)) || [];
+                const canAutoApprove = (
+                    pendingOcrData.confidence?.overall >= 95 &&
+                    (pendingOcrData.validation_status === 'match' || effectiveMismatches.length === 0) &&
+                    !effectiveMismatches.some(m => m.severity === 'critical')
+                );
+
+                // Admin bypass: If current user is an admin/manager, they can approve directly during confirmation
+                const isAdmin = user?.user_type === 'agency_admin' || user?.user_type === 'manager';
+
+                if (canAutoApprove || isAdmin) {
+                    updateData.status = 'approved';
+                    updateData.approved_by = isAdmin ? `admin_${user.email}` : 'auto_approved_by_staff';
+                    updateData.approved_at = new Date().toISOString();
+                    updateData.auto_approved = !isAdmin;
+                } else {
+                    updateData.status = 'pending_admin_review';
+                }
+
+                // Signatures
+                if (pendingOcrData.staff_signature) updateData.staff_signature = `ocr_present_${new Date().toISOString()}`;
+                if (pendingOcrData.supervisor_signature || pendingOcrData.client_signature) updateData.client_signature = `ocr_present_${new Date().toISOString()}`;
+                if (!updateData.staff_signature) updateData.staff_signature = `staff_confirmed_${new Date().toISOString()}`;
+                if (!updateData.client_signature) updateData.client_signature = `staff_confirmed_on_behalf_${new Date().toISOString()}`;
+
+                return { timesheetId: targetTsId, updateData, shiftId: targetTs?.shift_id };
+            }));
+
+            const results = await timesheetService.batchSaveTimesheets(preparedUpdates);
+
+            const autoApprovedCount = results.filter(r => r.autoApproved).length;
+            const manualCount = results.length - autoApprovedCount;
+
+            if (results.length > 1) {
+                toast.success(`✅ Batch saved! ${results.length} shifts updated. (${autoApprovedCount} auto-approved)`);
             } else {
-                updateData.status = 'pending_admin_review';
+                toast.success(autoApprovedCount > 0 ? '✅ Timesheet approved automatically!' : '⏳ Reserved for admin review.');
             }
-
-            // ✅ SIGNATURE FIX: Mark signatures as present if detected by OCR or if staff is manually confirming
-            // This ensures the "Missing Signature" issues disappear after a successful confirmed upload.
-            if (pendingOcrData.staff_signature) {
-                updateData.staff_signature = `ocr_present_${new Date().toISOString()}`;
-            }
-            if (pendingOcrData.supervisor_signature || pendingOcrData.client_signature) {
-                updateData.client_signature = `ocr_present_${new Date().toISOString()}`;
-            }
-
-            // Fallback: If staff is confirming a document, we can reasonably assume they've checked for signatures on paper
-            if (!updateData.staff_signature) updateData.staff_signature = `staff_confirmed_${new Date().toISOString()}`;
-            if (!updateData.client_signature) updateData.client_signature = `staff_confirmed_on_behalf_${new Date().toISOString()}`;
-
-            await timesheetService.updateTimesheet(timesheetId, updateData);
-            await timesheetService.linkShift(shiftId, timesheetId);
-
-            toast.success(canAutoApprove ? '✅ Timesheet approved automatically!' : '⏳ Reserved for admin review.');
 
             setShowConfirmModal(false);
             if (onSuccess) onSuccess();
 
             // Invalidate queries
             queryClient.invalidateQueries(['timesheets']);
-            queryClient.invalidateQueries(['timesheet', timesheetId]);
             queryClient.invalidateQueries(['shifts']);
 
         } catch (error) {
@@ -231,9 +247,33 @@ export default function TimesheetUploader({
     };
 
     const handleReject = async (staffNote) => {
-        // Similar to handleConfirm but sets status to pending
-        // ... logic for rejection ...
-        setShowConfirmModal(false);
+        if (!timesheetId) return;
+        setRejecting(true);
+        try {
+            console.log('🛑 Staff rejected OCR - marking for admin review');
+
+            // Still save the document so admin can see it
+            const targetTs = initialTimesheet || resolvedContext.ts;
+            const existingDocs = targetTs?.uploaded_documents || [];
+
+            const { error } = await supabase.from('timesheets').update({
+                status: 'pending_admin_review',
+                uploaded_documents: [...existingDocs, pendingDocument],
+                notes: staffNote ? `[AI REJECTED BY STAFF]: ${staffNote}` : `[AI REJECTED BY STAFF]: Staff indicated OCR data was incorrect.`
+            }).eq('id', timesheetId);
+
+            if (error) throw error;
+
+            toast.success('⚠️ Flagged for agency review. They will check your timesheet manually.');
+            setShowConfirmModal(false);
+            if (onSuccess) onSuccess();
+            queryClient.invalidateQueries(['timesheets']);
+        } catch (error) {
+            console.error('❌ Rejection markup failed:', error);
+            toast.error('Failed to report error. Please try again or contact agency.');
+        } finally {
+            setRejecting(false);
+        }
     };
 
     return (
@@ -285,6 +325,8 @@ export default function TimesheetUploader({
                     onClose={() => setShowConfirmModal(false)}
                     extractedData={pendingOcrData}
                     expectedData={{
+                        staff_id: initialStaff?.id || resolvedContext.staff?.id || initialTimesheet?.staff_id || resolvedContext.ts?.staff_id,
+                        timesheet_id: timesheetId,
                         staff_name: resolvedContext.staff ? `${resolvedContext.staff.first_name} ${resolvedContext.staff.last_name}` :
                             initialStaff ? `${initialStaff.first_name} ${initialStaff.last_name}` : null,
                         client_name: resolvedContext.client?.name || initialClient?.name || null,
@@ -295,6 +337,7 @@ export default function TimesheetUploader({
                     onReject={handleReject}
                     onReUpload={() => setShowConfirmModal(false)}
                     confirming={confirming}
+                    rejecting={rejecting}
                 />
             )}
         </div>
