@@ -1,0 +1,120 @@
+{
+  "ide": {
+    "hasSeenNudge": true
+  },
+  "security": {
+    "auth": {
+      "selectedType": "oauth-personal"
+    }
+  },
+  "general": {
+    "previewFeatures": true
+  },
+  "mcpServers": {
+    "MCP_DOCKER": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "alpine/socat",
+        "STDIO",
+        "TCP:host.docker.internal:8811"
+      ]
+    },
+    "SUPABASE": {
+      "command": "npx",
+      "args": [
+        "@supabase/mcp-server-supabase@latest",
+        "--project-ref=rzzxxkppkiasuouuglaf",
+        "--access-token",
+        "<REDACTED>"
+      ]
+    },
+    "GITHUB": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN=<REDACTED>",
+        "ghcr.io/github/github-mcp-server"
+      ]
+
+    },
+    "supabase-mcp-server": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "<REDACTED>"
+      ],
+      "env": {}
+    },
+    "github-mcp-server": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "<REDACTED>"
+      }
+    },
+    "cloudrun": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@google-cloud/cloud-run-mcp"
+      ],
+      "env": {}
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "<REDACTED>"
+      ],
+      "env": {}
+    },
+    "vapi-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@vapi-ai/mcp-server"
+      ],
+      "env": {
+        "VAPI_TOKEN": "<REDACTED>"
+      }
+    },
+    "n8n-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "--init",
+        "-e",
+        "MCP_MODE=stdio",
+        "-e",
+        "LOG_LEVEL=error",
+        "-e",
+        "DISABLE_CONSOLE_OUTPUT=true",
+        "-e",
+        "N8N_API_URL=https://n8n.dreampathai.co.uk/",
+        "-e",
+        "N8N_API_KEY=<REDACTED>",
+        "ghcr.io/czlonkowski/n8n-mcp:latest"
+      ],
+      "env": {}
+    }
+  }
+}

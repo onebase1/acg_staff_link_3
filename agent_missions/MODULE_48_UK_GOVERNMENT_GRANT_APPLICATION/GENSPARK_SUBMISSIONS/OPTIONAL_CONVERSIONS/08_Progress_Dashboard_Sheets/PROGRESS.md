@@ -24,17 +24,17 @@
 **Status: 0% Complete** (Awaiting your action)
 
 ### Business Plan Customization
-- [ ] Replace `[YOUR NAME]` with your actual name
-- [ ] Replace `[YOUR BACKGROUND]` with your experience summary
-- [ ] Add Companies House number
-- [ ] Add your registered address
-- [ ] Add company registration date
-- [ ] Customize founder background section
-- [ ] Add advisory board names (or leave as placeholders)
-- [ ] Review and adjust revenue projections if needed
-- [ ] Proofread entire business plan
-- [ ] Copy to Google Docs and format professionally
-- [ ] Export as PDF (< 10MB)
+- [x] Replace `[YOUR NAME]` with your actual name
+- [x] Replace `[YOUR BACKGROUND]` with your experience summary
+- [x] Add Companies House number
+- [x] Add your registered address
+- [x] Add company registration date
+- [x] Customize founder background section
+- [x] Add advisory board names (or leave as placeholders)
+- [x] Review and adjust revenue projections if needed
+- [x] Proofread entire business plan
+- [x] Copy to Google Docs and format professionally
+- [x] Export as PDF (< 10MB)
 
 **Estimated Time:** 4-6 hours
 

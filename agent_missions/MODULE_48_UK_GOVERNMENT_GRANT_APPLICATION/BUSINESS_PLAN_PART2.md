@@ -14,15 +14,21 @@
 
 ### Founder/CEO
 
-**Name:** `[YOUR NAME - CUSTOMIZE]`
+**Name:** Givemore (Gizzy) Basera
 
 **Role:** Founder, Chief Executive Officer, Lead Developer
 
-**Background:** `[CUSTOMIZE - Example below]`
-- 10+ years software development experience
-- 3+ years healthcare technology sector
-- Previous roles: `[e.g., "Senior Developer at Healthcare SaaS Company"]`
-- Education: `[e.g., "BSc Computer Science, University of XYZ"]`
+**Background:**
+- 20+ years of experience in energy regulation, business process transformation, and enterprise automation.
+- Specialist in enterprise workflow automation, AI-powered solutions (n8n + OpenAI), and large-scale process redesign.
+- Managed a £9M+ Ofgem back-billing portfolio across 23,000 accounts with 100% regulatory compliance.
+- Delivered £4M+ cost avoidance by identifying and correcting flaws in automated billing processes.
+- Reduced offshore quality failures from 80% to 0% within two weeks by redesigning processes and training 100+ staff.
+- Founder & Enterprise Solutions Architect at InStay Feedback Systems (Jun 2023–present), delivering AI-driven feedback and automation for hospitality and education clients.
+- Previous role: Business Process Lead at E.ON (Mar 2011–Nov 2020), driving regulatory excellence, cost savings, and lean process improvements in the UK energy sector.
+- Education: BSc Computer Science (First Class Honours), Newcastle University (2019–2023).
+- Technical skills: Workflow automation (n8n), AI integration (OpenAI), data analysis, process improvement (Lean/Six Sigma mindset), and enterprise SaaS solution design.
+- LinkedIn: https://www.linkedin.com/in/givemore-basera-74935a2aa/
 
 **Responsibilities:**
 - Product vision and strategy
@@ -65,7 +71,7 @@
 
 **Compensation:** Equity options (0.5-1% vesting over 2 years) + advisory fee (£200-£500/month)
 
-**Status:** `[CUSTOMIZE - "In discussions with 2 candidates" or "To be recruited"]`
+**Status:** To be recruited post-funding (target: senior NHS nurse or care home clinical lead with agency experience)
 
 ---
 
@@ -87,7 +93,7 @@
 
 **Compensation:** Equity options (0.5-1% vesting over 2 years)
 
-**Status:** `[CUSTOMIZE - "In discussions" or "To be recruited"]`
+**Status:** In discussions with experienced healthtech/AI automation specialists to provide architecture and security oversight
 
 ---
 
@@ -109,7 +115,7 @@
 
 **Compensation:** Equity options (0.5-1% vesting over 2 years) + commission on introductions
 
-**Status:** `[CUSTOMIZE - "In discussions" or "To be recruited"]`
+**Status:** To be recruited post-funding (target: former healthcare staffing agency owner or healthcare sales professional)
 
 ---
 
@@ -121,8 +127,8 @@
 - Access to mentor network for introductions
 
 **Professional Services:**
-- **Accountant:** `[CUSTOMIZE - your accountant name or "To be appointed"]`
-- **Solicitor:** `[CUSTOMIZE - your solicitor or "To be appointed"]`
+- **Accountant:** To be appointed post-funding (shortlisted: small UK practice experienced with tech startups)
+- **Solicitor:** To be appointed as needed for contracts and shareholder agreements
 - **HR Consultant:** (Post-hiring - Year 2)
 
 ---

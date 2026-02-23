@@ -628,7 +628,7 @@ ACG StaffLink projects **£14,000 revenue in Year 1** (conservative), growing to
 - Revenue: £13,500/month (covers payment 27x)
 
 **Tertiary (Emergency):** Founder personal income
-- `[CUSTOMIZE - mention if you have savings or other income source]`
+- No significant personal savings – primary repayment source will be business revenue. I am prepared to supplement this with part-time consulting work in process improvement and AI automation if needed. Personal guarantee on loan provided as standard requirement.
 - Personal guarantee on loan (standard requirement)
 
 **Repayment Schedule:**
@@ -765,7 +765,7 @@ OneBase Group Ltd requests **£25,000 via Start Up Loans** to fund:
 
 ### Appendix A: Founder CV/Resume
 
-`[CUSTOMIZE - Insert your full CV here or attach as separate PDF]`
+Decision: I will attach my CV as a separate PDF (file name: "Founder_CV_Givemore_Basera.pdf") and ensure it aligns with my LinkedIn profile: https://www.linkedin.com/in/givemore-basera-74935a2aa/
 
 **Include:**
 - Professional experience (10+ years software development)
@@ -778,12 +778,12 @@ OneBase Group Ltd requests **£25,000 via Start Up Loans** to fund:
 ### Appendix B: Companies House Registration
 
 **Company Name:** OneBase Group Ltd
-**Registration Number:** `[CUSTOMIZE]`
-**Incorporation Date:** `[CUSTOMIZE]`
-**Registered Address:** `[CUSTOMIZE]`
-**Directors:** `[CUSTOMIZE - your name]`
+**Registration Number:** 17023616
+**Incorporation Date:** 10 February 2026
+**Registered Address:** 72 Newholme Estate, Wingate, United Kingdom, TS28 5EN
+**Directors:** Givemore (Gizzy) Basera
 
-**Link:** https://find-and-update.company-information.service.gov.uk/company/`[YOUR-NUMBER]`
+**Link:** https://find-and-update.company-information.service.gov.uk/company/17023616
 
 ---
 
@@ -812,7 +812,7 @@ OneBase Group Ltd requests **£25,000 via Start Up Loans** to fund:
 
 ### Appendix D: Letters of Support (Beta Sites)
 
-`[CUSTOMIZE - Once beta sites recruited, include letters of intent]`
+Decision: I am still recruiting beta sites and will submit letters of intent during the post-approval onboarding phase. Target beta sites identified but formal agreements pending loan approval.
 
 **Example:**
 > "To Whom It May Concern,
@@ -829,7 +829,7 @@ OneBase Group Ltd requests **£25,000 via Start Up Loans** to fund:
 
 ### Appendix E: Platform Screenshots
 
-`[CUSTOMIZE - Include 5-10 screenshots]`
+Decision: I will provide platform screenshots during the loan interview/demo and can supply a ZIP file ("Platform_Screenshots.zip") if requested in advance. Screenshots will demonstrate the WhatsApp AI assistant, admin dashboard, compliance tracking, and more.
 
 **Recommended Screenshots:**
 1. WhatsApp AI conversation (staff booking shift)
@@ -843,7 +843,7 @@ OneBase Group Ltd requests **£25,000 via Start Up Loans** to fund:
 
 ### Appendix F: Technology Architecture Diagram
 
-`[CUSTOMIZE - Create simple diagram showing:]`
+The following diagram illustrates the ACG StaffLink platform architecture:
 
 ```
 Healthcare Staff (WhatsApp) ↔ WhatsApp Business API ↔ OpenAI GPT-4 ↔ ACG StaffLink Platform (Supabase) ↔ Agency Admin (Web Dashboard)
@@ -996,20 +996,20 @@ Healthcare Staff (WhatsApp) ↔ WhatsApp Business API ↔ OpenAI GPT-4 ↔ ACG S
 ### Appendix N: References & Contact Information
 
 **Founder Contact:**
-- Name: `[CUSTOMIZE]`
-- Email: `[CUSTOMIZE]`
-- Phone: `[CUSTOMIZE]`
-- LinkedIn: `[CUSTOMIZE]`
+- Name: Givemore (Gizzy) Basera
+- Email: g.basera5@gmail.com
+- Phone: +447557679989
+- LinkedIn: https://www.linkedin.com/in/givemore-basera-74935a2aa/
 
 **Company Contact:**
-- Company: OneBase Group Ltd
-- Website: `[CUSTOMIZE]`
-- Email: `[CUSTOMIZE - e.g., hello@acgstafflink.com]`
-- Address: `[CUSTOMIZE]`
+- Company: OneBase Group Ltd (trading as ACG StaffLink / Agile Care Management)
+- Website: agilecaremanagement.co.uk
+- Email: g.basera5@gmail.com (business enquiries: support@agilecaremanagement.co.uk)
+- Address: 72 Newholme Estate, Wingate, United Kingdom, TS28 5EN
 
 **Professional Services:**
-- Accountant: `[CUSTOMIZE]`
-- Solicitor: `[CUSTOMIZE]`
+- Accountant: To be appointed post-funding (shortlisted: small UK practice experienced with tech startups)
+- Solicitor: To be appointed as needed for contracts and shareholder agreements
 - Business Mentor: `[To be assigned via Start Up Loans]`
 
 ---

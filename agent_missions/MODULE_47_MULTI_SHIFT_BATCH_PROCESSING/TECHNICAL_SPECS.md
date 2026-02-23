@@ -23,10 +23,24 @@ Loop through the `rows` extracted by OCR and find the corresponding record in `a
 - `row.date === shift.shift_date`
 - `row.client === shift.client.name` (optional but recommended for strictly avoiding wrong-client uploads)
 
-## 3. The "NFA" Check (No Further Action)
-Before populating, check if the hours already in the database match what the OCR found.
-- If `DB.total_hours === OCR.total_hours`, mark as "Already Reconciled".
-- If `DB.total_hours !== OCR.total_hours`, mark as "Update Required".
+## 3. The "Already Updated" Logic
+Before populating, the system MUST compare OCR data with existing DB values:
+- **Case: Matched & Identical**: If `DB.total_hours === OCR.total_hours` AND `DB.actual_start_time === OCR.start_time`, mark as **"Already Up-to-Date"**.
+    - *Action*: Show in UI but default to unselected (no update needed).
+- **Case: Matched & Conflicting**: If dates match but hours/times differ, mark as **"Conflict / Update Available"**.
+    - *Action*: Highlight the difference and allow user to overwrite DB with OCR.
+- **Case: Not Found**: If date exists on OCR but NOT in fetched shifts, mark as **"Missing Shift"**.
+    - *Action*: Prompt user to create shift or check for different staff.
+
+## 4. Test Case Library (Navya Scenarios)
+
+### Case A: The "Split" Sheet (26/01 & 28/01)
+- **Current DB State**: 28/01 is already populated (11h). 26/01 is Draft (Empty).
+- **Expected Behavior**: System flags 28/01 as "Already Up-to-Date" and automatically focuses/selects 26/01 for the update.
+
+### Case B: The "New" Sheet (24/01 & 25/01)
+- **Current DB State**: Both 24/01 and 25/01 are Draft (Empty).
+- **Expected Behavior**: System detects both rows, matches them to the 24th/25th shifts, and offers to update both in one click.
 
 ## 4. User Interaction: "The Selection"
 The UI should present a checklist to the user:

@@ -21,7 +21,7 @@ After comprehensive research into UK government grants and loans for healthcare 
 - ✅ **Free mentoring** included (12 months)
 
 ### Alternative/Complementary Routes
-1. **Innovate UK Innovation Loans Round 24** - £100k minimum (closes 25 Feb 2026)
+1. **Innovate UK Innovation Loans Round 25** - £100k minimum (closes 4 March 2026)
 2. **SBRI Healthcare** - Up to £100k Phase 1 grant (various competitions 2026)
 3. **SEIS Angel Investment** - Up to £250k equity (50% tax relief for investors)
 
@@ -130,7 +130,7 @@ After comprehensive research into UK government grants and loans for healthcare 
 
 **Step 2: Complete Business Plan (Days 1-30)**
 - Download free template
-- Complete all sections (use our MODULE_47 business plan)
+- Complete all sections (use our MODULE_48 business plan)
 - Review with free mentor if needed
 
 **Step 3: Financial Forecasts (Days 15-45)**
@@ -230,15 +230,17 @@ After comprehensive research into UK government grants and loans for healthcare 
 
 ---
 
-## SECTION 2: INNOVATE UK INNOVATION LOANS ROUND 24
+## SECTION 2: INNOVATE UK INNOVATION LOANS ROUND 25
 
 ### Overview
 - **Managing Body:** Innovate UK / UKRI (UK Research and Innovation)
 - **Website:** https://apply-for-innovation-funding.service.gov.uk
-- **Competition:** Innovation Loans Round 24
+- **Competition:** Innovation Loans Round 25
 - **Type:** Government innovation loan (repayable)
 - **Amount:** £100,000 minimum - £5,000,000 maximum
-- **Deadline:** ⚠️ **25 February 2026, 11:00 AM** (URGENT - 14 days away!)
+- **Total Fund:** £25 million allocated across rolling rounds
+- **Deadline:** ⚠️ **4 March 2026, 11:00 AM UK time** (Round 25)
+- **Next Round:** Round 26 opens 5 March 2026, closes 29 April 2026
 
 ### Interest Rates & Terms
 - **Project Phase (up to 5 years):** 3.7% per annum + 3.7% deferred interest
@@ -251,7 +253,7 @@ After comprehensive research into UK government grants and loans for healthcare 
 ✅ **You qualify if:**
 - UK-registered SME (micro, small, or medium-sized enterprise) ✓
 - Single business application (no collaborations required)
-- Late-stage R&D project with clear commercialization route ✓
+- Late-stage R&D project with clear commercialisation route ✓
 - Aligns with Innovate UK priority areas:
   - **Health and wellbeing** ✓ (ACG StaffLink qualifies)
   - Next-generation digital technologies ✓ (AI WhatsApp, Supabase)
@@ -348,7 +350,7 @@ After comprehensive research into UK government grants and loans for healthcare 
 **4. Business Impact (20%)**
 - UK economic growth potential?
   - **Your answer:** NHS cost savings, job creation, export potential
-  - **Evidence:** Reduce £3.8bn NHS temporary staffing spend
+  - **Evidence:** Reduce £3bn NHS agency staffing spend (government targeting 30% reduction)
 - Scalability?
   - **Your answer:** SaaS model scales to 5,000+ agencies
   - **Evidence:** Cloud infrastructure, low marginal costs
@@ -359,14 +361,16 @@ After comprehensive research into UK government grants and loans for healthcare 
 - Liquidity ratio: **1.1x minimum** throughout loan period
 - Debt service coverage ratio: **1.2x minimum** in repayment phase
 
-### Key Dates
+### Key Dates (Round 25)
 
-- **5 November 2025:** Applicant briefing webinar (PAST)
-- **12, 17, 25 November 2025:** Financial workshops (PAST)
-- **25 February 2026, 11:00 AM:** Application deadline ⚠️ **14 DAYS**
-- **13 March 2026:** Applicants notified of outcome
-- **17 April 2026:** Final lending decision
-- **1 May 2026:** Expected project start date
+- **8 January 2026:** Round 25 opened
+- **19 January 2026:** Applicant briefing webinar (recording available)
+- **28 Jan, 2 Feb, 12 Feb 2026:** Financial deep-dive workshops
+- **4 March 2026, 11:00 AM UK time:** Application deadline ⚠️
+- **~May 2026:** Applicants notified of outcome (estimated)
+- **~June 2026:** Final credit committee decision (estimated)
+- **1 July 2026:** Expected project start date
+- **5 March 2026:** Round 26 opens (closes 29 April 2026)
 
 ### Suitability for ACG StaffLink
 
@@ -378,19 +382,21 @@ After comprehensive research into UK government grants and loans for healthcare 
 - ✅ Longer repayment period (up to 5 years)
 
 **Cons:**
-- ❌ **URGENT:** Only 14 days to complete complex application
-- ❌ Minimum £100k (10x your stated need)
-- ❌ Strict financial covenants (liquidity, debt service ratios)
-- ❌ Highly competitive (expert scoring)
-- ❌ Solo founder may score lower on "team capability"
-- ❌ No trading history may weaken business suitability assessment
+- ❌ Minimum £100k (4-10x your stated need)
+- ❌ Strict financial covenants (1.1x liquidity, 1.2x DSCR)
+- ❌ Highly competitive (expert scoring, £25m fund across all rounds)
+- ❌ Solo founder may score lower on "team capability" (25% of score)
+- ❌ No trading history weakens business suitability / credit assessment
+- ❌ Complex application: 11 scored questions (800 words each) + detailed financial model
 
 **Recommendation:**
 **ONLY pursue if:**
-1. You can justify £100k need (larger beta, extensive marketing)
-2. You can complete application in 14 days (requires intense focus)
-3. You have strong advisory board to address team weakness
-4. You can demonstrate financial covenant compliance
+1. You can justify £100k need (larger beta programme, extensive marketing, team hires)
+2. You have strong advisory board to address team capability weakness
+3. You can demonstrate financial covenant compliance across 5-7 year projections
+4. You have NHS partnership letters ready to strengthen the application
+
+**Round 25 closes 4 March 2026.** If you cannot complete a strong application for Round 25, Round 26 opens immediately on 5 March 2026 and closes 29 April 2026 — giving more preparation time.
 
 **Otherwise:** Focus on Start Up Loans (better fit for current stage).
 
@@ -474,7 +480,7 @@ After comprehensive research into UK government grants and loans for healthcare 
 
 **1. NHS Unmet Need (30%)**
 - Does innovation address genuine NHS problem?
-  - **Your answer:** Healthcare staffing shortages cost NHS £3.8bn annually
+  - **Your answer:** Healthcare staffing shortages cost NHS £3bn annually in agency spend alone (2023/24, Source: DHSC)
   - **Evidence:** NHS England workforce reports
 - What is the scale of benefit?
   - **Your answer:** Reduce shift fill time 50%+, cut staffing costs 10-15%
@@ -719,7 +725,7 @@ After comprehensive research into UK government grants and loans for healthcare 
 ### How to Position ACG StaffLink for SEIS
 
 **Investor Pitch Narrative:**
-> "UK healthcare staffing is a £6.1bn market in crisis. NHS alone spends £3.8bn annually on temporary staff, with 50% of shifts unfilled or taking 4+ hours to fill.
+> "UK healthcare staffing is a £6.1bn market in crisis. NHS alone spends £3bn annually on agency staff (down from £3.5bn in 2022/23), with the government mandating elimination of agency dependence and 50% of shifts still taking 4+ hours to fill.
 >
 > ACG StaffLink is the first AI-powered WhatsApp healthcare staffing platform. We reduce shift fill time from 4 hours to 15 minutes using conversational AI and automated matching.
 >
@@ -870,24 +876,26 @@ After comprehensive research into UK government grants and loans for healthcare 
 **Positioning for SBRI:**
 - Frame as "AI-powered NHS workforce optimization"
 - Get NHS letters of support during beta (critical for success)
-- Emphasize cost savings for NHS (£3.8bn addressable spend)
+- Emphasise cost savings for NHS (£3bn agency spend addressable, government mandating 30% reduction)
 
-### NOT Recommended: INNOVATE UK (UNLESS...)
+### NOT Recommended Now: INNOVATE UK (UNLESS...)
 
-**Why skip Innovation Loans Round 24:**
-1. ❌ **URGENT:** Only 14 days to complete complex application
-2. ❌ **Minimum £100k:** 4-10x your stated need
-3. ❌ **High requirements:** Strict financial covenants, expert scoring
-4. ❌ **Team weakness:** Solo founder scores lower on capability
-5. ❌ **No trading history:** Weakens business suitability assessment
+**Why Innovation Loans may not be the best fit at this stage:**
+1. ❌ **Minimum £100k:** 4-10x your stated need
+2. ❌ **High requirements:** Strict financial covenants (1.1x liquidity, 1.2x DSCR), expert scoring
+3. ❌ **Team weakness:** Solo founder scores lower on capability (25% of score)
+4. ❌ **No trading history:** Weakens business suitability / credit assessment
+5. ❌ **Complex application:** 11 scored questions (800 words each) + detailed financial model
 
 **ONLY consider if:**
-- You can justify £100k need (extensive beta + major marketing campaign)
-- You have 14 days to focus 100% on application (no other work)
-- You can recruit strong advisory board immediately (address team gap)
-- You have NHS partnership letters ready (strengthen application)
+- You can justify £100k need (extensive beta programme + major marketing campaign + team hires)
+- You can recruit strong advisory board to address team capability gap
+- You have NHS partnership letters ready to strengthen the application
+- You can demonstrate financial covenant compliance across 5-7 year projections
 
-**Otherwise:** Risk/reward not worth it. Focus on Start Up Loans (better fit).
+**Note:** Round 25 closes 4 March 2026. Round 26 opens 5 March, closes 29 April 2026. Rolling rounds continue throughout the year, so there is no urgency to apply before ready.
+
+**Otherwise:** Risk/reward not worth it. Focus on Start Up Loans (better fit for current stage).
 
 ---
 
@@ -907,8 +915,8 @@ After comprehensive research into UK government grants and loans for healthcare 
 - Bank statements (personal - last 3 months)
 
 **Day 6-7: Business Planning**
-- Read MODULE_47 BUSINESS_PLAN_COMPLETE.md
-- Customize Executive Summary with your details
+- Read MODULE_48 BUSINESS_PLAN_COMPLETE.md
+- Customise Executive Summary with your details
 - Review all 11 sections for accuracy
 
 ### Week 2-3: Financial Forecasting
@@ -997,7 +1005,7 @@ After comprehensive research into UK government grants and loans for healthcare 
 
 **1. Evidence-Based Market Validation**
 - ❌ Weak: "Healthcare staffing is a problem"
-- ✅ Strong: "NHS spends £3.8bn annually on temporary staff, with 50% of shifts unfilled (Source: NHS England Workforce Report 2024)"
+- ✅ Strong: "NHS spends £3bn annually on agency staff alone (2023/24, Source: DHSC), down from £3.5bn, with government targeting 30% further reduction (Source: NHS England Long Term Workforce Plan)"
 
 **2. Clear Competitive Differentiation**
 - ❌ Weak: "We're better than competitors"
@@ -1009,7 +1017,7 @@ After comprehensive research into UK government grants and loans for healthcare 
 
 **4. Credible Team**
 - ❌ Weak: "I'm a solo founder with an idea"
-- ✅ Strong: "Founder has 1+ year building enterprise healthcare platform (635+ files, 44 Edge Functions deployed). Advisory board includes [Clinical Advisor from NHS], [Tech Advisor from healthcare SaaS], [Business Advisor with sales experience]"
+- ✅ Strong: "Founder has 1+ year building enterprise healthcare platform (635+ files, 44 Edge Functions deployed). Advisory board includes a senior NHS nurse (to be recruited), experienced healthtech/AI automation specialists (in discussions), and a former healthcare staffing agency owner (to be recruited)"
 
 **5. Clear Use of Funds**
 - ❌ Weak: "£25k for business development"
@@ -1035,7 +1043,7 @@ After comprehensive research into UK government grants and loans for healthcare 
 
 **5. Solo Founder Red Flag**
 - ❌ "I'm doing this alone" (high risk)
-- ✅ "I'm founder/CEO leading product development. Advisory board provides: [Clinical expertise via Dr. X], [Technical guidance via CTO Y], [Sales strategy via VP Z]. Post-funding, will hire: Head of Sales (Month 6), Customer Success Manager (Month 9)"
+- ✅ "I'm founder/CEO leading product development. Advisory board provides: clinical expertise via a senior NHS nurse advisor, technical guidance via healthtech/AI specialists, and sales strategy via a healthcare staffing expert. Post-funding, will hire: Head of Sales (Month 6), Customer Success Manager (Month 9)"
 
 ---
 
@@ -1045,7 +1053,7 @@ After comprehensive research into UK government grants and loans for healthcare 
 
 **LAYER 1: Grant Application (Public - Conservative)**
 
-*"I'm a first-time entrepreneur building ACG StaffLink, an AI-powered healthcare staffing platform. The UK healthcare staffing market is £6.1bn, with NHS spending £3.8bn annually on temporary staff amid a severe shortage crisis.*
+*"I'm a first-time entrepreneur building ACG StaffLink, an AI-powered healthcare staffing platform. The UK healthcare staffing market is £6.1bn, with NHS spending £3bn annually on agency staff alone (2023/24), amid a severe shortage crisis and a government mandate to eliminate agency dependence.*
 
 *I've spent the past year building an enterprise-grade platform using modern technology (Supabase, React, AI WhatsApp assistant). The platform is functional and ready for market validation.*
 
@@ -1070,7 +1078,7 @@ After comprehensive research into UK government grants and loans for healthcare 
 
 **LAYER 2: Investor Pitch (Month 8+ - Aggressive)**
 
-*"ACG StaffLink is the AI-powered WhatsApp platform transforming UK healthcare staffing. We're addressing a £6.1bn market in crisis - NHS alone burns £3.8bn annually on temporary staff, with 50% of shifts unfilled.*
+*"ACG StaffLink is the AI-powered WhatsApp platform transforming UK healthcare staffing. We're addressing a £6.1bn market in crisis - NHS alone spends £3bn annually on agency staff (down from £3.5bn), with government mandating elimination of agency dependence.*
 
 *I've built an enterprise-grade SaaS platform (1+ year development, 635+ files, 44 automated Edge Functions) that reduces shift booking from 4 hours to 15 minutes using conversational AI. We're the only player with AI WhatsApp integration in this space.*
 
@@ -1125,8 +1133,8 @@ After comprehensive research into UK government grants and loans for healthcare 
 
 **Phase 1 (NOW - Month 0-3): Secure Start Up Loans**
 - ✅ Apply this month for £25,000 at 6% interest
-- ✅ Use MODULE_47 BUSINESS_PLAN_COMPLETE.md (customize with your details)
-- ✅ Use MODULE_47 FINANCIAL_FORECASTS.md (copy tables to Google Sheets)
+- ✅ Use MODULE_48 BUSINESS_PLAN_COMPLETE.md (customise with your details)
+- ✅ Use MODULE_48 FINANCIAL_FORECASTS.md (copy tables to Google Sheets)
 - ✅ Timeline: 3 months to funding
 
 **Phase 2 (Month 3-6): Execute Beta Program**
@@ -1222,7 +1230,7 @@ After comprehensive research into UK government grants and loans for healthcare 
 
 **Report Prepared By:** Claude (Anthropic AI)
 **Date:** 11 February 2026
-**Next Steps:** Review MODULE_47 documents and begin Start Up Loans application
+**Next Steps:** Review MODULE_48 documents and begin Start Up Loans application
 
 ---
 

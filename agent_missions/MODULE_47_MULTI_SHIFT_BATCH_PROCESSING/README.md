@@ -73,9 +73,13 @@ sequenceDiagram
 
 ## NEXT STEPS FOR AGENT
 
-1. **Review `ConfirmOCRModal.jsx`**: Understand how `activeRow` is currently used.
-2. **Extend `TimesheetUploader.jsx`**: Modify the save trigger to handle a list of updates instead of a single ID.
-3. **Draft SQL Migration**: If needed, add a `cloned_from` or `source_document_id` to the `timesheets` table for better tracking of multi-shift uploads.
+1. **Review `ConfirmOCRModal.jsx`**: Understand how `activeRow` is currently used. This is the heart of the selection logic.
+2. **Extend `TimesheetUploader.jsx`**: Modify the save trigger to handle a list of updates.
+3. **Ground Running Info**:
+    - **Target Staff**: Navya Prathyusha Tunuguntla (`staff_id` needed).
+    - **Target Dates**: 24/01, 25/01, 26/01, 28/01.
+    - **Key Service**: `src/services/timesheetService.js` -> `calculateFinalData`.
+    - **Constraint**: Must ignore already-updated shifts unless they have a data conflict.
 
 ---
 

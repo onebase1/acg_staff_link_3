@@ -1,4 +1,4 @@
-# MODULE 47: UK GOVERNMENT GRANT APPLICATION - INVESTOR READINESS
+# MODULE 48: UK GOVERNMENT GRANT APPLICATION - INVESTOR READINESS
 
 ## 🎯 Mission Objective
 Secure £10k-£25k government funding to validate ACG StaffLink through beta testing, enabling Series Seed raise (£500k+) within 12 months with proven traction.
@@ -44,22 +44,23 @@ Secure £10k-£25k government funding to validate ACG StaffLink through beta tes
 ## 📁 Module Contents
 
 ### Core Application Documents
-1. **BUSINESS_PLAN_COMPLETE.md** - Full 11-section grant-ready plan
-2. **FINANCIAL_FORECASTS.md** - 12-month cash flow, 3-year projections
-3. **BETA_TESTING_STRATEGY.md** - 4-site pilot plan with success metrics
-4. **MARKETING_STRATEGY.md** - £10k budget breakdown & channel strategy
-5. **TEAM_STRUCTURE.md** - Placeholder roles & advisory board
+1. **BUSINESS_PLAN_COMPLETE.md** - Full 11-section grant-ready business plan
+2. **BUSINESS_PLAN_PART2.md** - Sections 5-8 (Operations, Marketing, Financial Strategy, Team)
+3. **BUSINESS_PLAN_PART3.md** - Sections 9-11 (Risk, Milestones, Appendices)
+4. **FINANCIAL_FORECASTS.md** - 12-month cash flow, 3-year P&L, break-even analysis
 
 ### Strategic Planning Documents
-6. **INVESTOR_READINESS_CHECKLIST.md** - 12-month roadmap to £500k raise
-7. **PITCH_DECK_OUTLINE.md** - Investor presentation structure
-8. **GRANT_APPLICATION_TRACKER.md** - Deadlines, submissions, follow-ups
-9. **GRANT_RESEARCH_REPORT.md** - Comprehensive funding options analysis
+5. **GRANT_RESEARCH_REPORT.md** - Comprehensive UK funding options analysis
+6. **GRANT_APPLICATION_TRACKER.md** - Deadlines, checklists, submission tracking
+7. **INVESTOR_READINESS_CHECKLIST.md** - 12-month roadmap to £500k raise
 
 ### Supporting Files
-10. **INSTRUCTIONS.md** - Step-by-step usage guide
-11. **PROGRESS.md** - Application checklist tracker
-12. **ONEBASE_GROUP_PROFILE.md** - Company positioning document
+8. **INSTRUCTIONS.md** - Step-by-step usage guide
+9. **CUSTOMIZATION_CHECKLIST.md** - Personalisation guide for all documents
+10. **PROGRESS.md** - Phase-by-phase application tracker
+11. **COMPLETION_SUMMARY.md** - Module completion status and quality notes
+
+> **Note:** Beta testing strategy, marketing plan, and team structure are embedded within the Business Plan sections rather than as standalone documents.
 
 ---
 
@@ -73,13 +74,14 @@ Secure £10k-£25k government funding to validate ACG StaffLink through beta tes
 - **Requirements:** Business plan, 12-month cash flow, personal survival budget
 - **Success Probability:** HIGH (designed for your exact scenario)
 
-### Option B: Innovate UK Innovation Loans Round 24 (URGENT)
+### Option B: Innovate UK Innovation Loans Round 25 (ACTIVE)
 - **Amount:** £100,000 minimum (up to £5m)
-- **Deadline:** ⚠️ 25 February 2026 (14 days away!)
-- **Type:** Innovation loan at 3.7% (project phase)
-- **Best for:** Late-stage R&D with commercialization plans
-- **Requirements:** Extensive financial covenants, expert assessment
-- **Success Probability:** MEDIUM (competitive, complex)
+- **Deadline:** ⚠️ 4 March 2026 at 11:00am UK time (Round 25)
+- **Type:** Innovation loan at 3.7% during project phase (7.4% during repayment)
+- **Best for:** Late-stage R&D with clear commercialisation pathway
+- **Requirements:** Extensive financial covenants (1.1x liquidity, 1.2x DSCR), credit assessment
+- **Note:** Round 26 opens 5 March 2026, closes 29 April 2026
+- **Success Probability:** MEDIUM (competitive, complex — £25m total fund across rounds)
 
 ### Option C: SBRI Healthcare (FUTURE OPPORTUNITY)
 - **Amount:** Up to £100,000 (Phase 1)
@@ -154,9 +156,9 @@ MONTH 12: RAISE SERIES SEED
 
 | Year | Customers | Monthly Revenue | Annual Revenue | Key Milestone |
 |------|-----------|-----------------|----------------|---------------|
-| **Year 1** | 2-6 | £600-£1,800 | £7k-£22k | Beta validation + first customers |
-| **Year 2** | 15-25 | £4,500-£7,500 | £54k-£90k | Scale through marketing |
-| **Year 3** | 40-60 | £12k-£18k | £144k-£216k | Profitability, investor exit options |
+| **Year 1** | 4-6 | £500-£1,800 | £12.5k-£22k | Beta validation + first paying customers (Month 7+) |
+| **Year 2** | 15-25 | £4,500-£7,500 | £54k-£90k | Scale through marketing & referrals |
+| **Year 3** | 40-60 | £12k-£18k | £144k-£216k | Profitability, break-even achieved |
 
 ### Revenue Projections (Aggressive - Investor Narrative)
 
@@ -197,7 +199,7 @@ MONTH 12: RAISE SERIES SEED
 
 ### Market Assumptions
 - UK healthcare staffing market: £6.1bn annually
-- NHS temporary staffing spend: £3.8bn annually
+- NHS agency staffing spend: £3bn annually (2023/24, reduced from £3.5bn in 2022/23; government targeting 30% further reduction)
 - Target addressable market: 5,000+ agencies, 50,000+ facilities
 - Average agency shift volume: 500-2,000 shifts/month
 
@@ -217,8 +219,8 @@ MONTH 12: RAISE SERIES SEED
 ### Financial Assumptions
 - Grant/loan secured: Month 1-2
 - First revenue: Month 7 (beta conversion)
-- Break-even: Month 18-24
-- Burn rate: £3k-£5k/month (pre-revenue)
+- Break-even: Month 15 (grant narrative); Month 10-12 (investor narrative with pipeline)
+- Burn rate: £1,200/month (Months 1-6), £2,700+/month (Months 7-12 with marketing)
 - 30-agency pipeline: 90% conversion probability
 
 ---
@@ -242,11 +244,11 @@ MONTH 12: RAISE SERIES SEED
 ## 📞 Next Steps
 
 1. **Read INSTRUCTIONS.md** for step-by-step guidance
-2. **Review BUSINESS_PLAN_COMPLETE.md** and customize with your details
-3. **Copy FINANCIAL_FORECASTS.md** tables into Google Sheets
-4. **Customize TEAM_STRUCTURE.md** with real names (or keep placeholders)
+2. **Work through CUSTOMIZATION_CHECKLIST.md** to personalise all documents
+3. **Review BUSINESS_PLAN_COMPLETE.md** (+ Parts 2 & 3) and customise with your details
+4. **Copy FINANCIAL_FORECASTS.md** tables into Google Sheets for your accountant/mentor
 5. **Submit Start Up Loans application** (highest probability of success)
-6. **Track progress in PROGRESS.md** checklist
+6. **Track progress in PROGRESS.md** and **GRANT_APPLICATION_TRACKER.md**
 
 ---
 
@@ -255,7 +257,7 @@ MONTH 12: RAISE SERIES SEED
 **For Grant Applications:**
 - Use conservative projections (Layer 1 narrative)
 - Don't mention 30-agency pipeline (looks like you don't need grant)
-- Emphasize market validation need
+- Emphasise market validation need
 - Show humility as first-time entrepreneur
 
 **For Investor Pitches (Post-Beta):**
