@@ -59,6 +59,7 @@ export default function TimesheetUploader({
         setUploading(true);
         toast.info('📤 AI processing started... Uploading and extracting data.');
 
+        let fileUrl = null;
         try {
             // 1. Fetch data if missing (for context)
             let ts = initialTimesheet;
@@ -94,7 +95,7 @@ export default function TimesheetUploader({
             });
 
             // 2. Upload to storage
-            const fileUrl = await timesheetService.uploadFile(file);
+            fileUrl = await timesheetService.uploadFile(file);
             console.log('✅ File uploaded:', fileUrl);
 
             // 3. Trigger OCR
