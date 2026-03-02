@@ -175,6 +175,10 @@ const timesheetService = {
                 finalData.hours_worked = parseFloat(hours);
                 finalData.total_hours = calculateBillableHoursWithRule(parseFloat(hours));
                 finalData.raw_total_hours = parseFloat(hours);
+
+                if (finalData.break_duration_minutes === undefined || finalData.break_duration_minutes === null) {
+                    finalData.break_duration_minutes = parseFloat(hours) > 10 ? 60 : 0;
+                }
             }
         }
 

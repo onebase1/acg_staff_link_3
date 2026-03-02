@@ -228,17 +228,25 @@ export default function ConfirmOCRModal({
 
   // Handler for confirm - injects the selected batch updates
   const handleConfirmWrapper = () => {
-    const selectedUpdates = Array.from(selectedIndices).map(idx => {
-      const row = extractedData.rows[idx];
-      const match = addressableShifts.find(s => s.shift_date === row.date);
-      return {
-        row,
-        timesheetId: match?.id || expectedData.timesheet_id, // Fallback if no match found but it's the current one
-        isPrimary: match?.id === expectedData.timesheet_id
-      };
-    });
-
-    onConfirm(staffNote, selectedUpdates);
+    if (hasMultipleRows) {
+      const selectedUpdates = Array.from(selectedIndices).map(idx => {
+        const row = extractedData.rows[idx];
+        const match = addressableShifts.find(s => s.shift_date === row.date);
+        return {
+          row,
+          timesheetId: match?.id || expectedData.timesheet_id, // Fallback if no match found but it's the current one
+          isPrimary: match?.id === expectedData.timesheet_id
+        };
+      });
+      onConfirm(staffNote, selectedUpdates);
+    } else {
+      // Single shift fallback
+      onConfirm(staffNote, [{
+        row: extractedData.matched_row_info || extractedData,
+        timesheetId: expectedData.timesheet_id,
+        isPrimary: true
+      }]);
+    }
   };
 
   // Helper to format display values based on Active Row or Global Data
@@ -494,10 +502,10 @@ export default function ConfirmOCRModal({
           <Button
             type="button"
             onClick={handleConfirmWrapper}
-            disabled={confirming || rejecting || selectedIndices.size === 0}
-            className={`w-full h-14 text-lg font-bold shadow-xl transition-all duration-300 active:scale-95 ${selectedIndices.size === 0
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-green-600 hover:bg-green-700 shadow-green-100'
+            disabled={confirming || rejecting || (hasMultipleRows && selectedIndices.size === 0)}
+            className={`w-full h-14 text-lg font-bold shadow-xl transition-all duration-300 active:scale-95 ${(hasMultipleRows && selectedIndices.size === 0)
+              ? 'bg-gray-400 cursor-not-allowed text-white hover:bg-gray-400'
+              : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'
               }`}
           >
             {confirming ? (
@@ -505,37 +513,39 @@ export default function ConfirmOCRModal({
             ) : (
               <CheckCircle className="w-6 h-6 mr-3" />
             )}
-            {confirming ? 'Processing...' : `Yes, Everything looks Correct`}
+            {confirming ? 'Processing...' : (hasMultipleRows ? `Approve ${selectedIndices.size} Selected Shift${selectedIndices.size !== 1 ? 's' : ''}` : `Approve & Submit Timesheet`)}
           </Button>
 
           {/* Secondary Actions Row */}
-          <div className="flex flex-col sm:flex-row gap-2 w-full">
+          <div className="flex flex-col sm:flex-row gap-3 w-full">
             <Button
               type="button"
               variant="outline"
               onClick={onReUpload}
               disabled={confirming || rejecting}
-              className="flex-1 h-11 text-gray-600 border-gray-300 hover:bg-gray-50 font-medium"
+              className="flex-1 h-auto py-3 text-gray-700 border-gray-300 hover:bg-gray-50 font-medium shadow-sm transition-all flex flex-col items-center justify-center gap-1"
             >
-              <Camera className="w-4 h-4 mr-2" />
-              Retake / Change Photo
+              <div className="flex items-center">
+                <Camera className="w-4 h-4 mr-2 text-gray-500" />
+                <span>Retake Photo</span>
+              </div>
+              <span className="text-[10px] text-gray-500 font-normal">If image was blurry/cut off</span>
             </Button>
 
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               onClick={() => onReject(staffNote)}
               disabled={confirming || rejecting}
-              className="flex-1 h-11 text-red-600 hover:bg-red-50 font-medium opacity-80 hover:opacity-100"
+              className="flex-1 h-auto py-3 text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200 font-medium shadow-sm transition-all flex flex-col items-center justify-center gap-1"
             >
-              <AlertCircle className="w-4 h-4 mr-2" />
-              AI Error? Send to Agency
+              <div className="flex items-center">
+                <AlertCircle className="w-4 h-4 mr-2" />
+                <span>Submit As-Is</span>
+              </div>
+              <span className="text-[10px] text-amber-600/80 font-normal">Force admin manual review</span>
             </Button>
           </div>
-
-          <p className="text-[10px] text-gray-400 text-center px-4 italic">
-            Reporting an error will flag this for manual review by your agency.
-          </p>
         </DialogFooter>
       </DialogContent>
     </Dialog>

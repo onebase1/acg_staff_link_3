@@ -72,32 +72,28 @@ serve(async (req) => {
 
 EXTRACT THE FOLLOWING DATA:
 
-**CRITICAL FIELDS:**
+**GLOBAL FIELDS (Document Level):**
 1. Employee/Staff name (first and last)
 2. Client/Site/Facility name
-3. Date worked (DD/MM/YYYY or similar)
-4. Start time (HH:MM format, 24-hour preferred)
-5. End time (HH:MM format, 24-hour preferred)
-6. Break duration (in minutes, e.g., "30 min" = 30)
+3. Staff signature present (yes/no)
+4. Supervisor/Manager signature present (yes/no)
+5. Stamp or approval mark present (yes/no)
+6. Any handwritten notes, amendments, or comments
 
-**CALCULATED FIELDS:**
-7. Total hours worked (calculate from start/end minus break if not explicitly stated)
-8. Scheduled hours (may be labeled as "contracted hours", "planned hours", "shift duration")
-
-**VERIFICATION:**
-9. Staff signature present (yes/no)
-10. Supervisor/Manager signature present (yes/no)
-11. Stamp or approval mark present (yes/no)
-
-**NOTES:**
-12. Any handwritten notes, amendments, or comments
+**ROW-LEVEL SHIFTS (Extract EVERY separate daily shift line as an object in a 'rows' array):**
+7. Date worked (convert to YYYY-MM-DD format)
+8. Start time (HH:MM format, 24-hour preferred)
+9. End time (HH:MM format, 24-hour preferred)
+10. Break duration (in minutes, e.g., "30 min" = 30)
+11. Total hours worked (calculate from start/end minus break if not explicitly stated)
+12. Scheduled hours (if present on the row)
 
 **IMPORTANT PARSING RULES:**
 - If you see "8.5h", "8:30h", or "8 hours 30 minutes" → convert to decimal (8.5)
-- Break times: "30 min", "½ hour", "0.5h" → all equal 30 minutes
-- If start/end times cross midnight (e.g., 22:00 to 08:00), calculate correctly
-- Look for keywords: "scheduled", "contracted", "planned", "expected" for scheduled hours
-- Actual worked hours might be in a different field/section than scheduled
+- Break times: "1h" = 60, "30 min" = 30, "½ hour" = 30, "0.5h" = 30
+- If start/end times cross midnight (e.g., 22:00 to 08:00), calculate duration correctly
+- If the document is a table with multiple dates/rows, extract EACH date as a separate object in the \`rows\` array
+- CRITICAL: Never ignore rows. If there are 3 written dates, return 3 objects in the \`rows\` array.
 
 **CONFIDENCE ASSESSMENT:**
 - Rate your confidence in each field extraction (0-100%)
@@ -107,23 +103,22 @@ Return ONLY valid JSON in this exact format (no markdown, no explanations):
 {
   "employee_name": "string",
   "client_name": "string",
-  "date": "YYYY-MM-DD",
-  "start_time": "HH:MM",
-  "end_time": "HH:MM",
-  "break_minutes": number,
-  "total_hours": number,
-  "scheduled_hours": number or null,
   "staff_signature": boolean,
   "supervisor_signature": boolean,
   "approval_stamp": boolean,
   "notes": "string",
+  "rows": [
+    {
+      "date": "YYYY-MM-DD",
+      "start_time": "HH:MM",
+      "end_time": "HH:MM",
+      "break_minutes": number,
+      "total_hours": number,
+      "scheduled_hours": number or null
+    }
+  ],
   "confidence": {
     "overall": number (0-100),
-    "employee_name": number,
-    "client_name": number,
-    "date": number,
-    "times": number,
-    "hours": number,
     "signatures": number
   },
   "warnings": ["array of strings describing any unclear or suspicious data"]
@@ -181,29 +176,36 @@ Please extract all data from the document and compare with expected values.`
       );
     }
 
-    // VALIDATION: Compare with expected data
+    // VALIDATION: Compare with expected data (Primary Target Date)
     const validation = {
       validation_status: 'match',
-      mismatches: [],
-      warnings: extractedData.warnings || [],
+      mismatches: [] as any[],
+      warnings: (extractedData.warnings || []) as any[],
       confidence_score: extractedData.confidence?.overall || 0
     };
 
-    if (expected_data) {
-      // 1. HOURS VALIDATION (most important)
-      if (expected_data.scheduled_hours && extractedData.total_hours) {
+    if (expected_data && extractedData.rows && extractedData.rows.length > 0) {
+      // Find the row that matches the expected date, or default to the first row if date is missing
+      const primaryRow = expected_data.shift_date 
+        ? (extractedData.rows.find(r => r.date === expected_data.shift_date) || extractedData.rows[0])
+        : extractedData.rows[0];
+
+      extractedData.matched_row_info = primaryRow; // Store for fallback purposes
+
+      // 1. HOURS VALIDATION (Primary Row)
+      if (expected_data.scheduled_hours && primaryRow.total_hours) {
         // ✅ APPLY 10-HOUR GOLD RULE: If scheduled gross > 10, the "target" Net is -1h
         const expectedNetHours = expected_data.scheduled_hours > 10 ? expected_data.scheduled_hours - 1 : expected_data.scheduled_hours;
         
-        const hoursDiff = Math.abs(expectedNetHours - extractedData.total_hours);
+        const hoursDiff = Math.abs(expectedNetHours - primaryRow.total_hours);
         const percentDiff = (hoursDiff / expectedNetHours) * 100;
 
         if (hoursDiff > 0.5) {
           validation.validation_status = 'mismatch';
           validation.mismatches.push({
             field: 'hours',
-            expected: expectedNetHours, // We compare with the expected NET
-            actual: extractedData.total_hours,
+            expected: expectedNetHours,
+            actual: primaryRow.total_hours,
             scheduled_gross: expected_data.scheduled_hours,
             difference: hoursDiff,
             percent_difference: percentDiff.toFixed(1),
@@ -217,12 +219,11 @@ Please extract all data from the document and compare with expected values.`
           });
         }
 
-        // Check if document shows BOTH scheduled and actual hours
-        if (extractedData.scheduled_hours && extractedData.scheduled_hours !== extractedData.total_hours) {
-          const docHoursDiff = Math.abs(extractedData.scheduled_hours - extractedData.total_hours);
+        if (primaryRow.scheduled_hours && primaryRow.scheduled_hours !== primaryRow.total_hours) {
+          const docHoursDiff = Math.abs(primaryRow.scheduled_hours - primaryRow.total_hours);
           validation.warnings.push({
             field: 'hours_on_document',
-            message: `Document shows scheduled: ${extractedData.scheduled_hours}h, actual: ${extractedData.total_hours}h (${docHoursDiff.toFixed(1)}h difference)`,
+            message: `Document shows scheduled: ${primaryRow.scheduled_hours}h, actual: ${primaryRow.total_hours}h for ${primaryRow.date}`,
             severity: docHoursDiff > 1 ? 'high' : 'medium'
           });
         }
@@ -259,14 +260,14 @@ Please extract all data from the document and compare with expected values.`
       }
 
       // 4. DATE VALIDATION
-      if (expected_data.shift_date && extractedData.date) {
-        if (expected_data.shift_date !== extractedData.date) {
+      if (expected_data.shift_date && primaryRow.date) {
+        if (expected_data.shift_date !== primaryRow.date) {
           validation.validation_status = 'mismatch';
           validation.mismatches.push({
             field: 'date',
             expected: expected_data.shift_date,
-            actual: extractedData.date,
-            severity: 'critical'
+            actual: primaryRow.date,
+            severity: 'high'
           });
         }
       }
@@ -297,25 +298,16 @@ Please extract all data from the document and compare with expected values.`
       }
 
       // 7. MULTI-ROW TIMESHEET DETECTION (Quick Fix 1)
-      // Detects when document shows significantly more hours than expected for single shift
-      if (expected_data.scheduled_hours && extractedData.total_hours > expected_data.scheduled_hours * 2) {
-        const hoursRatio = (extractedData.total_hours / expected_data.scheduled_hours).toFixed(1);
+      if (extractedData.rows.length > 1) {
+          validation.warnings.push({
+            field: 'multi_row_timesheet',
+            message: `Document contains ${extractedData.rows.length} separate shifts. Please review the checklist below.`,
+            severity: 'low',
+            action_required: 'Admin/Staff to confirm which shifts to approve via checkboxes.'
+          });
 
-        validation.warnings.push({
-          field: 'multi_row_timesheet',
-          message: `Document shows ${extractedData.total_hours}h total, but this shift expected only ${expected_data.scheduled_hours}h. This appears to be a multi-day timesheet with multiple rows (${hoursRatio}x expected hours). Please verify the document shows the correct date/row for this shift.`,
-          severity: 'high',
-          action_required: 'Admin: Check if timesheet contains multiple dates. Verify only the relevant row matches this shift.',
-          possible_cause: 'Staff using same physical timesheet for multiple consecutive shifts'
-        });
-
-        // Downgrade hours mismatch from critical to medium if multi-row detected
-        const hoursMismatch = validation.mismatches.find(m => m.field === 'hours');
-        if (hoursMismatch && hoursMismatch.severity === 'critical') {
-          hoursMismatch.severity = 'medium';
-          hoursMismatch.possible_reason = 'Multi-row timesheet detected - hours may include other shifts';
-          console.log('⚠️ Downgraded hours mismatch severity due to multi-row detection');
-        }
+          // If it's multi-row, the "hours difference" for the primary row might be a false alarm if the dates matched up weirdly.
+          // But since we extract rows granularly now, this is less likely to trigger a false mismatch unless the primary row itself differs.
       }
     }
 
@@ -345,12 +337,13 @@ Please extract all data from the document and compare with expected values.`
       { headers: { "Content-Type": "application/json" } }
     );
 
-  } catch (error) {
+  } catch (err: unknown) {
+    const error = err as Error;
     console.error('❌ OCR extraction error:', error);
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: error.message || 'Unknown error',
         stack: error.stack,
         confidence: {
           overall: 0
