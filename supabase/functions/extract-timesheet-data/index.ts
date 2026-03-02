@@ -94,7 +94,7 @@ EXTRACT THE FOLLOWING DATA:
 8. Start time (HH:MM format, 24-hour preferred)
 9. End time (HH:MM format, 24-hour preferred)
 10. Break duration (in minutes, e.g., "30 min" = 30)
-11. Total hours worked (calculate from start/end minus break if not explicitly stated)
+11. Total hours worked (CRITICAL: YOU MUST mathematically calculate this as exactly (End Time - Start Time) - Break. DO NOT just copy the total written on the paper, as staff often error. Rely ONLY on your own math.)
 12. Scheduled hours (if present on the row)
 
 **IMPORTANT PARSING RULES:**
@@ -238,10 +238,25 @@ Please extract all data from the document and compare with expected values.`
         }
       }
 
-      // 2. STAFF NAME VALIDATION
+      // 2. STAFF NAME VALIDATION (Smart Fuzzy Match for Middle Names)
       if (expected_data.staff_name && extractedData.employee_name) {
-        const nameMatch = extractedData.employee_name.toLowerCase().includes(expected_data.staff_name.toLowerCase()) ||
-                          expected_data.staff_name.toLowerCase().includes(extractedData.employee_name.toLowerCase());
+        const expectedNameParts = expected_data.staff_name.toLowerCase().split(/[\s-]+/).filter((p: string) => p.length > 2);
+        const actualName = extractedData.employee_name.toLowerCase();
+        
+        // Count how many significant parts of the expected name are found in the actual name
+        let matchedPartsCount = 0;
+        for (const part of expectedNameParts) {
+          if (actualName.includes(part)) {
+            matchedPartsCount++;
+          }
+        }
+
+        // Pass if at least 2 parts match (First + Last), or if it's a single word name and it matches
+        const requiredMatches = expectedNameParts.length > 1 ? 2 : 1;
+        const nameMatch = matchedPartsCount >= requiredMatches || 
+                          actualName.includes(expected_data.staff_name.toLowerCase()) ||
+                          expected_data.staff_name.toLowerCase().includes(actualName);
+
         if (!nameMatch) {
           validation.validation_status = 'mismatch';
           validation.mismatches.push({

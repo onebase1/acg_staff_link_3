@@ -164,20 +164,37 @@ const timesheetService = {
             finalData.total_hours = calculatedHours;   // Net (e.g. 11.0)
             finalData.raw_total_hours = rawDuration;  // Sync verbatim Gross column
 
-            // If break duration wasn't explicitly provided, set it based on the rule
-            if (finalData.break_duration_minutes === undefined || finalData.break_duration_minutes === null) {
-                finalData.break_duration_minutes = rawDuration > 10 ? 60 : 0;
+            // ENFORCE Strict Rule Sync: If the 10-hour rule forced a deduction (e.g. 12 -> 11),
+            // the break MUST mathematically match that deduction (60 mins).
+            // Do NOT allow bad OCR extracts (e.g., '30 mins') to contradict the final billable math.
+            const forcedBreakMinutes = Math.round((rawDuration - calculatedHours) * 60);
+
+            // If the rule didn't force a break, but the OCR explicitly found one, 
+            // we honor the OCR break and recursively fix the total_hours.
+            if (forcedBreakMinutes === 0 && rowData.break_minutes > 0) {
+                finalData.break_duration_minutes = rowData.break_minutes;
+                finalData.total_hours = rawDuration - (rowData.break_minutes / 60);
+            } else {
+                finalData.break_duration_minutes = forcedBreakMinutes;
             }
         } else {
             // Fallback: If only hours were extracted/overridden without times
             const hours = rowData.hours ?? rowData.hours_worked ?? extracted.hours_worked ?? extracted.total_hours ?? null;
             if (hours !== null) {
-                finalData.hours_worked = parseFloat(hours);
-                finalData.total_hours = calculateBillableHoursWithRule(parseFloat(hours));
-                finalData.raw_total_hours = parseFloat(hours);
+                const rawHours = parseFloat(hours);
+                const calcHours = calculateBillableHoursWithRule(rawHours);
 
-                if (finalData.break_duration_minutes === undefined || finalData.break_duration_minutes === null) {
-                    finalData.break_duration_minutes = parseFloat(hours) > 10 ? 60 : 0;
+                finalData.hours_worked = rawHours;
+                finalData.total_hours = calcHours;
+                finalData.raw_total_hours = rawHours;
+
+                const forcedBreak = Math.round((rawHours - calcHours) * 60);
+
+                if (forcedBreak === 0 && rowData.break_minutes > 0) {
+                    finalData.break_duration_minutes = rowData.break_minutes;
+                    finalData.total_hours = rawHours - (rowData.break_minutes / 60);
+                } else {
+                    finalData.break_duration_minutes = forcedBreak;
                 }
             }
         }

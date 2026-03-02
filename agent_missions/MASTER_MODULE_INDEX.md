@@ -158,6 +158,13 @@
 **Files:** `agent_missions/MODULE_48_UK_GOVERNMENT_GRANT_APPLICATION/`
 **Status:** ✅ COMPLETE
 
+### MODULE_49: Retrospective Shift Logging
+**Goal:** Build a dedicated, single-click UI for admins to log past shifts seamlessly.
+**Impact:** Eliminates error-prone manual UI toggles and ensures perfect timesheet generation.
+**Time:** 6-8 hours | **Risk:** Low
+**Files:** `agent_missions/MODULE_49_RETROSPECTIVE_SHIFTS/`
+**Status:** 🟡 PLANNED
+
 ---
 
 ## 📁 MODULE FOLDER STRUCTURE

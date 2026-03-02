@@ -99,9 +99,7 @@ export default function TimesheetUploader({
             console.log('✅ File uploaded:', fileUrl);
 
             // 3. Trigger OCR
-            const scheduledHours = shiftObj?.duration_hours
-                ? shiftObj.duration_hours - (shiftObj.break_duration_minutes || 0) / 60
-                : ts?.total_hours || null;
+            const scheduledHours = shiftObj?.duration_hours || ts?.raw_total_hours || ts?.total_hours || null;
 
             const expectedData = {
                 staff_name: staffMember ? `${staffMember.first_name} ${staffMember.last_name}` : null,
@@ -181,6 +179,16 @@ export default function TimesheetUploader({
                     notes: staffNote ? `${targetTs?.notes || ''}\n[Staff note]: ${staffNote}` : targetTs?.notes
                 };
 
+                // ✅ RECALCULATE FINANCIALS: Ensure OCR hour changes update the expected payload
+                const finalTotalHours = finalTimesheetData.total_hours;
+                if (finalTotalHours !== undefined && finalTotalHours !== null) {
+                    const payRate = targetTs?.pay_rate || 0;
+                    const chargeRate = targetTs?.charge_rate || 0;
+
+                    updateData.staff_pay_amount = finalTotalHours * payRate;
+                    updateData.client_charge_amount = finalTotalHours * chargeRate;
+                }
+
                 // Auto-approval logic (Shared logic)
                 const isSmartMatch = (field, expected, actual) => {
                     if (field === 'hours') {
@@ -194,8 +202,12 @@ export default function TimesheetUploader({
                 };
 
                 const effectiveMismatches = pendingOcrData.mismatches?.filter(m => !isSmartMatch(m.field, m.expected, m.actual)) || [];
+
+                const missingSignature = !pendingOcrData.staff_signature || (!pendingOcrData.supervisor_signature && !pendingOcrData.client_signature);
+
                 const canAutoApprove = (
                     pendingOcrData.confidence?.overall >= 95 &&
+                    !missingSignature &&
                     (pendingOcrData.validation_status === 'match' || effectiveMismatches.length === 0) &&
                     !effectiveMismatches.some(m => m.severity === 'critical')
                 );

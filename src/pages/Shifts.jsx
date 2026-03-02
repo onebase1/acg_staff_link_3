@@ -481,33 +481,32 @@ export default function Shifts() {
       const isRetrospective = shiftEndDateTime < new Date(Date.now() - 24 * 60 * 60 * 1000);
 
       if (isRetrospective) {
-        console.log('🔇 [Notifications] Suppressing notifications for retrospective shift change (>24h old)');
-        setEditingShift(null);
-        return;
-      }
+        console.log('🔇 [Notifications] Suppressing assignment/modification notifications for retrospective shift change (>24h old)');
+        // Don't return here! We still need to process retrospective bookings/timesheets below.
+      } else {
+        // 1. Handle staff reassignment
+        if (staffReassigned && oldStaffId && newStaffId) {
+          const oldStaff = staff.find(s => s.id === oldStaffId);
+          const newStaff = staff.find(s => s.id === newStaffId);
 
-      // 1. Handle staff reassignment
-      if (staffReassigned && oldStaffId && newStaffId) {
-        const oldStaff = staff.find(s => s.id === oldStaffId);
-        const newStaff = staff.find(s => s.id === newStaffId);
-
-        if (oldStaff?.email) {
-          supabase.functions.invoke('critical-change-notifier', {
-            body: {
-              change_type: 'shift_reassigned',
-              staff_email: oldStaff.email,
-              staff_name: `${oldStaff.first_name} ${oldStaff.last_name}`,
-              client_name: client?.name || 'Unknown Client',
-              shift_date: originalShift.date,
-              shift_time: `${originalShift.start_time} - ${originalShift.end_time}`,
-              reason: 'Admin updated who actually worked this shift'
-            }
-          }).catch(console.error);
+          if (oldStaff?.email) {
+            supabase.functions.invoke('critical-change-notifier', {
+              body: {
+                change_type: 'shift_reassigned',
+                staff_email: oldStaff.email,
+                staff_name: `${oldStaff.first_name} ${oldStaff.last_name}`,
+                client_name: client?.name || 'Unknown Client',
+                shift_date: originalShift.date,
+                shift_time: `${originalShift.start_time} - ${originalShift.end_time}`,
+                reason: 'Admin updated who actually worked this shift'
+              }
+            }).catch(console.error);
+          }
+          if (newStaff?.email) {
+            NotificationService.notifyShiftConfirmedToStaff({ staff: newStaff, shift: updated, client, agency: agencies.find(a => a.id === updated.agency_id) }).catch(console.error);
+          }
+          toast.info('Reassignment emails sent to staff.');
         }
-        if (newStaff?.email) {
-          NotificationService.notifyShiftConfirmedToStaff({ staff: newStaff, shift: updated, client, agency: agencies.find(a => a.id === updated.agency_id) }).catch(console.error);
-        }
-        toast.info('Reassignment emails sent to staff.');
       }
 
       // ✅ ENHANCED: Ensure booking AND timesheet exists for retrospective assignment
@@ -575,8 +574,8 @@ export default function Shifts() {
         }
       }
 
-      // 2. Handle modification of a confirmed shift
-      else if (originalShift.status === 'confirmed' && staffMember?.email) {
+      // 2. Handle modification of a confirmed shift (only if NOT retrospective)
+      else if (!isRetrospective && originalShift.status === 'confirmed' && staffMember?.email) {
         const changes = [];
         if (originalShift.date !== updated.date) {
           changes.push({ field: 'Date', old: originalShift.date, new: updated.date });
@@ -608,8 +607,8 @@ export default function Shifts() {
         }
       }
 
-      // 3. Handle shift cancellation
-      if (updated.status === 'cancelled' && originalShift.status !== 'cancelled') {
+      // 3. Handle shift cancellation (only if NOT retrospective)
+      if (!isRetrospective && updated.status === 'cancelled' && originalShift.status !== 'cancelled') {
         const reason = updated.cancellation_reason || 'No reason provided';
         toast.info(`Shift cancelled. Notifying parties...`);
 
@@ -637,7 +636,7 @@ export default function Shifts() {
         console.log(`🔔 [Unassignment] Staff removed from shift: ${unassignedStaff?.first_name} ${unassignedStaff?.last_name}`);
 
         // Send multi-channel unassignment notification
-        if (unassignedStaff?.email) {
+        if (!isRetrospective && unassignedStaff?.email) {
           supabase.functions.invoke('critical-change-notifier', {
             body: {
               change_type: 'shift_reassigned', // Reuse existing template

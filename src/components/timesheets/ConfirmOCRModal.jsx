@@ -91,7 +91,14 @@ export default function ConfirmOCRModal({
           .map(r => r.date)
           .filter(Boolean)
           .map(d => {
-            // Attempt to parse various date formats (DD/MM/YY is common)
+            // ✅ Fix: First check if it's already YYYY-MM-DD (ChatGPT default format)
+            if (d.includes('-') && d.split('-')[0].length === 4) {
+              try {
+                return parseISO(d);
+              } catch (e) { }
+            }
+
+            // Attempt to parse various UI/written date formats (DD/MM/YY is common UK format)
             try {
               const parts = d.split(/[/.-]/);
               if (parts.length === 3) {
@@ -126,7 +133,7 @@ export default function ConfirmOCRModal({
 
               // Select if draft or pending and data differs (conflict) OR is empty
               const dbHours = parseFloat(match.total_hours || 0);
-              const ocrHours = parseFloat(row.hours || 0);
+              const ocrHours = parseFloat(row.total_hours || row.hours || 0);
 
               if (dbHours === 0 || Math.abs(dbHours - ocrHours) > 0.1) {
                 newSelected.add(idx);
@@ -255,7 +262,7 @@ export default function ConfirmOCRModal({
       if (field === 'date') return activeRow.date;
       if (field === 'time') return `${activeRow.start_time || '??:??'} - ${activeRow.end_time || '??:??'}`;
       if (field === 'break') return `${activeRow.break_minutes || 0} minutes`;
-      if (field === 'hours') return `${activeRow.hours || 0}h`;
+      if (field === 'hours') return `${activeRow.total_hours || activeRow.hours || 0}h`;
     }
     // Fallback to global extracted data
     if (field === 'date') return extractedData.date;
@@ -267,16 +274,13 @@ export default function ConfirmOCRModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      // 🔒 PREVENT ACCIDENTAL CLOSURE
-      if (!open) {
-        // Handled by buttons
+      // Allow standard closure via clicking outside or pressing Escape
+      if (!open && onClose) {
+        onClose();
       }
     }}>
       <DialogContent
         className="max-w-2xl max-h-[90vh] overflow-y-auto"
-        onInteractOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
-        hideCloseButton={true}
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
@@ -354,7 +358,7 @@ export default function ConfirmOCRModal({
 
                     if (match) {
                       const dbHours = parseFloat(match.total_hours || 0);
-                      const ocrHours = parseFloat(row.hours || 0);
+                      const ocrHours = parseFloat(row.total_hours || row.hours || 0);
 
                       if (dbHours > 0 && Math.abs(dbHours - ocrHours) < 0.1) {
                         statusColor = 'bg-green-100 text-green-700';
@@ -369,21 +373,26 @@ export default function ConfirmOCRModal({
                       }
                     }
 
+                    // ✅ NEW LOGIC: Only allow selection if there is a matching shift mapped in the database.
+                    // This prevents "New Date" shifts from overwriting the primary Timesheet ID during batch saves.
+                    const canSelect = !!match && !isUpToDate;
+
                     return (
                       <div
                         key={idx}
-                        onClick={() => !isUpToDate && toggleRowSelection(idx)}
-                        className={`p-4 rounded-lg border-2 transition-all cursor-pointer hover:shadow-sm active:scale-[0.99] ${isSelected
-                          ? 'bg-white border-blue-500 ring-1 ring-blue-500 shadow-sm'
-                          : isUpToDate
-                            ? 'bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed'
-                            : 'bg-white border-gray-200 hover:border-blue-200'
+                        onClick={() => canSelect && toggleRowSelection(idx)}
+                        className={`p-4 rounded-lg border-2 transition-all ${canSelect ? 'cursor-pointer hover:shadow-sm active:scale-[0.99]' : 'cursor-not-allowed opacity-60'
+                          } ${isSelected
+                            ? 'bg-white border-blue-500 ring-1 ring-blue-500 shadow-sm'
+                            : !canSelect
+                              ? 'bg-gray-50 border-gray-100'
+                              : 'bg-white border-gray-200 hover:border-blue-200'
                           }`}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3">
-                            <div className={`mt-1 flex items-center justify-center w-5 h-5 rounded border-2 transition-colors ${isUpToDate
-                              ? 'bg-green-500 border-green-500'
+                            <div className={`mt-1 flex items-center justify-center w-5 h-5 rounded border-2 transition-colors ${!canSelect
+                              ? 'bg-gray-200 border-gray-300'
                               : isSelected
                                 ? 'bg-blue-600 border-blue-600'
                                 : 'border-gray-300'
@@ -411,7 +420,7 @@ export default function ConfirmOCRModal({
                           </div>
                           <div className="text-right">
                             <span className="font-bold text-base text-gray-900 leading-none">
-                              {row.hours}h
+                              {row.total_hours || row.hours}h
                             </span>
                           </div>
                         </div>
@@ -497,54 +506,85 @@ export default function ConfirmOCRModal({
           </p>
         </div>
 
+        {/* NEW: Aggressive Missing Signature Warning */}
+        {(!extractedData?.staff_signature || (!extractedData?.supervisor_signature && !extractedData?.client_signature)) && (
+          <div className="mt-4 mb-2 p-4 bg-red-50 rounded-lg border-2 border-red-500 animate-pulse">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-6 h-6 text-red-600 mt-1 flex-shrink-0" />
+              <div>
+                <h3 className="text-lg font-bold text-red-900">Missing Signature(s) Detected</h3>
+                <p className="text-sm text-red-800 mt-1">
+                  The AI could not detect all required signatures on this document.
+                </p>
+                <ul className="text-sm text-red-700 mt-2 list-disc list-inside font-semibold">
+                  {!extractedData?.staff_signature && <li>Staff Signature missing</li>}
+                  {(!extractedData?.supervisor_signature && !extractedData?.client_signature) && <li>Supervisor Signature missing</li>}
+                </ul>
+                <p className="text-sm text-red-900 mt-3 font-medium">
+                  👉 <span className="underline cursor-pointer" onClick={onReUpload}>Please go back and re-upload</span> a clearer image, or submit it As-Is to strictly force an Admin Review.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <DialogFooter className="sticky bottom-0 bg-white border-t pt-4 mt-6 flex flex-col gap-3">
           {/* Confirm Button - PRIMARY CTA */}
           <Button
             type="button"
             onClick={handleConfirmWrapper}
             disabled={confirming || rejecting || (hasMultipleRows && selectedIndices.size === 0)}
-            className={`w-full h-14 text-lg font-bold shadow-xl transition-all duration-300 active:scale-95 ${(hasMultipleRows && selectedIndices.size === 0)
+            className={`w-full h-12 text-base font-bold shadow-md transition-all duration-300 active:scale-95 ${(hasMultipleRows && selectedIndices.size === 0)
               ? 'bg-gray-400 cursor-not-allowed text-white hover:bg-gray-400'
-              : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'
+              : extractedData?.requires_manual_review
+                ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-100'
+                : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'
               }`}
           >
             {confirming ? (
-              <Loader2 className="w-6 h-6 animate-spin mr-3" />
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
             ) : (
-              <CheckCircle className="w-6 h-6 mr-3" />
+              extractedData?.requires_manual_review ? <AlertCircle className="w-5 h-5 mr-2" /> : <CheckCircle className="w-5 h-5 mr-2" />
             )}
-            {confirming ? 'Processing...' : (hasMultipleRows ? `Approve ${selectedIndices.size} Selected Shift${selectedIndices.size !== 1 ? 's' : ''}` : `Approve & Submit Timesheet`)}
+
+            {confirming ? 'Processing...' : (
+              hasMultipleRows
+                ? `Submit ${selectedIndices.size} Selected Shift${selectedIndices.size !== 1 ? 's' : ''}`
+                : (extractedData?.requires_manual_review ? `Submit for Admin Review` : `Approve & Submit Timesheet`)
+            )}
           </Button>
 
           {/* Secondary Actions Row */}
-          <div className="flex flex-col sm:flex-row gap-3 w-full">
+          <div className={`flex flex-col sm:flex-row gap-3 w-full ${extractedData?.requires_manual_review ? 'justify-center' : ''}`}>
             <Button
               type="button"
               variant="outline"
               onClick={onReUpload}
               disabled={confirming || rejecting}
-              className="flex-1 h-auto py-3 text-gray-700 border-gray-300 hover:bg-gray-50 font-medium shadow-sm transition-all flex flex-col items-center justify-center gap-1"
+              className={`${extractedData?.requires_manual_review ? 'w-full' : 'flex-1'} h-auto py-2.5 text-gray-700 border-gray-300 hover:bg-gray-50 font-medium shadow-sm transition-all flex flex-col items-center justify-center gap-0.5`}
             >
-              <div className="flex items-center">
-                <Camera className="w-4 h-4 mr-2 text-gray-500" />
+              <div className="flex items-center text-sm">
+                <Camera className="w-4 h-4 mr-1.5 text-gray-500" />
                 <span>Retake Photo</span>
               </div>
-              <span className="text-[10px] text-gray-500 font-normal">If image was blurry/cut off</span>
+              <span className="text-[10px] text-gray-500 font-normal">If blurry/cut off/missing data</span>
             </Button>
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onReject(staffNote)}
-              disabled={confirming || rejecting}
-              className="flex-1 h-auto py-3 text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200 font-medium shadow-sm transition-all flex flex-col items-center justify-center gap-1"
-            >
-              <div className="flex items-center">
-                <AlertCircle className="w-4 h-4 mr-2" />
-                <span>Submit As-Is</span>
-              </div>
-              <span className="text-[10px] text-amber-600/80 font-normal">Force admin manual review</span>
-            </Button>
+            {!extractedData?.requires_manual_review && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onReject(staffNote)}
+                disabled={confirming || rejecting}
+                className="flex-1 h-auto py-2.5 text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200 font-medium shadow-sm transition-all flex flex-col items-center justify-center gap-0.5"
+              >
+                <div className="flex items-center text-sm">
+                  <AlertCircle className="w-4 h-4 mr-1.5" />
+                  <span>Submit As-Is</span>
+                </div>
+                <span className="text-[10px] text-amber-600/80 font-normal">Force admin manual review</span>
+              </Button>
+            )}
           </div>
         </DialogFooter>
       </DialogContent>
