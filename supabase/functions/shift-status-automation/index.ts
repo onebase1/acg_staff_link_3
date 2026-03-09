@@ -488,6 +488,23 @@ serve(async (req) => {
                         if (uniqueExcluded.length >= 3 || hoursUntilStart < 4) {
                             // FALLBACK TO MARKETPLACE: Too many failures or too close to start
                             console.log(`🛒 [Shift Automation] Shift ${shift.id.substring(0, 8)} - Fallback to Marketplace`);
+                            // 📉 NEW: Log penalty for failure to confirm
+                            console.log(`📉 [Shift Automation] Logging penalty for ${shift.staff?.first_name} (Failure to Confirm)`);
+                            await supabase
+                                .from('score_history')
+                                .insert({
+                                    staff_id: shift.assigned_staff_id,
+                                    agency_id: shift.agency_id,
+                                    change_amount: -5,
+                                    change_reason: 'Failed to confirm shift by deadline',
+                                    related_shift_id: shift.id
+                                });
+                            
+                            await supabase
+                                .from('staff')
+                                .update({ last_incident_date: now.toISOString() })
+                                .eq('id', shift.assigned_staff_id);
+
                             const { error: marketplaceError } = await supabase
                                 .from("shifts")
                                 .update({
@@ -547,12 +564,31 @@ serve(async (req) => {
                                 cleanExclusions.push(shift.assigned_staff_id);
                             }
 
+                            // 📉 NEW: Log penalty for failure to confirm (before re-assignment)
+                            console.log(`📉 [Shift Automation] Logging penalty for ${shift.staff?.first_name} (Failure to Confirm)`);
+                            await supabase
+                                .from('score_history')
+                                .insert({
+                                    staff_id: shift.assigned_staff_id,
+                                    agency_id: shift.agency_id,
+                                    change_amount: -5,
+                                    change_reason: 'Failed to confirm shift by deadline',
+                                    related_shift_id: shift.id
+                                });
+                            
+                            await supabase
+                                .from('staff')
+                                .update({ last_incident_date: now.toISOString() })
+                                .eq('id', shift.assigned_staff_id);
+
                             const { data: reassignResult, error: reassignError } = await supabase
                                 .rpc('auto_assign_shift', { 
                                     p_shift_id: shift.id,
                                     p_agency_id: shift.agency_id,
                                     exclude_staff_ids: cleanExclusions
                                 });
+                            
+                            // Re-fetch the staff details for log clarity if possible, but shift.staff is already loaded in loop
 
                             const rResult = (reassignResult as any)?.[0];
                             const statusChanged = rResult?.new_status === 'assigned' || rResult?.new_status === 'confirmed' || rResult?.new_status === 'marketplace';

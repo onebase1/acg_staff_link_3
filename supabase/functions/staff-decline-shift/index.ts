@@ -334,6 +334,29 @@ serve(async (req) => {
         console.log('✅ [Staff Decline] Shift marked as urgent and added to marketplace');
       }
 
+      // 📉 NEW: Log penalty for late cancellation
+      console.log('📉 [Staff Decline] Logging penalty for late cancellation...');
+      const { error: penaltyError } = await supabase
+        .from('score_history')
+        .insert({
+          staff_id,
+          agency_id: shift.agency_id,
+          change_amount: -15,
+          change_reason: `Late cancellation (${hours_until_shift.toFixed(1)}h before shift)`,
+          related_shift_id: shift_id
+        });
+
+      if (penaltyError) {
+        console.error('⚠️ [Staff Decline] Failed to log penalty (non-blocking):', penaltyError);
+      } else {
+        // Update last_incident_date to trigger decay logic
+        await supabase
+          .from('staff')
+          .update({ last_incident_date: new Date().toISOString() })
+          .eq('id', staff_id);
+        console.log('✅ [Staff Decline] Penalty logged and staff record updated');
+      }
+
       // Trigger urgent broadcast (non-blocking)
       try {
         supabase.functions.invoke('auto-urgent-digest-broadcaster', {

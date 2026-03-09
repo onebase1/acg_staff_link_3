@@ -15,7 +15,8 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
   const [currentAgency, setCurrentAgency] = useState(null);
   const [isLoadingAgency, setIsLoadingAgency] = useState(true);
   const [validationErrors, setValidationErrors] = useState({});
-  const [bypassMode, setBypassMode] = useState(false); // ✅ FIXED: Default to disabled - admin confirms by default (staff already agreed verbally)
+  const [assignmentMode, setAssignmentMode] = useState('confirmed'); // 'confirmed' (verbal) or 'assigned' (formal)
+  const bypassMode = assignmentMode === 'confirmed';
 
   const queryClient = useQueryClient();
 
@@ -94,7 +95,7 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
         .from('shifts')
         .select('*')
         .eq('agency_id', currentAgency)
-        .in('status', ['assigned', 'confirmed', 'in_progress']);
+        .in('status', ['open', 'assigned', 'confirmed', 'in_progress']);
 
       if (error) {
         console.error('Error fetching shifts for validation:', error);
@@ -107,10 +108,42 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
     staleTime: 30000 // Cache for 30 seconds
   });
 
-  // VALIDATION FUNCTION: Check staff overlap
-  const validateStaffAvailability = (staffId) => {
-    const staffShifts = allShifts.filter(s => s.assigned_staff_id === staffId);
+  // VALIDATION FUNCTION: Check staff overlap & availability
+  const validateStaffAvailability = (staffMember) => {
+    // 1. Weekly Schedule Check (Address Chadaira Monday scenario)
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const shiftDateObj = new Date(shift.date);
+    const dayOfWeek = dayNames[shiftDateObj.getDay()];
 
+    // Determine shift band (same logic as SQL)
+    let shiftBand = 'day';
+    try {
+      const hour = parseInt(shift.start_time.split(':')[0]);
+      if (hour >= 18 || hour < 6) shiftBand = 'night';
+    } catch (e) {
+      console.warn("Error parsing shift start time for band calculation", e);
+    }
+
+    const availability = staffMember.availability?.[dayOfWeek];
+    let isAvailable = false;
+
+    if (typeof availability === 'boolean') {
+      isAvailable = availability;
+    } else if (Array.isArray(availability)) {
+      isAvailable = availability.includes(shiftBand) || availability.includes('both');
+    } else if (typeof availability === 'string') {
+      isAvailable = ['both', 'true', shiftBand].includes(availability.toLowerCase());
+    }
+
+    if (!isAvailable) {
+      return {
+        valid: false,
+        reason: 'schedule',
+        details: `Marked as "Not Available" for ${dayOfWeek} ${shiftBand}s`
+      };
+    }
+
+    const staffShifts = allShifts.filter(s => s.assigned_staff_id === staffMember.id);
     if (staffShifts.length === 0) return { valid: true };
 
     const shiftStart = new Date(`${shift.date}T${shift.start_time}`);
@@ -122,6 +155,7 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
     }
 
     const overlaps = [];
+    const MIN_REST_HOURS = 11; // Minimum hours of rest required between shifts
 
     for (const existingShift of staffShifts) {
       if (existingShift.id === shift.id) continue; // Skip current shift
@@ -149,43 +183,11 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
           client: existingShift.client_id
         });
       }
-    }
 
-    if (overlaps.length > 0) {
-      return {
-        valid: false,
-        reason: 'overlap',
-        overlaps: overlaps
-      };
-    }
-
-    // ✅ FIX: Check for CONTINUOUS WORK (minimum rest period between shifts)
-    // Industry standard: 11 hours minimum rest between shifts (EU Working Time Directive)
-    // This allows: Mon Night → Tue Night (12h break) ✓
-    // This blocks: Mon Day → Mon Night (0h break) ✗
-
-    const MIN_REST_HOURS = 11; // Minimum hours of rest required between shifts
-
-    for (const existingShift of staffShifts) {
-      if (existingShift.id === shift.id) continue; // Skip current shift
-
-      // Calculate actual end time of existing shift
-      const existingStart = new Date(`${existingShift.date}T${existingShift.start_time}`);
-      let existingEnd = new Date(`${existingShift.date}T${existingShift.end_time}`);
-
-      // Handle overnight shifts (end_time < start_time means next day)
-      if (existingEnd < existingStart) {
-        existingEnd.setDate(existingEnd.getDate() + 1);
-      }
-
-      // Calculate actual start time of new shift
-      const newShiftStart = new Date(`${shift.date}T${shift.start_time}`);
-
-      // Calculate rest period between shifts
+      // Check for CONTINUOUS WORK (minimum rest period between shifts)
       // If existing shift ends BEFORE new shift starts → calculate gap
-      if (existingEnd <= newShiftStart) {
-        const restHours = (newShiftStart.getTime() - existingEnd.getTime()) / (1000 * 60 * 60);
-
+      if (existingEnd <= shiftStart) {
+        const restHours = (shiftStart.getTime() - existingEnd.getTime()) / (1000 * 60 * 60);
         if (restHours < MIN_REST_HOURS) {
           return {
             valid: false,
@@ -201,13 +203,12 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
 
       // If new shift ends BEFORE existing shift starts → calculate gap
       let newShiftEnd = new Date(`${shift.date}T${shift.end_time}`);
-      if (newShiftEnd < newShiftStart) {
+      if (newShiftEnd < shiftStart) {
         newShiftEnd.setDate(newShiftEnd.getDate() + 1);
       }
 
       if (newShiftEnd <= existingStart) {
         const restHours = (existingStart.getTime() - newShiftEnd.getTime()) / (1000 * 60 * 60);
-
         if (restHours < MIN_REST_HOURS) {
           return {
             valid: false,
@@ -222,19 +223,30 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
       }
     }
 
+    if (overlaps.length > 0) {
+      return {
+        valid: false,
+        reason: 'overlap',
+        overlaps: overlaps
+      };
+    }
+
     return { valid: true };
   };
 
   const assignMutation = useMutation({
     mutationFn: async ({ shiftId, staffId, bypassConfirmation = false }) => {
       // VALIDATION GATE
-      const validation = validateStaffAvailability(staffId);
+      const staffMember = staff.find(s => s.id === staffId);
+      const validation = validateStaffAvailability(staffMember);
 
       if (!validation.valid) {
         if (validation.reason === 'overlap') {
-          throw new Error(`Staff already assigned to ${validation.overlaps.length} overlapping shift(s) on ${shift.date}`);
+          throw new Error(`Staff already assigned to ${validation.overlaps.length} overlapping shift(s) on ${shift.date}. Please ensure 11 hours rest between shifts.`);
         } else if (validation.reason === 'insufficient_rest') {
-          throw new Error(`Insufficient rest period: Only ${validation.restHours}h break between shifts (minimum 11h required)`);
+          throw new Error(`Insufficient rest period: Only ${validation.restHours}h break between shifts (minimum 11h required).`);
+        } else if (validation.reason === 'schedule') {
+          throw new Error(`Availability Error: ${validation.details}`);
         }
       }
 
@@ -460,7 +472,20 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
       onClose();
     },
     onError: (error) => {
-      toast.error(`❌ ${error.message}`);
+      console.error('Assignment error:', error);
+      const message = error.message || 'Failed to assign shift';
+
+      // Check for our custom database exception
+      if (message.includes('Must have 11 hours rest')) {
+        toast.error('Validation Error', {
+          description: message,
+          duration: 5000
+        });
+      } else {
+        toast.error('Assignment Failed', {
+          description: message
+        });
+      }
     }
   });
 
@@ -469,7 +494,8 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
     setValidationErrors({});
 
     // Validate before attempting assignment
-    const validation = validateStaffAvailability(staffId);
+    const staffMember = staff.find(s => s.id === staffId);
+    const validation = validateStaffAvailability(staffMember);
 
     if (!validation.valid) {
       setValidationErrors({ [staffId]: validation });
@@ -601,10 +627,19 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
     }
   }, [rankedStaff, shift.id]);
 
-  const filteredStaff = rankedStaff.filter(s =>
-    s.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.last_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredStaff = rankedStaff.filter(s => {
+    const matchesSearch = s.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.last_name?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    // STRICT FILTERING: Hide ineligible staff unless in admin bypass mode
+    // (User requested names should not appear if not eligible)
+    const validation = validateStaffAvailability(s);
+    if (!validation.valid && !bypassMode) return false;
+
+    return true;
+  });
 
   const isLoading = isLoadingAgency || isLoadingStaff || assignMutation.isLoading;
 
@@ -626,32 +661,51 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
         </CardHeader>
 
         <CardContent className="p-6">
-          {/* Assign Only Checkbox */}
-          <div className="mb-4 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg">
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                id="bypass-mode"
-                checked={!bypassMode}
-                onChange={(e) => setBypassMode(!e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-              />
-              <div className="flex-1">
-                <label htmlFor="bypass-mode" className="font-semibold text-amber-900 cursor-pointer">
-                  📋 Assign Only (staff must confirm)
-                </label>
-                <p className="text-sm text-amber-700 mt-1">
-                  {!bypassMode ? (
-                    <>
-                      <strong>Checked:</strong> Shift will be marked as "assigned" - staff must confirm via portal/SMS.
-                      Recommended for accountability and formal confirmation.
-                    </>
-                  ) : (
-                    <>
-                      <strong>Unchecked (default):</strong> Shift will be marked as "confirmed" immediately (no staff confirmation needed).
-                      Use when you've spoken to staff by phone and they've verbally agreed.
-                    </>
-                  )}
+          {/* Assignment Mode Selector: Forced Choice UI */}
+          <div className="mb-6">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">
+              Assignment Strategy
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <div
+                onClick={() => setAssignmentMode('confirmed')}
+                className={`p-3 border-2 rounded-xl cursor-pointer transition-all ${assignmentMode === 'confirmed'
+                    ? 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-100'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                  }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${assignmentMode === 'confirmed' ? 'border-cyan-500' : 'border-gray-300'
+                    }`}>
+                    {assignmentMode === 'confirmed' && <div className="w-2 h-2 rounded-full bg-cyan-500" />}
+                  </div>
+                  <span className={`font-bold text-sm ${assignmentMode === 'confirmed' ? 'text-cyan-900' : 'text-gray-700'}`}>
+                    Verbal Agreement
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-600 leading-tight">
+                  Confirmed immediately. Use if you've already spoken to staff.
+                </p>
+              </div>
+
+              <div
+                onClick={() => setAssignmentMode('assigned')}
+                className={`p-3 border-2 rounded-xl cursor-pointer transition-all ${assignmentMode === 'assigned'
+                    ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-100'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                  }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${assignmentMode === 'assigned' ? 'border-amber-500' : 'border-gray-300'
+                    }`}>
+                    {assignmentMode === 'assigned' && <div className="w-2 h-2 rounded-full bg-amber-500" />}
+                  </div>
+                  <span className={`font-bold text-sm ${assignmentMode === 'assigned' ? 'text-amber-900' : 'text-gray-700'}`}>
+                    Formal Assignment
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-600 leading-tight">
+                  Staff must confirm via portal. Recommended for record-keeping.
                 </p>
               </div>
             </div>
@@ -679,7 +733,7 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {filteredStaff.length > 0 ? (
                 filteredStaff.map(staffMember => {
-                  const validation = validateStaffAvailability(staffMember.id);
+                  const validation = validateStaffAvailability(staffMember);
                   const hasError = validationErrors[staffMember.id];
 
                   return (
@@ -726,10 +780,10 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
                         <Button
                           size="sm"
                           onClick={() => handleAssignClick(staffMember.id)}
-                          className={validation.valid ? "bg-cyan-600 hover:bg-cyan-700" : "bg-gray-400"}
+                          className={validation.valid ? (assignmentMode === 'confirmed' ? "bg-cyan-600 hover:bg-cyan-700" : "bg-amber-600 hover:bg-amber-700") : "bg-gray-400"}
                           disabled={assignMutation.isLoading || !validation.valid}
                         >
-                          {assignMutation.isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : validation.valid ? 'Assign' : 'Unavailable'}
+                          {assignMutation.isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : validation.valid ? (assignmentMode === 'confirmed' ? 'Confirm' : 'Assign') : 'Unavailable'}
                         </Button>
                       </div>
 
@@ -751,6 +805,11 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
                             {validation.reason === 'insufficient_rest' && (
                               <>
                                 <strong>⚠️ INSUFFICIENT REST:</strong> Only {validation.restHours}h break between shifts (minimum 11h required for worker safety)
+                              </>
+                            )}
+                            {validation.reason === 'schedule' && (
+                              <>
+                                <strong>⚠️ AVAILABILITY CONFLICT:</strong> {validation.details}
                               </>
                             )}
                           </AlertDescription>

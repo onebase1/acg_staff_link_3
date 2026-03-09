@@ -69,10 +69,17 @@ export const calculateImprovementTips = (breakdown = {}, currentStreak = 0) => {
   const penalties = breakdown.penalties || 0;
   if (penalties < 0) {
     tips.push({
-      action: 'Stay incident-free for 1 month to reduce penalty impact by 5%',
-      points: Math.abs(Math.round(penalties * 0.05)),
+      action: 'Stay incident-free for 1 month to reduce penalty impact by 25%',
+      points: Math.abs(Math.round(penalties * 0.25)),
       icon: '⏳',
       priority: 4
+    });
+
+    tips.push({
+      action: 'Avoid late cancellations (<24h notice) to prevent further score deductions',
+      points: 15,
+      icon: '🚫',
+      priority: 1 // High priority if they already have penalties
     });
   }
 

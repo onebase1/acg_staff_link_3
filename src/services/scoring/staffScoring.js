@@ -93,10 +93,25 @@ export const calculateStaffScore = async (staffId, reason = 'Manual Update') => 
         // if (isVerified) { score += 5; breakdown.verification = 5; }
 
         // Deductions
-        // No-Show: -30 points
+        // 1. No-Show: -30 points
         let penaltyPoints = (noShows || 0) * 30;
 
-        // === TIME DECAY FOR PENALTIES ===
+        // 2. 🆕 Historical Penalties (e.g., Late Cancellations)
+        // We fetch entries where old_score is null (indicating a source penalty, not a result log)
+        const { data: penalties } = await supabase
+            .from('score_history')
+            .select('change_amount')
+            .eq('staff_id', staffId)
+            .lt('change_amount', 0)
+            .is('old_score', null);
+
+        if (penalties?.length) {
+            const historicalTotal = Math.abs(penalties.reduce((acc, curr) => acc + (curr.change_amount || 0), 0));
+            penaltyPoints += historicalTotal;
+            console.log(`📉 [Scoring] Added ${historicalTotal} in historical penalties. Total penalty: ${penaltyPoints}`);
+        }
+
+        // === TIME DECAY FOR PENALTY IMPACT ===
         // Reduce penalty impact based on time since last incident
         let penaltyDecay = 0;
         if (staff.last_incident_date && penaltyPoints > 0) {
@@ -107,7 +122,8 @@ export const calculateStaffScore = async (staffId, reason = 'Manual Update') => 
             let decayMultiplier = 1;
             if (monthsSinceIncident >= 12) decayMultiplier = 0.25; // 75% reduction after 1 year
             else if (monthsSinceIncident >= 6) decayMultiplier = 0.5; // 50% reduction after 6 months
-            else if (monthsSinceIncident >= 1) decayMultiplier = 1 - (monthsSinceIncident * 0.05); // 5% per month
+            else if (monthsSinceIncident >= 1) decayMultiplier = 0.75; // 25% reduction after 1 month
+            // else stay at 1.0 (full penalty for first month)
 
             const originalPenalty = penaltyPoints;
             penaltyPoints = Math.round(penaltyPoints * decayMultiplier);

@@ -144,8 +144,46 @@ serve(async (req) => {
             throw pastShiftsError;
         }
 
+        console.log(`📊 Found ${allStaff.length} potentially eligible staff, checking for conflicts...`);
+
+        // ✅ NEW: Filter out staff with shift conflicts or insufficient rest (11h rule)
+        const staffAvailabilityResults = await Promise.all(allStaff.map(async (s) => {
+            const { data: conflict, error: conflictError } = await supabase
+                .rpc('check_staff_shift_conflict', {
+                    p_staff_id: s.id,
+                    p_shift_id: shift.id,
+                    p_date: shift.date,
+                    p_start_time: shift.start_time,
+                    p_end_time: shift.end_time
+                });
+            
+            if (conflictError) {
+                console.error(`⚠️ Error checking conflict for staff ${s.id}:`, conflictError);
+                return { staff: s, hasConflict: false }; // Assume no conflict on error to avoid blocking
+            }
+
+            return { staff: s, hasConflict: !!conflict };
+        }));
+
+        const nonConflictingStaff = staffAvailabilityResults
+            .filter(res => !res.hasConflict)
+            .map(res => res.staff);
+
+        console.log(`✅ ${nonConflictingStaff.length}/${allStaff.length} staff cleared conflict check`);
+
+        if (nonConflictingStaff.length === 0) {
+            return new Response(
+                JSON.stringify({
+                    success: true,
+                    matches: [],
+                    message: 'No staff available (all have shift conflicts or insufficient rest)'
+                }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+        }
+
         // Score each staff member
-        const scoredStaff = await Promise.all(allStaff.map(async (staffMember) => {
+        const scoredStaff = await Promise.all(nonConflictingStaff.map(async (staffMember) => {
             let score = 0;
             const scoreBreakdown = {};
             const explanations = [];
@@ -157,41 +195,23 @@ serve(async (req) => {
             const noShowShifts = staffShifts.filter(s => s.status === 'no_show');
 
             // 1. RELIABILITY SCORE (30 points max)
-            let reliabilityScore = 30;
-
-            // Never late (check if shift_started_at is on time)
-            const lateShifts = completedShifts.filter(s => {
-                if (!s.shift_started_at) return false;
-                const scheduled = new Date(`${s.date}T${s.start_time}`);
-                const actual = new Date(s.shift_started_at);
-                return actual > new Date(scheduled.getTime() + 15 * 60 * 1000); // 15 mins late
-            });
-
-            if (lateShifts.length === 0 && completedShifts.length > 0) {
-                explanations.push('✅ Perfect punctuality');
-            } else if (lateShifts.length > 0) {
-                reliabilityScore -= 10;
-                explanations.push(`⚠️ Late ${lateShifts.length} time(s)`);
-            }
-
-            // Never cancelled
-            if (cancelledShifts.length === 0 && completedShifts.length > 0) {
-                explanations.push('✅ Never cancelled');
-            } else if (cancelledShifts.length > 0) {
-                reliabilityScore -= Math.min(10, cancelledShifts.length * 5);
-                explanations.push(`⚠️ Cancelled ${cancelledShifts.length} shift(s)`);
-            }
-
-            // No no-shows
-            if (noShowShifts.length === 0) {
-                explanations.push('✅ No no-shows');
+            // ✅ Use the authoritative reliability_score from the database
+            // Database score is 0-100, we scale it to our 30pt weight
+            const dbReliability = staffMember.reliability_score || 0;
+            const scaledReliability = (dbReliability / 100) * 30;
+            
+            score += scaledReliability;
+            scoreBreakdown.reliability = Math.round(scaledReliability * 10) / 10;
+            
+            if (dbReliability >= 95) {
+                explanations.push('🏆 Elite reliability (95%+)');
+            } else if (dbReliability >= 80) {
+                explanations.push('✅ Good reliability history');
+            } else if (dbReliability > 50) {
+                explanations.push('⚠️ Moderate reliability');
             } else {
-                reliabilityScore -= 10;
-                explanations.push(`❌ ${noShowShifts.length} no-show(s)`);
+                explanations.push('❌ Low reliability score');
             }
-
-            score += Math.max(0, reliabilityScore);
-            scoreBreakdown.reliability = Math.max(0, reliabilityScore);
 
             // 2. PROXIMITY SCORE (20 points max)
             let proximityScore = 0;

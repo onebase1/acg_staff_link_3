@@ -36,6 +36,7 @@ import { Textarea } from "@/components/ui/textarea";
 import ShiftRateDisplay from "../components/shifts/ShiftRateDisplay";
 import { Label } from "@/components/ui/label";
 import ShiftCompletionModal from "../components/shifts/ShiftCompletionModal";
+import ShiftAssignmentModal from "../components/shifts/ShiftAssignmentModal";
 import { ChannelSelectorModal } from "../components/shifts/ChannelSelectorModal";
 
 /**
@@ -2798,87 +2799,10 @@ export default function Shifts() {
 
       {
         assigningShift && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <CardHeader className="border-b sticky top-0 bg-white z-10">
-                <CardTitle>Confirm Staff for Shift</CardTitle>
-                <p className="text-sm text-gray-600 mt-1">
-                  {format(new Date(assigningShift.date), 'EEEE, MMMM d, yyyy')} • {assigningShift.start_time} - {assigningShift.end_time}
-                </p>
-              </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      id="admin-bypass"
-                      checked={!adminBypassMode}
-                      onChange={(e) => setAdminBypassMode(!e.target.checked)}
-                      className="mt-1 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                    />
-                    <div className="flex-1">
-                      <label htmlFor="admin-bypass" className="font-semibold text-amber-900 cursor-pointer">
-                        📋 Assign Only (staff must confirm)
-                      </label>
-                      <p className="text-sm text-amber-700 mt-1">
-                        {!adminBypassMode ? (
-                          <>
-                            <strong>Checked:</strong> Shift will be marked as "assigned" - staff must confirm via portal/SMS.
-                            Recommended for accountability and formal confirmation.
-                          </>
-                        ) : (
-                          <>
-                            <strong>Unchecked (default):</strong> Shift will be marked as "confirmed" immediately (no staff confirmation needed).
-                            Use when you've spoken to staff by phone and they've verbally agreed.
-                          </>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  {staff
-                    .filter(s => s.status === 'active' && s.role === assigningShift.role_required)
-                    .map(staffMember => (
-                      <div
-                        key={staffMember.id}
-                        onClick={() => handleAssignStaff(staffMember.id)}
-                        className="p-4 border-2 border-gray-200 rounded-lg hover:border-cyan-500 hover:bg-cyan-50 cursor-pointer transition-all"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-semibold text-gray-900">
-                              {staffMember.first_name} {staffMember.last_name}
-                            </p>
-                            <p className="text-sm text-gray-600 capitalize">
-                              {staffMember.role?.replace('_', ' ')}
-                            </p>
-                          </div>
-                          <Badge className="bg-green-100 text-green-800">
-                            Available
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-
-                <div className="flex gap-3 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setAssigningShift(null);
-                      setAdminBypassMode(false);
-                    }}
-                    className="flex-1"
-                    disabled={assignStaffMutation.isPending}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <ShiftAssignmentModal
+            shift={assigningShift}
+            onClose={() => setAssigningShift(null)}
+          />
         )
       }
 
@@ -2950,7 +2874,7 @@ export default function Shifts() {
                               variant="outline"
                               onClick={() => {
                                 setEditingShift(null);
-                                setAssigningShift(editingShift.id);
+                                setAssigningShift(editingShift);
                               }}
                               className="ml-2"
                             >
