@@ -8,7 +8,7 @@ import {
   UserCog, FileText, Receipt, TrendingUp, Clock, CalendarCheck, Building2, Shield,
   UsersRound, LogOut, HelpCircle, UserPlus, Menu, X, Bell, ChevronDown, ChevronRight, Upload,
   CheckSquare, Rocket, DollarSign, Trash2, Mail, Shuffle, MessageCircle, CheckCircle, BookOpen,
-  Phone, GitBranch, Trophy, Activity, Sparkles, AlertTriangle // ✅ Added AlertTriangle
+  MessageSquare, Phone, GitBranch, Trophy, Activity, Sparkles, AlertTriangle // ✅ Added AlertTriangle
 } from "lucide-react";
 import { useAppVersion } from "@/hooks/useAppVersion";
 import { supabaseAuth } from "@/api/supabaseAuth";
@@ -82,6 +82,7 @@ const navigationStructure = [
       { title: "GPS Accuracy Monitor", url: createPageUrl("GPSAccuracyMonitoring"), icon: MapPin, adminOnly: true },
       { title: "Bulk Data Import", url: createPageUrl("BulkDataImport"), icon: Upload, adminOnly: true },
       { title: "WhatsApp Bot Setup", url: createPageUrl("WhatsAppSetup"), icon: MessageCircle, adminOnly: true },
+      { title: "Kylie FAQ Manager", url: createPageUrl("KylieFAQManager"), icon: MessageSquare, adminOnly: true },
     ]
   }
 ];

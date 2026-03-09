@@ -44,6 +44,7 @@ import InvoiceDetail from "./InvoiceDetail";
 import StaffProfile from "./StaffProfile";
 
 import WhatsAppAgentDemo from "./WhatsAppAgentDemo";
+import KylieFAQManager from "./KylieFAQManager";
 
 import AdminWorkflows from "./AdminWorkflows";
 
@@ -208,6 +209,7 @@ const PAGES = {
     StaffProfile: StaffProfile,
 
     WhatsAppAgentDemo: WhatsAppAgentDemo,
+    KylieFAQManager: KylieFAQManager,
 
     AdminWorkflows: AdminWorkflows,
 
@@ -407,6 +409,7 @@ function PagesContent() {
                 <Route path="/StaffProfile" element={<StaffProfile />} />
 
                 <Route path="/WhatsAppAgentDemo" element={<WhatsAppAgentDemo />} />
+                <Route path="/KylieFAQManager" element={<KylieFAQManager />} />
 
                 <Route path="/AdminWorkflows" element={<AdminWorkflows />} />
 
