@@ -35,7 +35,7 @@ serve(async (req) => {
     if (agency_id) {
       const { data: agency } = await supabase
         .from("agencies")
-        .select("id, name, contact_email, phone, email_notifications, whatsapp_global_notifications")
+        .select("id, name, contact_email, phone, email_notifications, whatsapp_global_notifications, notify_admins_weekly")
         .eq("id", agency_id)
         .single();
 
@@ -43,7 +43,7 @@ serve(async (req) => {
     } else {
       const { data: agencies } = await supabase
         .from("agencies")
-        .select("id, name, contact_email, phone, email_notifications, whatsapp_global_notifications, country_code")
+        .select("id, name, contact_email, phone, email_notifications, whatsapp_global_notifications, notify_admins_weekly, country_code")
         .eq("email_notifications", true);
 
       agenciesToProcess = agencies || [];
@@ -84,12 +84,21 @@ serve(async (req) => {
         // Get agency branding
         const branding = await getBranding(supabase, agency.id);
 
-        // 👥 Multi-Recipient Fetch: Get all profiles with reporting enabled
-        const { data: subscribers } = await supabase
-          .from("profiles")
-          .select("email, phone, report_email_enabled, report_whatsapp_enabled, full_name")
-          .eq("agency_id", agency.id)
-          .or("report_email_enabled.eq.true,report_whatsapp_enabled.eq.true");
+        // 👥 Multi-Recipient Fetch
+        let subscribers = [];
+        if (agency.notify_admins_weekly) {
+          const { data } = await supabase
+            .from("profiles")
+            .select("email, phone, report_email_enabled, report_whatsapp_enabled, full_name")
+            .eq("agency_id", agency.id)
+            .eq("user_type", "agency_admin")
+            .or("report_email_enabled.eq.true,report_whatsapp_enabled.eq.true");
+          subscribers = data || [];
+        } else {
+          // Legacy/Single Admin: only fetch if explicitly enabled for a specific user but toggle is off?
+          // Actually, if toggle is off, we should probably stick to primary only.
+          // Let's leave subscribers empty and let the fallback handle it.
+        }
 
         // 📨 Prepare Email Recipients
         const emailRecipients: any[] = subscribers?.filter((s: any) => s.report_email_enabled && s.email) || [];

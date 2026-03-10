@@ -98,3 +98,9 @@ test-multi-recipient.mjs
 # SQL setup scripts that may contain credentials
 CRON_SETUP_COPY_PASTE.sql
 **/CRON_SETUP*.sql
+
+# n8n workflow exports with embedded credentials
+updated_workflow.json
+
+# Office temp/lock files
+~$*

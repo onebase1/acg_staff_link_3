@@ -50,15 +50,15 @@ serve(async (req) => {
     if (agency_id) {
       const { data: agency } = await supabase
         .from("agencies")
-        .select("id, name, contact_email, phone, email_notifications, whatsapp_global_notifications")
+        .select("id, name, contact_email, phone, email_notifications, whatsapp_global_notifications, notify_admins_daily")
         .eq("id", agency_id)
         .single();
       if (agency) agenciesToProcess = [agency];
     } else {
       const { data: agencies } = await supabase
         .from("agencies")
-        .select("id, name, contact_email, phone, email_notifications, whatsapp_global_notifications")
-        .eq("whatsapp_global_notifications", true);
+        .select("id, name, contact_email, phone, email_notifications, whatsapp_global_notifications, notify_admins_daily")
+        .or("whatsapp_global_notifications.eq.true,email_notifications.eq.true");
       agenciesToProcess = agencies || [];
     }
     
@@ -135,13 +135,24 @@ async function prepareAgencyDigest(supabase: any, agency: any, targetDate: strin
 
     log(`📊 Report data fetched for ${agency.name}`, { stats: reportData.stats });
 
-    // Get recipients (Agency Admins/Managers with WhatsApp enabled)
+    // Get recipients (Agency Admins/Managers)
     log(`👤 Fetching recipients for ${agency.name}`);
-    const { data: recipients, error: recError } = await supabase
+    
+    let recipientsQuery = supabase
       .from("profiles")
-      .select("full_name, email, phone")
-      .eq("agency_id", agency.id)
-      .eq("report_whatsapp_enabled", true);
+      .select("full_name, email, phone, report_email_enabled, report_whatsapp_enabled")
+      .eq("agency_id", agency.id);
+
+    if (agency.notify_admins_daily) {
+      // Fetch all admins with either email or whatsapp reports enabled
+      recipientsQuery = recipientsQuery.eq("user_type", "agency_admin")
+        .or("report_email_enabled.eq.true,report_whatsapp_enabled.eq.true");
+    } else {
+      // Legacy: only those with WhatsApp reporting explicitly enabled
+      recipientsQuery = recipientsQuery.eq("report_whatsapp_enabled", true);
+    }
+
+    const { data: recipients, error: recError } = await recipientsQuery;
 
     if (recError) {
       log(`❌ Recipient Query Error for ${agency.name}`, recError);
@@ -195,11 +206,6 @@ async function prepareAgencyDigest(supabase: any, agency: any, targetDate: strin
 
     const agencyPayloads: any[] = [];
     for (const recipient of recipients || []) {
-      if (!recipient.phone) {
-        log(`⏭️ Skipping recipient ${recipient.full_name} (No phone)`);
-        continue;
-      }
-
       // Extract first name only for the greeting
       const firstName = (recipient.full_name || "Agency Admin").trim().split(' ')[0];
 
@@ -209,7 +215,11 @@ async function prepareAgencyDigest(supabase: any, agency: any, targetDate: strin
         stats: normalizedStats,
         recipient: {
           phone: recipient.phone,
-          first_name: firstName // Use first name for {{1}}
+          email: recipient.email,
+          first_name: firstName,
+          full_name: recipient.full_name,
+          email_enabled: recipient.report_email_enabled,
+          whatsapp_enabled: recipient.report_whatsapp_enabled
         },
         alert_text: teaserText,
         report_url: shortUrl,

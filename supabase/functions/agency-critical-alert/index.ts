@@ -112,34 +112,61 @@ serve(async (req) => {
       metadata
     );
 
-    // Send Email
+    // 👥 Multi-Recipient Fetch
+    const emailRecipients = new Set<string>();
+    const whatsappRecipients = new Map<string, string>(); // phone -> name
+
+    // Add primary contact if enabled
     if (agency.email_notifications && agency.contact_email) {
-      await sendAlertEmail(
-        supabase,
-        agency,
-        alertContent,
-        shift_id
-      );
+      emailRecipients.add(agency.contact_email.toLowerCase().trim());
+    }
+    if (agency.whatsapp_global_notifications && agency.phone) {
+      whatsappRecipients.set(agency.phone, agency.name);
     }
 
-    // Send WhatsApp
-    if (agency.whatsapp_global_notifications && agency.phone) {
-      await sendAlertWhatsApp(
-        supabase,
-        agency,
-        alertContent,
-        shift_id
-      );
+    // If multi-admin enabled, fetch additional recipients from profiles
+    if (agency.notify_admins_critical) {
+      const { data: subscribers } = await supabase
+        .from("profiles")
+        .select("email, phone, report_email_enabled, report_whatsapp_enabled, full_name")
+        .eq("agency_id", agency.id)
+        .eq("user_type", "agency_admin");
+
+      if (subscribers) {
+        for (const sub of subscribers) {
+          if (sub.report_email_enabled && sub.email) {
+            emailRecipients.add(sub.email.toLowerCase().trim());
+          }
+          if (sub.report_whatsapp_enabled && sub.phone) {
+            whatsappRecipients.set(sub.phone, sub.full_name || sub.email || "Admin");
+          }
+        }
+      }
     }
+
+    const emailRecipList = Array.from(emailRecipients);
+    const whatsappRecipList = Array.from(whatsappRecipients.entries()).map(([phone, name]) => ({ phone, name }));
+
+    // Send Emails
+    const emailPromises = emailRecipList.map(email => 
+      sendAlertEmail(supabase, agency, alertContent, email, shift_id)
+    );
+
+    // Send WhatsApps
+    const whatsappPromises = whatsappRecipList.map(rec => 
+      sendAlertWhatsApp(supabase, agency, alertContent, rec.phone, shift_id)
+    );
+
+    await Promise.allSettled([...emailPromises, ...whatsappPromises]);
 
     return new Response(
       JSON.stringify({
-        message: "Critical alert sent",
+        message: "Critical alerts processed",
         agency: agency.name,
         alertType: alert_type,
-        channels: {
-          email: agency.email_notifications,
-          whatsapp: agency.whatsapp_global_notifications,
+        recipients: {
+          emails: emailRecipList.length,
+          whatsApp: whatsappRecipList.length,
         },
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
@@ -253,6 +280,7 @@ async function sendAlertEmail(
   supabase: any,
   agency: any,
   alertContent: any,
+  recipientEmail: string,
   shiftId?: string
 ) {
   try {
@@ -306,7 +334,7 @@ async function sendAlertEmail(
       },
       body: JSON.stringify({
         from: `${agency.name} <alerts@agilecaremanagement.co.uk>`,
-        to: [agency.contact_email],
+        to: [recipientEmail],
         subject: `🚨 ${alertContent.title} - ${alertContent.subtitle}`,
         html: emailHtml,
       }),
@@ -317,26 +345,26 @@ async function sendAlertEmail(
     if (emailResponse.ok) {
       await logNotificationSent(supabase, {
         agency_id: agency.id,
-        recipient_email: agency.contact_email,
+        recipient_email: recipientEmail,
         recipient_name: agency.name,
         notification_type: "critical_alert",
         channel: "email",
         provider: "resend",
         provider_message_id: emailResult.id,
       });
-      console.log(`✅ Critical alert email sent to ${agency.name}`);
+      console.log(`✅ Critical alert email sent to ${recipientEmail}`);
     } else {
       throw new Error(`Resend API error: ${emailResult.message}`);
     }
   } catch (error) {
     await logNotificationFailed(supabase, {
       agency_id: agency.id,
-      recipient_email: agency.contact_email,
+      recipient_email: recipientEmail,
       notification_type: "critical_alert",
       channel: "email",
       error_message: error.message,
     });
-    console.error(`❌ Critical alert email failed for ${agency.name}:`, error);
+    console.error(`❌ Critical alert email failed for ${recipientEmail}:`, error);
   }
 }
 
@@ -348,14 +376,15 @@ async function sendAlertWhatsApp(
   supabase: any,
   agency: any,
   alertContent: any,
+  recipientPhone: string,
   shiftId?: string
 ) {
   try {
     const { data: rateLimitCheck } = await supabase
-      .rpc("is_rate_limited", { p_phone_number: agency.phone });
+      .rpc("is_rate_limited", { p_phone_number: recipientPhone });
 
     if (rateLimitCheck) {
-      console.log(`⚠️ Rate limited: ${agency.phone}, skipping WhatsApp alert`);
+      console.log(`⚠️ Rate limited: ${recipientPhone}, skipping WhatsApp alert`);
       return;
     }
 
@@ -381,7 +410,7 @@ Questions? Reply to this message.`;
 
     const whatsappResponse = await supabase.functions.invoke("send-whatsapp", {
       body: {
-        to: agency.phone,
+        to: recipientPhone,
         message,
         notification_type: "critical_alert",
         agency_id: agency.id,
@@ -393,18 +422,18 @@ Questions? Reply to this message.`;
     }
 
     await supabase.rpc("increment_rate_limit", {
-      p_phone_number: agency.phone,
+      p_phone_number: recipientPhone,
     });
 
-    console.log(`✅ Critical alert WhatsApp sent to ${agency.name}`);
+    console.log(`✅ Critical alert WhatsApp sent to ${recipientPhone}`);
   } catch (error) {
     await logNotificationFailed(supabase, {
       agency_id: agency.id,
-      recipient_phone: agency.phone,
+      recipient_phone: recipientPhone,
       notification_type: "critical_alert",
       channel: "whatsapp",
       error_message: error.message,
     });
-    console.error(`❌ Critical alert WhatsApp failed for ${agency.name}:`, error);
+    console.error(`❌ Critical alert WhatsApp failed for ${recipientPhone}:`, error);
   }
 }
