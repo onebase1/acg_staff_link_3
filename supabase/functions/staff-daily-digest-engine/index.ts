@@ -117,12 +117,13 @@ serve(async (req) => {
                     // Sort shifts by start time
                     shiftsWithClients.sort((a, b) => a.start_time.localeCompare(b.start_time));
 
-                    // Calculate total earnings (accounting for break time)
-                    // Default to 60-minute break if not specified
+                    // Calculate total earnings (accounting for break time and 10-hour rule)
                     const totalEarnings = shiftsWithClients.reduce((sum, s) => {
-                        const breakHours = (s.break_duration_minutes || 60) / 60;
-                        const billableHours = Math.max(0, s.duration_hours - breakHours);
-                        return sum + (s.pay_rate * billableHours);
+                        const contractedBreakMins = s.client?.contract_terms?.break_duration_minutes ?? s.break_duration_minutes ?? 60;
+                        const breakApplied = (s.duration_hours >= 10) ? contractedBreakMins : 0;
+                        const billableHours = Math.max(0, s.duration_hours - (breakApplied / 60));
+                        s.computed_pay = s.pay_rate * billableHours;
+                        return sum + s.computed_pay;
                     }, 0).toFixed(2);
 
                     // --- EMAIL SENDING ---
@@ -158,7 +159,7 @@ serve(async (req) => {
                                         <p style="margin: 5px 0; font-size: 16px;">📍 ${s.client?.name || 'Client'}</p>
                                         <p style="margin: 5px 0; font-size: 14px; color: #6b7280;">${s.client?.address?.line1}, ${s.client?.address?.postcode}</p>
                                         ${s.client?.contact_person?.phone ? `<p style="margin: 5px 0; font-size: 14px; color: #6b7280;">☎️ Contact: ${s.client.contact_person.phone}</p>` : ''}
-                                        <p style="margin: 5px 0; color: #059669; font-weight: bold;">💰 £${s.pay_rate}/hr = £${(s.pay_rate * s.duration_hours).toFixed(2)}</p>
+                                        <p style="margin: 5px 0; color: #059669; font-weight: bold;">💰 £${s.pay_rate}/hr = £${s.computed_pay.toFixed(2)}</p>
                                     </div>
                                 `).join('');
 
@@ -287,7 +288,7 @@ serve(async (req) => {
                                 });
                             } else {
                                 const shiftListSMS = shiftsWithClients.map(s =>
-                                    `${s.start_time}-${s.end_time} @ ${s.client?.name} (£${(s.pay_rate * s.duration_hours).toFixed(0)})`
+                                    `${s.start_time}-${s.end_time} @ ${s.client?.name} (£${s.computed_pay.toFixed(0)})`
                                 ).join('\n');
 
                                 const smsMessage = `🌅 Good morning ${staffMember.first_name}! Today's shifts:\n\n${shiftListSMS}\n\nTotal: £${totalEarnings}. Have a great day! 🌟`;

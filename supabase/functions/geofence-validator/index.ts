@@ -62,18 +62,49 @@ serve(async (req) => {
 
         const client = clients[0];
 
-        // Check if geofencing is enabled for this client
-        if (client.geofence_enabled === false) {
-            console.log(`⏭️  [Client: ${client.name}] Geofencing disabled`);
+        // 🛡️ [Verified Arrival] Always calculate distance if coordinates are available
+        let distanceMeters = null;
+        let isWithinGeofence = null;
+        const geofenceRadius = client.geofence_radius_meters || 100; // Default 100m
 
-            // Update timesheet if provided (mark as validated by policy)
+        if (client.location_coordinates?.latitude && client.location_coordinates?.longitude) {
+            const toRadians = (degrees: number) => degrees * (Math.PI / 180);
+
+            const lat1 = staff_location.latitude;
+            const lon1 = staff_location.longitude;
+            const lat2 = client.location_coordinates.latitude;
+            const lon2 = client.location_coordinates.longitude;
+
+            const R = 6371000; // Earth's radius in meters
+            const φ1 = toRadians(lat1);
+            const φ2 = toRadians(lat2);
+            const Δφ = toRadians(lat2 - lat1);
+            const Δλ = toRadians(lon2 - lon1);
+
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            distanceMeters = Math.round(R * c);
+            isWithinGeofence = distanceMeters <= geofenceRadius;
+            console.log(`📏 [Distance Check] ${client.name}: ${distanceMeters}m from site (radius: ${geofenceRadius}m)`);
+        }
+
+        // Check if geofencing is enabled for this client (Enforcement Step)
+        if (client.geofence_enabled === false) {
+            console.log(`⏭️  [Client: ${client.name}] Geofencing NOT ENFORCED (Policy Bypass)`);
+
+            // Update timesheet (always save distance if we have it)
             if (timesheet_id) {
                 await supabase
                     .from("timesheets")
                     .update({
-                        geofence_validated: true,
-                        geofence_distance_meters: null,
-                        geofence_violation_reason: 'Geofencing disabled for this client'
+                        geofence_validated: true, // Policy bypass
+                        geofence_distance_meters: distanceMeters,
+                        geofence_violation_reason: distanceMeters !== null 
+                            ? (isWithinGeofence ? 'Verified on-site (enforcement off)' : `Staff was ${distanceMeters}m away (enforcement off)`)
+                            : 'Geofencing disabled - no coordinates'
                     })
                     .eq("id", timesheet_id);
             }
@@ -81,14 +112,18 @@ serve(async (req) => {
             return new Response(JSON.stringify({
                 success: true,
                 validated: true,
+                is_on_site: isWithinGeofence, // New flag for visibility logic
+                distance_meters: distanceMeters,
                 reason: 'geofence_disabled',
-                message: 'Geofencing is disabled for this client'
+                message: 'Geofencing is disabled for this client (Policy Pass)'
             }), {
                 headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
         }
 
-        // Check if client has coordinates
+        // --- ENFORCEMENT LOGIC (Only reached if geofence_enabled is true) ---
+
+        // Check if client has coordinates (if enabled, this is a soft fail)
         if (!client.location_coordinates?.latitude || !client.location_coordinates?.longitude) {
             console.log(`⚠️  [Client: ${client.name}] No GPS coordinates set`);
 
@@ -96,8 +131,8 @@ serve(async (req) => {
                 await supabase
                     .from("timesheets")
                     .update({
-                        geofence_validated: true,
-                        geofence_distance_meters: null,
+                        geofence_validated: true, // Policy pass due to missing client coordinates
+                        geofence_distance_meters: distanceMeters,
                         geofence_violation_reason: 'Client location not configured'
                     })
                     .eq("id", timesheet_id);
@@ -106,6 +141,8 @@ serve(async (req) => {
             return new Response(JSON.stringify({
                 success: true,
                 validated: true,
+                is_on_site: isWithinGeofence,
+                distance_meters: distanceMeters,
                 reason: 'no_client_coordinates',
                 message: 'Client GPS coordinates not configured - validation skipped',
                 warning: 'Please set client coordinates in Client settings'
@@ -114,31 +151,7 @@ serve(async (req) => {
             });
         }
 
-        // Haversine formula for distance calculation
-        const toRadians = (degrees) => degrees * (Math.PI / 180);
-
-        const lat1 = staff_location.latitude;
-        const lon1 = staff_location.longitude;
-        const lat2 = client.location_coordinates.latitude;
-        const lon2 = client.location_coordinates.longitude;
-
-        const R = 6371000; // Earth's radius in meters
-        const φ1 = toRadians(lat1);
-        const φ2 = toRadians(lat2);
-        const Δφ = toRadians(lat2 - lat1);
-        const Δλ = toRadians(lon2 - lon1);
-
-        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                  Math.cos(φ1) * Math.cos(φ2) *
-                  Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        const distanceMeters = Math.round(R * c);
-
-        const geofenceRadius = client.geofence_radius_meters || 100; // Default 100m
-        const isWithinGeofence = distanceMeters <= geofenceRadius;
-
-        console.log(`📏 [Distance Check] ${distanceMeters}m from client (limit: ${geofenceRadius}m) - ${isWithinGeofence ? 'PASS' : 'FAIL'}`);
+        console.log(`🛡️  [Enforcement] geofence_enabled = TRUE. Result: ${isWithinGeofence ? 'PASS' : 'FAIL'}`);
 
         // Update timesheet if provided
         if (timesheet_id) {
@@ -161,6 +174,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({
             success: true,
             validated: isWithinGeofence,
+            is_on_site: isWithinGeofence,
             distance_meters: distanceMeters,
             geofence_radius_meters: geofenceRadius,
             client_name: client.name,

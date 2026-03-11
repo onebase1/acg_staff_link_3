@@ -4,8 +4,8 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { 
-  UserCheck, Search, Calendar, Clock, MapPin, 
+import {
+  UserCheck, Search, Calendar, Clock, MapPin,
   Star, CheckCircle, XCircle, AlertCircle
 } from "lucide-react";
 
@@ -43,13 +43,13 @@ export default function StaffAvailability() {
     queryKey: ['staff', currentAgency],
     queryFn: async () => {
       if (!currentAgency) return [];
-      
+
       const { data, error } = await supabase
         .from('staff')
         .select('*')
         .eq('agency_id', currentAgency)
         .eq('status', 'active');
-      
+
       if (error) {
         console.error('❌ Error fetching staff:', error);
         return [];
@@ -64,7 +64,7 @@ export default function StaffAvailability() {
     queryKey: ['shifts-today', currentAgency],
     queryFn: async () => {
       if (!currentAgency) return [];
-      
+
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('shifts')
@@ -72,7 +72,7 @@ export default function StaffAvailability() {
         .eq('date', today)
         .eq('agency_id', currentAgency)
         .in('status', ['confirmed', 'assigned', 'in_progress']);
-      
+
       if (error) {
         console.error('❌ Error fetching shifts:', error);
         return [];
@@ -87,13 +87,13 @@ export default function StaffAvailability() {
     queryKey: ['compliance', currentAgency],
     queryFn: async () => {
       if (!currentAgency || staff.length === 0) return [];
-      
+
       const agencyStaffIds = staff.map(s => s.id);
       const { data, error } = await supabase
         .from('compliance')
         .select('*')
         .in('staff_id', agencyStaffIds);
-      
+
       if (error) {
         console.error('❌ Error fetching compliance:', error);
         return [];
@@ -109,7 +109,7 @@ export default function StaffAvailability() {
   const getStaffAvailability = (staffMember) => {
     const availability = staffMember.availability || {};
     const dayAvailability = availability[selectedDay] || [];
-    
+
     // Check if working today
     const todayShifts = shifts.filter(s => s.assigned_staff_id === staffMember.id);
     const isWorkingToday = todayShifts.length > 0;
@@ -138,8 +138,8 @@ export default function StaffAvailability() {
       .filter(s => {
         const searchLower = searchTerm.toLowerCase();
         const fullName = `${s.first_name} ${s.last_name}`.toLowerCase();
-        return fullName.includes(searchLower) || 
-               s.role?.toLowerCase().includes(searchLower);
+        return fullName.includes(searchLower) ||
+          s.role?.toLowerCase().includes(searchLower);
       })
       .map(s => ({
         ...s,
@@ -248,11 +248,10 @@ export default function StaffAvailability() {
                 <button
                   key={day}
                   onClick={() => setSelectedDay(day)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                    selectedDay === day
+                  className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${selectedDay === day
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {day.charAt(0).toUpperCase() + day.slice(1)}
                 </button>
@@ -266,7 +265,7 @@ export default function StaffAvailability() {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredStaff.map(staffMember => {
           const info = staffMember.availabilityInfo;
-          
+
           return (
             <Card key={staffMember.id} className="hover:shadow-lg transition-shadow">
               <CardContent className="p-5">
@@ -282,6 +281,11 @@ export default function StaffAvailability() {
                         {staffMember.first_name} {staffMember.last_name}
                       </h3>
                       <p className="text-xs text-gray-600 capitalize">{staffMember.role?.replace('_', ' ')}</p>
+                      {staffMember.availability_updated_at && (
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                          Updated: {new Date(staffMember.availability_updated_at).toLocaleDateString()}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

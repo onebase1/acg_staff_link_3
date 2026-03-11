@@ -238,7 +238,44 @@ async function checkStaffPreferences(
   recipientEmail: string,
   notificationType: string
 ): Promise<PreferenceCheckResult> {
-  
+  // ⛔ GLOBAL KILL-SWITCH: Check staff status first
+  // Inactive or Suspended staff are "offline" from all triggers
+  const { data: staff, error } = await supabase
+    .from('staff')
+    .select('status, opt_out_shift_reminders')
+    .eq('email', recipientEmail)
+    .maybeSingle();
+
+  if (error) {
+    console.error('❌ [Preference Check] Error querying staff:', error);
+    return {
+      allowed: true,
+      reason: 'database_error',
+      preferenceStatus: 'not_set',
+      preferenceChecked: false,
+    };
+  }
+
+  if (!staff) {
+    console.log(`⚠️ [Preference Check] Staff not found for ${recipientEmail} - allowing`);
+    return {
+      allowed: true,
+      preferenceStatus: 'not_set',
+      preferenceChecked: true,
+    };
+  }
+
+  // Block if status is not active/onboarding
+  if (['inactive', 'suspended'].includes(staff.status)) {
+    console.log(`🚫 [Preference Check] BLOCKING communication for ${staff.status} staff: ${recipientEmail}`);
+    return {
+      allowed: false,
+      reason: `staff_is_${staff.status}`,
+      preferenceStatus: 'opted_out',
+      preferenceChecked: true,
+    };
+  }
+
   // For shift reminders, check staff.opt_out_shift_reminders
   const isShiftReminder = [
     'shift_24h_reminder',
@@ -247,31 +284,6 @@ async function checkStaffPreferences(
   ].includes(notificationType);
 
   if (isShiftReminder) {
-    const { data: staff, error } = await supabase
-      .from('staff')
-      .select('opt_out_shift_reminders')
-      .eq('email', recipientEmail)
-      .maybeSingle();
-
-    if (error) {
-      console.error('❌ [Preference Check] Error querying staff:', error);
-      return {
-        allowed: true,
-        reason: 'database_error',
-        preferenceStatus: 'not_set',
-        preferenceChecked: false,
-      };
-    }
-
-    if (!staff) {
-      console.log(`⚠️ [Preference Check] Staff not found for ${recipientEmail} - allowing`);
-      return {
-        allowed: true,
-        preferenceStatus: 'not_set',
-        preferenceChecked: true,
-      };
-    }
-
     if (staff.opt_out_shift_reminders === true) {
       console.log(`⏭️ [Preference Check] Staff ${recipientEmail} opted out of shift reminders`);
       return {

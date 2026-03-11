@@ -92,6 +92,12 @@ serve(async (req) => {
                         continue;
                     }
 
+                    // ⛔ SKIP: If staff is archived/inactive
+                    if (['inactive', 'suspended'].includes(staffMember.status)) {
+                        console.log(`⏭️  [Doc ${doc.id}] Staff ${staffMember.email} is ${staffMember.status}, skipping scanner`);
+                        continue;
+                    }
+
                     // CHECK 1: Document EXPIRED
                     if (daysUntilExpiry < 0) {
                         console.log(`🚨 [Doc ${doc.id}] EXPIRED - ${doc.document_name} for ${staffMember.first_name}`);

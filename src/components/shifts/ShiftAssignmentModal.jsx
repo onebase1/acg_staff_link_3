@@ -12,8 +12,8 @@ import { toast } from "sonner";
 
 export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentAgency, setCurrentAgency] = useState(null);
-  const [isLoadingAgency, setIsLoadingAgency] = useState(true);
+  const [currentAgency, setCurrentAgency] = useState(shift.agency_id || null);
+  const [isLoadingAgency, setIsLoadingAgency] = useState(!!shift.agency_id ? false : true);
   const [validationErrors, setValidationErrors] = useState({});
   const [assignmentMode, setAssignmentMode] = useState('confirmed'); // 'confirmed' (verbal) or 'assigned' (formal)
   const bypassMode = assignmentMode === 'confirmed';
@@ -47,7 +47,7 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
         }
 
         const superAdminEmail = 'g.basera@yahoo.com';
-        if (profile.email === superAdminEmail) {
+        if (profile.email?.toLowerCase() === superAdminEmail.toLowerCase()) {
           setCurrentAgency(shift.agency_id);
         } else {
           setCurrentAgency(profile.agency_id || shift.agency_id);
@@ -68,12 +68,18 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
     queryFn: async () => {
       if (!currentAgency) return [];
 
+      // Handle role matching with tolerance for spaces vs underscores
+      const roleSearch = shift.role_required;
+      const roleAlt = shift.role_required?.includes(' ')
+        ? shift.role_required.replace(/\s+/g, '_')
+        : shift.role_required?.replace(/_/g, ' ');
+
       const { data, error } = await supabase
         .from('staff')
         .select('*, reliability_score, total_shifts_completed, last_incident_date, current_streak')
         .eq('agency_id', currentAgency)
         .eq('status', 'active')
-        .eq('role', shift.role_required);
+        .or(`role.eq."${roleSearch}",role.eq."${roleAlt}"`);
 
       if (error) {
         console.error('Error fetching staff:', error);
@@ -633,11 +639,9 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
 
     if (!matchesSearch) return false;
 
-    // STRICT FILTERING: Hide ineligible staff unless in admin bypass mode
-    // (User requested names should not appear if not eligible)
-    const validation = validateStaffAvailability(s);
-    if (!validation.valid && !bypassMode) return false;
-
+    // We NO LONGER hide staff who fail validation here. 
+    // They will be shown in the list but the "Assign" button will be disabled with a reason.
+    // This provides transparency instead of silent omission.
     return true;
   });
 
@@ -670,8 +674,8 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
               <div
                 onClick={() => setAssignmentMode('confirmed')}
                 className={`p-3 border-2 rounded-xl cursor-pointer transition-all ${assignmentMode === 'confirmed'
-                    ? 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-100'
-                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                  ? 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-100'
+                  : 'border-gray-200 hover:border-gray-300 bg-white'
                   }`}
               >
                 <div className="flex items-center gap-2 mb-1">
@@ -691,8 +695,8 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
               <div
                 onClick={() => setAssignmentMode('assigned')}
                 className={`p-3 border-2 rounded-xl cursor-pointer transition-all ${assignmentMode === 'assigned'
-                    ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-100'
-                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                  ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-100'
+                  : 'border-gray-200 hover:border-gray-300 bg-white'
                   }`}
               >
                 <div className="flex items-center gap-2 mb-1">
@@ -783,7 +787,7 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
                           className={validation.valid ? (assignmentMode === 'confirmed' ? "bg-cyan-600 hover:bg-cyan-700" : "bg-amber-600 hover:bg-amber-700") : "bg-gray-400"}
                           disabled={assignMutation.isLoading || !validation.valid}
                         >
-                          {assignMutation.isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : validation.valid ? (assignmentMode === 'confirmed' ? 'Confirm' : 'Assign') : 'Unavailable'}
+                          {assignMutation.isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : validation.valid ? (assignmentMode === 'confirmed' ? 'Confirm' : 'Assign') : 'Conflict'}
                         </Button>
                       </div>
 

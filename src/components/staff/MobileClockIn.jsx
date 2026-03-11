@@ -379,7 +379,8 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
           additional_data: {
             clock_in_time: new Date().toLocaleTimeString(),
             geofence_validated: validation.validated,
-            distance_meters: validation.distance_meters
+            distance_meters: validation.distance_meters,
+            is_on_site: validation.is_on_site // ✨ Pass explicitly for notification logic
           }
         }
       }).catch(console.error);

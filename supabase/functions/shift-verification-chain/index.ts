@@ -156,6 +156,33 @@ serve(async (req) => {
 
         let emailSubject, emailBody, changeLogDescription;
 
+        /**
+         * 📧 PREMIUM EMAIL CONTAINER
+         */
+        const getEmailContainer = (content: string, headerColor: string, title: string) => {
+            const logoHtml = agency?.logo_url 
+                ? `<img src="${agency.logo_url}" alt="${agency.name}" style="max-width: 140px; margin-bottom: 12px; filter: brightness(0) invert(1);">`
+                : `<h2 style="color: white; margin: 0; font-size: 20px;">${agency?.name || branding.saasName}</h2>`;
+
+            return `
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; background-color: #ffffff; color: #374151; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                    <div style="background-color: ${headerColor}; padding: 32px 20px; text-align: center;">
+                        ${logoHtml}
+                        <h1 style="color: white; margin: 8px 0 0 0; font-size: 22px; font-weight: 700; letter-spacing: -0.025em;">${title}</h1>
+                    </div>
+                    <div style="padding: 32px; line-height: 1.5;">
+                        ${content}
+                        
+                        <div style="margin-top: 40px; border-top: 1px solid #f3f4f6; padding-top: 24px; text-align: center;">
+                            <p style="color: #9ca3af; font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">
+                                Notification from ${agency?.name || branding.saasName} • Powered by ACG StaffLink
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
         // Build email or queue notification based on trigger point
         switch (trigger_point) {
             case 'staff_confirmed_shift':
@@ -208,10 +235,7 @@ serve(async (req) => {
                     });
                 }
 
-                // QUEUE for batched professional email (same as confirmation but maybe different bucket? 
-                // User wants "single professional email detailing confirmed shifts and assigned staff". 
-                // Let's use the same 'shift_confirmation' type but maybe label it appropriately in the engine if needed.
-                // For now, grouping under 'shift_confirmation' is best for "single email")
+                // QUEUE for batched professional email
                 try {
                     console.log(`📥 [Verification Chain] Queuing assignment for ${staffMember.first_name} for client ${client.name}`);
                     const { error: queueError } = await supabase.rpc('queue_notification', {
@@ -254,47 +278,60 @@ serve(async (req) => {
                     });
                 }
 
-                // 🎯 RICHMOND COURT FIX: Only send arrival email if GPS is enabled for the client
-                // This prevents "Staff Has Arrived" emails for paper-only clients where GPS validation is bypassed
-                if (client.geofence_enabled === false) {
-                    console.log(`⏭️ [Verification Chain] Skipping clock-in email for non-GPS client: ${client.name}`);
+                const isVerifiedOnSite = additional_data?.is_on_site === true || additional_data?.geofence_validated === true;
+                const shouldSendArrivalEmail = client.geofence_enabled !== false || isVerifiedOnSite;
+
+                if (!shouldSendArrivalEmail) {
+                    console.log(`⏭️ [Verification Chain] Skipping clock-in email for non-GPS client: ${client.name} (Staff not detected on-site)`);
                     return new Response(JSON.stringify({ 
                         success: true, 
-                        message: 'Skipped - client has GPS disabled',
+                        message: 'Skipped - client has GPS disabled and staff not on-site',
                         skipped: true,
-                        reason: 'geofence_disabled'
+                        reason: 'geofence_disabled_and_not_on_site'
                     }), { 
                         headers: { ...corsHeaders, "Content-Type": "application/json" }
                     });
                 }
 
                 // IMMEDIATE SEND (Clock-in is real-time awareness)
-                emailSubject = `✅ Staff Clocked In: ${staffMember.first_name} ${staffMember.last_name}`;
-                emailBody = `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <div style="background: #22c55e; padding: 30px; text-align: center;">
-                            ${agency?.logo_url ? `<img src="${agency.logo_url}" alt="${agency.name}" style="max-width: 120px; margin-bottom: 15px; filter: brightness(0) invert(1);">` : ''}
-                            <h1 style="color: white; margin: 0;">Staff Has Arrived & Clocked In</h1>
-                        </div>
-                        <div style="padding: 30px; background: #f9fafb;">
-                            <p>Dear ${client.contact_person.name || 'Team'},</p>
-                            <p>This is an automated notification to confirm that <strong>${staffMember.first_name} ${staffMember.last_name}</strong> has arrived on-site and clocked in for their shift.</p>
-                            <div style="background: white; border-left: 4px solid #22c55e; padding: 20px; margin: 20px 0;">
-                                <h3>Clock-In Details</h3>
-                                <p><strong>Clock-In Time:</strong> ${additional_data?.clock_in_time || new Date().toLocaleTimeString()}</p>
-                            </div>
-                            <div style="background: white; border-left: 4px solid #06b6d4; padding: 20px; margin: 20px 0;">
-                                <h3>Shift Details</h3>
-                                <p><strong>Date:</strong> ${shift.date}</p>
-                                <p><strong>Time:</strong> ${shift.start_time} - ${shift.end_time}</p>
-                            </div>
-                            <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">
-                                Reference: SHIFT-${shift.id.substring(0, 8).toUpperCase()}<br>
-                                Powered by ACG StaffLink
-                            </p>
-                        </div>
+                emailSubject = `✅ ${staffMember.first_name} ${staffMember.last_name} Has Arrived Safely`;
+                
+                const arrivalContent = `
+                    <p style="font-size: 16px; color: #4b5563;">Hi ${client.contact_person.name || 'Team'},</p>
+                    <p style="font-size: 16px; color: #4b5563;">This is to confirm that <strong>${staffMember.first_name} ${staffMember.last_name}</strong> has successfully arrived on-site and clocked in for their shift.</p>
+                    
+                    <div style="background-color: #f9fafb; border-radius: 8px; padding: 24px; margin: 24px 0; border: 1px solid #f3f4f6;">
+                        <h3 style="margin: 0 0 16px 0; font-size: 14px; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.05em;">Attendance Details</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Status</td>
+                                <td style="padding: 8px 0; color: #059669; font-weight: 600; text-align: right; font-size: 14px;">✅ ${isVerifiedOnSite ? 'Verified On-Site' : 'Confirmed'}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">GPS Check</td>
+                                <td style="padding: 8px 0; color: #374151; font-weight: 500; text-align: right; font-size: 14px;">${isVerifiedOnSite ? 'Secure Match' : 'Bypassed'}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Activity</td>
+                                <td style="padding: 8px 0; color: #374151; font-weight: 500; text-align: right; font-size: 14px;">Clocked In</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Time</td>
+                                <td style="padding: 8px 0; color: #374151; font-weight: 500; text-align: right; font-size: 14px;">${additional_data?.clock_in_time || new Date().toLocaleTimeString()}</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div style="background-color: #ffffff; border-radius: 8px; padding: 24px; margin: 24px 0; border: 1px solid #f3f4f6;">
+                        <h3 style="margin: 0 0 16px 0; font-size: 14px; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.05em;">Shift Info</h3>
+                        <p style="margin: 4px 0; font-size: 15px;"><strong>Date:</strong> ${shift.date}</p>
+                        <p style="margin: 4px 0; font-size: 15px;"><strong>Scheduled:</strong> ${shift.start_time} - ${shift.end_time}</p>
+                        <p style="margin: 4px 0; font-size: 15px;"><strong>Role:</strong> ${shift.role_required}</p>
+                        <p style="margin: 12px 0 0 0; font-size: 13px; color: #9ca3af;">Ref: SHIFT-${shift.id.substring(0, 8).toUpperCase()}</p>
                     </div>
                 `;
+
+                emailBody = getEmailContainer(arrivalContent, '#22c55e', `${staffMember.first_name} Arrived & Clocked In`);
                 
                 try {
                     await supabase.functions.invoke('send-email', {
@@ -320,18 +357,17 @@ serve(async (req) => {
                     });
                 }
 
-                const eta = additional_data?.eta || 'shortly';
+                const etaValue = additional_data?.eta || 'shortly';
                 
-                // 💾 PERSISTENCE: Save to shifts table for admin visibility & AI
+                // 💾 PERSISTENCE
                 try {
                     const journeyEntry = {
                         state: 'on_my_way',
                         timestamp: new Date().toISOString(),
                         method: 'staff_portal',
-                        notes: `Staff marked themselves as enroute. ETA: ${eta}`
+                        notes: `Staff marked themselves as enroute. ETA: ${etaValue}`
                     };
 
-                    // Get current logs to append
                     const { data: currentShift } = await supabase
                         .from("shifts")
                         .select("shift_journey_log")
@@ -343,42 +379,35 @@ serve(async (req) => {
 
                     await supabase.from("shifts").update({
                         on_my_way_at: new Date().toISOString(),
-                        estimated_arrival_time: eta,
+                        estimated_arrival_time: etaValue,
                         shift_journey_log: newLogs
                     }).eq("id", shift.id);
-
-                    console.log(`💾 [Verification Chain] Persisted 'On My Way' for shift ${shift.id.substring(0, 8)} with ETA: ${eta}`);
                 } catch (updateError) {
                     console.error('❌ [Verification Chain] Failed to persist On My Way data:', updateError);
                 }
 
-                // IMMEDIATE SEND (Departure is real-time awareness)
-                emailSubject = `🏠 Staff Member Enroute: ${staffMember.first_name} ${staffMember.last_name}`;
-                emailBody = `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <div style="background: #3b82f6; padding: 30px; text-align: center;">
-                            ${agency?.logo_url ? `<img src="${agency.logo_url}" alt="${agency.name}" style="max-width: 120px; margin-bottom: 15px; filter: brightness(0) invert(1);">` : ''}
-                            <h1 style="color: white; margin: 0;">Staff Member Enroute</h1>
-                        </div>
-                        <div style="padding: 30px; background: #f9fafb;">
-                            <p>Dear ${client.contact_person.name || 'Team'},</p>
-                            <p>This is to inform you that <strong>${staffMember.first_name} ${staffMember.last_name}</strong> is now on their way to your site for their scheduled shift.</p>
-                            
-                            <div style="background: white; border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0;">
-                                <h3>Shift Details</h3>
-                                <p><strong>Date:</strong> ${shift.date}</p>
-                                <p><strong>Scheduled Start:</strong> ${shift.start_time}</p>
-                                <p><strong>Estimated Arrival:</strong> <span style="color: #3b82f6; font-weight: bold;">${eta}</span></p>
-                                <p><strong>Role:</strong> ${shift.role_required}</p>
-                            </div>
-                            
-                            <p>Reference: SHIFT-${shift.id.substring(0, 8).toUpperCase()}</p>
-                            <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">
-                                Powered by ACG StaffLink
-                            </p>
-                        </div>
+                // IMMEDIATE SEND
+                emailSubject = `🏠 ${staffMember.first_name} ${staffMember.last_name} is Enroute (ETA: ${etaValue})`;
+                
+                const enrouteContent = `
+                    <p style="font-size: 16px; color: #4b5563;">Hi ${client.contact_person.name || 'Team'},</p>
+                    <p style="font-size: 16px; color: #4b5563;">This is to inform you that <strong>${staffMember.first_name} ${staffMember.last_name}</strong> is now on their way to your site for their scheduled shift.</p>
+                    
+                    <div style="background-color: #eff6ff; border-radius: 8px; padding: 24px; margin: 24px 0; border: 1px solid #dbeafe; text-align: center;">
+                        <span style="font-size: 13px; text-transform: uppercase; color: #3b82f6; letter-spacing: 0.05em; font-weight: 600;">Estimated Arrival</span>
+                        <div style="font-size: 32px; font-weight: 800; color: #1e40af; margin: 8px 0;">${etaValue}</div>
+                    </div>
+
+                    <div style="background-color: #ffffff; border-radius: 8px; padding: 24px; margin: 24px 0; border: 1px solid #f3f4f6;">
+                        <h3 style="margin: 0 0 16px 0; font-size: 14px; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.05em;">Assignment details</h3>
+                        <p style="margin: 4px 0; font-size: 15px;"><strong>Date:</strong> ${shift.date}</p>
+                        <p style="margin: 4px 0; font-size: 15px;"><strong>Scheduled:</strong> ${shift.start_time} - ${shift.end_time}</p>
+                        <p style="margin: 4px 0; font-size: 15px;"><strong>Role:</strong> ${shift.role_required}</p>
+                        <p style="margin: 12px 0 0 0; font-size: 13px; color: #9ca3af;">Ref: SHIFT-${shift.id.substring(0, 8).toUpperCase()}</p>
                     </div>
                 `;
+
+                emailBody = getEmailContainer(enrouteContent, '#3b82f6', `${staffMember.first_name} is Enroute`);
                 
                 try {
                     await supabase.functions.invoke('send-email', {
@@ -393,7 +422,7 @@ serve(async (req) => {
                     console.error('❌ [Verification Chain] On My Way email failed:', emailError);
                 }
 
-                changeLogDescription = `Staff 'On My Way' (ETA: ${eta}) notification sent to ${client.name}`;
+                changeLogDescription = `Staff 'On My Way' (ETA: ${etaValue}) notification sent to ${client.name}`;
                 break;
 
             default:

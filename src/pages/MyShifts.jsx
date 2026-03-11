@@ -1124,7 +1124,7 @@ export default function MyShifts() {
                         </p>
                         <p className="text-sm font-medium text-blue-700">
                           {isPastShift && actualHours
-                            ? `${actualHours}h worked`
+                            ? `${actualHours}h shift`
                             : `${scheduledHours}h scheduled`}
                         </p>
                       </div>

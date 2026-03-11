@@ -65,8 +65,8 @@ export default function MyAvailability() {
           return;
         }
 
-        const staffProfile = allStaff.find(s => 
-          s.user_id === authUser.id || 
+        const staffProfile = allStaff.find(s =>
+          s.user_id === authUser.id ||
           s.email?.toLowerCase() === profile.email?.toLowerCase()
         );
 
@@ -95,12 +95,15 @@ export default function MyAvailability() {
       if (!staffProfile?.id) {
         throw new Error("Staff profile not found");
       }
-      
+
       const { error } = await supabase
         .from('staff')
-        .update({ availability: newAvailability })
+        .update({
+          availability: newAvailability,
+          availability_updated_at: new Date().toISOString()
+        })
         .eq('id', staffProfile.id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -215,7 +218,7 @@ export default function MyAvailability() {
       <Alert className="border-blue-300 bg-blue-50">
         <Info className="h-5 w-5 text-blue-600" />
         <AlertDescription className="text-blue-900">
-          <strong>How it works:</strong> Set your availability below, and our system will automatically match you with suitable shifts. 
+          <strong>How it works:</strong> Set your availability below, and our system will automatically match you with suitable shifts.
           You'll see matched shifts in the <strong>Shift Marketplace</strong>.
         </AlertDescription>
       </Alert>
@@ -318,21 +321,18 @@ export default function MyAvailability() {
           const isNightAvailable = dayShifts.includes('night');
 
           return (
-            <Card key={day.key} className={`border-2 transition-all ${
-              isAvailable ? 'border-green-300 bg-green-50' : 'border-gray-200'
-            }`}>
+            <Card key={day.key} className={`border-2 transition-all ${isAvailable ? 'border-green-300 bg-green-50' : 'border-gray-200'
+              }`}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl ${
-                      isAvailable ? 'bg-green-600 text-white' : 'bg-gray-200'
-                    }`}>
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl ${isAvailable ? 'bg-green-600 text-white' : 'bg-gray-200'
+                      }`}>
                       {day.emoji}
                     </div>
                     <div>
-                      <h3 className={`text-xl font-semibold ${
-                        isAvailable ? 'text-green-900' : 'text-gray-900'
-                      }`}>
+                      <h3 className={`text-xl font-semibold ${isAvailable ? 'text-green-900' : 'text-gray-900'
+                        }`}>
                         {day.label}
                       </h3>
                       <p className="text-sm text-gray-600">
@@ -454,7 +454,7 @@ export default function MyAvailability() {
           <Alert className="mt-4 border-purple-300 bg-white">
             <Clock className="h-5 w-5 text-purple-600" />
             <AlertDescription className="text-purple-900">
-              <strong>💡 Tip:</strong> The more availability you set, the more shift opportunities you'll see in the marketplace. 
+              <strong>💡 Tip:</strong> The more availability you set, the more shift opportunities you'll see in the marketplace.
               Weekend and night shifts often have higher rates!
             </AlertDescription>
           </Alert>

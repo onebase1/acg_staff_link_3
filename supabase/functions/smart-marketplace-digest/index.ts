@@ -172,14 +172,19 @@ Reply STOP to opt out`;
 // ========================================
 // HELPER: Send WhatsApp notification
 // ========================================
-async function sendWhatsApp(supabase: any, staff: any, shifts: any[], agencyName: string, portalUrl: string) {
+async function sendWhatsApp(supabase: any, staff: any, shifts: any[], clients: any[], agencyName: string, portalUrl: string) {
     const normalizedPhone = normalizePhoneNumber(staff.phone);
     console.log(`  📱 WhatsApp: ${staff.phone} → ${normalizedPhone}`);
 
     // Build shift list
     let shiftList = '';
     shifts.slice(0, 5).forEach((shift, idx) => {
-        const earnings = (shift.pay_rate * (shift.duration_hours - (shift.break_duration_minutes || 60) / 60)).toFixed(2);
+        const client = clients.find(c => c.id === shift.client_id);
+        const contractedBreakMins = client?.contract_terms?.break_duration_minutes ?? shift.break_duration_minutes ?? 60;
+        const breakApplied = (shift.duration_hours >= 10) ? contractedBreakMins : 0;
+        const billableHours = Math.max(0, shift.duration_hours - (breakApplied / 60));
+        const earnings = (shift.pay_rate * billableHours).toFixed(2);
+        
         shiftList += `\n${idx + 1}. *${formatDate(shift.date)}* ${shift.start_time}-${shift.end_time}
    ${shift.role_required.replace('_', ' ').toUpperCase()} • £${shift.pay_rate}/hr (£${earnings} total)`;
     });
@@ -228,8 +233,9 @@ async function sendEmail(supabase: any, staff: any, shifts: any[], clients: any[
             ? `${client.address.line1}, ${client.address.city} ${client.address.postcode}`
             : 'Location TBA';
 
-        const breakHours = (shift.break_duration_minutes || 60) / 60;
-        const billableHours = Math.max(0, shift.duration_hours - breakHours);
+        const contractedBreakMins = client?.contract_terms?.break_duration_minutes ?? shift.break_duration_minutes ?? 60;
+        const breakApplied = (shift.duration_hours >= 10) ? contractedBreakMins : 0;
+        const billableHours = Math.max(0, shift.duration_hours - (breakApplied / 60));
         const earnings = (shift.pay_rate * billableHours).toFixed(2);
 
         const urgencyBadge = shift.urgency === 'urgent'
@@ -476,7 +482,7 @@ serve(async (req) => {
 
                 if (channelSettings.whatsapp_enabled && staff.phone) {
                     notificationPromises.push(
-                        sendWhatsApp(supabase, staff, eligibleShifts, agency.name, portalUrl)
+                        sendWhatsApp(supabase, staff, eligibleShifts, clients, agency.name, portalUrl)
                             .then(() => { results.channelBreakdown.whatsapp++; })
                             .catch(err => console.error('  ❌ WhatsApp failed:', err.message))
                     );

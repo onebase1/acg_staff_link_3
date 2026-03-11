@@ -194,7 +194,7 @@ export default function TimesheetCard({
             {timesheet.total_hours && (
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-gray-500" />
-                <span className="font-semibold text-gray-900">{timesheet.total_hours}h worked</span>
+                <span className="font-semibold text-gray-900">{timesheet.total_hours}h total</span>
               </div>
             )}
           </div>

@@ -11,7 +11,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
   Plus, Search, Filter, User, Mail, Phone, Star,
-  Edit, Trash2, CheckCircle, XCircle, FileText, UserPlus, Shield, AlertTriangle, Upload, Download, MessageCircle, RefreshCw,
+  Edit, Trash2, CheckCircle, XCircle, FileText, UserPlus, Shield, AlertTriangle, Upload, Download, MessageCircle, RefreshCw, Archive,
   Zap, ZapOff, LayoutGrid, Table as TableIcon, ListFilter, Smartphone, MapPin
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -38,13 +38,21 @@ export default function Staff() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [roleFilter, setRoleFilter] = useState('all');
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem('staffViewMode') || 'grid';
+  }); // 'grid' | 'table'
   const [autoAssignFilter, setAutoAssignFilter] = useState('all'); // 'all' | 'enabled' | 'disabled'
   const [connectivityFilter, setConnectivityFilter] = useState('all'); // 'all' | 'whatsapp_missing' | 'gps_missing'
   const [complianceFilter, setComplianceFilter] = useState('all'); // 'all' | 'photo_missing' | 'docs_missing'
   const [currentAgency, setCurrentAgency] = useState(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   const queryClient = useQueryClient();
+
+  // ✅ Persist viewMode
+  useEffect(() => {
+    localStorage.setItem('staffViewMode', viewMode);
+  }, [viewMode]);
 
   // ✅ FIXED: RBAC Check using direct Supabase
   useEffect(() => {
@@ -169,7 +177,8 @@ export default function Staff() {
     'last_invited_at', 'whatsapp_number', 'whatsapp_number_verified', 'whatsapp_pin',
     'whatsapp_linked_at', 'gps_consent', 'gps_consent_status', 'gps_consent_date',
     'last_known_location', 'opt_out_shift_reminders', 'auto_assign_allowed',
-    'profile_last_updated_at', 'profile_last_updated_by', 'profile_update_source'
+    'profile_last_updated_at', 'profile_last_updated_by', 'profile_update_source',
+    'archived_at', 'archived_reason'
   ];
 
   // Helper: Filter out phantom fields that don't exist in database
@@ -324,22 +333,29 @@ export default function Staff() {
   });
 
   // ✅ FIXED: Soft delete mutation - sets status to 'inactive' instead of deleting
+  // ⚡ MODULE 21: Added archive reason and timestamp
   const deleteMutation = useMutation({
-    mutationFn: async (id) => {
+    mutationFn: async ({ id, reason }) => {
       // First check if staff has related records
-      const [shiftsCheck, timesheetsCheck, bookingsCheck] = await Promise.all([
+      const [shiftsCheck, timesheetsCheck, bookingsCheck, complianceCheck] = await Promise.all([
         supabase.from('shifts').select('id', { count: 'exact', head: true }).eq('assigned_staff_id', id),
         supabase.from('timesheets').select('id', { count: 'exact', head: true }).eq('staff_id', id),
-        supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('staff_id', id)
+        supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('staff_id', id),
+        supabase.from('compliance').select('id', { count: 'exact', head: true }).eq('staff_id', id)
       ]);
 
-      const totalRelatedRecords = (shiftsCheck.count || 0) + (timesheetsCheck.count || 0) + (bookingsCheck.count || 0);
+      const totalRelatedRecords = (shiftsCheck.count || 0) + (timesheetsCheck.count || 0) + (bookingsCheck.count || 0) + (complianceCheck.count || 0);
 
       if (totalRelatedRecords > 0) {
         // Soft delete: Set status to inactive
         const { error } = await supabase
           .from('staff')
-          .update({ status: 'inactive' })
+          .update({
+            status: 'inactive',
+            archived_at: new Date().toISOString(),
+            archived_reason: reason || 'Not specified',
+            updated_date: new Date().toISOString()
+          })
           .eq('id', id);
 
         if (error) throw error;
@@ -360,13 +376,65 @@ export default function Staff() {
     onSuccess: (result) => {
       queryClient.invalidateQueries(['staff']);
       if (result.softDelete) {
-        toast.success(`Staff member deactivated (${result.relatedRecords} related records preserved)`);
+        toast.success(
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 font-semibold text-amber-800">
+              <Archive size={16} /> Staff Member Archived
+            </div>
+            <p className="text-xs text-amber-700">All automated communications have been disabled.</p>
+          </div>,
+          {
+            style: { background: '#fffbeb', border: '1px solid #fef3c7' },
+            duration: 5000
+          }
+        );
       } else {
-        toast.success('Staff member deleted');
+        toast.success(
+          <div className="flex items-center gap-2 font-semibold text-red-800">
+            <Trash2 size={16} /> Staff Member Deleted
+          </div>,
+          {
+            style: { background: '#fef2f2', border: '1px solid #fee2e2' }
+          }
+        );
       }
     },
     onError: (error) => {
       toast.error(`Failed to delete: ${error.message}`);
+    }
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: async (id) => {
+      const { error } = await supabase
+        .from('staff')
+        .update({
+          status: 'active',
+          archived_at: null,
+          archived_reason: null,
+          updated_date: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['staff']);
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2 font-semibold text-green-800">
+            <CheckCircle size={16} /> Staff Reactivated
+          </div>
+          <p className="text-xs text-green-700">Comms triggers have been restored.</p>
+        </div>,
+        {
+          style: { background: '#f0fdf4', border: '1px solid #dcfce7' }
+        }
+      );
+    },
+    onError: (error) => {
+      toast.error(`Failed to reactivate: ${error.message}`);
     }
   });
 
@@ -621,15 +689,14 @@ export default function Staff() {
   };
 
   const handleDelete = (id) => {
-    const confirmed = confirm(
-      '⚠️ Delete Staff Member?\n\n' +
-      'If this staff member has shifts, timesheets, or bookings, they will be DEACTIVATED instead of deleted.\n\n' +
-      'Staff with no related records will be permanently deleted.\n\n' +
-      'Continue?'
+    const reason = prompt(
+      '⚠️ Archive Staff Member?\n\n' +
+      'Please enter a reason for archiving (e.g., Resigned, Suspended, Left UK, etc.):',
+      'Resigned'
     );
 
-    if (confirmed) {
-      deleteMutation.mutate(id);
+    if (reason !== null) {
+      deleteMutation.mutate({ id, reason });
     }
   };
 
@@ -640,7 +707,13 @@ export default function Staff() {
       s.email?.toLowerCase().includes(searchTerm.toLowerCase());
 
     // 2. Status Filter
-    const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
+    let matchesStatus = true;
+    if (statusFilter !== 'all') {
+      matchesStatus = s.status === statusFilter;
+    } else if (!showArchived) {
+      // Default: Hide inactive staff
+      matchesStatus = s.status !== 'inactive';
+    }
 
     // 3. Role Filter
     const matchesRole = roleFilter === 'all' || s.role === roleFilter;
@@ -907,6 +980,17 @@ export default function Staff() {
           />
         </div>
 
+        <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-md border border-gray-100">
+          <Label htmlFor="show-archived" className="text-sm font-medium text-gray-600 cursor-pointer">
+            Show Archived
+          </Label>
+          <Switch
+            id="show-archived"
+            checked={showArchived}
+            onCheckedChange={setShowArchived}
+          />
+        </div>
+
         <div className="flex flex-wrap gap-2 items-center">
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -997,7 +1081,8 @@ export default function Staff() {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-3 font-semibold text-gray-700">Staff Member</th>
-                <th className="px-4 py-3 font-semibold text-gray-700">Role & Status</th>
+                <th className="px-4 py-3 font-semibold text-gray-700">Role</th>
+                <th className="px-4 py-3 font-semibold text-gray-700">Status</th>
                 <th className="px-4 py-3 font-semibold text-gray-700">Connectivity</th>
                 <th className="px-4 py-3 font-semibold text-gray-700 text-center">Auto-Assign</th>
                 <th className="px-4 py-3 font-semibold text-gray-700">Performance</th>
@@ -1024,12 +1109,14 @@ export default function Staff() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="space-y-1">
-                      <Badge variant="outline" className="font-normal text-gray-600 bg-gray-50">
-                        {staffMember.role?.replace('_', ' ')}
-                      </Badge>
-                      <div><Badge {...getStatusBadge(staffMember.status)} className="text-xs px-2 py-0.5" /></div>
-                    </div>
+                    <Badge variant="outline" className="font-normal text-gray-600 bg-gray-50 capitalize">
+                      {staffMember.role?.replace('_', ' ')}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge {...getStatusBadge(staffMember.status)} className="text-xs px-2 py-0.5 capitalize">
+                      {staffMember.status}
+                    </Badge>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
@@ -1049,15 +1136,17 @@ export default function Staff() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    {staffMember.auto_assign_allowed ? (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                        <Zap size={12} className="mr-1 fill-amber-500" /> ON
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-                        OFF
-                      </span>
-                    )}
+                    <div className="flex justify-center">
+                      <Switch
+                        checked={staffMember.auto_assign_allowed !== false}
+                        onCheckedChange={(checked) => {
+                          updateMutation.mutate({
+                            id: staffMember.id,
+                            updates: { auto_assign_allowed: checked }
+                          });
+                        }}
+                      />
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-sm">
@@ -1075,9 +1164,25 @@ export default function Staff() {
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={() => handleGeneratePIN(staffMember)} title="Send PIN">
                         <Smartphone size={16} />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => handleDelete(staffMember.id)} title="Delete">
-                        <Trash2 size={16} />
-                      </Button>
+                      {staffMember.status === 'inactive' ? (
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={() => reactivateMutation.mutate(staffMember.id)} title="Reactivate Staff">
+                          <RefreshCw size={16} />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-amber-600"
+                          onClick={() => {
+                            if (window.confirm(`Are you sure you want to archive ${staffMember.first_name}? This will disable all automated communications.`)) {
+                              handleDelete(staffMember.id);
+                            }
+                          }}
+                          title="Archive Staff"
+                        >
+                          <Archive size={16} />
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -1192,8 +1297,8 @@ export default function Staff() {
                       variant="outline"
                       size="sm"
                       className={`w-full border-blue-200 hover:bg-blue-100 ${staffMember.welcome_email_sent_at
-                          ? 'bg-gray-100 text-gray-500 border-gray-200'
-                          : 'bg-blue-50 text-blue-700'
+                        ? 'bg-gray-100 text-gray-500 border-gray-200'
+                        : 'bg-blue-50 text-blue-700'
                         }`}
                       onClick={() => handleResendInvite(staffMember)}
                       disabled={resendInviteMutation.isPending}
@@ -1253,14 +1358,32 @@ export default function Staff() {
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(staffMember.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {staffMember.status === 'inactive' ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => reactivateMutation.mutate(staffMember.id)}
+                        className="text-green-600 hover:text-green-700 bg-green-50 border-green-200"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-1" />
+                        Reactivate
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (window.confirm(`Are you sure you want to archive ${staffMember.first_name}?`)) {
+                            handleDelete(staffMember.id);
+                          }
+                        }}
+                        className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200"
+                        title="Archive Staff"
+                      >
+                        <Archive className="w-4 h-4 mr-1" />
+                        Archive
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>

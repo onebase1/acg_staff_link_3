@@ -156,7 +156,7 @@ serve(async (req) => {
         try {
             const { data: shifts } = await supabase
                 .from("shifts")
-                .select("*")
+                .select("*, clients!inner(contract_terms)")
                 .eq("id", shift_id);
 
             if (!shifts || shifts.length === 0) {
@@ -248,11 +248,13 @@ serve(async (req) => {
         const defaultTimes = getDefaultShiftTimes(shift);
         console.log('🕐 [AutoTimesheet] Default shift times:', defaultTimes);
 
-        // ✅ CALCULATE AMOUNTS (accounting for break time)
-        const breakHours = (shift.break_duration_minutes || 60) / 60;
-        const billableHours = Math.max(0, (shift.duration_hours || 0) - breakHours);
-        const staff_pay_amount = billableHours * (shift.pay_rate || 0);
-        const client_charge_amount = billableHours * (shift.charge_rate || 0);
+        // ✅ CALCULATE AMOUNTS (accounting for break time and 10-hour rule)
+        const contractedBreakMins = shift.clients?.contract_terms?.break_duration_minutes ?? shift.break_duration_minutes ?? 60;
+        const breakApplied = (shift.duration_hours >= 10) ? contractedBreakMins : 0;
+        const payableHours = shift.duration_hours - (breakApplied / 60);
+
+        const staff_pay_amount = Math.round(payableHours * shift.pay_rate * 100) / 100;
+        const client_charge_amount = Math.round(payableHours * shift.charge_rate * 100) / 100;
 
         console.log('💰 [AutoTimesheet] Calculated amounts:', {
             total_hours: shift.duration_hours,

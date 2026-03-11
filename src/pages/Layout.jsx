@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import PublicLayout from "./PublicLayout";
 import ViewSwitcher from "@/components/admin/ViewSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/lib/supabase"; // ✅ Added for system health checks
 
 const navigationStructure = [
@@ -536,16 +537,16 @@ export default function Layout({ children, currentPageName }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       <style>{`
         .gradient-bg {
           background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%);
         }
 
         .glass-nav {
-          background: rgba(255, 255, 255, 0.7);
+          background: rgba(var(--background), 0.7);
           backdrop-filter: blur(10px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+          border-bottom: 1px solid hsl(var(--border) / 0.2);
         }
 
         .sidebar {
@@ -554,8 +555,8 @@ export default function Layout({ children, currentPageName }) {
           top: 0;
           left: 0;
           width: 260px;
-          background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-          border-right: 1px solid #e2e8f0;
+          background: hsl(var(--sidebar-background));
+          border-right: 1px solid hsl(var(--sidebar-border));
           z-index: 50;
           transition: transform 0.3s ease;
           overflow-y: auto;
@@ -575,7 +576,7 @@ export default function Layout({ children, currentPageName }) {
           display: flex;
           align-items: center;
           padding: 0.65rem 1rem;
-          color: #475569;
+          color: hsl(var(--sidebar-foreground) / 0.8);
           transition: all 0.2s ease;
           text-decoration: none;
           border-radius: 0.5rem;
@@ -584,15 +585,15 @@ export default function Layout({ children, currentPageName }) {
         }
 
         .sidebar-link:hover {
-          background-color: #e0f2fe;
-          color: #0284c7;
+          background-color: hsl(var(--sidebar-accent));
+          color: hsl(var(--sidebar-accent-foreground));
         }
 
         .sidebar-link.active {
-          background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-          color: white;
+          background: hsl(var(--sidebar-primary));
+          color: hsl(var(--sidebar-primary-foreground));
           font-weight: 600;
-          box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .section-header {
@@ -604,14 +605,14 @@ export default function Layout({ children, currentPageName }) {
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.05em;
-          color: #64748b;
+          color: hsl(var(--sidebar-foreground) / 0.6);
           cursor: pointer;
           border-radius: 0.5rem;
           transition: background-color 0.2s;
         }
 
         .section-header:hover {
-          background-color: #f1f5f9;
+          background-color: hsl(var(--sidebar-accent) / 0.5);
         }
 
         .main-content {
@@ -628,7 +629,7 @@ export default function Layout({ children, currentPageName }) {
 
       <div className={`sidebar shadow-xl ${sidebarOpen ? 'open' : ''}`}>
         {/* Sidebar Header */}
-        <div className="p-4 border-b border-gray-200 bg-white">
+        <div className="p-4 border-b border-sidebar-border bg-sidebar">
           <div className="flex items-center gap-3">
             {agency?.logo_url ? (
               <img
@@ -823,6 +824,7 @@ export default function Layout({ children, currentPageName }) {
             </div>
 
             <div className="flex items-center gap-4 flex-shrink-0">
+              <ThemeToggle />
               {isSuperAdmin && <ViewSwitcher />}
 
               {/* ✅ IMPROVED: Functional notification bell */}
