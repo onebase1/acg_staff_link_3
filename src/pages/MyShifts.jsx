@@ -23,6 +23,8 @@ import {
 import { format, isSameDay, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { toast } from "sonner";
 
+import { calculateStaffEarnings } from "../utils/shiftCalculations";
+
 /**
  * 📅 MY SHIFTS PAGE
  *
@@ -1028,7 +1030,10 @@ export default function MyShifts() {
               const actualHours = timesheet?.total_hours;
               const scheduledHours = shift.duration_hours;
               const payRate = shift.pay_rate || staffRecord?.hourly_rate || 15;
-              const estimatedPay = (scheduledHours * payRate).toFixed(2);
+              const estimatedPay = calculateStaffEarnings({ 
+                ...shift, 
+                pay_rate: payRate 
+              }).toFixed(2);
               const actualPay = actualHours ? (actualHours * payRate).toFixed(2) : null;
               const isPastShift = new Date(shift.date) < new Date();
 

@@ -1,6 +1,7 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Info, Clock, CheckCircle, AlertTriangle, MapPin } from "lucide-react";
+import { calculateStaffEarnings } from "@/utils/shiftCalculations";
 
 /**
  * Smart Pay Display Component
@@ -36,10 +37,8 @@ export default function PayDisplay({ shift, timesheet }) {
   // MODE 1: PRE-SHIFT (Scheduled)
   // ========================================
   if (mode === 'scheduled') {
-    const contractedBreakMins = shift?.client?.contract_terms?.break_duration_minutes ?? shift.break_duration_minutes ?? 60;
-    const breakApplied = (shift.duration_hours >= 10) ? contractedBreakMins : 0;
-    const billableHours = Math.max(0, shift.duration_hours - (breakApplied / 60));
-    const scheduledPay = shift.pay_rate * billableHours;
+    const scheduledPay = calculateStaffEarnings(shift);
+    const billableHours = scheduledPay / (shift.pay_rate || 15); // Reverse to show breakdown if needed, or just use shift.duration_hours in the display below
 
     return (
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

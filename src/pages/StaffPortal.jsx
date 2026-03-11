@@ -37,6 +37,58 @@ export default function StaffPortal() {
   const [selectedShift, setSelectedShift] = useState(null);
   const [showShiftDetail, setShowShiftDetail] = useState(false);
 
+  // 🛡️ HELPER: Determine if a shift is ACTUALLY active now (Today or Overnight ACTIVE)
+  const isShiftActiveNow = (shift) => {
+    if (!shift) return false;
+    const today = new Date();
+    const shiftDate = parseISO(shift.date);
+    
+    // 1. Today's shifts are always active
+    if (isToday(shiftDate)) return true;
+    
+    // 2. Status-based override (Active clock-ins)
+    if (shift.status === 'in_progress') return true;
+    
+    // 3. Robust Overnight Shift Check (The "Chadaira Case")
+    // If shift was yesterday, check if it's still current based on end time
+    if (isPast(shiftDate)) {
+      try {
+        // Construct end date object from shift date + end_time
+        const [endHour, endMin] = shift.end_time.split(':').map(Number);
+        const shiftEndDate = new Date(shiftDate);
+        shiftEndDate.setHours(endHour, endMin, 0, 0);
+        
+        // If end time is before start time (e.g., 20:00 to 08:00), it crossed midnight
+        const [startHour, startMin] = shift.start_time.split(':').map(Number);
+        if (endHour < startHour || (endHour === startHour && endMin < startMin)) {
+          shiftEndDate.setDate(shiftEndDate.getDate() + 1);
+        }
+        
+        // Add a 2-hour grace period after shift ends to keep it visible for clock-out/review
+        const visibilityWindow = new Date(shiftEndDate);
+        visibilityWindow.setHours(visibilityWindow.getHours() + 2);
+        
+        if (today < visibilityWindow) return true;
+      } catch (e) {
+        console.error("Error calculating shift visibility window:", e);
+      }
+    }
+    
+    return false;
+  };
+
+  // 🛡️ HELPER: Broader check for Hero Card and general filtering
+  const isShiftActiveOrUpcoming = (shift) => {
+    if (!shift) return false;
+    const shiftDate = parseISO(shift.date);
+    
+    // 1. Future shifts are upcoming
+    if (isFuture(shiftDate)) return true;
+    
+    // 2. Active Now (Today/Overnight ACTIVE)
+    return isShiftActiveNow(shift);
+  };
+
   // ✅ NEW: Advanced shift filtering state with localStorage persistence
   const [showFilters, setShowFilters] = useState(false);
   const [shiftFilters, setShiftFilters] = useState(() => {
@@ -643,6 +695,9 @@ export default function StaffPortal() {
 
     if (shiftFilters.dateRangeType !== 'all') {
       filtered = filtered.filter(shift => {
+        // 🎯 EXEMPTION: Always show shifts currently active or in progress, regardless of date filters
+        if (isShiftActiveOrUpcoming(shift)) return true;
+
         const shiftDate = parseISO(shift.date);
 
         const shiftDateNormalized = new Date(shiftDate);
@@ -726,17 +781,15 @@ export default function StaffPortal() {
   }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const upcomingShifts = generallyFilteredShifts.filter(s => {
-    const shiftDate = new Date(s.date);
-    return (isFuture(shiftDate) || isToday(shiftDate));
+    // Include the shift if it's active or upcoming (handles today + overnight crossovers)
+    return isShiftActiveOrUpcoming(s);
   }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const confirmedShifts = upcomingShifts.filter(s => s.status === 'confirmed');
 
   const todayShifts = myShifts.filter(s => { // This should NOT be filtered by general filters
-    const shiftDate = new Date(s.date);
-    const today = new Date();
-    // Only show today's shifts that are either assigned (awaiting clock-in) or confirmed
-    return shiftDate.toDateString() === today.toDateString() && (s.status === 'assigned' || s.status === 'confirmed' || s.status === 'in_progress');
+    // Only show shifts that are either assigned or confirmed AND are currently active/today (NOT all future)
+    return isShiftActiveNow(s) && (s.status === 'assigned' || s.status === 'confirmed' || s.status === 'in_progress');
   });
 
   const nextShift = upcomingShifts.filter(s => s.status === 'confirmed' || s.status === 'assigned' || s.status === 'in_progress')[0]; // Next relevant shift for display in hero
@@ -1045,23 +1098,14 @@ export default function StaffPortal() {
                 </div>
               </div>
 
-              {/* 💰 Earnings Display - Only show if NOT in progress */}
+              {/* 💰 Earnings Display */}
               {(() => {
-                // ✅ FIX: Find timesheet via booking_id (not shift_id) - same pattern as line 1302
                 const nextShiftBooking = myBookings.find(b => b.shift_id === nextShift.id);
                 const nextShiftTimesheet = nextShiftBooking ? myTimesheets.find(t => t.booking_id === nextShiftBooking.id) : null;
 
-                // 🎯 FIX: PRIORITY = Actual clock-in status (timesheet) > Scheduled status (shift.status)
-                const hasActuallyStarted = !!nextShiftTimesheet?.clock_in_time;
                 const hasActuallyEnded = !!nextShiftTimesheet?.clock_out_time;
-
-                const isTimesheetInProgress = hasActuallyStarted && !hasActuallyEnded;
-                const isTimesheetCompleted = hasActuallyEnded;
                 const isShiftCompleted = nextShift.status === 'completed';
-
-                // ✅ FIX: Only show "in progress" if staff has actually clocked in
-                const isInProgress = isTimesheetInProgress;
-                const isCompleted = isTimesheetCompleted || isShiftCompleted;
+                const isCompleted = hasActuallyEnded || isShiftCompleted;
 
                 if (isCompleted) {
                   // Show actual earnings after clock-out
@@ -1069,28 +1113,25 @@ export default function StaffPortal() {
                     <div className="flex items-center gap-2">
                       <DollarSign className="w-5 h-5 flex-shrink-0" />
                       <p className="font-bold text-base sm:text-lg">
-                        £{((nextShiftTimesheet.total_hours || 0) * (nextShift.pay_rate || staffRecord.hourly_rate || 15)).toFixed(2)}
+                        £{(nextShiftTimesheet.staff_pay_amount || calculateStaffEarnings({ 
+                          ...nextShift, 
+                          duration_hours: nextShiftTimesheet.total_hours,
+                          pay_rate: nextShift.pay_rate || staffRecord.hourly_rate || 15 
+                        })).toFixed(2)}
                       </p>
                       <span className="text-xs sm:text-sm opacity-75">earned ({nextShiftTimesheet.total_hours}h)</span>
                     </div>
                   );
-                } else if (isInProgress) {
-                  // Hide earnings during shift - can't promise payment yet
-                  return (
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-5 h-5 flex-shrink-0 animate-pulse" />
-                      <p className="font-semibold text-base sm:text-lg">
-                        Shift in progress...
-                      </p>
-                    </div>
-                  );
                 } else {
-                  // Show scheduled earnings before clock-in
+                  // Show scheduled earnings (matches original UI Image 2)
                   return (
                     <div className="flex items-center gap-2">
                       <DollarSign className="w-5 h-5 flex-shrink-0" />
                       <p className="font-bold text-base sm:text-lg">
-                        £{((nextShift.duration_hours || 0) * (nextShift.pay_rate || staffRecord.hourly_rate || 15)).toFixed(2)}
+                        £{calculateStaffEarnings({ 
+                          ...nextShift, 
+                          pay_rate: nextShift.pay_rate || staffRecord.hourly_rate || 15 
+                        }).toFixed(2)}
                       </p>
                       <span className="text-xs sm:text-sm opacity-75">for this shift</span>
                     </div>
@@ -1100,7 +1141,7 @@ export default function StaffPortal() {
             </div>
 
             {/* 🔵 Action Button - Changes based on shift state */}
-            {isToday(new Date(nextShift.date)) && (() => {
+            {isShiftActiveOrUpcoming(nextShift) && (() => {
               // ✅ FIX: Find timesheet via booking_id (not shift_id) - same pattern as line 1302
               const nextShiftBooking = myBookings.find(b => b.shift_id === nextShift.id);
               const nextShiftTimesheet = nextShiftBooking ? myTimesheets.find(t => t.booking_id === nextShiftBooking.id) : null;
@@ -1507,7 +1548,10 @@ export default function StaffPortal() {
                         <div className="flex items-center gap-1">
                           <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                           <span className="font-semibold text-green-600">
-                            £{((shift.duration_hours || 0) * (shift.pay_rate || staffRecord.hourly_rate || 15)).toFixed(2)}
+                            £{calculateStaffEarnings({ 
+                              ...shift, 
+                              pay_rate: shift.pay_rate || staffRecord.hourly_rate || 15 
+                            }).toFixed(2)}
                           </span>
                         </div>
                         {shift.work_location_within_site && (

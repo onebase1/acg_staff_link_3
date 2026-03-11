@@ -33,6 +33,13 @@ export function calculateBillableHours(shift) {
     return 0;
   }
 
+  // Apply 10-hour rule: Only deduct break if shift is longer than 10 hours
+  const shouldDeductBreak = shift.duration_hours > 10;
+  
+  if (!shouldDeductBreak) {
+    return shift.duration_hours;
+  }
+
   const breakHours = (shift.break_duration_minutes || 60) / 60;
   const billableHours = shift.duration_hours - breakHours;
 
