@@ -93,6 +93,13 @@ export default function StaffPortal() {
         const visibilityWindow = new Date(shiftEndDate);
         visibilityWindow.setHours(visibilityWindow.getHours() + 2);
         
+        // 🚨 PAPER SITE OVERRIDE: If paper site and shift time is over, it's no longer "Active Now" 
+        // regardless of DB status. This allows Hero Card to transition to next shift.
+        const client = clients.find(c => c.id === shift.client_id);
+        if (client?.geofence_enabled === false && today > shiftEndDate) {
+          return false;
+        }
+
         if (today < visibilityWindow) return true;
       } catch (e) {
         console.error("Error calculating shift visibility window:", e);
@@ -270,7 +277,27 @@ export default function StaffPortal() {
         console.error('❌ Error fetching shifts:', error);
         return [];
       }
-      return data || [];
+      
+      // ✅ UI DECOUPLING: Filter out paper shifts that are technically over 
+      // even if the DB status is still 'in_progress'
+      return (data || []).map(shift => {
+        const client = clients.find(c => c.id === shift.client_id);
+        if (client?.geofence_enabled === false && shift.status === 'in_progress') {
+          // If time is over, treat as 'awaiting_admin_closure' for UI purposes
+          const [endHour, endMin] = shift.end_time.split(':').map(Number);
+          const shiftDate = parseISO(shift.date);
+          const shiftEndDate = new Date(shiftDate);
+          shiftEndDate.setHours(endHour, endMin, 0, 0);
+          const [startHour, startMin] = shift.start_time.split(':').map(Number);
+          if (endHour < startHour || (endHour === startHour && endMin < startMin)) {
+            shiftEndDate.setDate(shiftEndDate.getDate() + 1);
+          }
+          if (new Date() > shiftEndDate) {
+            return { ...shift, ui_status_override: 'awaiting_admin_closure' };
+          }
+        }
+        return shift;
+      });
     },
     enabled: !!staffRecord,
     refetchOnMount: 'always'
@@ -1226,14 +1253,30 @@ export default function StaffPortal() {
               const isPaperArrivalLogged = nextShift.shift_journey_log?.some(l => l.state === 'staff_arrival_only');
               
               const isInProgress = isTimesheetInProgress || (isPaperSite && isPaperArrivalLogged && !isShiftTimeOver);
-              const isCompleted = isTimesheetCompleted || isShiftCompleted || (isPaperSite && isShiftTimeOver && isPaperArrivalLogged);
+              const isCompleted = isTimesheetCompleted || isShiftCompleted || (isPaperSite && isShiftTimeOver); // Simplified logic
+              const isAwaitingTimesheet = isPaperSite && isShiftTimeOver && isPaperArrivalLogged;
 
               if (isCompleted) {
-                // Shift complete - show gray disabled button
+                // Shift complete - show gray disabled button or Upload action
                 return (
-                  <div className="w-full bg-white/30 text-white text-center py-5 sm:py-6 rounded-lg font-bold text-base sm:text-lg">
-                    <CheckCircle className="w-5 h-5 inline mr-2" />
-                    ✅ SHIFT COMPLETE
+                  <div className="flex flex-col gap-3">
+                    <div className="w-full bg-white/30 text-white text-center py-5 sm:py-6 rounded-lg font-bold text-base sm:text-lg">
+                      <CheckCircle className="w-5 h-5 inline mr-2" />
+                      ✅ SHIFT COMPLETE
+                    </div>
+                    {isAwaitingTimesheet && (
+                      <Button
+                        variant="secondary"
+                        className="w-full bg-amber-500 hover:bg-amber-600 text-white border-0 py-5 sm:py-6 font-bold text-base sm:text-lg"
+                        onClick={() => {
+                          const booking = myBookings.find(b => b.shift_id === nextShift.id);
+                          if (booking) navigate(`/timesheetdetail?id=${booking.id}`);
+                        }}
+                      >
+                        <FileText className="w-5 h-5 mr-2" />
+                        UPLOAD TIMESHEET NOW
+                      </Button>
+                    )}
                   </div>
                 );
               } else if (isInProgress) {
