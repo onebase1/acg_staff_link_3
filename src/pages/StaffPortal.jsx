@@ -101,6 +101,22 @@ export default function StaffPortal() {
         console.error("Error calculating shift visibility window:", e);
       }
     }
+
+    // 4. Future Shift "Activation Window" (imminent shifts starting within 4 hours)
+    if (isFuture(shiftDate)) {
+      try {
+        const [startHour, startMin] = shift.start_time.split(':').map(Number);
+        const shiftStart = new Date(shiftDate);
+        shiftStart.setHours(startHour, startMin, 0, 0);
+        
+        const activationWindow = new Date(shiftStart);
+        activationWindow.setHours(activationWindow.getHours() - 4);
+        
+        if (today >= activationWindow) return true;
+      } catch (e) {
+        console.error("Error calculating shift activation window:", e);
+      }
+    }
     
     return false;
   };
@@ -1305,7 +1321,16 @@ export default function StaffPortal() {
                 return (
                   <Button
                     className="w-full bg-white text-blue-600 hover:bg-gray-100 text-base sm:text-lg py-5 sm:py-6 font-bold min-h-[56px]"
-                    onClick={() => document.getElementById(`clock-in-${nextShift.id}`)?.scrollIntoView({ behavior: 'smooth' })}
+                    onClick={() => {
+                      const element = document.getElementById(`clock-in-${nextShift.id}`);
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth' });
+                      } else {
+                        // If element is not in DOM, it's likely too far in the future
+                        const shiftTime = formatTime12Hour(nextShift.start_time);
+                        toast.info(`Too early! Logging opens 4 hours before start (${shiftTime}).`);
+                      }
+                    }}
                   >
                     <Zap className="w-5 h-5 mr-2" />
                     {(() => {
