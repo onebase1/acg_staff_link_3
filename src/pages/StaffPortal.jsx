@@ -1336,6 +1336,15 @@ export default function StaffPortal() {
                     {(() => {
                       const client = clients.find(c => c.id === nextShift.client_id);
                       if (client?.geofence_enabled === false) {
+                        const element = document.getElementById(`clock-in-${nextShift.id}`);
+                        if (!element) {
+                          const [hour, min] = nextShift.start_time.split(':').map(Number);
+                          const startTime = parseISO(nextShift.date);
+                          startTime.setHours(hour, min, 0, 0);
+                          const openTime = new Date(startTime);
+                          openTime.setHours(openTime.getHours() - 4);
+                          return `LOGGING OPENS AT ${format(openTime, 'h:mm a')}`;
+                        }
                         return "ENROUTE / ARRIVED";
                       }
                       return "CLOCK IN NOW";
