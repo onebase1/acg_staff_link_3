@@ -1208,7 +1208,10 @@ export default function StaffPortal() {
               const isShiftCompleted = nextShift.status === 'completed';
 
               // ✅ FIX: Only show "in progress" if staff has actually clocked in (not just scheduled time passed)
-              const isInProgress = isTimesheetInProgress;
+              // For paper sites, we consider it in progress if staff_arrival_only is logged
+              const client = clients.find(c => c.id === nextShift.client_id);
+              const isPaperArrivalLogged = nextShift.shift_journey_log?.some(l => l.state === 'staff_arrival_only');
+              const isInProgress = isTimesheetInProgress || (client?.geofence_enabled === false && isPaperArrivalLogged);
               const isCompleted = isTimesheetCompleted || isShiftCompleted;
 
               if (isCompleted) {
@@ -1226,8 +1229,22 @@ export default function StaffPortal() {
                     className="w-full bg-green-600 text-white hover:bg-green-700 text-base sm:text-lg py-5 sm:py-6 font-bold min-h-[56px]"
                     onClick={() => document.getElementById(`clock-in-${nextShift.id}`)?.scrollIntoView({ behavior: 'smooth' })}
                   >
-                    <Clock className="w-5 h-5 mr-2 animate-pulse" />
-                    SHIFT IN PROGRESS - CLOCK OUT
+                    {(() => {
+                      if (client?.geofence_enabled === false) {
+                        return (
+                          <>
+                            <CheckCircle className="w-5 h-5 mr-2" />
+                            ✅ SHIFT IN PROGRESS
+                          </>
+                        );
+                      }
+                      return (
+                        <>
+                          <Clock className="w-5 h-5 mr-2 animate-pulse" />
+                          SHIFT IN PROGRESS - CLOCK OUT
+                        </>
+                      );
+                    })()}
                   </Button>
                 );
               } else {
