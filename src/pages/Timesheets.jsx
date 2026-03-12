@@ -1314,6 +1314,7 @@ export default function Timesheets() {
                           shift={shift}
                           staffMember={staffMember}
                         />
+                        {/* Hiding development button for production
                         <Button
                           size="sm"
                           onClick={() => autoApproveMutation.mutate(timesheet.id)}
@@ -1323,6 +1324,7 @@ export default function Timesheets() {
                           <Zap className="w-4 h-4 mr-2" />
                           {autoApproveMutation.isPending ? 'Processing...' : 'Run Auto-Approval'}
                         </Button>
+                        */}
                       </div>
                     )}
                   />

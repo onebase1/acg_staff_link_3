@@ -216,14 +216,20 @@ export default function TimesheetDetail() {
   });
 
 
-  const handleApprove = () => {
-    updateMutation.mutate({
-      id: timesheetId,
-      data: {
-        status: 'approved',
-        client_approved_at: new Date().toISOString()
-      }
-    });
+  const handleApprove = async () => {
+    try {
+      toast.info('🔄 Approving timesheet...');
+      const { data, error } = await supabase.functions.invoke('auto-timesheet-approval-engine', {
+        body: { timesheet_id: timesheetId, manual_trigger: true }
+      });
+      if (error) throw error;
+      toast.success(data.message || 'Timesheet approved');
+      queryClient.invalidateQueries(['timesheet', timesheetId]);
+      queryClient.invalidateQueries(['timesheets']);
+    } catch (error) {
+      console.error('Approval error:', error);
+      toast.error(`Approval failed: ${error.message}`);
+    }
   };
 
   const handleReject = () => {

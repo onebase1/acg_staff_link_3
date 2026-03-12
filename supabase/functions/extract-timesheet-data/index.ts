@@ -205,25 +205,29 @@ Please extract all data from the document and compare with expected values.`
       if (expected_data.scheduled_hours && primaryRow.total_hours) {
         // ✅ APPLY 10-HOUR GOLD RULE: If scheduled gross > 10, the "target" Net is -1h
         const expectedNetHours = expected_data.scheduled_hours > 10 ? expected_data.scheduled_hours - 1 : expected_data.scheduled_hours;
+        const expectedGrossHours = expected_data.scheduled_hours;
         
-        const hoursDiff = Math.abs(expectedNetHours - primaryRow.total_hours);
-        const percentDiff = (hoursDiff / expectedNetHours) * 100;
+        const hoursNetDiff = Math.abs(expectedNetHours - primaryRow.total_hours);
+        const hoursGrossDiff = Math.abs(expectedGrossHours - primaryRow.total_hours);
 
-        if (hoursDiff > 0.5) {
+        // ✅ FLEXIBLE MATCH: Pass if matches Net (-1h) OR matches Gross (no break)
+        const isMatch = hoursNetDiff <= 0.5 || hoursGrossDiff <= 0.01;
+
+        if (!isMatch) {
           validation.validation_status = 'mismatch';
           validation.mismatches.push({
             field: 'hours',
-            expected: expectedNetHours,
+            expected_net: expectedNetHours,
+            expected_gross: expectedGrossHours,
             actual: primaryRow.total_hours,
-            scheduled_gross: expected_data.scheduled_hours,
-            difference: hoursDiff,
-            percent_difference: percentDiff.toFixed(1),
-            severity: percentDiff > 20 ? 'critical' : percentDiff > 10 ? 'high' : 'medium'
+            difference_from_net: hoursNetDiff,
+            severity: hoursNetDiff > 2 ? 'critical' : 'high'
           });
-        } else if (hoursDiff > 0.1) {
+        } else if (hoursGrossDiff <= 0.01 && expected_data.scheduled_hours > 10) {
+          // It's a match, but notify that no break was taken/recorded
           validation.warnings.push({
             field: 'hours',
-            message: `Minor variance: ${hoursDiff.toFixed(1)}h difference (${percentDiff.toFixed(0)}%)`,
+            message: `Gross match detected (12/12). Staff may have worked through their break or didn't record it.`,
             severity: 'low'
           });
         }

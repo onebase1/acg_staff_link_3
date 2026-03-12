@@ -36,7 +36,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -124,11 +124,11 @@ serve(async (req) => {
       supabase.from("clients").select("*")
     ]);
 
-    const agency = agencies?.find(a => a.id === timesheet.agency_id);
-    const staffMember = staff?.find(s => s.id === timesheet.staff_id);
-    const booking = bookings?.find(b => b.id === timesheet.booking_id);
-    const shift = booking ? shifts?.find(s => s.id === booking.shift_id) : null;
-    const client = clients?.find(c => c.id === timesheet.client_id);
+    const agency = agencies?.find((a: any) => a.id === timesheet.agency_id);
+    const staffMember = staff?.find((s: any) => s.id === timesheet.staff_id);
+    const booking = bookings?.find((b: any) => b.id === timesheet.booking_id);
+    const shift = booking ? shifts?.find((s: any) => s.id === booking.shift_id) : null;
+    const client = clients?.find((c: any) => c.id === timesheet.client_id);
 
     // Check if agency has auto-approval enabled
     const autoApprovalEnabled = agency?.settings?.automation_settings?.auto_timesheet_approval ?? true;
@@ -210,23 +210,25 @@ serve(async (req) => {
       // ✅ APPLY 10-HOUR GOLD RULE: If scheduled gross > 10, the "target" Net is -1h
       const scheduledNetHours = scheduledGrossHours > 10 ? scheduledGrossHours - 1 : scheduledGrossHours;
       
-      const workedHours = timesheet.total_hours;
-      const hoursDiff = Math.abs(workedHours - scheduledNetHours);
+      const requestedHours = timesheet.total_hours;
+      const hoursNetDiff = Math.abs(requestedHours - scheduledNetHours);
+      const hoursGrossDiff = Math.abs(requestedHours - scheduledGrossHours);
 
-      if (hoursDiff <= hoursThreshold) {
+      // ✅ FLEXIBLE MATCH: Pass if matches Net (-1h) OR matches Gross (no break)
+      if (hoursNetDiff <= hoursThreshold || hoursGrossDiff <= 0.01) {
         validationResults.hours_acceptable = true;
       } else {
         const issue = {
           type: 'hours_mismatch',
-          severity: hoursDiff > 1 ? 'high' : 'medium', // High severity if > 1 hour
-          message: `Worked ${workedHours}h, expected net ${scheduledNetHours}h (from ${scheduledGrossHours}h gross) | diff: ${hoursDiff.toFixed(1)}h`
+          severity: hoursNetDiff > 1 ? 'high' : 'medium',
+          message: `Worked ${requestedHours}h, expected net ${scheduledNetHours}h or gross ${scheduledGrossHours}h | diff: ${hoursNetDiff.toFixed(1)}h`
         };
         issues.push(issue);
 
         // 🚨 CRITICAL ALERT: Notify admin immediately if overtime is significant
         if (issue.severity === 'high') {
           try {
-            const subject = `⚠️ Overtime Alert: ${staffMember?.first_name} submitted ${hoursDiff.toFixed(1)} extra hours`;
+            const subject = `⚠️ Overtime Alert: ${staffMember?.first_name} submitted ${hoursNetDiff.toFixed(1)} extra hours`;
             const body_html = `
               <p><strong>High Priority Overtime Alert</strong></p>
               <p>A timesheet has been submitted with significant overtime that requires your immediate attention.</p>
@@ -235,8 +237,8 @@ serve(async (req) => {
                 <li><strong>Client:</strong> ${agency?.name || 'Unknown'}</li>
                 <li><strong>Shift Date:</strong> ${timesheet.shift_date}</li>
                 <li><strong>Scheduled Hours:</strong> ${scheduledGrossHours}h</li>
-                <li><strong>Worked Hours:</strong> ${workedHours}h</li>
-                <li><strong>Overtime:</strong> ${hoursDiff.toFixed(2)}h</li>
+                <li><strong>Worked Hours:</strong> ${requestedHours}h</li>
+                <li><strong>Overtime:</strong> ${hoursNetDiff.toFixed(2)}h</li>
               </ul>
               <p>This timesheet has been flagged for manual review. Please investigate before the next payroll cycle.</p>
             `;
@@ -286,24 +288,24 @@ serve(async (req) => {
 
     validationResults.all_checks_passed = canAutoApprove;
 
-    // === AUTO-APPROVE ===
-    if (canAutoApprove) {
-      console.log('✅ [Auto-Approval] All checks passed - approving timesheet:', timesheet_id);
+    // === AUTO-APPROVE OR MANUAL BYPASS ===
+    if (canAutoApprove || manual_trigger) {
+      console.log(`✅ [Decision] ${manual_trigger ? 'Manual Approval Triggered' : 'Auto-Approval Passed'} - approving timesheet:`, timesheet_id);
 
       await supabase
         .from("timesheets")
         .update({
           status: 'approved',
           client_approved_at: new Date().toISOString(),
-          notes: (timesheet.notes || '') + '\n[AUTO-APPROVED: All validation criteria met]'
+          notes: (timesheet.notes || '') + (manual_trigger ? '\n[MANUALLY APPROVED BY ADMIN]' : '\n[AUTO-APPROVED: All validation criteria met]')
         })
         .eq("id", timesheet_id);
 
-      // Update shift status
+      // Update shift status & data
       if (shift) {
-        const newShiftStatus = shift.status === 'in_progress'
-          ? 'awaiting_admin_closure'
-          : shift.status;
+        // If manual trigger, we move to completed. Otherwise awaiting_admin_closure
+        const newShiftStatus = manual_trigger ? 'completed' : 
+          (['in_progress', 'awaiting_admin_review'].includes(shift.status) ? 'awaiting_admin_closure' : shift.status);
 
         await supabase
           .from("shifts")
@@ -311,17 +313,21 @@ serve(async (req) => {
             status: newShiftStatus,
             timesheet_received: true,
             timesheet_received_at: new Date().toISOString(),
+            // ✅ SYNC ACTUAL DATA: Ensure shift record matches the approved timesheet
+            actual_staff_id: timesheet.staff_id,
+            shift_started_at: timesheet.clock_in_time || (timesheet.actual_start_time ? `${timesheet.shift_date}T${timesheet.actual_start_time}:00` : null),
+            shift_ended_at: timesheet.clock_out_time || (timesheet.actual_end_time ? `${timesheet.shift_date}T${timesheet.actual_end_time}:00` : null),
             shift_journey_log: [
               ...(shift.shift_journey_log || []),
               {
-                state: 'timesheet_auto_approved',
+                state: manual_trigger ? 'timesheet_manually_approved' : 'timesheet_auto_approved',
                 timestamp: new Date().toISOString(),
-                method: 'auto_approval_engine',
-                confidence_score: 100,
-                factors: ['signatures_verified', 'gps_validated', 'hours_within_threshold'],
+                method: manual_trigger ? 'admin_manual_override' : 'auto_approval_engine',
+                confidence_score: manual_trigger ? 100 : 100,
+                factors: manual_trigger ? ['admin_manual_override'] : ['signatures_verified', 'gps_validated', 'hours_within_threshold'],
                 timesheet_submitted: true,
                 gps_validated: validationResults.gps_validated,
-                signatures_present: true
+                signatures_present: manual_trigger ? true : validationResults.signatures_present
               }
             ]
           })
@@ -351,7 +357,7 @@ serve(async (req) => {
                   channel: 'email',
                   preferenceChecked: preferenceCheck.preferenceChecked,
                   preferenceStatus: preferenceCheck.preferenceStatus,
-                  skippedReason: preferenceCheck.reason,
+                  skippedReason: preferenceCheck.reason || 'unknown',
                   metadata: { timesheet_id: timesheet.id, action: 'approved' }
               });
           } else {
@@ -474,7 +480,7 @@ serve(async (req) => {
                     channel: 'email',
                     preferenceChecked: preferenceCheck.preferenceChecked,
                     preferenceStatus: preferenceCheck.preferenceStatus,
-                    skippedReason: preferenceCheck.reason,
+                    skippedReason: preferenceCheck.reason || 'unknown',
                     metadata: { timesheet_id: timesheet.id, action: 'approval_request' }
                 });
             } else {
@@ -574,7 +580,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message
+        error: (error as any).message
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
