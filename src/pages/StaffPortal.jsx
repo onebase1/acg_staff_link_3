@@ -1207,12 +1207,26 @@ export default function StaffPortal() {
               const isTimesheetCompleted = hasActuallyEnded;
               const isShiftCompleted = nextShift.status === 'completed';
 
+              // ⏱️ UI DECOUPLING: Check if shift time is technically over
+              const now = new Date();
+              const shiftDate = parseISO(nextShift.date);
+              const [endHour, endMin] = nextShift.end_time.split(':').map(Number);
+              const shiftEndDate = new Date(shiftDate);
+              shiftEndDate.setHours(endHour, endMin, 0, 0);
+              const [startHour, startMin] = nextShift.start_time.split(':').map(Number);
+              if (endHour < startHour || (endHour === startHour && endMin < startMin)) {
+                shiftEndDate.setDate(shiftEndDate.getDate() + 1);
+              }
+              const isShiftTimeOver = now > shiftEndDate;
+
               // ✅ FIX: Only show "in progress" if staff has actually clocked in (not just scheduled time passed)
-              // For paper sites, we consider it in progress if staff_arrival_only is logged
+              // For paper sites, we consider it in progress if staff_arrival_only is logged AND time isn't over
               const client = clients.find(c => c.id === nextShift.client_id);
+              const isPaperSite = client?.geofence_enabled === false;
               const isPaperArrivalLogged = nextShift.shift_journey_log?.some(l => l.state === 'staff_arrival_only');
-              const isInProgress = isTimesheetInProgress || (client?.geofence_enabled === false && isPaperArrivalLogged);
-              const isCompleted = isTimesheetCompleted || isShiftCompleted;
+              
+              const isInProgress = isTimesheetInProgress || (isPaperSite && isPaperArrivalLogged && !isShiftTimeOver);
+              const isCompleted = isTimesheetCompleted || isShiftCompleted || (isPaperSite && isShiftTimeOver && isPaperArrivalLogged);
 
               if (isCompleted) {
                 // Shift complete - show gray disabled button

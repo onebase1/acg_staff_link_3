@@ -11,9 +11,8 @@ BEGIN
   -- (We're only changing status, not assignment/times, so overlap check is not needed)
   ALTER TABLE shifts DISABLE TRIGGER validate_shift_overlap;
 
-  -- Update shifts that have passed their scheduled end time + grace period
-  -- GPS shifts: 48 hours
-  -- Paper shifts: 12 hours
+  -- Update shifts that have passed their scheduled end time + 48-hour grace period
+  -- (Always use 48 hours to allow ample time for timesheet uploads across all shift types)
   UPDATE shifts
   SET
     status = 'awaiting_admin_closure',
@@ -23,24 +22,14 @@ BEGIN
         'state', 'awaiting_admin_closure',
         'timestamp', NOW(),
         'method', 'automated',
-        'notes', 'Auto-transitioned: shift ended ' || (CASE WHEN requires_gps = false THEN '12' ELSE '48' END) || '+ hours ago without completion. Previous status: ' || status
+        'notes', 'Auto-transitioned: shift ended 48+ hours ago without completion. Previous status: ' || status
       )
     )
   WHERE
     (CASE
-      WHEN requires_gps = false THEN
-        -- Paper shifts: 12-hour grace period (Fast cleanup)
-        (CASE
-          WHEN end_time < start_time THEN (date + INTERVAL '1 day')::timestamp + end_time::time
-          ELSE date::timestamp + end_time::time
-        END) < (NOW() - INTERVAL '12 hours')
-      ELSE
-        -- GPS shifts: 48-hour grace period (Standard safety net)
-        (CASE
-          WHEN end_time < start_time THEN (date + INTERVAL '1 day')::timestamp + end_time::time
-          ELSE date::timestamp + end_time::time
-        END) < (NOW() - INTERVAL '48 hours')
-    END)
+      WHEN end_time < start_time THEN (date + INTERVAL '1 day')::timestamp + end_time::time
+      ELSE date::timestamp + end_time::time
+    END) < (NOW() - INTERVAL '48 hours')
     AND status IN ('open', 'assigned', 'confirmed', 'in_progress');
 
   GET DIAGNOSTICS row_count = ROW_COUNT;

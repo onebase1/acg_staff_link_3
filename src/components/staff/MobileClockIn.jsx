@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { formatTodayShiftTime } from "../../utils/shiftTimeFormatter";
 import { invokeFunction } from "@/lib/supabaseFunctions";
+import { parseISO } from "date-fns";
 
 export default function MobileClockIn({ shift, onClockInComplete, existingTimesheet: initialTimesheet }) {
   const [loading, setLoading] = useState(false);
@@ -39,6 +40,29 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
 
   // New state as per outline, assuming it's for an internal loading specific to location within handleClockIn
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+
+  // ⏱️ UI DECOUPLING: Check if shift time is technically over
+  const [isShiftTimeOver, setIsShiftTimeOver] = useState(false);
+
+  useEffect(() => {
+    if (!shift) return;
+    const updateTimeStatus = () => {
+      const now = new Date();
+      const shiftDate = parseISO(shift.date);
+      const [endHour, endMin] = shift.end_time.split(':').map(Number);
+      const shiftEndDate = new Date(shiftDate);
+      shiftEndDate.setHours(endHour, endMin, 0, 0);
+      const [startHour, startMin] = shift.start_time.split(':').map(Number);
+      if (endHour < startHour || (endHour === startHour && endMin < startMin)) {
+        shiftEndDate.setDate(shiftEndDate.getDate() + 1);
+      }
+      setIsShiftTimeOver(now > shiftEndDate);
+    };
+
+    updateTimeStatus();
+    const interval = setInterval(updateTimeStatus, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, [shift]);
 
   useEffect(() => {
     setExistingTimesheet(initialTimesheet);
@@ -1002,8 +1026,17 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
                   <Alert className="border-green-300 bg-green-50 mb-4">
                     <CheckCircle className="h-5 w-5 text-green-600" />
                     <AlertDescription className="text-green-900">
-                      <strong>Arrival Logged!</strong>
-                      <p className="text-sm">We've notified the client that you are on site.</p>
+                      {client?.geofence_enabled === false && isShiftTimeOver ? (
+                        <>
+                          <strong>Shift Finished!</strong>
+                          <p className="text-sm">Please ensure your paper timesheet is signed and submitted to the home.</p>
+                        </>
+                      ) : (
+                        <>
+                          <strong>Arrival Logged!</strong>
+                          <p className="text-sm">We've notified the client that you are on site.</p>
+                        </>
+                      )}
                     </AlertDescription>
                   </Alert>
                 ) : (
