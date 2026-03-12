@@ -45,6 +45,7 @@ export default function ComplianceTracker() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [showArchived, setShowArchived] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -104,7 +105,14 @@ export default function ComplianceTracker() {
   const { data: compliance = [], refetch: refetchCompliance } = useQuery({
     queryKey: ['compliance', isStaff ? staffRecord?.id : user?.agency_id],
     queryFn: async () => {
-      let query = supabase.from('compliance').select('*').order('created_date', { ascending: false });
+      let query = supabase.from('compliance')
+        .select('*')
+        .order('created_date', { ascending: false });
+
+      // Only show non-archived by default
+      if (!showArchived) {
+        query = query.eq('is_archived', false);
+      }
 
       if (isStaff && staffRecord?.id) {
         query = query.eq('staff_id', staffRecord.id);
@@ -323,7 +331,12 @@ export default function ComplianceTracker() {
       toast.success('✅ Document deleted');
     },
     onError: (error) => {
-      toast.error(`❌ Delete failed: ${error.message}`);
+      // Check if it's our DB trigger error
+      if (error.message?.includes('Legal retention required')) {
+        toast.error(`❌ Retention Guard: ${error.message}`);
+      } else {
+        toast.error(`❌ Delete failed: ${error.message}`);
+      }
     }
   });
 
@@ -355,8 +368,12 @@ export default function ComplianceTracker() {
 
       if (uploadError) throw uploadError;
 
-      // Store the storage path; viewing uses signed URLs
-      setUploadData({ ...uploadData, document_url: filePath });
+      // Store the storage path and size
+      setUploadData({ 
+        ...uploadData, 
+        document_url: filePath,
+        file_size_bytes: file.size 
+      });
       toast.success('✅ File uploaded! Complete the form below.');
     } catch (error) {
       toast.error(`❌ Upload failed: ${error.message}`);
@@ -431,8 +448,12 @@ export default function ComplianceTracker() {
 
       if (uploadError) throw uploadError;
 
-      // Store the storage path; viewing uses signed URLs
-      setEditingDoc({ ...editingDoc, document_url: filePath });
+      // Store the storage path and size
+      setEditingDoc({ 
+        ...editingDoc, 
+        document_url: filePath,
+        file_size_bytes: file.size
+      });
       toast.success('✅ New file uploaded! Click "Save Changes" to confirm.');
     } catch (error) {
       toast.error(`❌ Upload failed: ${error.message}`);
@@ -450,19 +471,34 @@ export default function ComplianceTracker() {
       data: {
         document_name: editingDoc.document_name,
         document_url: editingDoc.document_url, // ✅ Now updates file URL if changed
+        file_size_bytes: editingDoc.file_size_bytes, // ✅ Track storage usage
         issue_date: editingDoc.issue_date,
         expiry_date: editingDoc.expiry_date,
         reference_number: editingDoc.reference_number,
         issuing_authority: editingDoc.issuing_authority,
         notes: editingDoc.notes,
-        status: isStaff ? 'pending' : editingDoc.status // ✅ Staff updates reset status to pending
+        status: isStaff ? 'pending' : editingDoc.status, // ✅ Staff updates reset status to pending
+        is_archived: editingDoc.is_archived // Preserve archived status
       }
     });
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (doc) => {
+    const isUnderRetention = doc.retention_until && new Date(doc.retention_until) > new Date();
+    
+    if (isUnderRetention) {
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <p className="font-bold">Legal Retention Guard</p>
+          <p className="text-xs">This document must be kept until {format(new Date(doc.retention_until), 'dd MMM yyyy')} for care sector compliance.</p>
+        </div>,
+        { duration: 6000 }
+      );
+      return;
+    }
+
     if (confirm('Are you sure you want to delete this document? This cannot be undone.')) {
-      deleteMutation.mutate(id);
+      deleteMutation.mutate(doc.id);
     }
   };
 
@@ -720,6 +756,18 @@ export default function ComplianceTracker() {
               </SelectContent>
             </Select>
           </div>
+          <div className="flex items-center space-x-2 pt-2">
+            <input 
+              type="checkbox" 
+              id="show-archived" 
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+              className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+            />
+            <Label htmlFor="show-archived" className="text-sm font-medium text-gray-700 cursor-pointer">
+              Show Archived Documents
+            </Label>
+          </div>
         </CardContent>
       </Card>
 
@@ -748,8 +796,15 @@ export default function ComplianceTracker() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      {doc.is_archived && <Badge className="bg-gray-500 text-white text-xs whitespace-nowrap">Archived</Badge>}
                       {getExpiryBadge(doc.expiry_date, doc.status)}
                       {getStatusBadge(doc.status)}
+                      {doc.retention_until && (
+                        <div className="text-[10px] text-amber-600 font-medium flex items-center mt-1">
+                          <Clock className="w-2.5 h-2.5 mr-1" />
+                          Retain to {format(new Date(doc.retention_until), 'MMM yyyy')}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -813,7 +868,7 @@ export default function ComplianceTracker() {
                           size="sm"
                           variant="ghost"
                           className="h-10 text-red-600"
-                          onClick={() => handleDelete(doc.id)}
+                          onClick={() => handleDelete(doc)}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>

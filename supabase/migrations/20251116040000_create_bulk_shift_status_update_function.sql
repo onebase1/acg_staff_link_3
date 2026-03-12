@@ -11,9 +11,9 @@ BEGIN
   -- (We're only changing status, not assignment/times, so overlap check is not needed)
   ALTER TABLE shifts DISABLE TRIGGER validate_shift_overlap;
 
-  -- Update shifts that have passed their scheduled end time + 48-hour grace period
-  -- ✅ FIX: Calculate actual end datetime (handles overnight shifts)
-  -- ✅ FIX: Add 48-hour grace period to allow natural completion via GPS/timesheets
+  -- Update shifts that have passed their scheduled end time + grace period
+  -- GPS shifts: 48 hours
+  -- Paper shifts: 12 hours
   UPDATE shifts
   SET
     status = 'awaiting_admin_closure',
@@ -23,19 +23,24 @@ BEGIN
         'state', 'awaiting_admin_closure',
         'timestamp', NOW(),
         'method', 'automated',
-        'notes', 'Auto-transitioned: shift ended 48+ hours ago without completion. Previous status: ' || status
+        'notes', 'Auto-transitioned: shift ended ' || (CASE WHEN requires_gps = false THEN '12' ELSE '48' END) || '+ hours ago without completion. Previous status: ' || status
       )
     )
   WHERE
-    -- Calculate scheduled end datetime (handles overnight shifts)
     (CASE
-      WHEN end_time < start_time THEN
-        -- Overnight shift: end time is next day
-        (date + INTERVAL '1 day')::timestamp + end_time::time
+      WHEN requires_gps = false THEN
+        -- Paper shifts: 12-hour grace period (Fast cleanup)
+        (CASE
+          WHEN end_time < start_time THEN (date + INTERVAL '1 day')::timestamp + end_time::time
+          ELSE date::timestamp + end_time::time
+        END) < (NOW() - INTERVAL '12 hours')
       ELSE
-        -- Same-day shift
-        date::timestamp + end_time::time
-    END) < (NOW() - INTERVAL '48 hours')  -- 48-hour grace period after scheduled end
+        -- GPS shifts: 48-hour grace period (Standard safety net)
+        (CASE
+          WHEN end_time < start_time THEN (date + INTERVAL '1 day')::timestamp + end_time::time
+          ELSE date::timestamp + end_time::time
+        END) < (NOW() - INTERVAL '48 hours')
+    END)
     AND status IN ('open', 'assigned', 'confirmed', 'in_progress');
 
   GET DIAGNOSTICS row_count = ROW_COUNT;

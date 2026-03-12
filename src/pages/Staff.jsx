@@ -348,17 +348,33 @@ export default function Staff() {
 
       if (totalRelatedRecords > 0) {
         // Soft delete: Set status to inactive
+        const now = new Date();
         const { error } = await supabase
           .from('staff')
           .update({
             status: 'inactive',
-            archived_at: new Date().toISOString(),
+            archived_at: now.toISOString(),
             archived_reason: reason || 'Not specified',
-            updated_date: new Date().toISOString()
+            updated_date: now.toISOString()
           })
           .eq('id', id);
 
         if (error) throw error;
+
+        // ✅ Propagate to Compliance documents: 6-year retention
+        const retentionDate = new Date();
+        retentionDate.setFullYear(retentionDate.getFullYear() + 6);
+
+        await supabase
+          .from('compliance')
+          .update({
+            is_archived: true,
+            archived_at: now.toISOString(),
+            archived_reason: `Staff member archived: ${reason || 'Not specified'}`,
+            retention_until: retentionDate.toISOString().split('T')[0],
+            storage_tier: 'cold' // Flag for tiered storage
+          })
+          .eq('staff_id', id);
 
         return { softDelete: true, relatedRecords: totalRelatedRecords };
       } else {
@@ -404,6 +420,7 @@ export default function Staff() {
     }
   });
 
+  // ✅ NEW: Reactivate mutation
   const reactivateMutation = useMutation({
     mutationFn: async (id) => {
       const { error } = await supabase
@@ -417,6 +434,18 @@ export default function Staff() {
         .eq('id', id);
 
       if (error) throw error;
+
+      // ✅ Un-archive compliance documents if they aren't expired
+      // This makes it easier for staff returning within a short window.
+      await supabase
+        .from('compliance')
+        .update({
+          is_archived: false,
+          storage_tier: 'hot'
+        })
+        .eq('staff_id', id)
+        .gt('expiry_date', new Date().toISOString().split('T')[0]);
+
       return id;
     },
     onSuccess: () => {

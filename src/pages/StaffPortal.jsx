@@ -47,7 +47,32 @@ export default function StaffPortal() {
     if (isToday(shiftDate)) return true;
     
     // 2. Status-based override (Active clock-ins)
-    if (shift.status === 'in_progress') return true;
+    // 2. Already in progress? Check if it's "stale" (past its scheduled window)
+    if (shift.status === 'in_progress') {
+      try {
+        // Robust end datetime check for staleness
+        const [endHour, endMin] = shift.end_time.split(':').map(Number);
+        const shiftEndDate = new Date(shiftDate);
+        shiftEndDate.setHours(endHour, endMin, 0, 0);
+
+        // Handle overnight crossover
+        const [startHour, startMin] = shift.start_time.split(':').map(Number);
+        if (endHour < startHour || (endHour === startHour && endMin < startMin)) {
+          shiftEndDate.setDate(shiftEndDate.getDate() + 1);
+        }
+
+        // A shift is "stale" if more than 16 hours have passed since it was supposed to end
+        // This is a safety margin beyond the 2h grace and overnight periods
+        const staleThreshold = new Date(shiftEndDate);
+        staleThreshold.setHours(staleThreshold.getHours() + 16);
+
+        if (today < staleThreshold) return true;
+        console.warn(`⚠️ [Visibility] Excluding stale in_progress shift ${shift.id} from Active Now`);
+        return false;
+      } catch (e) {
+        return true; // Fallback to showing it if calculation fails
+      }
+    }
     
     // 3. Robust Overnight Shift Check (The "Chadaira Case")
     // If shift was yesterday, check if it's still current based on end time
@@ -787,12 +812,39 @@ export default function StaffPortal() {
 
   const confirmedShifts = upcomingShifts.filter(s => s.status === 'confirmed');
 
-  const todayShifts = myShifts.filter(s => { // This should NOT be filtered by general filters
+  // ✅ FIX: Calculate todayShifts (Current Action Items) separately from future lists
+  const todayShifts = myShifts.filter(s => { 
     // Only show shifts that are either assigned or confirmed AND are currently active/today (NOT all future)
     return isShiftActiveNow(s) && (s.status === 'assigned' || s.status === 'confirmed' || s.status === 'in_progress');
   });
 
-  const nextShift = upcomingShifts.filter(s => s.status === 'confirmed' || s.status === 'assigned' || s.status === 'in_progress')[0]; // Next relevant shift for display in hero
+  // ✅ FIX: nextShift should prioritize meaningful action items
+  // Priority: 1. Actually in progress, 2. Confirmed for today, 3. Assigned for today, 4. Future shifts
+  const sortedActionShifts = [...upcomingShifts].sort((a, b) => {
+    // Primary: Status weight
+    const statusWeight = (s) => {
+      if (s.status === 'in_progress' && isShiftActiveNow(s)) return 10;
+      if (s.status === 'confirmed' && isToday(new Date(s.date))) return 8;
+      if (s.status === 'assigned' && isToday(new Date(s.date))) return 6;
+      if (isToday(new Date(s.date))) return 4;
+      return 0;
+    };
+    
+    const weightA = statusWeight(a);
+    const weightB = statusWeight(b);
+    
+    if (weightA !== weightB) return weightB - weightA;
+    
+    // Secondary: Chronological
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
+
+  const nextRelevantShifts = sortedActionShifts.filter(s => 
+    (s.status === 'confirmed' || s.status === 'assigned' || s.status === 'in_progress') &&
+    isShiftActiveOrUpcoming(s)
+  );
+  
+  const nextShift = nextRelevantShifts[0]; // Next relevant shift for display in hero
 
   // ✅ FIX 2: Calculate actual earnings from CONFIRMED shifts
   const today = new Date();
@@ -1186,7 +1238,13 @@ export default function StaffPortal() {
                     onClick={() => document.getElementById(`clock-in-${nextShift.id}`)?.scrollIntoView({ behavior: 'smooth' })}
                   >
                     <Zap className="w-5 h-5 mr-2" />
-                    CLOCK IN NOW
+                    {(() => {
+                      const client = clients.find(c => c.id === nextShift.client_id);
+                      if (client?.geofence_enabled === false) {
+                        return "I HAVE ARRIVED";
+                      }
+                      return "CLOCK IN NOW";
+                    })()}
                   </Button>
                 );
               }

@@ -349,6 +349,72 @@ serve(async (req) => {
                 changeLogDescription = `Staff clock-in notification sent to ${client.name}`;
                 break;
 
+            case 'staff_arrival_only':
+                if (!staffMember) {
+                    return new Response(JSON.stringify({ success: false, error: 'Staff member not found' }), { 
+                        status: 400,
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
+                }
+
+                // IMMEDIATE SEND
+                emailSubject = `✅ ${staffMember.first_name} ${staffMember.last_name} Has Arrived (Paper Timesheet Site)`;
+                
+                const paperArrivalContent = `
+                    <p style="font-size: 16px; color: #4b5563;">Hi ${client.contact_person.name || 'Team'},</p>
+                    <p style="font-size: 16px; color: #4b5563;">This is to confirm that <strong>${staffMember.first_name} ${staffMember.last_name}</strong> has arrived on-site for their shift.</p>
+                    
+                    <div style="background-color: #f9fafb; border-radius: 8px; padding: 24px; margin: 24px 0; border: 1px solid #e5e7eb;">
+                        <h3 style="margin: 0 0 16px 0; font-size: 14px; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.05em;">Arrival Verification</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Status</td>
+                                <td style="padding: 8px 0; color: #059669; font-weight: 600; text-align: right; font-size: 14px;">✅ Arrived On-Site</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Time</td>
+                                <td style="padding: 8px 0; color: #374151; font-weight: 500; text-align: right; font-size: 14px;">${new Date().toLocaleTimeString()}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Verification</td>
+                                <td style="padding: 8px 0; color: #374151; font-weight: 500; text-align: right; font-size: 14px;">App Proximity Match</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div style="background-color: #fffbeb; border-radius: 8px; padding: 16px; margin: 24px 0; border: 1px solid #fef3c7;">
+                        <p style="margin: 0; font-size: 14px; color: #92400e;">
+                            <strong>Note:</strong> This site uses <strong>Paper Timesheets</strong>. Staff will present a physical timesheet for signature at the end of their shift.
+                        </p>
+                    </div>
+
+                    <div style="background-color: #ffffff; border-radius: 8px; padding: 24px; margin: 24px 0; border: 1px solid #f3f4f6;">
+                        <h3 style="margin: 0 0 16px 0; font-size: 14px; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.05em;">Assignment details</h3>
+                        <p style="margin: 4px 0; font-size: 15px;"><strong>Date:</strong> ${shift.date}</p>
+                        <p style="margin: 4px 0; font-size: 15px;"><strong>Scheduled:</strong> ${shift.start_time} - ${shift.end_time}</p>
+                        <p style="margin: 4px 0; font-size: 15px;"><strong>Role:</strong> ${shift.role_required}</p>
+                        <p style="margin: 12px 0 0 0; font-size: 13px; color: #9ca3af;">Ref: SHIFT-${shift.id.substring(0, 8).toUpperCase()}</p>
+                    </div>
+                `;
+
+                emailBody = getEmailContainer(paperArrivalContent, '#f59e0b', `${staffMember.first_name} Arrived`);
+                
+                try {
+                    await supabase.functions.invoke('send-email', {
+                        body: {
+                            to: client.contact_person.email,
+                            subject: emailSubject,
+                            html: emailBody,
+                            from_name: agency?.name || branding.saasName
+                        }
+                    });
+                } catch (emailError) {
+                    console.error('❌ [Verification Chain] Arrival email failed:', emailError);
+                }
+
+                changeLogDescription = `Staff 'I HAVE ARRIVED' (Paper Site) notification sent to ${client.name}`;
+                break;
+
             case 'staff_on_my_way':
                 if (!staffMember) {
                     return new Response(JSON.stringify({ success: false, error: 'Staff member not found' }), { 

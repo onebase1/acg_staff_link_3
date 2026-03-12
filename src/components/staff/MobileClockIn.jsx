@@ -27,6 +27,7 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
   const [onMyWayLoading, setOnMyWayLoading] = useState(false);
   const [showEtaOptions, setShowEtaOptions] = useState(false);
   const [selectedEta, setSelectedEta] = useState('');
+  const [arrivalLogged, setArrivalLogged] = useState(false);
 
   // 🔒 ANTI-DUPLICATE PROTECTION
   const [isClockingIn, setIsClockingIn] = useState(false);
@@ -451,6 +452,75 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
       toast.error('Failed to notify client');
     } finally {
       setOnMyWayLoading(false);
+    }
+  };
+
+  const handleLogArrival = async () => {
+    setIsClockingIn(true);
+    setLoading(true);
+    setGpsError(null);
+
+    try {
+      setValidationStep('Acquiring GPS location...');
+      const capturedLocation = await getCurrentLocation();
+
+      setValidationStep('Verifying arrival...');
+      const { data: validation } = await invokeFunction('geofence-validator', {
+        body: {
+          staff_location: capturedLocation,
+          client_id: shift.client_id
+        }
+      });
+
+      if (!validation.is_on_site) {
+        toast.error('❌ You are not on site!', {
+          description: `You must be within 100m of the site to log arrival. Current distance: ${validation.distance_meters}m`
+        });
+        return;
+      }
+
+      // Record in journey log without setting clock_in_time to avoid state lock
+      const { error: logError } = await supabase
+        .from('shifts')
+        .update({
+          shift_journey_log: [
+            ...(shift.shift_journey_log || []),
+            {
+              state: 'staff_arrival_only',
+              timestamp: new Date().toISOString(),
+              staff_id: staff.id,
+              method: 'app',
+              location: capturedLocation,
+              distance_meters: validation.distance_meters
+            }
+          ]
+        })
+        .eq('id', shift.id);
+
+      if (logError) throw logError;
+
+      // Trigger notification chain
+      await invokeFunction('shift-verification-chain', {
+        body: {
+          shift_id: shift.id,
+          trigger_point: 'staff_arrival_only',
+          additional_data: {
+            distance_meters: validation.distance_meters,
+            is_on_site: true
+          }
+        }
+      });
+
+      setArrivalLogged(true);
+      toast.success('✅ Arrival logged! Client notified.');
+      
+    } catch (error) {
+      console.error('Error logging arrival:', error);
+      toast.error('Failed to log arrival');
+    } finally {
+      setValidationStep('');
+      setIsClockingIn(false);
+      setLoading(false);
     }
   };
 
@@ -919,13 +989,43 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
 
             {/* 📅 GPS vs PAPER ADVISORY */}
             {client?.geofence_enabled === false ? (
-              <Alert className="border-orange-300 bg-orange-50 mb-4">
-                <Info className="h-5 w-5 text-orange-600" />
-                <AlertDescription className="text-orange-900">
-                  <strong>Paper Timesheet Required</strong>
-                  <p className="text-sm mt-1">This site does not use GPS. Please ensure your paper timesheet is signed by the client.</p>
-                </AlertDescription>
-              </Alert>
+              <div className="space-y-4">
+                <Alert className="border-blue-300 bg-blue-50 mb-4">
+                  <Info className="h-5 w-5 text-blue-600" />
+                  <AlertDescription className="text-blue-900">
+                    <strong>Paper Timesheet Site</strong>
+                    <p className="text-sm mt-1">Please ensure your paper timesheet is signed at the end of your shift.</p>
+                  </AlertDescription>
+                </Alert>
+
+                {arrivalLogged ? (
+                  <Alert className="border-green-300 bg-green-50 mb-4">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <AlertDescription className="text-green-900">
+                      <strong>Arrival Logged!</strong>
+                      <p className="text-sm">We've notified the client that you are on site.</p>
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Button
+                    onClick={handleLogArrival}
+                    disabled={loading || isClockingIn}
+                    className="w-full py-6 text-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-md font-bold"
+                  >
+                    {loading || isClockingIn ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Logging Arrival...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-5 h-5 mr-2" />
+                        I HAVE ARRIVED (LOG ON-SITE)
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
             ) : (
               <div className="space-y-4">
                 {/* ✨ IMPROVEMENT 4: Check Location Button */}
