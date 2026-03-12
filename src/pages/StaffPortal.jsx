@@ -1258,7 +1258,7 @@ export default function StaffPortal() {
                     {(() => {
                       const client = clients.find(c => c.id === nextShift.client_id);
                       if (client?.geofence_enabled === false) {
-                        return "I HAVE ARRIVED";
+                        return "ENROUTE / ARRIVED";
                       }
                       return "CLOCK IN NOW";
                     })()}
