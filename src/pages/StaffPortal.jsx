@@ -93,13 +93,9 @@ export default function StaffPortal() {
         const visibilityWindow = new Date(shiftEndDate);
         visibilityWindow.setHours(visibilityWindow.getHours() + 2);
         
-        // 🚨 PAPER SITE OVERRIDE: If paper site and shift time is over, it's no longer "Active Now" 
-        // regardless of DB status. This allows Hero Card to transition to next shift.
-        const client = clients.find(c => c.id === shift.client_id);
-        if (client?.geofence_enabled === false && today > shiftEndDate) {
-          return false;
-        }
-
+        // 🚨 PAPER SITE ALIGNMENT: Both GPS and Paper sites use a 2-hour grace period
+        // before the Hero Card transitions to the next shift. This ensures consistency
+        // with automated timesheet reminders sent immediately post-shift.
         if (today < visibilityWindow) return true;
       } catch (e) {
         console.error("Error calculating shift visibility window:", e);
