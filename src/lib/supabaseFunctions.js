@@ -13,9 +13,13 @@ import { supabase } from './supabase';
  * @returns {Promise<{ data: any, error: any }>} - The result from the function invocation.
  */
 export const invokeFunction = async (functionName, options) => {
+  // 🔄 Reroute: shift-verification-chain had cloud-side sync issues and docker blockers locally.
+  // v2 is functionally identical but contains the fixed logic and is deployed.
+  const targetFunction = functionName === 'shift-verification-chain' ? 'shift-verification-chain-v2' : functionName;
+
   try {
     // First attempt
-    const { data, error } = await supabase.functions.invoke(functionName, options);
+    const { data, error } = await supabase.functions.invoke(targetFunction, options);
     
     // If a generic network error occurs, refresh the session and retry once.
     if (error && error.message && error.message.includes('Failed to fetch')) {

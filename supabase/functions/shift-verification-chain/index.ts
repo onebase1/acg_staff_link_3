@@ -161,21 +161,21 @@ serve(async (req) => {
          */
         const getEmailContainer = (content: string, headerColor: string, title: string) => {
             const logoHtml = agency?.logo_url 
-                ? `<img src="${agency.logo_url}" alt="${agency.name}" style="max-width: 140px; margin-bottom: 12px; filter: brightness(0) invert(1);">`
-                : `<h2 style="color: white; margin: 0; font-size: 20px;">${agency?.name || branding.saasName}</h2>`;
+                ? `<div style="margin-bottom: 20px;"><img src="${agency.logo_url}" alt="${agency.name}" style="max-width: 160px; filter: brightness(0) invert(1);"></div>`
+                : `<h2 style="color: white; margin: 0 0 20px 0; font-size: 20px;">${agency?.name || branding.saasName}</h2>`;
 
             return `
-                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; background-color: #ffffff; color: #374151; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                    <div style="background-color: ${headerColor}; padding: 32px 20px; text-align: center;">
+                <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; background-color: #ffffff; color: #1f2937; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+                    <div style="background-color: ${headerColor}; padding: 40px 20px; text-align: center;">
                         ${logoHtml}
-                        <h1 style="color: white; margin: 8px 0 0 0; font-size: 22px; font-weight: 700; letter-spacing: -0.025em;">${title}</h1>
+                        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.025em; line-height: 1.2;">${title}</h1>
                     </div>
-                    <div style="padding: 32px; line-height: 1.5;">
+                    <div style="padding: 40px; line-height: 1.6;">
                         ${content}
                         
-                        <div style="margin-top: 40px; border-top: 1px solid #f3f4f6; padding-top: 24px; text-align: center;">
-                            <p style="color: #9ca3af; font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">
-                                Notification from ${agency?.name || branding.saasName} • Powered by ACG StaffLink
+                        <div style="margin-top: 48px; border-top: 1px solid #f3f4f6; padding-top: 32px; text-align: center;">
+                            <p style="color: #9ca3af; font-size: 12px; margin: 0; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">
+                                Notification via ACG StaffLink • Security & Transparency
                             </p>
                         </div>
                     </div>
@@ -331,7 +331,8 @@ serve(async (req) => {
                     </div>
                 `;
 
-                emailBody = getEmailContainer(arrivalContent, '#22c55e', `${staffMember.first_name} Arrived & Clocked In`);
+                const arrivalTitle = `${staffMember.first_name.toUpperCase()} <span style="background-color: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; margin: 0 4px;">Arrived</span> & Clocked In`;
+                emailBody = getEmailContainer(arrivalContent, '#22c55e', arrivalTitle);
                 
                 try {
                     await supabase.functions.invoke('send-email', {
@@ -397,7 +398,8 @@ serve(async (req) => {
                     </div>
                 `;
 
-                emailBody = getEmailContainer(paperArrivalContent, '#f59e0b', `${staffMember.first_name} Arrived`);
+                const paperTitle = `${staffMember.first_name.toUpperCase()} <span style="background-color: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; margin: 0 4px;">Arrived</span> Confirmed`;
+                emailBody = getEmailContainer(paperArrivalContent, '#22c55e', paperTitle);
                 
                 try {
                     await supabase.functions.invoke('send-email', {

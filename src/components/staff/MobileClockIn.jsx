@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -15,6 +16,7 @@ import { invokeFunction } from "@/lib/supabaseFunctions";
 import { parseISO } from "date-fns";
 
 export default function MobileClockIn({ shift, onClockInComplete, existingTimesheet: initialTimesheet }) {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [gpsStatus, setGpsStatus] = useState('idle');
   const [location, setLocation] = useState(null);
@@ -96,6 +98,20 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
       supabase.removeChannel(timesheetSubscription);
     };
   }, [shift.id]);
+
+  useEffect(() => {
+    if (shift?.shift_journey_log && Array.isArray(shift.shift_journey_log)) {
+      const logs = shift.shift_journey_log;
+      const arrivalFound = logs.some(log => log.state === 'staff_arrival_only');
+      const enrouteFound = logs.find(log => log.state === 'staff_on_my_way');
+
+      if (arrivalFound) setArrivalLogged(true);
+      if (enrouteFound) {
+        setIsOnMyWaySent(true);
+        if (enrouteFound.eta) setSelectedEta(enrouteFound.eta);
+      }
+    }
+  }, [shift]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -470,6 +486,7 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
       setSelectedEta(eta);
       setIsOnMyWaySent(true);
       setShowEtaOptions(false);
+      queryClient.invalidateQueries(['my-shifts']);
       toast.success(`🏠 Enroute: Client notified! ETA: ${eta}`);
     } catch (error) {
       console.error('Error sending on-my-way notification:', error);
@@ -536,6 +553,7 @@ export default function MobileClockIn({ shift, onClockInComplete, existingTimesh
       });
 
       setArrivalLogged(true);
+      queryClient.invalidateQueries(['my-shifts']);
       toast.success('✅ Arrival logged! Client notified.');
       
     } catch (error) {

@@ -12,8 +12,12 @@ import { supabase } from './supabaseClient';
  * @returns {Promise<{data: any}>}
  */
 export async function invokeEdgeFunction(functionName, params = {}) {
+  // 🔄 Reroute: shift-verification-chain had cloud-side sync issues and docker blockers locally.
+  // v2 is functionally identical but contains the fixed logic and is deployed.
+  const targetFunction = functionName === 'shift-verification-chain' ? 'shift-verification-chain-v2' : functionName;
+  
   try {
-    const { data, error } = await supabase.functions.invoke(functionName, {
+    const { data, error } = await supabase.functions.invoke(targetFunction, {
       body: params,
     });
 
