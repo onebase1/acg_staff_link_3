@@ -26,7 +26,14 @@ import PayDisplay from "../components/timesheets/PayDisplay";
 import TimesheetUploader from "../components/timesheets/TimesheetUploader";
 
 export default function TimesheetDetail() {
-  const [timesheetId, setTimesheetId] = useState(null);
+  const location = useLocation(); // Added useLocation
+  const queryParams = new URLSearchParams(location.search);
+  const timesheetIdParam = queryParams.get('id'); // Renamed to avoid conflict with state
+  const bookingIdParam = queryParams.get('bookingId');
+  const shiftIdParam = queryParams.get('shiftId');
+
+  const [timesheet, setTimesheet] = useState(null); // Changed to local state
+  const [loading, setLoading] = useState(true); // Added loading state
   const [user, setUser] = useState(null);
   // State for OCR collapsible - default open on desktop (>= 768px), closed on mobile
   const [ocrExpanded, setOcrExpanded] = useState(() => window.innerWidth >= 768);
@@ -35,10 +42,7 @@ export default function TimesheetDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setTimesheetId(params.get('id'));
-  }, []);
+  // Removed useEffect for timesheetId, now derived from URL params directly
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -64,27 +68,105 @@ export default function TimesheetDetail() {
     fetchUser();
   }, []);
 
-  const { data: timesheet, refetch: refetchTimesheet } = useQuery({
-    queryKey: ['timesheet', timesheetId],
-    queryFn: async () => {
-      if (!timesheetId) return null;
+  const fetchTimesheet = async () => {
+    setLoading(true);
+    try {
+      let currentTimesheet = null;
 
-      const { data, error } = await supabase
-        .from('timesheets')
-        .select('*')
-        .eq('id', timesheetId)
-        .single();
+      // 1. Resolve by Timesheet ID (Direct)
+      if (timesheetIdParam) {
+        console.log('🔍 Resolving by Timesheet ID:', timesheetIdParam);
+        const { data, error } = await supabase
+          .from('timesheets')
+          .select('*')
+          .eq('id', timesheetIdParam)
+          .maybeSingle();
 
-      if (error) {
-        console.error('❌ Error fetching timesheet:', error);
-        return null;
+        if (data) {
+          currentTimesheet = data;
+        } else if (!bookingIdParam && !shiftIdParam) {
+          // Fallback: Check if the provided 'id' is actually a booking_id
+          // (Legacy support for Staff Portal Hero Card)
+          console.log('⚠️ Timesheet not found by ID. Checking if ID is a Booking ID:', timesheetIdParam);
+          const { data: fallbackData } = await supabase
+            .from('timesheets')
+            .select('*')
+            .eq('booking_id', timesheetIdParam)
+            .maybeSingle();
+
+          if (fallbackData) {
+            currentTimesheet = fallbackData;
+          }
+        }
       }
-      return data;
-    },
-    enabled: !!timesheetId,
-    refetchOnMount: 'always',
-    staleTime: 0,
-  });
+
+      // 2. Resolve by Booking ID
+      if (!currentTimesheet && (bookingIdParam || (!timesheetIdParam && !shiftIdParam && queryParams.get('id')))) {
+        const effectiveBookingId = bookingIdParam || queryParams.get('id');
+        if (effectiveBookingId) {
+          console.log('🔍 Resolving by Booking ID:', effectiveBookingId);
+          const { data, error } = await supabase
+            .from('timesheets')
+            .select('*')
+            .eq('booking_id', effectiveBookingId)
+            .maybeSingle();
+
+          if (data) {
+            currentTimesheet = data;
+          }
+        }
+      }
+
+      // 3. Resolve by Shift ID
+      if (!currentTimesheet && shiftIdParam) {
+        console.log('🔍 Resolving by Shift ID:', shiftIdParam);
+        // First find the booking for this shift
+        const { data: bookingData } = await supabase
+          .from('bookings')
+          .select('id')
+          .eq('shift_id', shiftIdParam)
+          .maybeSingle();
+
+        if (bookingData) {
+          const { data: tsData } = await supabase
+            .from('timesheets')
+            .select('*')
+            .eq('booking_id', bookingData.id)
+            .maybeSingle();
+
+          if (tsData) {
+            currentTimesheet = tsData;
+          }
+        }
+      }
+
+      setTimesheet(currentTimesheet);
+
+      // If no timesheet found but we have a booking/shift, we might want to allow "Draft Creation"
+      // This is handled by the UI rendering based on timesheet === null but IDs being present
+    } catch (error) {
+      console.error('❌ Resolution error:', error);
+      toast.error('Failed to load timesheet details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (timesheetIdParam || bookingIdParam || shiftIdParam) {
+      fetchTimesheet();
+    } else {
+      setLoading(false);
+    }
+  }, [timesheetIdParam, bookingIdParam, shiftIdParam]); // Depend on params
+
+  // The useQuery for timesheet is now replaced by the local state and fetchTimesheet function.
+  // We'll keep a refetch function for other parts of the code that might call it.
+  const refetchTimesheet = () => {
+    fetchTimesheet();
+    queryClient.invalidateQueries(['timesheets']); // Invalidate list query
+  };
+
 
   const { data: staff } = useQuery({
     queryKey: ['staff', timesheet?.staff_id],
@@ -184,7 +266,7 @@ export default function TimesheetDetail() {
       return updated;
     },
     onSuccess: (updatedTimesheet) => {
-      queryClient.invalidateQueries(['timesheet', timesheetId]);
+      refetchTimesheet(); // Use the local refetch function
       queryClient.invalidateQueries(['timesheets']);
       toast.success('Timesheet updated');
 
@@ -220,11 +302,11 @@ export default function TimesheetDetail() {
     try {
       toast.info('🔄 Approving timesheet...');
       const { data, error } = await supabase.functions.invoke('auto-timesheet-approval-engine', {
-        body: { timesheet_id: timesheetId, manual_trigger: true }
+        body: { timesheet_id: timesheet?.id, manual_trigger: true } // Use timesheet.id from state
       });
       if (error) throw error;
       toast.success(data.message || 'Timesheet approved');
-      queryClient.invalidateQueries(['timesheet', timesheetId]);
+      refetchTimesheet(); // Use the local refetch function
       queryClient.invalidateQueries(['timesheets']);
     } catch (error) {
       console.error('Approval error:', error);
@@ -236,7 +318,7 @@ export default function TimesheetDetail() {
     const reason = prompt('Please enter rejection reason:');
     if (reason) {
       updateMutation.mutate({
-        id: timesheetId,
+        id: timesheet?.id, // Use timesheet.id from state
         data: {
           status: 'rejected',
           rejection_reason: reason
@@ -255,14 +337,14 @@ export default function TimesheetDetail() {
 
       const { data: response, error: invoiceError } = await supabase.functions.invoke('auto-invoice-generator', {
         body: {
-          timesheet_ids: [timesheetId],
+          timesheet_ids: [timesheet?.id], // Use timesheet.id from state
           auto_mode: false
         }
       });
 
       if (response.data?.success) {
         toast.success(`✅ Invoice created! ${response.data.invoices_created} invoice(s) generated.`);
-        queryClient.invalidateQueries(['timesheet', timesheetId]);
+        refetchTimesheet(); // Use the local refetch function
         queryClient.invalidateQueries(['timesheets']);
         queryClient.invalidateQueries(['invoices']);
 
@@ -279,13 +361,60 @@ export default function TimesheetDetail() {
     }
   };
 
-  if (!timesheet) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
       </div>
     );
   }
+
+  if (!loading && !timesheet) {
+    const effectiveBookingId = bookingIdParam || (timesheetIdParam && !timesheet ? timesheetIdParam : null);
+
+    return (
+      <div className="p-8">
+        <Card className="max-w-2xl mx-auto border-dashed border-2">
+          <CardContent className="pt-8 text-center space-y-4">
+            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
+              <Upload className="w-8 h-8 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold">No Timesheet Record Found</h3>
+              <p className="text-gray-500 mt-2">
+                We couldn't find an existing timesheet record for this ID.
+              </p>
+            </div>
+
+            {effectiveBookingId && (
+              <div className="bg-blue-50 p-4 rounded-lg text-left">
+                <p className="text-sm font-medium text-blue-800">Available Action:</p>
+                <p className="text-sm text-blue-600 mt-1">
+                  You can start a new timesheet upload for this booking. This will create a draft record and notify the client for approval.
+                </p>
+                <div className="mt-4">
+                  <TimesheetUploader
+                    bookingId={effectiveBookingId}
+                    onSuccess={() => window.location.reload()}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            )}
+
+            <Button
+              variant="outline"
+              onClick={() => navigate(createPageUrl('Timesheets'))}
+              className="mt-4"
+            >
+              Go to Timesheets List
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
 
   const getShiftType = () => {
     if (!shift || !shift.start_time) {

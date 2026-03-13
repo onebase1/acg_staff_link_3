@@ -457,8 +457,7 @@ export default function AdminWorkflows() {
         // Use a simple date comparison for "past" shift
         const isPastShift = new Date(shift.date) < new Date();
         if (isPastShift) {
-          console.log(`🔀 [Routing] Past shift detected (${shift.date}), redirecting to Timesheets for intervention.`);
-          return `${createPageUrl('Timesheets')}?shiftId=${entity_id}`;
+          return `/timesheetdetail?shiftId=${entity_id}`;
         }
       }
     }
@@ -467,7 +466,7 @@ export default function AdminWorkflows() {
       shift: createPageUrl('Shifts', entity_id),
       staff: createPageUrl('Staff', entity_id),
       client: createPageUrl('Clients', entity_id),
-      timesheet: createPageUrl('Timesheets', entity_id),
+      timesheet: `/timesheetdetail?id=${entity_id}`,
       compliance: createPageUrl('ComplianceTracker', entity_id),
       booking: createPageUrl('Bookings', entity_id),
       invoice: createPageUrl('Invoices', entity_id)

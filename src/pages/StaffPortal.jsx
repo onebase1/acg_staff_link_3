@@ -1282,7 +1282,7 @@ export default function StaffPortal() {
                         className="w-full bg-amber-500 hover:bg-amber-600 text-white border-0 py-5 sm:py-6 font-bold text-base sm:text-lg"
                         onClick={() => {
                           const booking = myBookings.find(b => b.shift_id === nextShift.id);
-                          if (booking) navigate(`/timesheetdetail?id=${booking.id}`);
+                          if (booking) navigate(`/timesheetdetail?bookingId=${booking.id}`);
                         }}
                       >
                         <FileText className="w-5 h-5 mr-2" />
