@@ -322,3 +322,6 @@ n8n-workflows/misc/*-reminders.json
 # =============================================================================
 CRON_SETUP_COPY_PASTE.sql
 **/CRON_SETUP*.sql
+
+# Local Netlify folder
+.netlify
