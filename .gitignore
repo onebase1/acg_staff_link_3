@@ -1,109 +1,324 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# =============================================================================
+# DEPENDENCIES & BUILD
+# =============================================================================
+node_modules/
+dist/
+dist-ssr/
+build/
+out/
+.cache/
+.next/
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Environment variables & secrets
+# =============================================================================
+# ENVIRONMENT & SECRETS
+# =============================================================================
 .env
 .env.local
 .env.*.local
 .env.development
 .env.production
 *.env
-
-# MCP configuration (contains API keys)
 .mcp.json
+.claude/settings.local.json
 
-# Supabase local
+# =============================================================================
+# SUPABASE LOCAL
+# =============================================================================
 .supabase/
 supabase/.branches/
 supabase/.temp/
 
-# Database dumps
-*.sql.gz
-*.dump
-
-# OS
+# =============================================================================
+# OS & EDITOR
+# =============================================================================
+.DS_Store
 Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 *.swp
 *.swo
 *~
-
-# Build artifacts
-build/
-.next/
-out/
-.cache/
-
-# Testing
-coverage/
-.nyc_output/
-
-# Temporary files
+~$*
+.vscode/*
+!.vscode/extensions.json
+.idea/
 tmp/
 temp/
+
+# =============================================================================
+# LOGS & DUMPS
+# =============================================================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.sql.gz
+*.dump
 *.tmp.mcp.json
 
-# n8n workflows with sensitive data (API keys, credentials)
+# =============================================================================
+# TESTING ARTIFACTS
+# =============================================================================
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+
+# =============================================================================
+# WORKSPACE DOCS — planning, ops, agent missions
+# Not part of the deployable app. Keep locally, not in git.
+# =============================================================================
+agent_missions/
+agents workspace/
+archive/
+docs/
+docs_archive/
+documentation/
+directives/
+execution/
+phone_chat/
+marketing/
+PROJECT_DELEGATION/
+final-golive-actions/
+dominion_doc/
+shared/
+prompts/
+timesheet_uploads/
+e2e/
+MODULE_1_TESTING/
+
+# =============================================================================
+# LOOSE PLANNING & SESSION DOCS (root-level .md clutter)
+# Keep: README.md, AGENTS.md, netlify.toml, components.json
+# =============================================================================
+ADD_ROUTE_INSTRUCTIONS.md
+ADDING_ADDITIONAL_AGENCY_ADMINS.md
+AGENCY_REPORTING_SYSTEM.md
+AI_AGENT_antigravity_concept_review.md
+AI_AGENT_INSTRUCTIONS.md
+AI_AGENT_PARALLEL_DEVELOPMENT.md
+AI_SHIFT_BOOKING_REVIEW.md
+AI_SHIFT_PASTE_DELIVERABLES.md
+AI_SHIFT_PASTE_IMPLEMENTATION_PLAN.md
+AI_SHIFT_PASTE_PRODUCTION_SUMMARY.md
+AI_SHIFT_PASTE_SIMPLIFIED_PLAN.md
+AI_SHIFT_PASTE_SUPPORTED_FORMATS.md
+APP_UPDATE_SYSTEM.md
+APPLY_MIGRATION_NOW.md
+APPROVE_USER_IMPLEMENTATION.md
+APPROVE_USER_TEST_RESULTS.md
+BOOKING_TIME_MIGRATION_FIX.md
+BUGS_FIXED_SUMMARY.md
+BULK_SHIFT_*.md
+CALENDAR_*.md
+CHECK_MAPBOX_TOKEN.md
+CLIENT_SHIFT_PATTERNS_IMPLEMENTATION.md
+CLIENTS_EDIT_FORM_STANDARDIZATION.md
+CODE_DEPENDENCY_MAP.md
+COMMIT_CHECKLIST.md
+COMMIT_STRATEGY.md
+COMPLETE_*.md
+COMPREHENSIVE_MIGRATION_AUDIT.md
+CORS_FIX_COMPLETE.md
+CRITICAL_*.md
+CRON_SETUP_NOW.md
+DATA_SIMULATION_TOOLS_UPGRADE.md
+DATABASE_AUDIT_REPORT_*.md
+DEFAULT_SHIFT_TIMES_IMPLEMENTATION.md
+DELETE_DUMMY_SHIFTS_GUIDE.md
+DELETION_SUCCESS_NEXT_STEPS.md
+DEPLOY_NOW.md
+DEPLOYMENT_SUCCESS_SUMMARY.md
+DESIGN_SYSTEM_*.md
+DOCUMENTATION_*.md
+EDIT_SHIFT_MODAL_REDESIGN.md
+EXECUTIVE_SUMMARY_FIX.md
+EXISTING_ANALYTICS_ADAPTATION_PLAN.md
+FINAL_SUMMARY_FOR_USER.md
+FINANCIAL_*.md
+GITIGNORE_UPDATE.md
+IMPLEMENTATION_COMPLETE.md
+IMPLEMENTATION_SUMMARY.md
+INVOICE_*.md
+LIAM_OSEI_*.md
+LIVE_MAP_*.md
+LIVEMAP_STALE_DATA_FIX.md
+LOCATION_DATA_FIX.md
+MANUAL_*.md
+MARKETPLACE_*.md
+META_TEMPLATE_CREATION_GUIDE.md
+MOBILE_*.md
+MODULE_*.md
+MY_SHIFTS_*.md
+NATURAL_LANGUAGE_SHIFT_CREATOR_COMPLETE.md
+NAVIGATION_AND_RBAC_AUDIT.md
+NETLIFY_*.md
+NOTIFICATION_SYSTEM_COMPLETE_AUDIT.md
+OCR_*.md
+ONBOARDING_*.md
+OPTION_*.md
+OPTIONS_BC_ROADMAP.md
+ORPHANED_SHIFTS_ANALYSIS.md
+PARALLEL_DEV_SETUP_COMPLETE.md
+PARALLEL_DEVELOPMENT_RESTRUCTURE.md
+PAYMENT_REMINDER_TEST_GUIDE.md
+PHASE_2_*.md
+PHASE2_SUPER_ADMIN_HANDOFF.md
+PIPELINE_TEST_REPORT.md
+POSTSHIFTV*.md
+PRODUCTION_FLOW_COMPLETE.md
+PROFILE_*.md
+PROJECT_MASTER_REFERENCE.md
+PROJECT_OVERVIEW.md
+PROMPT_*.md
+QUICK_*.md
+RAPID_REMINDER_TEST_READY.md
+RATE_FLOW_INVESTIGATION.md
+RLS_*.md
+ROLE_*.md
+ROLLBACK_*.md
+SECURITY_GITIGNORE_UPDATE.md
+SESSION_COMPLETE_SUMMARY.md
+SHIFT_*.md
+SIGNUP_*.md
+SIMPLIFIED_SIGNUP_*.md
+STAFF_*.md
+STAFFPROFILE_SIMULATION_FIX.md
+STORAGE_UPLOAD_PATTERN.md
+SUPER_ADMIN_*.md
+TEST_*.md
+TESTING_*.md
+TIMESHEET_PAY_CALCULATION_FIX.md
+TIMESTAMP_FIELD_AUDIT.md
+TWILIO_WEBHOOK_SETUP.md
+UNINVITED_USER_NOTIFICATION_IMPLEMENTATION.md
+UNTESTED_FEATURES.md
+VALIDATION_*.md
+VIEWSWITCHER_CRITICAL_SECURITY_ISSUE.md
+WHATSAPP_*.md
+WINS_AND_LEARNINGS.md
+fuctionslist.md
+my_executive_summary.md
+mytimesheestplan.md
+whatsapp_template_instructions.md
+AI_SHIFT_*.md
+COMPLETE_SESSION_SUMMARY_*.md
+
+# =============================================================================
+# ONE-OFF SCRIPTS & SQL PATCHES (root-level)
+# =============================================================================
+*.sql
+!supabase/migrations/*.sql
+!supabase/seed.sql
+add-pending-broadcast-column.sql
+setup-auto-broadcaster-cron.sql
+setup-cron-jobs.js
+setup_cron_auto.sh
+check_*.sql
+fix_*.sql
+fix-*.sql
+FIX_*.sql
+force_*.sql
+create_test_*.sql
+cleanup_*.sql
+debug_trigger.js
+cron_trigger.js
+debug-whatsapp.mjs
+fix-cors-validation.mjs
+fix-rls-now.mjs
+apply-rls-direct.mjs
+apply-rls-policies.js
+add-pending-broadcast.mjs
+check-cron-job.mjs
+deploy-agency-reports.mjs
+fix-dashboard-rls.mjs
+fetch_agencies.mjs
+find_ops_auth.js
+fix_ops_manager_auth.js
+detailed_verification.js
+comprehensive_db_check.js
+modify_workflow.js
+test-conversational-whatsapp.js
+test-whatsapp-cors-fix.html
+test-whatsapp-from-shift.js
+test-supabase-direct.html
+PHASE_2_SETUP.sql
+trigger-all-reminders.sql
+
+# =============================================================================
+# ONE-OFF VERIFICATION & TRIGGER SCRIPTS
+# =============================================================================
+verify*.js
+verify*.mjs
+verify*.sql
+trigger*.js
+test-multi-recipient.mjs
+**/check_*.js
+**/apply_*.js
+
+# =============================================================================
+# TEST DATA & SCRATCH FILES
+# =============================================================================
+test_body.json
+test_payload.json
+test-payload.json
+test-supabase-payload.json
+send-invoice-email.json
+send-test-emails.json
+PIPELINE_TEST_REPORT.json
+SEED_DATA_MANIFEST.json
+expected_schema.json
+schema_comparison.json
+migration_manifest.json
+critical_path_testing_matrix.csv
+Complete\ Database\ Schema\ Reference.txt
+lint_output.txt
+TEST_SUITE_SUMMARY.txt
+error_response.txt
+complete_seed_generator.py
+seed_data_generator.py
+insert_seed_data.py
+psql_error.txt
+AAAWWWEEE.txt
+AWWFFFFF.txt
+__dummy__
+bulkshift_prototype.html
+PHASE_2_BRANDING_MOCKUP.html
+test-ai-shift-paste.md
+expected_schema_columns.txt
+
+# =============================================================================
+# BATCH / SHELL DEPLOYMENT SCRIPTS (not needed in CI)
+# =============================================================================
+DEPLOY_ALL.bat
+deploy-all-functions.sh
+deploy-functions.sh
+deploy-migration.bat
+deploy-timesheet-handler.ps1
+run-bulk-shift-test.bat
+run-shift-tests.ps1
+setup-parallel-dev.sh
+test-bulk-shift-fix.bat
+
+# =============================================================================
+# N8N WORKFLOW EXPORTS WITH EMBEDDED CREDENTIALS
+# =============================================================================
+updated_workflow.json
 n8n-workflows/n8n-MASTER/
 n8n-workflows/**/*credentials*.json
 n8n-workflows/**/*secret*.json
 n8n-workflows/**/*api-key*.json
-
-# Local development scripts with hardcoded credentials
-.claude/settings.local.json
-apply-rls-direct.mjs
-apply-rls-policies.js
-add-pending-broadcast.mjs
-**/check_*.js
-**/apply_*.js
-debug-whatsapp.mjs
-debug_trigger.js
-cron_trigger.js
-deploy-agency-reports.mjs
-check-cron-job.mjs
-deploy-agency-reports.mjs
-fix-dashboard-rls.mjs
-
-# n8n workflow files may contain credentials
 n8n-workflows/misc/daily-shift-reminders.json
 n8n-workflows/misc/*-reminders.json
 
-# One-off verification and test scripts with credentials
-verify*.js
-verify*.mjs
-trigger*.js
-test-multi-recipient.mjs
-
-# SQL setup scripts that may contain credentials
+# =============================================================================
+# SQL CRON SETUP SCRIPTS
+# =============================================================================
 CRON_SETUP_COPY_PASTE.sql
 **/CRON_SETUP*.sql
-
-# n8n workflow exports with embedded credentials
-updated_workflow.json
-
-# Office temp/lock files
-~$*
-
-# Generated/bulk content directories (too large, not needed in repo)
-marketing/
