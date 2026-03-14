@@ -104,3 +104,6 @@ updated_workflow.json
 
 # Office temp/lock files
 ~$*
+
+# Generated/bulk content directories (too large, not needed in repo)
+marketing/
