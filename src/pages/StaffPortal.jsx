@@ -43,26 +43,20 @@ export default function StaffPortal() {
     const today = new Date();
     const shiftDate = parseISO(shift.date);
     
-    // 1. Today's shifts are always active
-    if (isToday(shiftDate)) return true;
-    
-    // 2. Status-based override (Active clock-ins)
-    // 2. Already in progress? Check if it's "stale" (past its scheduled window)
+    // 1. Status-based override (Active clock-ins)
+    // If shift is already in-progress, we keep it active unless it's way past the end time (stale)
     if (shift.status === 'in_progress') {
       try {
-        // Robust end datetime check for staleness
         const [endHour, endMin] = shift.end_time.split(':').map(Number);
         const shiftEndDate = new Date(shiftDate);
         shiftEndDate.setHours(endHour, endMin, 0, 0);
 
-        // Handle overnight crossover
         const [startHour, startMin] = shift.start_time.split(':').map(Number);
         if (endHour < startHour || (endHour === startHour && endMin < startMin)) {
           shiftEndDate.setDate(shiftEndDate.getDate() + 1);
         }
 
         // A shift is "stale" if more than 16 hours have passed since it was supposed to end
-        // This is a safety margin beyond the 2h grace and overnight periods
         const staleThreshold = new Date(shiftEndDate);
         staleThreshold.setHours(staleThreshold.getHours() + 16);
 
@@ -70,40 +64,34 @@ export default function StaffPortal() {
         console.warn(`⚠️ [Visibility] Excluding stale in_progress shift ${shift.id} from Active Now`);
         return false;
       } catch (e) {
-        return true; // Fallback to showing it if calculation fails
+        return true; 
       }
     }
     
-    // 3. Robust Overnight Shift Check (The "Chadaira Case")
-    // If shift was yesterday, check if it's still current based on end time
-    if (isPast(shiftDate)) {
+    // 2. Overnight Shift Check (Completed/Past but still within grace)
+    if (isPast(shiftDate) && !isToday(shiftDate)) {
       try {
-        // Construct end date object from shift date + end_time
         const [endHour, endMin] = shift.end_time.split(':').map(Number);
         const shiftEndDate = new Date(shiftDate);
         shiftEndDate.setHours(endHour, endMin, 0, 0);
         
-        // If end time is before start time (e.g., 20:00 to 08:00), it crossed midnight
         const [startHour, startMin] = shift.start_time.split(':').map(Number);
         if (endHour < startHour || (endHour === startHour && endMin < startMin)) {
           shiftEndDate.setDate(shiftEndDate.getDate() + 1);
         }
         
-        // Add a 2-hour grace period after shift ends to keep it visible for clock-out/review
         const visibilityWindow = new Date(shiftEndDate);
         visibilityWindow.setHours(visibilityWindow.getHours() + 2);
         
-        // 🚨 PAPER SITE ALIGNMENT: Both GPS and Paper sites use a 2-hour grace period
-        // before the Hero Card transitions to the next shift. This ensures consistency
-        // with automated timesheet reminders sent immediately post-shift.
         if (today < visibilityWindow) return true;
       } catch (e) {
         console.error("Error calculating shift visibility window:", e);
       }
     }
 
-    // 4. Future Shift "Activation Window" (imminent shifts starting within 4 hours)
-    if (isFuture(shiftDate)) {
+    // 3. Upcoming Shift Activation Window (Dynamic: 4 hours before start)
+    // ✅ FIX: No longer bypasses for isToday(shiftDate). Window is strictly enforced.
+    if (isToday(shiftDate) || isFuture(shiftDate)) {
       try {
         const [startHour, startMin] = shift.start_time.split(':').map(Number);
         const shiftStart = new Date(shiftDate);
@@ -112,6 +100,7 @@ export default function StaffPortal() {
         const activationWindow = new Date(shiftStart);
         activationWindow.setHours(activationWindow.getHours() - 4);
         
+        // Active if we are within 4 hours of start, or past start time but not yet ended
         if (today >= activationWindow) return true;
       } catch (e) {
         console.error("Error calculating shift activation window:", e);
@@ -126,10 +115,10 @@ export default function StaffPortal() {
     if (!shift) return false;
     const shiftDate = parseISO(shift.date);
     
-    // 1. Future shifts are upcoming
-    if (isFuture(shiftDate)) return true;
+    // 1. Future or Today shifts are always considered upcoming for visibility in lists
+    if (isToday(shiftDate) || isFuture(shiftDate)) return true;
     
-    // 2. Active Now (Today/Overnight ACTIVE)
+    // 2. Otherwise relies on active window (Overnight/Grace period)
     return isShiftActiveNow(shift);
   };
 
@@ -1336,15 +1325,28 @@ export default function StaffPortal() {
                     {(() => {
                       const client = clients.find(c => c.id === nextShift.client_id);
                       if (client?.geofence_enabled === false) {
-                        const element = document.getElementById(`clock-in-${nextShift.id}`);
-                        if (!element) {
-                          const [hour, min] = nextShift.start_time.split(':').map(Number);
-                          const startTime = parseISO(nextShift.date);
-                          startTime.setHours(hour, min, 0, 0);
-                          const openTime = new Date(startTime);
-                          openTime.setHours(openTime.getHours() - 4);
+                        const arrivalLogged = nextShift?.shift_journey_log?.some(l => l.state === 'staff_arrival_only');
+                        
+                        if (arrivalLogged) {
+                          return (
+                            <>
+                              <CheckCircle className="w-5 h-5 mr-2" />
+                              ✅ SHIFT IN PROGRESS
+                            </>
+                          );
+                        }
+
+                        // Check if we are still in the "too early" phase
+                        const [hour, min] = nextShift.start_time.split(':').map(Number);
+                        const startTime = parseISO(nextShift.date);
+                        startTime.setHours(hour, min, 0, 0);
+                        const openTime = new Date(startTime);
+                        openTime.setHours(openTime.getHours() - 4);
+
+                        if (new Date() < openTime) {
                           return `LOGGING OPENS AT ${format(openTime, 'h:mm a')}`;
                         }
+                        
                         return "ENROUTE / ARRIVED";
                       }
                       return "CLOCK IN NOW";
