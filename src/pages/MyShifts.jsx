@@ -1034,8 +1034,8 @@ export default function MyShifts() {
                 ...shift, 
                 pay_rate: payRate 
               }).toFixed(2);
-              const actualPay = actualHours ? (actualHours * payRate).toFixed(2) : null;
               const isPastShift = new Date(shift.date) < new Date();
+              const actualPay = (actualHours && timesheet && timesheet.status !== 'draft') ? (actualHours * payRate).toFixed(2) : null;
 
               return (
                 <Card
