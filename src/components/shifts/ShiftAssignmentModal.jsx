@@ -64,32 +64,48 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
   }, [shift.agency_id]);
 
   const { data: staff = [], isLoading: isLoadingStaff } = useQuery({
-    queryKey: ['staff-for-assignment', currentAgency, shift.role_required],
+    queryKey: ['staff-for-assignment', currentAgency, shift.role_required, 'cache-buster-final'],
     queryFn: async () => {
       if (!currentAgency) return [];
 
-      // Handle role matching with tolerance for spaces vs underscores
-      const roleSearch = shift.role_required;
-      const roleAlt = shift.role_required?.includes(' ')
-        ? shift.role_required.replace(/\s+/g, '_')
-        : shift.role_required?.replace(/_/g, ' ');
+      // Clean the input to handle trailing spaces and ensure it defaults to empty string if undefined
+      const cleanRole = (shift.role_required || '').trim().toLowerCase();
+
+      // Ensure we query for both the space-separated and underscore-separated versions
+      const roleSearch = cleanRole;
+      const roleAlt = cleanRole.includes(' ')
+        ? cleanRole.replace(/\s+/g, '_')
+        : cleanRole.replace(/_/g, ' ');
+
+      const rolesToMatch = [...new Set([roleSearch, roleAlt])].filter(Boolean);
+      console.log('🔍 [ShiftAssignmentModal] Querying staff for roles:', rolesToMatch, 'Agency:', currentAgency);
 
       const { data, error } = await supabase
         .from('staff')
         .select('*, reliability_score, total_shifts_completed, last_incident_date, current_streak')
         .eq('agency_id', currentAgency)
         .eq('status', 'active')
-        .or(`role.eq."${roleSearch}",role.eq."${roleAlt}"`);
+        .in('role', rolesToMatch);
+
+      console.log('🔍 [ShiftAssignmentModal] Query result:', { dataLength: data?.length, error });
 
       if (error) {
-        console.error('Error fetching staff:', error);
-        return [];
+        console.error('CRITICAL: Error fetching staff in QueryFn:', error);
+        window.__staffQueryError = error.message;
+        window.__staffRolesQueried = rolesToMatch;
+        // IMPORTANT: We MUST throw the error. If we return [], React Query will cache [] for 5 minutes
+        // and poison the local state for all subsequent clicks. 
+        throw error;
       }
 
+      window.__staffQueryError = null;
+      window.__staffRolesQueried = rolesToMatch;
       return data || [];
     },
     initialData: [],
-    enabled: !!currentAgency && !isLoadingAgency
+    enabled: !!currentAgency && !isLoadingAgency,
+    staleTime: 0, // DYNAMIC BYPASS: Never cache empty or old data for this critical path
+    cacheTime: 0
   });
 
   // Fetch ALL shifts for overlap validation
@@ -133,7 +149,10 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
     const availability = staffMember.availability?.[dayOfWeek];
     let isAvailable = false;
 
-    if (typeof availability === 'boolean') {
+    if (availability === null || availability === undefined) {
+      // By default, staff are considered available if they haven't explicitly set Unavailability for this day
+      isAvailable = true;
+    } else if (typeof availability === 'boolean') {
       isAvailable = availability;
     } else if (Array.isArray(availability)) {
       isAvailable = availability.includes(shiftBand) || availability.includes('both');
@@ -639,9 +658,10 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
 
     if (!matchesSearch) return false;
 
-    // We NO LONGER hide staff who fail validation here. 
-    // They will be shown in the list but the "Assign" button will be disabled with a reason.
-    // This provides transparency instead of silent omission.
+    // Strict Validation: Completely hide staff who have conflicts (double bookings, rest rules, etc.)
+    const validation = validateStaffAvailability(s);
+    if (!validation.valid) return false;
+
     return true;
   });
 
@@ -674,16 +694,16 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
               <div
                 onClick={() => setAssignmentMode('confirmed')}
                 className={`p-3 border-2 rounded-xl cursor-pointer transition-all ${assignmentMode === 'confirmed'
-                  ? 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-100'
+                  ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100'
                   : 'border-gray-200 hover:border-gray-300 bg-white'
                   }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${assignmentMode === 'confirmed' ? 'border-cyan-500' : 'border-gray-300'
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${assignmentMode === 'confirmed' ? 'border-emerald-500' : 'border-gray-300'
                     }`}>
-                    {assignmentMode === 'confirmed' && <div className="w-2 h-2 rounded-full bg-cyan-500" />}
+                    {assignmentMode === 'confirmed' && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
                   </div>
-                  <span className={`font-bold text-sm ${assignmentMode === 'confirmed' ? 'text-cyan-900' : 'text-gray-700'}`}>
+                  <span className={`font-bold text-sm ${assignmentMode === 'confirmed' ? 'text-emerald-900' : 'text-gray-700'}`}>
                     Verbal Agreement
                   </span>
                 </div>
@@ -695,16 +715,16 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
               <div
                 onClick={() => setAssignmentMode('assigned')}
                 className={`p-3 border-2 rounded-xl cursor-pointer transition-all ${assignmentMode === 'assigned'
-                  ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-100'
+                  ? 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-100'
                   : 'border-gray-200 hover:border-gray-300 bg-white'
                   }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${assignmentMode === 'assigned' ? 'border-amber-500' : 'border-gray-300'
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${assignmentMode === 'assigned' ? 'border-cyan-500' : 'border-gray-300'
                     }`}>
-                    {assignmentMode === 'assigned' && <div className="w-2 h-2 rounded-full bg-amber-500" />}
+                    {assignmentMode === 'assigned' && <div className="w-2 h-2 rounded-full bg-cyan-500" />}
                   </div>
-                  <span className={`font-bold text-sm ${assignmentMode === 'assigned' ? 'text-amber-900' : 'text-gray-700'}`}>
+                  <span className={`font-bold text-sm ${assignmentMode === 'assigned' ? 'text-cyan-900' : 'text-gray-700'}`}>
                     Formal Assignment
                   </span>
                 </div>
@@ -784,7 +804,7 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
                         <Button
                           size="sm"
                           onClick={() => handleAssignClick(staffMember.id)}
-                          className={validation.valid ? (assignmentMode === 'confirmed' ? "bg-cyan-600 hover:bg-cyan-700" : "bg-amber-600 hover:bg-amber-700") : "bg-gray-400"}
+                          className={validation.valid ? (assignmentMode === 'confirmed' ? "bg-emerald-600 hover:bg-emerald-700" : "bg-cyan-600 hover:bg-cyan-700") : "bg-gray-400"}
                           disabled={assignMutation.isLoading || !validation.valid}
                         >
                           {assignMutation.isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : validation.valid ? (assignmentMode === 'confirmed' ? 'Confirm' : 'Assign') : 'Conflict'}
@@ -826,9 +846,21 @@ export default function ShiftAssignmentModal({ shift, onAssign, onClose }) {
                 <div className="text-center py-12">
                   <User className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-600">No available staff found</p>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-500 mt-1 mb-4">
                     Role required: {shift.role_required?.replace('_', ' ')}
                   </p>
+                  
+                  {/* DIAGNOSTIC BLOCK FOR DEBUGGING EMPTY LISTS */}
+                  <div className="text-xs text-left bg-gray-100 p-3 rounded text-gray-700 font-mono mt-4 overflow-x-auto">
+                    <p className="font-bold text-gray-900 border-b pb-1 mb-2">Diagnostic Trace:</p>
+                    <p>• Agency ID: {currentAgency || 'NULL'}</p>
+                    <p>• Shift Role Req: {shift.role_required || 'NULL'}</p>
+                    <p>• Clean Role: {(shift.role_required || '').trim().toLowerCase()}</p>
+                    <p>• Queried Roles: {JSON.stringify(window.__staffRolesQueried || [])}</p>
+                    <p className={window.__staffQueryError ? "text-red-600 font-bold" : ""}>
+                      • DB Error: {window.__staffQueryError || 'None'}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
