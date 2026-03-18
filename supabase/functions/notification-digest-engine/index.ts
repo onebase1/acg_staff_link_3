@@ -154,8 +154,21 @@ serve(async (req) => {
                 if (queue.notification_type === 'shift_assignment') {
                     const shiftCount = queue.pending_items.length;
 
-                    // ✅ CHECK STATUS: If all shifts are already confirmed, change template
-                    const isAllConfirmed = queue.pending_items.every((item: any) => item.status === 'confirmed');
+                    // ✅ CHECK STATUS: Live DB query — pending_items.status can be stale
+                    // (e.g. staff confirmed via marketplace portal after the queue entry was created)
+                    const shiftIds = queue.pending_items.map((item: any) => item.shift_id).filter(Boolean);
+                    let isAllConfirmed = false;
+                    if (shiftIds.length > 0) {
+                        const { data: liveShifts } = await supabase
+                            .from('shifts')
+                            .select('id, status')
+                            .in('id', shiftIds);
+                        isAllConfirmed = (liveShifts?.length ?? 0) > 0 &&
+                            liveShifts!.every((s: any) => s.status === 'confirmed');
+                    } else {
+                        // Fallback: no shift_ids in payload, use cached status
+                        isAllConfirmed = queue.pending_items.every((item: any) => item.status === 'confirmed');
+                    }
 
                     const title = isAllConfirmed ? 'Shift Confirmed' : 'New Shift Assignment';
                     const icon = isAllConfirmed ? '✅' : '📅';

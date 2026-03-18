@@ -101,6 +101,8 @@ export default function Shifts() {
 
   const [selectedShiftIds, setSelectedShiftIds] = useState(new Set());
   const [isBroadcastingSelected, setIsBroadcastingSelected] = useState(false);
+  const [isBroadcastingNormalSelected, setIsBroadcastingNormalSelected] = useState(false);
+  const [broadcastingNormalShiftIds, setBroadcastingNormalShiftIds] = useState(new Set());
 
   // 🆕 Grouping state
   const [groupByDate, setGroupByDate] = useState(() => {
@@ -1134,17 +1136,21 @@ export default function Shifts() {
     });
   };
 
-  // 🆕 MULTI-SELECT BROADCAST: Select/deselect all visible shifts
+  // 🆕 MULTI-SELECT BROADCAST: Select/deselect all visible open shifts that are not in the past
   const toggleSelectAll = () => {
     if (selectedShiftIds.size === filteredShifts.length && filteredShifts.length > 0) {
       // Deselect all
       setSelectedShiftIds(new Set());
     } else {
-      // Select all open shifts that are urgent/critical (can be broadcast)
-      const broadcastableShifts = filteredShifts.filter(s =>
-        s.status === 'open' &&
-        (s.urgency === 'urgent' || s.urgency === 'critical')
-      );
+      // Select all open shifts (allows both normal and urgent) that are not in the past
+      const todayString = new Date().toISOString().split('T')[0];
+      const broadcastableShifts = filteredShifts.filter(s => {
+        if (s.status !== 'open') return false;
+        try {
+          if (!s.date) return false;
+          return new Date(s.date) >= new Date(todayString);
+        } catch (e) { return false; }
+      });
       setSelectedShiftIds(new Set(broadcastableShifts.map(s => s.id)));
     }
   };
@@ -1230,6 +1236,110 @@ export default function Shifts() {
       toast.error(`Broadcast failed: ${error.message}`);
     } finally {
       setIsBroadcastingSelected(false);
+    }
+  };
+
+  // 🆕 NORMAL SHIFT NOTIFICATION: Broadcast selected normal shifts using isolated engine
+  const broadcastNormalSelectedShifts = async () => {
+    const normalSelectedIds = Array.from(selectedShiftIds).filter(id => {
+      const s = shifts.find(shift => shift.id === id);
+      return s && s.urgency === 'normal' && s.status === 'open' && s.marketplace_visible;
+    });
+
+    if (normalSelectedIds.length === 0) {
+      toast.error('No valid visible normal shifts selected.');
+      return;
+    }
+
+    const selectedShifts = shifts.filter(s => normalSelectedIds.includes(s.id));
+    const agencyIds = [...new Set(selectedShifts.map(s => s.agency_id))];
+    if (agencyIds.length > 1) {
+      toast.error('Selected normal shifts must be from the same agency');
+      return;
+    }
+
+    const agencyId = agencyIds[0];
+
+    try {
+      setIsBroadcastingNormalSelected(true);
+      console.log(`🔔 [Normal Digest] Broadcasting ${normalSelectedIds.length} selected shifts for agency ${agencyId}`);
+
+      const { data, error } = await supabase.functions.invoke('normal-marketplace-digest', {
+        body: { shift_ids: normalSelectedIds, agency_id: agencyId }
+      });
+
+      if (error) throw error;
+
+      if (data.skipped) {
+        toast.warning(
+          <div>
+            <p className="font-semibold">Normal Digest Disabled</p>
+            <p className="text-xs mt-1">{data.reason}</p>
+          </div>,
+          { duration: 5000 }
+        );
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from('shifts')
+        .update({ broadcast_sent_at: new Date().toISOString() })
+        .in('id', normalSelectedIds);
+
+      if (updateError) throw updateError;
+
+      queryClient.invalidateQueries(['shifts']);
+      setSelectedShiftIds(new Set());
+
+      toast.success(
+        <div>
+          <p className="font-bold text-lg">📢 Normal Digest Sent!</p>
+          <p className="text-sm mt-2">Notified {data.results.staffNotified} staff members about {normalSelectedIds.length} shift{normalSelectedIds.length > 1 ? 's' : ''}</p>
+          <p className="text-xs mt-2">📊 {data.results.channelBreakdown.sms} SMS • {data.results.channelBreakdown.whatsapp} WhatsApp • {data.results.channelBreakdown.email} Email</p>
+        </div>,
+        { duration: 8000 }
+      );
+    } catch (error) {
+      console.error('❌ [Normal Digest] Broadcast failed:', error);
+      toast.error(`Broadcast failed: ${error.message}`);
+    } finally {
+      setIsBroadcastingNormalSelected(false);
+    }
+  };
+
+  const initiateNormalBroadcast = async (shift) => {
+    try {
+      if (shift.broadcast_sent_at) {
+        const sentTime = new Date(shift.broadcast_sent_at);
+        const minutesAgo = Math.round((new Date() - sentTime) / (1000 * 60));
+        const confirmed = window.confirm(
+          `⚠️ This shift was already broadcast ${minutesAgo} minutes ago.\n\n` +
+          `Sent at: ${sentTime.toLocaleTimeString('en-GB')}\n\n` +
+          `Are you sure you want to broadcast again?`
+        );
+        if (!confirmed) return;
+      }
+
+      setBroadcastingNormalShiftIds(prev => new Set([...prev, shift.id]));
+      
+      const { data, error } = await supabase.functions.invoke('normal-marketplace-digest', {
+        body: { shift_ids: [shift.id], agency_id: shift.agency_id }
+      });
+
+      if (error) throw error;
+      
+      if (data.skipped) {
+        toast.warning(data.reason);
+        return;
+      }
+      
+      await supabase.from('shifts').update({ broadcast_sent_at: new Date().toISOString() }).eq('id', shift.id);
+      queryClient.invalidateQueries(['shifts']);
+      toast.success(`📢 Normal Digest Sent! Notified ${data.results.staffNotified} staff.`);
+    } catch (error) {
+      toast.error(`Broadcast failed: ${error.message}`);
+    } finally {
+      setBroadcastingNormalShiftIds(prev => { const next = new Set(prev); next.delete(shift.id); return next; });
     }
   };
 
@@ -1878,9 +1988,12 @@ export default function Shifts() {
     const isSendingRequest = sendingTimesheetRequest.has(shift.id);
 
     let formattedDate = 'Invalid Date';
+    let isPastShift = false;
     try {
       if (shift.date) {
         const shiftDate = new Date(shift.date);
+        const today = new Date(new Date().toISOString().split('T')[0]);
+        isPastShift = shiftDate < today;
         if (!isNaN(shiftDate.getTime())) {
           formattedDate = format(shiftDate, 'EEE, MMM d, yyyy');
         }
@@ -1914,7 +2027,16 @@ export default function Shifts() {
           )}
 
           <div className="flex items-start justify-between mb-4">
-            <div>
+            <div className="flex items-center gap-2">
+              {!isPastShift && (
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-gray-300 mr-2 cursor-pointer"
+                  checked={selectedShiftIds.has(shift.id)}
+                  onChange={() => toggleShiftSelection(shift.id)}
+                  title="Select shift for bulk actions"
+                />
+              )}
               <Badge {...statusBadge}>
                 {shift.status?.replace('_', ' ')}
               </Badge>
@@ -2031,7 +2153,7 @@ export default function Shifts() {
                     <UserPlus className="w-4 h-4 mr-2" />
                     Confirm Staff
                   </Button>
-                  {(shift.urgency === 'urgent' || shift.urgency === 'critical') && (
+                  {!isPastShift && (shift.urgency === 'urgent' || shift.urgency === 'critical') && (
                     <Button
                       size="sm"
                       onClick={() => initiateUrgentBroadcast(shift)}
@@ -2039,24 +2161,35 @@ export default function Shifts() {
                       className={
                         isBroadcasting ? "bg-green-600" :
                           alreadyBroadcast ? "bg-orange-600 hover:bg-orange-700" :
-                            "bg-red-600 hover:bg-red-700"
+                            "bg-red-600 hover:bg-red-700 text-white"
                       }
                     >
                       {isBroadcasting ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                          Sending...
-                        </>
+                        <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Sending...</>
                       ) : alreadyBroadcast ? (
-                        <>
-                          <Zap className="w-4 h-4 mr-2" />
-                          Broadcast Again
-                        </>
+                        <><Zap className="w-4 h-4 mr-2" />Broadcast Again</>
                       ) : (
-                        <>
-                          <Zap className="w-4 h-4 mr-2" />
-                          Broadcast Alert
-                        </>
+                        <><Zap className="w-4 h-4 mr-2" />Broadcast Alert</>
+                      )}
+                    </Button>
+                  )}
+                  {!isPastShift && shift.urgency === 'normal' && shift.marketplace_visible && (
+                    <Button
+                      size="sm"
+                      onClick={() => initiateNormalBroadcast(shift)}
+                      disabled={broadcastingNormalShiftIds.has(shift.id)}
+                      className={
+                        broadcastingNormalShiftIds.has(shift.id) ? "bg-blue-600" :
+                          alreadyBroadcast ? "bg-blue-500 hover:bg-blue-600 text-white" :
+                            "bg-blue-600 hover:bg-blue-700 text-white"
+                      }
+                    >
+                      {broadcastingNormalShiftIds.has(shift.id) ? (
+                        <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Sending...</>
+                      ) : alreadyBroadcast ? (
+                        <><Mail className="w-4 h-4 mr-2" />Notify Again</>
+                      ) : (
+                        <><Mail className="w-4 h-4 mr-2" />Notify Staff</>
                       )}
                     </Button>
                   )}
@@ -2143,25 +2276,47 @@ export default function Shifts() {
             <Download className="w-4 h-4" />
             Export CSV
           </Button>
-          {selectedShiftIds.size > 0 && (
-            <Button
-              onClick={broadcastSelectedShifts}
-              disabled={isBroadcastingSelected}
-              className="bg-gradient-to-r from-purple-500 to-pink-600 text-white gap-2"
-            >
-              {isBroadcastingSelected ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Broadcasting...
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4" />
-                  Broadcast Selected ({selectedShiftIds.size})
-                </>
-              )}
-            </Button>
-          )}
+          {selectedShiftIds.size > 0 && (() => {
+            const selectedUrgent = Array.from(selectedShiftIds).filter(id => {
+               const s = shifts.find(shift => shift.id === id);
+               return s && (s.urgency === 'urgent' || s.urgency === 'critical');
+            });
+            const selectedNormal = Array.from(selectedShiftIds).filter(id => {
+               const s = shifts.find(shift => shift.id === id);
+               return s && s.urgency === 'normal' && s.marketplace_visible;
+            });
+
+            return (
+              <>
+                {selectedUrgent.length > 0 && (
+                  <Button
+                    onClick={broadcastSelectedShifts}
+                    disabled={isBroadcastingSelected}
+                    className="bg-gradient-to-r from-purple-500 to-pink-600 text-white gap-2"
+                  >
+                    {isBroadcastingSelected ? (
+                      <><RefreshCw className="w-4 h-4 animate-spin" />Broadcasting...</>
+                    ) : (
+                      <><Zap className="w-4 h-4" />Broadcast Urgent ({selectedUrgent.length})</>
+                    )}
+                  </Button>
+                )}
+                {selectedNormal.length > 0 && (
+                  <Button
+                    onClick={broadcastNormalSelectedShifts}
+                    disabled={isBroadcastingNormalSelected}
+                    className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                  >
+                    {isBroadcastingNormalSelected ? (
+                      <><RefreshCw className="w-4 h-4 animate-spin" />Notifying...</>
+                    ) : (
+                      <><Mail className="w-4 h-4" />Notify Normal ({selectedNormal.length})</>
+                    )}
+                  </Button>
+                )}
+              </>
+            );
+          })()}
           <Link to={createPageUrl('PostShiftV2')}>
             <Button className="bg-gradient-to-r from-cyan-500 to-blue-600">
               <Plus className="w-4 h-4 mr-2" />
@@ -2486,9 +2641,12 @@ export default function Shifts() {
                         <input
                           type="checkbox"
                           className="w-4 h-4 rounded border-gray-300"
-                          checked={selectedShiftIds.size > 0 && selectedShiftIds.size === filteredShifts.filter(s => s.status === 'open' && (s.urgency === 'urgent' || s.urgency === 'critical')).length}
+                          checked={selectedShiftIds.size > 0 && selectedShiftIds.size === filteredShifts.filter(s => {
+                            if (s.status !== 'open') return false;
+                            try { return new Date(s.date) >= new Date(new Date().toISOString().split('T')[0]); } catch(e) { return false; }
+                          }).length}
                           onChange={toggleSelectAll}
-                          title="Select all urgent/critical open shifts"
+                          title="Select all open shifts"
                         />
                       </th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Date</th>
@@ -2539,7 +2697,11 @@ export default function Shifts() {
                             }`}
                         >
                           <td className="px-2 py-3 text-center">
-                            {shift.status === 'open' && (shift.urgency === 'urgent' || shift.urgency === 'critical') && (
+                            {shift.status === 'open' && (() => {
+                              try {
+                                return new Date(shift.date) >= new Date(new Date().toISOString().split('T')[0]);
+                              } catch(e) { return false; }
+                            })() && (
                               <input
                                 type="checkbox"
                                 className="w-4 h-4 rounded border-gray-300 cursor-pointer"
