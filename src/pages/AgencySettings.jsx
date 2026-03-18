@@ -1011,6 +1011,52 @@ export default function AgencySettings() {
             </div>
           </div>
 
+          {/* Smart Marketplace Digest */}
+          <div className="flex items-start justify-between p-4 bg-purple-50 rounded-xl border border-purple-200">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Zap className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-gray-900">📋 Smart Marketplace Digest</h4>
+                <p className="text-sm text-gray-600 mt-1">
+                  Automatically notify matched staff about open marketplace shifts via SMS, WhatsApp, and Email
+                </p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={getCurrentValue('settings.automation_settings.use_smart_marketplace_digest', false)}
+                onChange={(e) => updateField('settings.automation_settings.use_smart_marketplace_digest', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+            </label>
+          </div>
+
+          {/* Smart Digest Details */}
+          <div className="ml-8 space-y-2 text-sm">
+            <p className="font-medium text-gray-700 mb-2">How it works:</p>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-gray-600">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                <span>Matches open shifts to qualified, available staff by role and schedule</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-600">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                <span>Sends personalised digests via your enabled notification channels</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-600">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                <span>Triggered manually via "Broadcast Selected" or auto-runs for urgent shifts every 5 minutes</span>
+              </div>
+            </div>
+            <p className="text-xs text-purple-700 mt-3 bg-purple-100 p-2 rounded">
+              💡 Notification channels (SMS, WhatsApp, Email) are controlled by the Urgent Shift Broadcast Channels settings below.
+            </p>
+          </div>
+
           {/* 🆕 URGENT SHIFT BROADCAST CHANNELS */}
           <div className="border-l-4 border-red-500 pl-4 py-2">
             <div className="mb-4">

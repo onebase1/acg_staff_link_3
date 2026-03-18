@@ -138,7 +138,7 @@ function normalizePhoneNumber(phone: string): string {
 // ========================================
 // HELPER: Send SMS notification
 // ========================================
-async function sendSMS(supabase: any, staff: any, shiftCount: number, agencyName: string, portalUrl: string) {
+async function sendSMS(supabase: any, staff: any, shiftCount: number, agencyName: string, marketplaceUrl: string) {
     const normalizedPhone = normalizePhoneNumber(staff.phone);
     console.log(`  📱 SMS: ${staff.phone} → ${normalizedPhone}`);
 
@@ -152,7 +152,7 @@ These shifts match your:
 ✓ Schedule (no double-bookings)
 
 View & claim shifts now:
-👉 ${portalUrl}
+👉 ${marketplaceUrl}
 
 First come, first served!
 
@@ -172,7 +172,7 @@ Reply STOP to opt out`;
 // ========================================
 // HELPER: Send WhatsApp notification
 // ========================================
-async function sendWhatsApp(supabase: any, staff: any, shifts: any[], clients: any[], agencyName: string, portalUrl: string) {
+async function sendWhatsApp(supabase: any, staff: any, shifts: any[], clients: any[], agencyName: string, marketplaceUrl: string) {
     const normalizedPhone = normalizePhoneNumber(staff.phone);
     console.log(`  📱 WhatsApp: ${staff.phone} → ${normalizedPhone}`);
 
@@ -204,7 +204,7 @@ These shifts match your profile:
 ${shiftList}
 
 *Claim your shifts:*
-🔗 ${portalUrl}
+🔗 ${marketplaceUrl}
 
 ⚡ First come, first served!`;
 
@@ -222,7 +222,7 @@ ${shiftList}
 // ========================================
 // HELPER: Send Email notification
 // ========================================
-async function sendEmail(supabase: any, staff: any, shifts: any[], clients: any[], agencyName: string, portalUrl: string) {
+async function sendEmail(supabase: any, staff: any, shifts: any[], clients: any[], agencyName: string, marketplaceUrl: string) {
     // Build shift cards HTML
     let shiftCardsHtml = '';
 
@@ -291,7 +291,7 @@ async function sendEmail(supabase: any, staff: any, shifts: any[], clients: any[
             ${shiftCardsHtml}
 
             <div style="text-align: center; margin-top: 30px;">
-                <a href="${portalUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block;">
+                <a href="${marketplaceUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block;">
                     View & Claim Shifts Now →
                 </a>
             </div>
@@ -381,10 +381,10 @@ serve(async (req) => {
 
         console.log(`📡 Channels enabled: SMS=${channelSettings.sms_enabled}, WhatsApp=${channelSettings.whatsapp_enabled}, Email=${channelSettings.email_enabled}`);
 
-        // ✅ Get portal URL from branding (role-specific URLs)
+        // ✅ Get portal URL from branding — link directly to marketplace for one-click claiming
         const branding = await getBranding(supabase, agency_id);
-        const portalUrl = branding.staffPortalUrl;
-        console.log(`🔗 Staff Portal URL: ${portalUrl}`);
+        const marketplaceUrl = `${branding.siteUrl}/ShiftMarketplace`;
+        console.log(`🔗 Marketplace URL: ${marketplaceUrl}`);
 
         // ✅ Fetch all shifts
         const { data: shifts, error: shiftsError } = await supabase
@@ -474,7 +474,7 @@ serve(async (req) => {
 
                 if (channelSettings.sms_enabled && staff.phone) {
                     notificationPromises.push(
-                        sendSMS(supabase, staff, eligibleShifts.length, agency.name, portalUrl)
+                        sendSMS(supabase, staff, eligibleShifts.length, agency.name, marketplaceUrl)
                             .then(() => { results.channelBreakdown.sms++; })
                             .catch(err => console.error('  ❌ SMS failed:', err.message))
                     );
@@ -482,7 +482,7 @@ serve(async (req) => {
 
                 if (channelSettings.whatsapp_enabled && staff.phone) {
                     notificationPromises.push(
-                        sendWhatsApp(supabase, staff, eligibleShifts, clients, agency.name, portalUrl)
+                        sendWhatsApp(supabase, staff, eligibleShifts, clients, agency.name, marketplaceUrl)
                             .then(() => { results.channelBreakdown.whatsapp++; })
                             .catch(err => console.error('  ❌ WhatsApp failed:', err.message))
                     );
@@ -490,7 +490,7 @@ serve(async (req) => {
 
                 if (channelSettings.email_enabled && staff.email) {
                     notificationPromises.push(
-                        sendEmail(supabase, staff, eligibleShifts, clients, agency.name, portalUrl)
+                        sendEmail(supabase, staff, eligibleShifts, clients, agency.name, marketplaceUrl)
                             .then(() => { results.channelBreakdown.email++; })
                             .catch(err => console.error('  ❌ Email failed:', err.message))
                     );
