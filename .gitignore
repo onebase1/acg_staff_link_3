@@ -325,3 +325,4 @@ CRON_SETUP_COPY_PASTE.sql
 
 # Local Netlify folder
 .netlify
+.gitnexus

@@ -69,7 +69,7 @@ export default function LiveRota() {
     }, [currentDate]);
 
     // Fetch shifts for the week
-    const { data: shifts = [], isLoading, refetch } = useQuery({
+    const { data: rawShifts, isLoading, refetch } = useQuery({
         queryKey: ['live-rota-shifts', weekRange],
         queryFn: async () => {
             console.log('📡 Fetching Live Rota Shifts...', weekRange);
@@ -243,13 +243,13 @@ export default function LiveRota() {
         }
     });
 
+    // Stable empty array to prevent infinite re-renders during loading
+    const EMPTY_ARRAY = useMemo(() => [], []);
+    const shifts = useMemo(() => rawShifts || EMPTY_ARRAY, [rawShifts, EMPTY_ARRAY]);
+
     // Memoized filtered shifts for both stats and grouping
     const filteredShifts = useMemo(() => {
-        let filtered = shifts.map(s => ({
-            ...s,
-            client_name: s.client?.name || 'Unknown Client',
-            staff_name: s.staff ? `${s.staff.first_name} ${s.staff.last_name}` : null
-        })).filter(s =>
+        let filtered = shifts.filter(s =>
             s.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (s.staff_name && s.staff_name.toLowerCase().includes(searchTerm.toLowerCase()))
         );
@@ -282,20 +282,30 @@ export default function LiveRota() {
         localStorage.setItem('liverota_groupBy', groupBy);
     }, [groupBy]);
 
-    // 🆕 Auto-expand groups with open shifts
+    // 🆕 Auto-expand groups with open shifts - only if keys actually change to prevent render loops
     useEffect(() => {
+        if (!shifts.length) return;
+
         const newExpanded = new Set();
-        groupedData.forEach(([key, shifts]) => {
-            if (shifts.some(s => !s.assigned_staff_id)) {
+        groupedData.forEach(([key, groupShifts]) => {
+            if (groupShifts.some(s => !s.assigned_staff_id)) {
                 newExpanded.add(key);
             }
         });
+
         // If no open shifts, expand the first group
         if (newExpanded.size === 0 && groupedData.length > 0) {
             newExpanded.add(groupedData[0][0]);
         }
-        setExpandedGroups(newExpanded);
-    }, [groupedData]);
+
+        // Deep key comparison to prevent redundant state updates
+        const currentKeys = Array.from(expandedGroups).sort().join(',');
+        const newKeys = Array.from(newExpanded).sort().join(',');
+
+        if (currentKeys !== newKeys) {
+            setExpandedGroups(newExpanded);
+        }
+    }, [groupedData, shifts.length]);
 
     const toggleGroup = (key) => {
         setExpandedGroups(prev => {

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -lh \"c:/Users/gbase/AiAgency/ACG_BASE/agc_latest3/marketing/audio/music_\"*)"
+    ]
+  }
+}
