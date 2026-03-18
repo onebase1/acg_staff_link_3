@@ -206,6 +206,7 @@ serve(async (req) => {
                             date: shift.date,
                             start_time: shift.start_time,
                             end_time: shift.end_time,
+                            duration_hours: shift.duration_hours,
                             role: shift.role_required,
                             staff_name: `${staffMember.first_name} ${staffMember.last_name}`,
                             staff_phone: staffMember.phone,
@@ -216,7 +217,7 @@ serve(async (req) => {
                     });
 
                     if (queueError) throw queueError;
-                    
+
                     changeLogDescription = `Shift confirmation queued for batching (${staffMember.first_name})`;
                 } catch (err) {
                     console.error('❌ [Verification Chain] Failed to queue confirmation:', err);
@@ -248,6 +249,7 @@ serve(async (req) => {
                             date: shift.date,
                             start_time: shift.start_time,
                             end_time: shift.end_time,
+                            duration_hours: shift.duration_hours,
                             role: shift.role_required,
                             staff_name: `${staffMember.first_name} ${staffMember.last_name}`,
                             staff_phone: staffMember.phone,
