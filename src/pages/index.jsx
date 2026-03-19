@@ -162,7 +162,7 @@ import PhoneDiagnostic from "./PhoneDiagnostic";
 import TestShiftReminders from "./TestShiftReminders";
 import TestUserCredentials from "./TestUserCredentials";
 
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 
 const PAGES = {
 
@@ -395,6 +395,7 @@ function PagesContent() {
                 <Route path="/ClientPortal" element={<ClientPortal />} />
 
                 <Route path="/ShiftMarketplace" element={<ShiftMarketplace />} />
+                <Route path="/roster" element={<Navigate to="/ShiftMarketplace" replace />} />
 
                 <Route path="/AdminDashboard" element={<AdminDashboard />} />
 
