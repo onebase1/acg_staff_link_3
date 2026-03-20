@@ -1937,14 +1937,14 @@ export default function StaffPortal() {
           <span className="font-semibold">My Docs</span>
         </Button>
         {/* HIDDEN: Payslip feature - Task 13 */}
-        {/* <Button
+        <Button
           variant="outline"
           className="h-24 flex flex-col gap-2 border-2"
           onClick={() => navigate(createPageUrl('Payslips'))}
         >
           <DollarSign className="w-6 h-6 text-green-600" />
           <span className="font-semibold">Payslips</span>
-        </Button> */}
+        </Button>
       </div>
 
       {/* Agency Info Footer */}

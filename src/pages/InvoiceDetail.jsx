@@ -187,6 +187,44 @@ export default function InvoiceDetail() {
     window.print();
   };
 
+  const handleExportCSV = () => {
+    if (!invoice?.line_items?.length) { toast.warning('No line items to export'); return; }
+    const roleAbbr = { specialist_nurse: 'SRN', senior_carer: 'SC', healthcare_assistant: 'HCA', registered_nurse: 'RGN', support_worker: 'SW', care_assistant: 'CA' };
+    const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [
+      ['Invoice Ref', 'Client', 'Period Start', 'Period End', 'Invoice Date', 'Due Date', 'Status'].map(cell).join(','),
+      [invoice.invoice_number, client?.name || '', invoice.period_start || '', invoice.period_end || '', invoice.invoice_date || '', invoice.due_date || '', invoice.status || ''].map(cell).join(','),
+      [],
+      ['--- LINE ITEMS ---', 'Date', 'Day', 'Role', 'Location', 'Shift', 'Hours', 'Rate (£)', 'Amount (£)'].map(cell).join(','),
+      ...invoice.line_items.map(item => {
+        const d = item.date && item.date !== '1970-01-01' ? new Date(item.date) : null;
+        const roleKey = (item.role || '').toLowerCase().replace(/ /g, '_');
+        const roleDisplay = roleAbbr[roleKey] || item.role || '';
+        const shiftType = item.shift_type || (item.start_time && parseInt(item.start_time.split(':')[0]) >= 19 ? 'night' : 'day');
+        return [
+          '', d ? format(d, 'd MMM yyyy') : '', d ? format(d, 'EEE') : '',
+          roleDisplay, item.work_location_within_site || '',
+          shiftType.charAt(0).toUpperCase() + shiftType.slice(1),
+          (item.hours || 0).toFixed(2), (item.rate || 0).toFixed(2), (item.amount || 0).toFixed(2)
+        ].map(cell).join(',');
+      }),
+      [],
+      ['', '', '', '', '', 'Subtotal', '', '', (invoice.subtotal || 0).toFixed(2)].map(cell).join(','),
+      ['', '', '', '', '', `VAT (${invoice.vat_rate || 20}%)`, '', '', (invoice.vat_amount || 0).toFixed(2)].map(cell).join(','),
+      ['', '', '', '', '', 'Total Due', '', '', (invoice.total || 0).toFixed(2)].map(cell).join(','),
+    ];
+    const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.setAttribute('download', `invoice_${invoice.invoice_number}_${format(new Date(), 'yyyyMMdd')}.csv`);
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   const handleSendInvoice = async () => {
     if (sendInvoiceMutation.isPending) {
       toast.warning('Already sending...');
@@ -247,6 +285,10 @@ export default function InvoiceDetail() {
           <Button variant="outline" onClick={handleDownloadPDF}>
             <Download className="w-4 h-4 mr-2" />
             Download PDF
+          </Button>
+          <Button variant="outline" onClick={handleExportCSV}>
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
           </Button>
           {/* FIXED: Send button only for draft invoices */}
           {invoice.status === 'draft' && (
@@ -359,7 +401,7 @@ export default function InvoiceDetail() {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Invoice Period:</span>
                   <span className="font-medium">
-                    {format(new Date(invoice.period_start), 'MMM d')} - {format(new Date(invoice.period_end), 'MMM d, yyyy')}
+                    {invoice.period_start && invoice.period_start !== '1970-01-01' ? format(new Date(invoice.period_start), 'MMM d') : '—'} - {invoice.period_end && invoice.period_end !== '1970-01-01' ? format(new Date(invoice.period_end), 'MMM d, yyyy') : '—'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -384,64 +426,75 @@ export default function InvoiceDetail() {
                 <thead>
                   <tr className="border-b-2 border-gray-300">
                     <th className="text-left py-3 px-2 text-xs font-semibold text-gray-700 uppercase">Date</th>
-                    <th className="text-left py-3 px-2 text-xs font-semibold text-gray-700 uppercase">Staff Member</th>
                     <th className="text-left py-3 px-2 text-xs font-semibold text-gray-700 uppercase">Role</th>
                     {(client?.contract_terms?.require_location_specification || invoice.line_items?.some(item => item.work_location_within_site)) && (
                       <th className="text-left py-3 px-2 text-xs font-semibold text-gray-700 uppercase">Location</th>
                     )}
-                    <th className="text-center py-3 px-2 text-xs font-semibold text-gray-700 uppercase">Shift Type</th>
+                    <th className="text-center py-3 px-2 text-xs font-semibold text-gray-700 uppercase">Shift</th>
                     <th className="text-right py-3 px-2 text-xs font-semibold text-gray-700 uppercase">Hours</th>
                     <th className="text-right py-3 px-2 text-xs font-semibold text-gray-700 uppercase">Rate</th>
                     <th className="text-right py-3 px-2 text-xs font-semibold text-gray-700 uppercase">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {invoice.line_items?.map((item, index) => (
-                    <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
-                      <td className="py-3 px-2 text-sm text-gray-700">
-                        {item.date ? format(new Date(item.date), 'MMM d, yyyy') : 'N/A'}
-                      </td>
-                      <td className="py-3 px-2 text-sm text-gray-900 font-medium">
-                        {item.staff_name}
-                      </td>
-                      <td className="py-3 px-2 text-sm text-gray-700">
-                        {/* ✅ FIX 1: Show actual role from line item */}
-                        <span className="font-semibold text-blue-700">
-                          {item.role || 'Care Staff'}
-                        </span>
-                      </td>
-                      {(client?.contract_terms?.require_location_specification || invoice.line_items?.some(item => item.work_location_within_site)) && (
-                        <td className="py-3 px-2 text-sm">
-                          {/* ✅ Dynamic location display - only shows if data exists OR client requires it */}
-                          {item.work_location_within_site ? (
-                            <span className="font-semibold text-cyan-700">
-                              {item.work_location_within_site}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 italic text-xs">
-                              —
-                            </span>
+                  {(() => {
+                    const roleAbbr = { specialist_nurse: 'SRN', senior_carer: 'SC', healthcare_assistant: 'HCA', registered_nurse: 'RGN', support_worker: 'SW', care_assistant: 'CA' };
+                    const hasLocation = client?.contract_terms?.require_location_specification || invoice.line_items?.some(item => item.work_location_within_site);
+                    return invoice.line_items?.map((item, index) => {
+                      const itemDate = item.date && item.date !== '1970-01-01' ? new Date(item.date) : null;
+                      const roleKey = (item.role || '').toLowerCase().replace(/ /g, '_');
+                      const roleDisplay = roleAbbr[roleKey] || item.role || 'Care Staff';
+                      // Derive shift type from start_time if shift_type missing
+                      const resolvedShiftType = item.shift_type || (() => {
+                        if (!item.start_time) return 'day';
+                        const h = parseInt((item.start_time || '').split(':')[0], 10);
+                        return (h >= 19 || h < 7) ? 'night' : 'day';
+                      })();
+                      const isWeekend = itemDate ? [0, 6].includes(itemDate.getDay()) : false;
+                      return (
+                        <tr key={index} className={`border-b border-gray-200 hover:bg-gray-50 ${isWeekend ? 'bg-amber-50/40' : ''}`}>
+                          <td className="py-3 px-2 text-sm text-gray-700">
+                            {itemDate ? (
+                              <>
+                                <span className={`font-semibold ${isWeekend ? 'text-amber-700' : 'text-gray-900'}`}>
+                                  {format(itemDate, 'EEE')}
+                                </span>
+                                {' '}{format(itemDate, 'd MMM yyyy')}
+                              </>
+                            ) : 'N/A'}
+                          </td>
+                          <td className="py-3 px-2 text-sm font-semibold text-blue-700">
+                            {roleDisplay}
+                          </td>
+                          {hasLocation && (
+                            <td className="py-3 px-2 text-sm">
+                              {item.work_location_within_site ? (
+                                <span className="font-semibold text-cyan-700">{item.work_location_within_site}</span>
+                              ) : (
+                                <span className="text-gray-400 italic text-xs">—</span>
+                              )}
+                            </td>
                           )}
-                        </td>
-                      )}
-                      <td className="py-3 px-2 text-center">
-                        {item.shift_type === 'night' ? (
-                          <Badge variant="outline" className="bg-indigo-50 text-indigo-700 text-xs">Night</Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-amber-50 text-amber-700 text-xs">Day</Badge>
-                        )}
-                      </td>
-                      <td className="py-3 px-2 text-sm text-right text-gray-700">
-                        {item.hours.toFixed(1)}h
-                      </td>
-                      <td className="py-3 px-2 text-sm text-right text-gray-700">
-                        £{item.rate.toFixed(2)}
-                      </td>
-                      <td className="py-3 px-2 text-sm text-right text-gray-900 font-medium">
-                        £{item.amount.toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
+                          <td className="py-3 px-2 text-center">
+                            {resolvedShiftType === 'night' ? (
+                              <Badge variant="outline" className="bg-indigo-50 text-indigo-700 text-xs">Night</Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-amber-50 text-amber-700 text-xs">Day</Badge>
+                            )}
+                          </td>
+                          <td className="py-3 px-2 text-sm text-right text-gray-700">
+                            {(item.hours || 0).toFixed(1)}h
+                          </td>
+                          <td className="py-3 px-2 text-sm text-right text-gray-700">
+                            £{(item.rate || 0).toFixed(2)}
+                          </td>
+                          <td className="py-3 px-2 text-sm text-right text-gray-900 font-medium">
+                            £{(item.amount || 0).toFixed(2)}
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
                 </tbody>
               </table>
             </div>

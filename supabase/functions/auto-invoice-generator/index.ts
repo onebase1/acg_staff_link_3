@@ -349,6 +349,9 @@ serve(async (req) => {
                     return lineItem;
                 }));
 
+                // Sort line items by date so period_start/end are correct regardless of input order
+                lineItems.sort((a: {shift_date?: string}, b: {shift_date?: string}) => (a.shift_date || '').localeCompare(b.shift_date || ''));
+
                 // Calculate totals
                 const subtotal = lineItems.reduce((sum, item) => sum + item.amount, 0);
                 const vatRate = 20;

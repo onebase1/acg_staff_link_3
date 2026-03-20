@@ -622,7 +622,10 @@ export default function GenerateInvoices() {
                               <div>
                                 <p className="text-xs text-gray-500">Date</p>
                                 <p className="font-medium">
-                                  {format(new Date(timesheet.shift_date), 'MMM d, yyyy')}
+                                  <span className={`font-semibold ${[0,6].includes(new Date(timesheet.shift_date).getDay()) ? 'text-amber-700' : ''}`}>
+                                    {format(new Date(timesheet.shift_date), 'EEE')}
+                                  </span>
+                                  {' '}{format(new Date(timesheet.shift_date), 'd MMM yyyy')}
                                 </p>
                               </div>
                               <div>

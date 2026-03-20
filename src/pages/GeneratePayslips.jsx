@@ -94,6 +94,7 @@ export default function GeneratePayslips() {
         .select('*')
         .eq('agency_id', user.agency_id)
         .eq('status', 'approved')
+        .not('invoice_id', 'is', null) // ✅ INVOICE GATE: Only payroll for invoiced shifts
         .gte('shift_date', periodStart)
         .lte('shift_date', periodEnd);
 
@@ -102,11 +103,10 @@ export default function GeneratePayslips() {
         return [];
       }
 
-      console.log(`📊 [Payslips] Found ${data?.length || 0} approved timesheets for period`);
       return data || [];
     },
-    enabled: !!user && !!periodStart && !!periodEnd,
-    initialData: []
+    enabled: !!user?.agency_id && !!periodStart && !!periodEnd,
+    refetchOnMount: 'always'
   });
 
   const { data: staff = [] } = useQuery({
@@ -231,78 +231,28 @@ export default function GeneratePayslips() {
 
     try {
       const staffToGenerate = staffPayrollData.filter(s => selectedStaff.has(s.staff.id));
+      const staffIds = staffToGenerate.map(s => s.staff.id);
 
-      console.log(`💰 [Payslips] Generating for ${staffToGenerate.length} staff members...`);
+      console.log(`💰 [Payslips] Invoking Payroll Engine for ${staffIds.length} staff members...`);
 
-      for (const staffData of staffToGenerate) {
-        // Check for existing payslip
-        const { data: existing, error: checkError } = await supabase
-          .from('payslips')
-          .select('*')
-          .eq('staff_id', staffData.staff.id)
-          .eq('period_start', periodStart)
-          .eq('period_end', periodEnd);
-
-        if (existing.length > 0) {
-          console.log(`⏭️  [Payslips] Skipping ${staffData.staff.first_name} - payslip already exists`);
-          continue;
-        }
-
-        // Generate payslip number
-        const payslipNumber = `PAY-${format(new Date(), 'MMM-yyyy')}-${staffData.staff.first_name.substring(0, 2).toUpperCase()}${staffData.staff.id.substring(0, 4)}`.toUpperCase();
-
-        const payslipData = {
+      // 🚀 PHASE 2: CALL REAL PAYROLL ENGINE
+      // This replaces the local loop with a secure backend sync with Staffology Bureau API.
+      // Rollback: Revert this block to the previous loop-based manual INSERT if needed.
+      const { data, error: invokeError } = await supabase.functions.invoke('auto-payroll-engine', {
+        body: {
           agency_id: user.agency_id,
-          payslip_number: payslipNumber,
-          staff_id: staffData.staff.id,
           period_start: periodStart,
           period_end: periodEnd,
-          payment_date: format(endOfMonth(new Date(periodEnd)), 'yyyy-MM-dd'),
-          status: 'approved',
-          timesheets: staffData.timesheets.map(t => ({
-            timesheet_id: t.id,
-            shift_date: t.shift_date,
-            hours: t.total_hours,
-            rate: t.pay_rate,
-            amount: t.staff_pay_amount
-          })),
-          gross_pay: staffData.grossPay,
-          deductions: staffData.deductions,
-          total_deductions: staffData.totalDeductions,
-          net_pay: staffData.netPay,
-          payment_method: 'bank_transfer',
-          notes: `Auto-generated payslip for ${format(new Date(periodStart), 'MMMM yyyy')}`
-        };
-
-        const { error: createError } = await supabase
-          .from('payslips')
-          .insert({
-            ...payslipData,
-            created_date: new Date().toISOString()
-          });
-
-        if (createError) {
-          console.error('❌ Error creating payslip:', createError);
-          throw createError;
+          staff_ids: staffIds
         }
+      });
 
-        // Update timesheets to link to payslip
-        for (const timesheet of staffData.timesheets) {
-          const { error: updateError } = await supabase
-            .from('timesheets')
-            .update({
-              payslip_id: payslipNumber,
-              status: 'paid'
-            })
-            .eq('id', timesheet.id);
-
-          if (updateError) {
-            console.error('❌ Error updating timesheet:', updateError);
-          }
-        }
-
-        console.log(`✅ [Payslips] Generated for ${staffData.staff.first_name} ${staffData.staff.last_name} - £${staffData.netPay.toFixed(2)}`);
+      if (invokeError) {
+        console.error('❌ [Payslips] Engine Invocation Error:', invokeError);
+        throw invokeError;
       }
+
+      console.log('✅ [Payslips] Engine Response:', data);
 
       queryClient.invalidateQueries(['payslips']);
       queryClient.invalidateQueries(['timesheets']);
@@ -566,11 +516,11 @@ export default function GeneratePayslips() {
         <Card>
           <CardContent className="p-12 text-center">
             <Receipt className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Approved Timesheets</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Ready Timesheets</h3>
             <p className="text-gray-600">
-              No approved timesheets found for the selected period.
+              No approved and invoiced timesheets found for the selected period.
               <br />
-              Approve timesheets first to generate payslips.
+              <span className="text-sm">Note: Shifts must be <strong>Approved</strong> and linked to an <strong>Invoice</strong> before they appear here.</span>
             </p>
           </CardContent>
         </Card>
